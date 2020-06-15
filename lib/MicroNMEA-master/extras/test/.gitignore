@@ -1,0 +1,6 @@
+*.o
+# The libraries files are copied with slight tweaks added.
+MicroNMEA.h
+MicroNMEA.cpp
+test_MicroNMEA
+test_MicroNMEA.regressiontest.tmp
