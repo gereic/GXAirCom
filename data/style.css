@@ -1,0 +1,41 @@
+body {
+  background-color:#252525;
+}
+html {
+  font-family: Helvetica;
+  display: inline-block;
+  margin: 0px auto;
+  text-align: center;
+}
+h1{
+  color: #eaeaea;
+  padding: 2vh;
+}
+p{
+  font-size: 1.5rem;
+}
+button {
+  display: inline-block;
+  background-color: #1fa3ec;
+  border: none;
+  border-radius: 12px;
+  color: #faffff;
+  padding: 16px 40px;
+  text-decoration: none;
+  font-size: 30px;
+  margin: 2px;
+  cursor: pointer;
+}
+input {
+  border: none;
+  text-align: center;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+}
+table, th, td {
+  margin-left:auto;
+  margin-right:auto;
+  color: #eaeaea;
+  text-align: left;
+}

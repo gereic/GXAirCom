@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" href="style.css">
+<meta charset="utf-8" />
+<title>ESP32 FANET</title>
+ 
+<script language="javascript" type="text/javascript">
+ 
+var url = "ws://192.168.0.195:1337/";
+ 
+// This is called when the page finishes loading
+function init() {
+ 
+    // Connect to WebSocket server
+    wsConnect(url);
+}
+ 
+// Call this to connect to the WebSocket server
+function wsConnect(url) {
+    
+    // Connect to WebSocket server
+    websocket = new WebSocket(url);
+    
+    // Assign callbacks
+    websocket.onopen = function(evt) { onOpen(evt) };
+    websocket.onclose = function(evt) { onClose(evt) };
+    websocket.onmessage = function(evt) { onMessage(evt) };
+    websocket.onerror = function(evt) { onError(evt) };
+}
+ 
+// Called when a WebSocket connection is established with the server
+function onOpen(evt) {
+ 
+    // Log connection state
+    console.log("Connected");
+    
+    // write page-number --> then we get all values for page
+    doSend(JSON.stringify({ page : 1 })); //send page 1, so that we get all objects for page 1
+}
+ 
+// Called when the WebSocket connection is closed
+function onClose(evt) {
+ 
+    // Log disconnection state
+    console.log("Disconnected");
+    
+    // Try to reconnect after a few seconds
+    setTimeout(function() { wsConnect(url) }, 2000);
+}
+ 
+// Called when a message is received from the server
+function onMessage(evt) {
+ 
+    // Print out our received message
+    console.log("Received: " + evt.data);
+    
+    // Update circle graphic with LED state
+    var myObj = JSON.parse(evt.data);
+    for (var key of Object.keys(myObj)) {
+        console.log(key + " -> " + myObj[key])
+        document.getElementById(key).textContent = myObj[key];
+        document.getElementById(key).value = myObj[key];
+    }
+}
+ 
+// Called when a WebSocket error occurs
+function onError(evt) {
+    console.log("ERROR: " + evt.data);
+}
+ 
+// Sends a message to the server (and prints it to the console)
+function doSend(message) {
+    console.log("Sending: " + message);
+    websocket.send(message);
+}
+ 
+// Call the init function as soon as the page loads
+window.addEventListener("load", init, false);
+ 
+</script>
+</head>
+<body>
+<h1 id="headline"></h1>
+ 
+<table>
+  <tr>
+    <th>Device-ID</th>
+    <td id="myDevId"></td>
+  </tr>
+  <tr>
+    <th>WIFI SSID</th>
+    <td id="ssid"></td>
+  </tr>
+  <tr>
+    <th>WIFI Password</th>
+    <td id="password"></td>
+  </tr>
+  <tr>
+    <th>PilotName</th>
+    <td id="PilotName"></td>
+  </tr>
+  <tr>
+    <th>UDP-IP</th>
+    <td id="UDPServerIP"></td>
+  </tr>
+  <tr>
+    <th>UDP-Port</th>
+    <td id="UDPSendPort"></td>
+  </tr>
+  <tr>
+    <th>Counter</th>
+    <td id="counter"></td>
+  </tr>
+</table>
+<button onClick="location.href='/settings.html'">Settings</button>
+<div style='text-align:right;font-size:11px;'><hr><a href='https://www.getronix.at' target='_blank' style='color:#aaa;'>ESP32FANET by Gerald Eichler</a></div>
+</div>
+</body>
+</html>

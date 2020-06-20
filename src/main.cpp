@@ -11,10 +11,20 @@
 #include <axp20x.h>
 #include <main.h>
 #include <config.h>
+#include "WebHelper.h"
+#include "fileOps.h"
+#include <SPIFFS.h>
+
+
 //Libraries for OLED Display
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+
+//define programming OTA
+#define OTAPROGRAMMING
+
+#define LifeCount 5000
 
 struct SettingsData setting;
 String host_name = HOSTNAME;
@@ -33,14 +43,12 @@ trackingData MyFanetData;
 uint8_t u8Sat;
 uint8_t u8Fix;
 
-bool WifiConnectOk = true;
+bool WifiConnectOk = false;
 IPAddress local_IP(192,168,1,1);
 IPAddress gateway(192,168,1,1);
 IPAddress subnet(255,255,255,0);
 const char* ap_default_psk = "12345678"; ///< Default PSK.
 
-
-SemaphoreHandle_t binsem1;
 WiFiUDP udp;
 
 volatile bool ppsTriggered = false;
@@ -71,6 +79,8 @@ void setupOTAProgramming();
 void setupWifi();
 void IRAM_ATTR ppsHandler(void);
 void startOLED();
+void printSettings();
+void listSpiffsFiles();
 
 
 static void IRAM_ATTR AXP192_Interrupt_handler() {
@@ -147,9 +157,6 @@ void setupWifi(){
     // ... print IP Address
     Serial.print(F("IP address: "));
     Serial.println(WiFi.localIP());
-    WifiConnectOk = true;
-    //Web_setup();
-    //udp.begin(setting.UDPSendPort);
   } else{
     Serial.println(F("Can not connect to WiFi station. Go into AP mode."));
     // Go into software AP mode.
@@ -164,8 +171,9 @@ void setupWifi(){
       F("Ready") : F("Failed!"));    
     Serial.print(F("IP address: "));
     Serial.println(WiFi.softAPIP());
-    WifiConnectOk = true;
   }
+  WifiConnectOk = true;
+  Web_setup();
 }
 
 
@@ -173,11 +181,13 @@ void setupOTAProgramming(){
     ArduinoOTA
     .onStart([]() {
       String type;
+      Serial.println(F("stopping standard-task"));
       vTaskDelete(xHandleStandard); //delete standard-task
       if (ArduinoOTA.getCommand() == U_FLASH)
         type = "sketch";
       else // U_SPIFFS
         type = "filesystem";
+        SPIFFS.end();
 
       // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
       setting.wifiDownTime = 0; //don't switch off Wifi during upload
@@ -223,6 +233,28 @@ void startOLED(){
   delay(500);
 }
 
+void printSettings(){
+  Serial.println("**** SETTINGS ****");
+  Serial.print("WIFI SSID=");Serial.println(setting.ssid);
+  Serial.print("WIFI PW=");Serial.println(setting.password);
+  Serial.print("Aircraft=");Serial.println(fanet.getAircraftType(setting.AircraftType));
+  Serial.print("Pilotname=");Serial.println(setting.PilotName);
+  Serial.print("Switch WIFI OFF after 3 min=");Serial.println(setting.bSwitchWifiOff3Min);
+  Serial.print("Wifi-down-time=");Serial.println(setting.wifiDownTime/1000.);
+  Serial.print("UDP_SERVER=");Serial.println(setting.UDPServerIP);
+  Serial.print("UDP_PORT=");Serial.println(setting.UDPSendPort);
+}
+
+void listSpiffsFiles(){
+  File root = SPIFFS.open("/");
+  File file = root.openNextFile();
+  while(file){  
+    Serial.print("FILE: ");
+    Serial.println(file.name());
+
+    file = root.openNextFile();
+  }  
+}
 
 void setup() {
   // put your setup code here, to run once:
@@ -232,10 +264,28 @@ void setup() {
 
   setupAXP192();
 
+    // Make sure we can read the file system
+  if( !SPIFFS.begin(true)){
+    Serial.println("Error mounting SPIFFS");
+    while(1);
+  }
+
+  listSpiffsFiles();
+
   startOLED();
+
+  load_configFile(); //load configuration
+
+  
+
 
   setting.ssid = "WLAN_EICHLER";
   setting.password = "magest172";
+  setting.bSwitchWifiOff3Min = false;
+  setting.wifiDownTime = 0;
+
+  printSettings();
+
   xTaskCreatePinnedToCore(taskStandard, "taskStandard", 6500, NULL, 10, &xHandleStandard, ARDUINO_RUNNING_CORE1); //standard task
   xTaskCreatePinnedToCore(taskBackGround, "taskBackGround", 6500, NULL, 1, &xHandleBackground, ARDUINO_RUNNING_CORE1); //background task
 
@@ -243,10 +293,12 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
+  //delay(1000); //wait 1second
 }
 
 void taskStandard(void *pvParameters){
-
+  static uint32_t tLife = millis();
+  static uint8_t counter = 0;
   NMeaSerial.begin(GPSBAUDRATE,SERIAL_8N1,GPSRX,GPSTX,false);
   // Change the echoing messages to the ones recognized by the MicroNMEA library
   MicroNMEA::sendSentence(NMeaSerial, "$PSTMSETPAR,1201,0x00000042");
@@ -255,7 +307,7 @@ void taskStandard(void *pvParameters){
   //Reset the device so that the changes could take plaace
   MicroNMEA::sendSentence(NMeaSerial, "$PSTMSRR");
 
-  delay(4000);
+  delay(1000);
   //clear serial buffer
   while (NMeaSerial.available())
     NMeaSerial.read();  
@@ -263,41 +315,58 @@ void taskStandard(void *pvParameters){
   attachInterrupt(digitalPinToInterrupt(PPSPIN), ppsHandler, FALLING);
 
   // create a binary semaphore for task synchronization
-  binsem1 = xSemaphoreCreateBinary();
   fanet.begin(SCK, MISO, MOSI, SS,RST, DIO0);
   fanet.setPilotname(setting.PilotName);
   fanet.setAircraftType(setting.AircraftType);
   setting.myDevId = fanet.getMyDevId();
   host_name += setting.myDevId; //String((ESP32_getChipId() & 0xFFFFFF), HEX);
-
   //udp.begin(UDPPORT);
 
-  while(1){
+  while(1){    
     // put your main code here, to run repeatedly:
     uint32_t tAct = millis();
-    yield();
+    if ((tAct - tLife) >= LifeCount){
+      tLife = tAct;
+      Serial.print(F("Standard-task running "));
+      Serial.println(counter);
+      counter++;
+    }
+    delay(1);
   }
 }
 
 
 
 void taskBackGround(void *pvParameters){
+  static uint32_t tLife = millis();
+  static uint8_t counter = 0;
   setupWifi();
   setupOTAProgramming();
   while (1){
+    uint32_t tAct = millis();
     if  (WifiConnectOk){
-      //Web_loop();
+      Web_loop();
       #ifdef OTAPROGRAMMING
       ArduinoOTA.handle();
       #endif
     }
-    if (( millis() > setting.wifiDownTime) && (setting.wifiDownTime!=0)){
+    if (( tAct > setting.wifiDownTime) && (setting.wifiDownTime!=0)){
       setting.wifiDownTime=0;
       WifiConnectOk=false;
       esp_wifi_set_mode(WIFI_MODE_NULL);
       esp_wifi_stop();
-      //Serial.println("******************WEBCONFIG Setting - WIFI STOPPING************************* ");
+      Serial.println("******************WEBCONFIG Setting - WIFI STOPPING************************* ");
     }
+    if ((tAct - tLife) >= LifeCount){
+      tLife = tAct;
+      Serial.print(F("Background running wifi="));
+      Serial.print(WifiConnectOk);
+      Serial.print(F(" "));
+      Serial.println(counter);
+      counter++;
+
+    }
+    //yield();
     delay(1);
 	}
 }

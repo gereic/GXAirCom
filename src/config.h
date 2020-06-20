@@ -19,5 +19,3 @@
 #define GPSTX 12
 #define PPSPIN 37
 
-//define programming OTA
-#define OTAPROGRAMMING
