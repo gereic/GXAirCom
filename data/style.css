@@ -15,7 +15,7 @@ p{
   font-size: 1.5rem;
 }
 button {
-  display: inline-block;
+  display: block;
   background-color: #1fa3ec;
   border: none;
   border-radius: 12px;
@@ -23,12 +23,26 @@ button {
   padding: 16px 40px;
   text-decoration: none;
   font-size: 30px;
-  margin: 2px;
+  margin: auto;
   cursor: pointer;
+  width: 100%;
 }
-input {
+button.Red {
+  display: block;
+  background-color: #ff0000;
   border: none;
-  text-align: center;
+  border-radius: 12px;
+  color: #faffff;
+  padding: 16px 40px;
+  text-decoration: none;
+  font-size: 30px;
+  margin: auto;
+  cursor: pointer;
+  width: 100%;
+}
+input,select {
+  border: none;
+  text-align: left;
   width: 100%;
   height: 100%;
   box-sizing: border-box;
@@ -38,4 +52,13 @@ table, th, td {
   margin-right:auto;
   color: #eaeaea;
   text-align: left;
+}
+
+input[type=checkbox] {
+  transform: scale(2);
+  -ms-transform: scale(2);
+  -webkit-transform: scale(2);
+  padding: 10px;
+  width:10px;
+  height:10px;
 }

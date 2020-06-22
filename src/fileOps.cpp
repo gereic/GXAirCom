@@ -12,6 +12,8 @@ void load_configFile(void){
     setting.bSwitchWifiOff3Min = preferences.getBool("SWOFF3MIN",false);
     setting.UDPServerIP = preferences.getString("UDP_SERVER",""); //UDP-IP-Adress for sending Pakets
     setting.UDPSendPort = preferences.getUInt("UDP_PORT",10110); //Port of udp-server
+    setting.outputMode = preferences.getUChar("OutputMode",OUTPUT_SERIAL); //output-mode
+    setting.testMode = preferences.getUChar("TESTMODE",0); //testmode
     preferences.end(); 
 }
 
@@ -25,6 +27,8 @@ void write_configFile(void){
     preferences.putBool("SWOFF3MIN",setting.bSwitchWifiOff3Min);    
     preferences.putString("UDP_SERVER",setting.UDPServerIP); //UDP-IP-Adress for sending Pakets
     preferences.putUInt("UDP_PORT",setting.UDPSendPort); //Port of udp-server
+    preferences.putUChar("OutputMode",setting.outputMode);
+    preferences.putUChar("TESTMODE",setting.testMode);
     preferences.end(); 
     ESP.restart();
 }

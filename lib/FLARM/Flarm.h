@@ -9,8 +9,7 @@
 
 
 #include <HardwareSerial.h>
-#include "CalcTools.h"
-#include <nmeaout.h>
+#include <CalcTools.h>
 
 
 enum class eFlarmAircraftType {
@@ -49,13 +48,13 @@ typedef struct {
 class Flarm {
 public:
     Flarm(); //constructor
-    bool begin(NmeaOut *_pNmeaOut);
+    bool begin(void);
     void run(void); //has to be called cyclic
-    void writeFlarmData(FlarmtrackingData *myData,FlarmtrackingData *movePilotData);
+    String writeFlarmData(FlarmtrackingData *myData,FlarmtrackingData *movePilotData);
+    String writeDataPort(void);
     String addChecksum(String s);
 protected:
-    NmeaOut *pNmeaOut;  
-    void writeDataPort(uint32_t tAct);
+    
     String getHexFromByte(uint8_t val);
     String getHexFromByte1(uint8_t val);
 };

@@ -63,6 +63,18 @@ typedef struct {
 	uint8_t second;
 } stateData;
 
+typedef struct {
+  float lat; //latitude
+  float lon; //longitude
+  float temp; //temp [°C]
+  float wHeading; //wind heading [°]
+  float wSpeed; //km/h
+  float wGust; //km/h
+  float Humidity;
+  float Baro;
+  uint8_t Charge; //+1byte lower 4 bits: 0x00 = 0%, 0x01 = 6.666%, .. 0x0F = 100%
+} weatherData;
+
 class FanetLora {
 public:
     FanetLora(); //constructor
@@ -71,13 +83,18 @@ public:
     void setPilotname(String name);
     void setAircraftType(eFanetAircraftType type);
     void writeTrackingData2FANET(trackingData *tData);
+    void writeMsgType2(String name);
+    void writeMsgType3(String msg);
+    void writeMsgType4(weatherData *wData);
     String getAircraftType(eFanetAircraftType type);
+    eFanetAircraftType getAircraftType(void);
     void run(void); //has to be called cyclic
     bool isNewMsg();
     String getactMsg(); 
     bool getTrackingData(trackingData *tData);
     bool getMyTrackingData(trackingData *tData);
     void printFanetData(trackingData tData);
+    void sendPilotName(void);
 
     /*
     String getFlarmExp(void);
@@ -99,9 +116,9 @@ protected:
     uint8_t LoraReceive[64];
     bool newMsg;
     String actMsg;
+    void sendPilotName(uint32_t tAct);
     void getLoraMsg(void);
     void checkMyDevId();   
-    void sendPilotName(uint32_t tAct);
     String uint64ToString(uint64_t input);
     void coord2payload_absolut(float lat, float lon, uint8_t *buf);
     int getByteFromHex(char in[]);
@@ -205,6 +222,49 @@ private:
     unsigned int turn_scale     :1;
 
   } __attribute__((packed)) fanet_packet_t;
+    
+  /*
+  * Tracking frame type (#4),
+  * Standard header,
+  * No signature,
+  * Broadcast
+  */
+  typedef struct {
+    unsigned int type           :6;
+    unsigned int forward        :1;
+    unsigned int ext_header     :1;
+
+    unsigned int vendor         :8;
+    unsigned int address        :16;
+
+    unsigned int bExt_header2     :1;
+    unsigned int bStateOfCharge   :1;
+    unsigned int bRemoteConfig    :1;
+    unsigned int bBaro            :1;
+    unsigned int bHumidity        :1;
+    unsigned int bWind            :1;
+    unsigned int bTemp            :1;
+    unsigned int bInternetGateway :1;
+
+    unsigned int latitude       :24;
+    unsigned int longitude      :24;
+
+    int8_t temp           :8;
+
+    unsigned int heading        :8;
+
+    unsigned int speed          :7;
+    unsigned int speed_scale    :1;
+    
+    unsigned int gust          :7;
+    unsigned int gust_scale    :1;
+
+    unsigned int humidity      :8;
+
+    int baro          :16;
+
+    unsigned int charge        :8;
+  } __attribute__((packed)) fanet_packet_t4;
     
 };
 

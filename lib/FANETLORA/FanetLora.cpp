@@ -6,23 +6,20 @@
 
 #include "FanetLora.h"
 
+#define MAXPACKETSIZE 50
+
 int PacketSize;
-static uint8_t arRec[50];
+static uint8_t arRec[MAXPACKETSIZE];
 static uint8_t u8ewMessage;
 static int i16Packetsize;
-static uint8_t u8PacketOverflow;
-static uint8_t u8PacketError;
+//static uint8_t u8PacketOverflow;
+//static uint8_t u8PacketError;
+
 
 
 FanetLora::FanetLora(){
     initCount = 0;
 }
-
-/*
-void FanetLora::setNMEAOUT(NmeaOut *_pNmeaOut){
-    pNmeaOut = _pNmeaOut;
-}
-*/
 
 String FanetLora::uint64ToString(uint64_t input) {
   String result = "";
@@ -58,37 +55,65 @@ String FanetLora::getMyDevId(void){
 }
 
 void FanetLora::onReceive(int packetSize) {
-  PacketSize = packetSize;
+  if (packetSize == 0) return;          // if there's no packet, return
+  //Serial.println(F("onReceive"));
+  int i = 0;
+  i16Packetsize = 0;
+  while (LoRa.available()) {
+      uint8_t rec = (uint8_t)LoRa.read();
+      if (i < (MAXPACKETSIZE-1)){
+          arRec[i] = rec;
+          i++;
+      }      
+  }
+  i16Packetsize = i;
+
+  /*
+  if (packetSize >= MAXPACKETSIZE){
+    for (int i = 0; i < packetSize; i++) {
+        LoRa.read();
+    }
+    Serial.println(F("FANET-->Overflow"));
+    u8PacketOverflow++; //msg to long
+    u8PacketError++;
+    return;
+  }
+  for (int i = 0; i < packetSize; i++) {
+    arRec[i] = LoRa.read();
+  }
+  */
+
+  //PacketSize = packetSize;
   //uint8_t arRec[50];
   // received a packet
-  if (packetSize > 50){
-    u8PacketOverflow ++;
+  //if (packetSize > 50){
+  //  u8PacketOverflow ++;
     //Serial.print("error packetSize to big ");
     //Serial.print(packetSize);
     //Serial.println();
-    for (int i = 0; i < packetSize; i++) {
-      LoRa.read();
-    }
-    return;
-  }
-  if (u8ewMessage){
-    u8PacketError++;
+  //  for (int i = 0; i < packetSize; i++) {
+  //    LoRa.read();
+  //  }
+  //  return;
+  //}
+  //if (u8ewMessage){
+  //  u8PacketError++;
     //Serial.print("error buffer not empty");
     //Serial.println();
-    for (int i = 0; i < packetSize; i++) {
-      LoRa.read();
-    }
-    return;
-  }
+  //  for (int i = 0; i < packetSize; i++) {
+  //    LoRa.read();
+  //  }
+  //  return;
+  //}
   //counter++;
 
   // read packet
-  for (int i = 0; i < packetSize; i++) {
-    arRec[i] = LoRa.read();
+  //for (int i = 0; i < packetSize; i++) {
+  //  arRec[i] = LoRa.read();
     //Serial.print(getHexFromByte(arRec[i]));
-  }
-  i16Packetsize = packetSize;
-  u8ewMessage = 1;
+  //}
+  //i16Packetsize = packetSize;
+  //u8ewMessage = 1;
   //Serial.println();
   //decodePacket(&arRec[0],packetSize);
   //display.display();
@@ -198,9 +223,9 @@ String FanetLora::CreateFNFMSG(char *recBuff,uint8_t size){
       actTrackingData.DevId = getHexFromByte(recBuff[1],true) + getHexFromWord(tHeader->address,true);
       getTrackingInfo(payload,msgLen);
   }else if (tHeader->type == 2){
-      Serial.println("************ name received *********************");
+      //Serial.println("************ name received *********************");
   }
-  Serial.println(msg);
+  //Serial.println(msg);
   actMsg = msg;
   newMsg = true;
   return msg;
@@ -218,103 +243,47 @@ bool FanetLora::isNewMsg(){
 }
 
 void FanetLora::getLoraMsg(void){
-  //char recBuff[30];
-  //char c;
-  // received a packet
-  
-  /*
-  Serial.print("Received packet size=");
-  Serial.print(PacketSize);
-  Serial.print(" with RSSI ");
-  Serial.println(LoRa.packetRssi());
-  // read packet
-  for (int i = 0; i < PacketSize; i++) {
-    c = (char)LoRa.read();
-    //Serial.print(getHexFromByte(c));
-    if (i < 30){
-        recBuff[i] = c;
-    }    
-    //Serial.print(getHexFromByte((char)LoRa.read()));
-  }
-  //Serial.println();
-  if (PacketSize < 30)   CreateFNFMSG(&recBuff[0],PacketSize);
-
-  // print RSSI of packet
-
-  for (int i = 0; i < PacketSize; i++) {
-    c = (char)LoRa.read();
-    Serial.print(c);
-  }
-  */
   CreateFNFMSG((char *)&arRec[0],(uint8_t)i16Packetsize);
   u8ewMessage = 0; //now we have new processed the msg
 }
 
 void FanetLora::run(void){    
-    uint32_t tAct = millis();
+    //uint32_t tAct = millis();
     //if (PacketSize > 0){
-    i16Packetsize = LoRa.parsePacket();
+    //i16Packetsize = LoRa.parsePacket();
+    onReceive(LoRa.parsePacket());
     if (i16Packetsize > 0){
+        /*
         Serial.print("new lora-msg size=");
         Serial.println(i16Packetsize);
         for (int i = 0; i < i16Packetsize; i++) {
-            arRec[i] = LoRa.read();
             Serial.print(getHexFromByte(arRec[i]));
         }
         Serial.println("");
+        */
         getLoraMsg();
+        i16Packetsize = 0;
     }
-    
-    /*    
-    if (u8ewMessage){
-        getLoraMsg();
-        //PacketSize = 0;
+}
+
+void FanetLora::sendPilotName(void){
+    if (_PilotName.length() > 0){
+        //Serial.println("sending fanet-name");
+        LoRa.beginPacket();
+        LoRa.write(0x42);
+        LoRa.write(myDevId[0]);
+        LoRa.write(myDevId[1]);
+        LoRa.write(myDevId[2]);
+        LoRa.print(_PilotName);
+        LoRa.endPacket();   
     }
-    */
-    /*
-    while (pFanetSerial->available()){
-        if (recBufferIndex >= FANET_MAXRECBUFFER) recBufferIndex = 0; //Buffer overrun
-        lineBuffer[recBufferIndex] = pFanetSerial->read();
-        if (lineBuffer[recBufferIndex] == '\n'){
-            //Serial.print("length=");Serial.println(recBufferIndex);
-            lineBuffer[recBufferIndex] = 0; //zero-termination
-            //Serial.println(lineBuffer);
-            DecodeLine(String(lineBuffer));    
-            recBufferIndex = 0;
-        }else{
-            if (lineBuffer[recBufferIndex] != '\r'){
-                recBufferIndex++;
-            }
-        }    
-        
-        
-        //String line = pFanetSerial->readStringUntil('\n');
-        //Serial.println(line);
-        //DecodeLine(line);
-    }
-    */
-    sendPilotName(tAct);
 }
 
 void FanetLora::sendPilotName(uint32_t tAct){
     static uint32_t tPilotName = millis();
     if ((tAct - tPilotName) >= 24000){
         tPilotName = tAct;
-        if (_PilotName.length() > 0){
-            //Serial.println("sending fanet-name");
-            LoRa.beginPacket();
-            LoRa.write(0x42);
-            LoRa.write(myDevId[0]);
-            LoRa.write(myDevId[1]);
-            LoRa.write(myDevId[2]);
-            LoRa.print(_PilotName);
-            LoRa.endPacket();   
-            LoRa.parsePacket();
-            while (LoRa.available()){
-                LoRa.read();  //empty buffer
-            }
-            //LoRa.receive(); //switch back to receive-mode         
-        }
+        sendPilotName();
     }
 }
 
@@ -444,278 +413,6 @@ void FanetLora::getTrackingInfo(String line,uint16_t length){
     if (actTrackingData.heading  < 0) actTrackingData.heading += 360.0;
     newData = true;
 }
-
-
-
-
-/*
-void FanetLora::resetModule(){
-    digitalWrite(_ResetPin, LOW);
-    delay(500);
-    digitalWrite(_ResetPin, HIGH);
-    delay(500);
-}
-
-void FanetLora::initModule(uint32_t tAct){
-    static uint32_t timeout = millis();
-    bool btimeout = false;
-    if ((tAct - timeout) >= 1000){
-        btimeout = true;
-    }
-    switch (initCount)
-    {
-    case 0:
-        bFNAOk = false;
-        //Serial.print("#FNA\n");
-        pFanetSerial->print("#FNA\n"); //get module-addr
-        timeout = tAct; //reset timeout
-        initCount++;
-        break;
-    case 1:
-        if (btimeout){
-            initCount--; //back on step ask module again
-        }
-        if (bFNAOk){
-            bFAXOk = false;
-            pFanetSerial->print("#FAX\n"); //flarm expiration
-            timeout = tAct; //reset timeout
-            initCount++;
-        }
-        break;
-    case 2:
-        if (btimeout){
-            initCount--; //back on step ask module again
-        }
-        if (bFAXOk){
-            bFNCOk = false;
-            //Serial.print("#FNC 1,1\n");
-            String sMsg = "#FNC " + String(int(_myData.aircraftType)) + ",1\n";
-            //pFanetSerial->print("#FNC 1,1\n"); //PG, online tracking
-            Serial.print(sMsg);
-            pFanetSerial->print(sMsg); //PG, online tracking
-            timeout = tAct; //reset timeout
-            initCount++;
-        }
-        break;
-    case 3:
-        if (btimeout){
-            initCount--; //back on step ask module again
-        }
-        if (bFNCOk){
-            bDGPOk = false;
-            //Serial.print("#DGP 1\n");
-            pFanetSerial->print("#DGP 1\n"); //Enable receiver
-            timeout = tAct; //reset timeout
-            initCount++;
-        }
-        break;
-    case 4:
-        if (btimeout){
-            initCount--; //back on step ask module again
-        }
-        if (bDGPOk){
-            bFAPOk = false;
-            //Serial.print("#FAP 1\n");
-            pFanetSerial->print("#FAP 1\n"); //Enable FLARM
-            timeout = tAct; //reset timeout
-            initCount++;
-        }
-        break;
-    case 5:
-        if (btimeout){
-            initCount--; //back on step ask module again
-        }
-        if (bFAPOk){
-            initCount = 100; //we are ready !!
-            //Serial.println("**** INIT OK ****");
-            bInitOk = true;
-        }
-        break;
-    
-    default:
-        break;
-    }
-}
-
-String FanetLora::getFlarmExp(void){
-    return FlarmExp;
-}
-
-
-void FanetLora::getMyID(String line){
-    _myData.DevId = line.substring(5,7) + line.substring(8,12);
-    //Serial.print("*******myID=");
-    //Serial.println(_myData.DevId);
-
-}
-
-void FanetLora::getFAX(String line){
-    String s1;
-    int ret = 0;
-    FlarmExp = "";
-    ret = getStringValue(line,&s1,ret,"#FAX ",",");
-    if (ret >= 0){
-        FlarmExp = String(atoi(s1.c_str()) + 1900);
-    }
-    ret = getStringValue(line,&s1,ret,",",",");
-    if (ret >= 0){
-        FlarmExp += "-" + String(atoi(s1.c_str()));
-    }
-    ret = getStringValue(line,&s1,ret,",","");
-    if (ret >= 0){
-        FlarmExp += "-" + String(atoi(s1.c_str()));
-    }
-    Serial.println(FlarmExp);
-}
-
-bool FanetLora::initOk(void){
-    return bInitOk;
-}
-
-void FanetLora::DecodeLine(String line){
-    Serial.println(line);
-    if (line.startsWith("#DGV")){
-    }else if (line.startsWith("#FNA")){
-        getMyID(line);
-        bFNAOk = true;
-    }else if (line.startsWith("#FAX")){
-        getFAX(line);
-        bFAXOk = true;
-    }else if (line.startsWith("#FNR OK")){
-        bFNCOk = true;
-    }else if (line.startsWith("#DGR OK")){
-        bDGPOk = true;
-    }else if (line.startsWith("#FAR OK")){
-        bFAPOk = true;
-    }else if (line.startsWith("#FNF")){
-        //we have received tracking-information
-        CheckReceivedPackage(line);
-    }else{
-        Serial.println("UNKNOWN MSG:");
-        Serial.println(line);
-    }
-
-}
-
-void FanetLora::sendWeather(void){
-    String sSend = "#FNT 4,00,0000,1,0,A,A0965E44687A0A7F4B96\n";
-    Serial.println("sending weather-data");
-    Serial.println(sSend);
-    pFanetSerial->print(sSend);
-}
-
-void FanetLora::CheckReceivedPackage(String line){
-    String s1;
-    String devId = "";
-    int ret;
-    ret = getStringValue(line,&s1,0,"#FNF ",",");
-    //Serial.print("ret=");
-    //Serial.println(ret);
-    //Serial.print("src_manufacturer=");
-    //Serial.println(s1);
-    if (s1 == "7"){
-        devId = "F1";
-    }else{
-        devId = s1;
-    }
-    ret = getStringValue(line,&s1,ret,",",",");
-    devId += s1;
-    //Serial.print("src_id=");
-    //Serial.println(s1);
-
-    ret = getStringValue(line,&s1,ret,",",",");
-    //Serial.print("broadcast=");
-    //Serial.println(s1);
-
-    ret = getStringValue(line,&s1,ret,",",",");
-    //Serial.print("signature=");
-    //Serial.println(s1);
-
-    ret = getStringValue(line,&s1,ret,",",",");
-    //Serial.print("type=");
-    //Serial.println(s1);
-    uint8_t msgType = s1.toInt();
-    ret = getStringValue(line,&s1,ret,",",",");
-    //Serial.print("length=");
-    //Serial.println(s1);
-    long x = strtol(s1.c_str(),NULL,16) * 2;
-    //Serial.println(x);
-    String payload = line.substring(ret+1);
-    //Serial.println(payload.length());
-    if (msgType == 1){
-        if (payload.length() == x){
-            actTrackingData.DevId = devId;
-            getTrackingInfo(payload,uint16_t(x));                
-        }else{
-            Serial.println("length not ok");
-        }
-        //Serial.println(line); //directly to serial out
-    }else if ((msgType == 2) || (msgType == 3) || (msgType == 4)){
-        //Type 2 --> Device-Name
-        //Type 3 --> MSG
-        //Type 4 --> weather-data
-        if (pNmeaOut != NULL){
-            pNmeaOut->write(line + "\r\n"); //directly to serial out
-        }
-    }
-}
-
-
-
-bool Fanet::newTrackingDataAvaiable(void){
-    return newData;
-}
-
-String Fanet::getStringValue(String s,String keyword){
-  String sRet = "";
-  int pos = s.indexOf(keyword);
-  if (pos < 0) return sRet; //not found
-  sRet = s.substring(pos + keyword.length());
-  return sRet;
-}
-
-int Fanet::getStringValue(String s,String *sRet,unsigned int fromIndex,String keyword,String delimiter){
-  *sRet = "";
-  int pos = s.indexOf(keyword,fromIndex);
-  if (pos < 0) return -1; //not found
-  pos += keyword.length();
-  int pos2 = 0;
-  if (delimiter.length() > 0){
-    pos2 = s.indexOf(delimiter,pos);
-  }else{
-      pos2 = s.length();
-  }
-  if (pos2 < 0) return -1; //not found
-  *sRet = s.substring(pos,pos2);
-  return pos2;
-}
-void Fanet::writeStateData2FANET(stateData *tData){
-    String sFNS = "#FNS " + String(tData->lat,4) + ","
-                 + String(tData->lon,4) + ","
-                 + String(tData->altitude,0) + "," 
-                 + String(int(tData->speed)) + "," 
-                 + String(tData->climb,2) + "," 
-                 + String(tData->heading,2) + "," 
-                 + String(tData->year) + "," 
-                 + String(tData->month-1) + "," 
-                 + String(tData->day)+ "," 
-                 + String(tData->hour) +  "," 
-                 + String(tData->minute) +  "," 
-                 + String(tData->second) + "," 
-                 + String(tData->geoIdAltitude,0) + ",0\n"; //todo check geoid-height
-    //Serial.println(sFNS);
-    _myData.altitude = tData->altitude;
-    _myData.climb = tData->climb;
-    _myData.heading = tData->heading;
-    _myData.lat = tData->lat;
-    _myData.lon = tData->lon;
-    _myData.speed = tData->speed;
-    if (bInitOk){
-        pFanetSerial->print(sFNS);
-    }
-}
-*/
-
 void FanetLora::coord2payload_absolut(float lat, float lon, uint8_t *buf)
 {
 	if(buf == NULL)
@@ -733,10 +430,91 @@ void FanetLora::coord2payload_absolut(float lat, float lon, uint8_t *buf)
 	buf[5] = ((uint8_t*)&lon_i)[2];
 }
 
+void FanetLora::writeMsgType2(String name){
+    LoRa.beginPacket();
+    LoRa.write(0x42);
+    LoRa.write(myDevId[0]);
+    LoRa.write(myDevId[1]);
+    LoRa.write(myDevId[2]);
+    LoRa.print(name);
+    LoRa.endPacket();   
+}
+
+
+void FanetLora::writeMsgType3(String msg){
+    LoRa.beginPacket();
+    LoRa.write(0x43);
+    LoRa.write(myDevId[0]);
+    LoRa.write(myDevId[1]);
+    LoRa.write(myDevId[2]);
+    LoRa.write(0); //extended header
+    LoRa.print(msg);
+    LoRa.endPacket(); 
+}
+
+
+eFanetAircraftType FanetLora::getAircraftType(void){
+    return _myData.aircraftType;
+}
+
+void FanetLora::writeMsgType4(weatherData *wData){
+    uint8_t sendBuffer[30];
+    uint8_t sendindex = 0;
+    fanet_packet_t4 *pkt = (fanet_packet_t4 *)&sendBuffer[0];
+    pkt->ext_header     = 0;
+    pkt->forward        = 1;
+    pkt->type           = 4;  /* weather-data  */
+    pkt->vendor         = myDevId[0];
+    pkt->address        = ((uint16_t)myDevId[2] << 8) + (uint16_t)myDevId[1];
+    
+    coord2payload_absolut(wData->lat,wData->lon, ((uint8_t *) pkt) + FANET_HEADER_SIZE + 1);
+    pkt->bExt_header2 = false;
+    pkt->bStateOfCharge = true;
+    pkt->bRemoteConfig = false;
+    pkt->bBaro = true;
+    pkt->bHumidity = true;
+    pkt->bWind = true;
+    pkt->bTemp = true;
+    pkt->bInternetGateway = false;
+
+    int iTemp = (int)(round(wData->temp * 2)); //Temperature (+1byte in 0.5 degree, 2-Complement)
+    pkt->temp = iTemp & 0xFF;
+    pkt->heading = uint8_t(round(wData->wHeading * 256.0 / 360.0)); //Wind (+3byte: 1byte Heading in 360/256 degree, 1byte speed and 1byte gusts in 0.2km/h (each: bit 7 scale 5x or 1x, bit 0-6))
+
+    int speed = (int)roundf(wData->wSpeed * 5.0f);
+    if(speed > 127) {
+        pkt->speed_scale  = 1;
+        pkt->speed        = (speed / 5);
+    } else {
+        pkt->speed_scale  = 0;
+        pkt->speed        = speed & 0x7F;
+    }
+    speed = (int)roundf(wData->wGust * 5.0f);
+    if(speed > 127) {
+        pkt->gust_scale  = 1;
+        pkt->gust        = (speed / 5);
+    } else {
+        pkt->gust_scale  = 0;
+        pkt->gust        = speed & 0x7F;
+    }
+
+    pkt->humidity = uint8_t(round(wData->Humidity * 10 / 4)); //Humidity (+1byte: in 0.4% (%rh*10/4))
+
+    pkt->baro = int16_t(round((wData->Baro - 430.0) * 10));  //Barometric pressure normailized (+2byte: in 10Pa, offset by 430hPa, unsigned little endian (hPa-430)*10)
+
+    pkt->charge = constrain(roundf(float(wData->Charge) / 100.0 * 15.0),0,15); //State of Charge  (+1byte lower 4 bits: 0x00 = 0%, 0x01 = 6.666%, .. 0x0F = 100%)
+
+    sendindex = 19;
+    LoRa.beginPacket();
+    for (int i = 0;i < sendindex;i++){
+        LoRa.write(sendBuffer[i]);
+    }
+    LoRa.endPacket();   
+}
+
 void FanetLora::writeTrackingData2FANET(trackingData *tData){
     uint8_t sendBuffer[20];
     uint8_t sendindex = 0;
-    //Serial.println("sending tracking-data");
     fanet_packet_t *pkt = (fanet_packet_t *)&sendBuffer[0];
     pkt->ext_header     = 0;
     pkt->forward        = 1;
@@ -746,7 +524,8 @@ void FanetLora::writeTrackingData2FANET(trackingData *tData){
     
     coord2payload_absolut(tData->lat,tData->lon, ((uint8_t *) pkt) + FANET_HEADER_SIZE);
     pkt->track_online = 1;
-    pkt->aircraft_type  = uint16_t(_myData.aircraftType);
+    //pkt->aircraft_type  = uint16_t(_myData.aircraftType);
+    pkt->aircraft_type  = uint16_t(tData->aircraftType);
     int altitude        = constrain(tData->altitude, 0, 8190);
     pkt->altitude_scale = altitude > 2047 ? (altitude = (altitude + 2) / 4, 1) : 0;
     pkt->altitude_msb   = (altitude & 0x700) >> 8;
@@ -793,12 +572,7 @@ void FanetLora::writeTrackingData2FANET(trackingData *tData){
     for (int i = 0;i < sendindex;i++){
         LoRa.write(sendBuffer[i]);
     }
-    LoRa.endPacket();    
-    LoRa.parsePacket();
-    while (LoRa.available()){
-        LoRa.read();  //empty buffer
-    }
-    //LoRa.receive(); //switch back to receive-mode
+    LoRa.endPacket();   
 }
 
 bool FanetLora::getMyTrackingData(trackingData *tData){

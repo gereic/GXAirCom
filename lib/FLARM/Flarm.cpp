@@ -12,8 +12,7 @@ Flarm::Flarm(){
 }
 
 
-bool Flarm::begin(NmeaOut *_pNmeaOut){
-    pNmeaOut = _pNmeaOut;
+bool Flarm::begin(){
     return true;
 }
 String Flarm::getHexFromByte(uint8_t val){
@@ -57,7 +56,7 @@ String Flarm::addChecksum(String s){
 
 }
 
-void Flarm::writeFlarmData(FlarmtrackingData *myData,FlarmtrackingData *movePilotData){
+String Flarm::writeFlarmData(FlarmtrackingData *myData,FlarmtrackingData *movePilotData){
     float pilotBearing = CalcBearingA( myData->lat, myData->lon,movePilotData->lat,movePilotData->lon);
     float pilotDistance = distance(myData->lat, myData->lon,movePilotData->lat,movePilotData->lon, 'K') ;
     float rads = deg2rad(pilotBearing);
@@ -70,25 +69,17 @@ void Flarm::writeFlarmData(FlarmtrackingData *myData,FlarmtrackingData *movePilo
 								 String(currentSpeed,1) + "," + String(movePilotData->climb,1) + ","+ getHexFromByte1(uint8_t(movePilotData->aircraftType));
     //Serial.println(getHexFromByte((uint8_t)movePilotData->aircraftType));
     //Serial.println(movingpilotData);
-    pNmeaOut->write(addChecksum(movingpilotData));
+    return addChecksum(movingpilotData);
 }
 
 
 
-void Flarm::writeDataPort(uint32_t tAct){
-    static uint32_t tWrite = millis();
-    if ((tAct - tWrite) >= 5000){
-        //we have to write the flarm-status
-        tWrite = tAct;
-        //Serial.println("$PFLAU,6,1,2,1,0,144,0,235,446*55");
-        String s = "$PFLAU,6,1,2,1,0,144,0,235,446";
-        pNmeaOut->write(addChecksum(s));
-    }
+String Flarm::writeDataPort(void){
+    return addChecksum("$PFLAU,6,1,2,1,0,144,0,235,446");
 }
 
 void Flarm::run(void){    
-    uint32_t tAct = millis();
-    writeDataPort(tAct);
-
+    //uint32_t tAct = millis();
+    //writeDataPort(tAct);
 }
 
