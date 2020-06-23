@@ -61,7 +61,7 @@ function sendValues(){
             UDPServerIP : document.getElementById("UDPServerIP").value,
             UDPSendPort : document.getElementById("UDPSendPort").value,
             wifioff : Number(document.getElementById("wifioff").checked),
-            testmode : document.getElementById("testmode").value,
+            testmode : Number(document.getElementById("testmode").checked),
             save : 1 };
   doSend(JSON.stringify(obj));
   document.getElementById("btnsave").innerText  = "rebooting ..."
@@ -130,7 +130,7 @@ window.addEventListener("load", init, false);
   </tr>
   <tr>
     <th>Testmode</th>
-    <td><input type="text" id="testmode" name="testmode"></td>
+    <td><input type="checkbox" id="testmode" name="testmode"></td>
   </tr>
   <tr>
     <th>Wifi off after 3min</th>

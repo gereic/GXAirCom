@@ -66,6 +66,7 @@ void onWebSocketEvent(uint8_t client_num,
           doc["password"] = setting.password;
           doc["PilotName"] = setting.PilotName;
           doc["output"] = setting.outputMode;
+          doc["testmode"] = setting.testMode;
           doc["wifioff"] = (uint8_t)setting.bSwitchWifiOff3Min;
           doc["UDPServerIP"] = setting.UDPServerIP;
           doc["UDPSendPort"] = setting.UDPSendPort;

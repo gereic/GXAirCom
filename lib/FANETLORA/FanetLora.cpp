@@ -44,10 +44,14 @@ void FanetLora::checkMyDevId(){
   myDevId[0] = ManuId;//Manufacturer GetroniX
   myDevId[1] = uint8_t(chipmacid >> 40);
   myDevId[2] = uint8_t(chipmacid >> 32); //last 2 Bytes of MAC
-  _myData.DevId = String(myDevId[0],HEX) + String(myDevId[2],HEX) + String(myDevId[1],HEX);
+  _myData.DevId = getHexFromByte(myDevId[0],true) + getHexFromByte(myDevId[2],true) + getHexFromByte(myDevId[1],true);
   //_myData.DevId = String(uint8_t(chipmacid >> 24),HEX) + String(uint8_t(chipmacid >> 32),HEX) + String(uint8_t(chipmacid >> 40),HEX);
   //Serial.print("MAC:");Serial.println(((uint32_t)chipmacid & 0xFFFFFF), HEX);
   //Serial.print("MAC:");Serial.println(((uint32_t)(chipmacid >> 32) & 0xFFFFFF), HEX);
+}
+
+void FanetLora::end(void){
+  LoRa.end();
 }
 
 String FanetLora::getMyDevId(void){

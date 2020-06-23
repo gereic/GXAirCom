@@ -95,6 +95,8 @@ void sendData2Client(String data);
 eFlarmAircraftType Fanet2FlarmAircraft(eFanetAircraftType aircraft);
 void Fanet2FlarmData(trackingData *FanetData,FlarmtrackingData *FlarmDataData);
 void sendLK8EX(uint32_t tAct);
+void powerOff();
+esp_sleep_wakeup_cause_t print_wakeup_reason();
 
 void sendData2Client(String data){
   if (setting.outputMode == OUTPUT_UDP){
@@ -269,8 +271,10 @@ void startOLED(){
   display.clearDisplay();
   display.setTextColor(WHITE);
   display.setTextSize(2);
-  display.setCursor(0,25);
+  display.setCursor(0,0);
   display.print(APPNAME);
+  display.setCursor(0,16);
+  display.print(VERSION);
   display.display();
   delay(500);
 }
@@ -300,10 +304,36 @@ void listSpiffsFiles(){
   }  
 }
 
+/*
+Method to print the reason by which ESP32
+has been awaken from sleep
+*/
+esp_sleep_wakeup_cause_t print_wakeup_reason(){
+  esp_sleep_wakeup_cause_t wakeup_reason;
+
+  wakeup_reason = esp_sleep_get_wakeup_cause();
+
+  switch(wakeup_reason)
+  {
+    case ESP_SLEEP_WAKEUP_UNDEFINED : Serial.println("wakeup undefined --> possible by reset"); break;
+    case ESP_SLEEP_WAKEUP_EXT0 : Serial.println("Wakeup EXT0"); break;
+    case ESP_SLEEP_WAKEUP_EXT1 : Serial.println("Wakeup EXIT1"); break;
+    case ESP_SLEEP_WAKEUP_TIMER : Serial.println("Wakeup TIMER"); break;
+    case ESP_SLEEP_WAKEUP_TOUCHPAD : Serial.println("Wakeup TOUCHPAD"); break;
+    case ESP_SLEEP_WAKEUP_ULP : Serial.println("Wakeup ULP"); break;
+    default : Serial.printf("Wakeup was not caused by deep sleep: %d\n",wakeup_reason); break;
+  }
+  return wakeup_reason;
+}
+
 void setup() {
-  // put your setup code here, to run once:
+  
+  
+  // put your setup code here, to run once:  
   Serial.begin(115200);
 
+  esp_sleep_wakeup_cause_t reason = print_wakeup_reason(); //print reason for wakeup
+  
   i2cOLED.begin(OLED_SDA, OLED_SCL);
 
   setupAXP192();
@@ -529,6 +559,15 @@ void taskStandard(void *pvParameters){
   setting.myDevId = fanet.getMyDevId();
   host_name += setting.myDevId; //String((ESP32_getChipId() & 0xFFFFFF), HEX);
   flarm.begin();
+
+  display.setTextColor(WHITE);
+  display.setTextSize(2);
+  display.setCursor(0,40);
+  display.print("ID:");
+  display.print(setting.myDevId);
+  display.display();
+  delay(1000);
+
   //udp.begin(UDPPORT);
 
   while(1){    
@@ -623,6 +662,45 @@ void taskStandard(void *pvParameters){
   }
 }
 
+void powerOff(){
+  axp.clearIRQ();
+  Serial.println(F("stopping standard-task"));
+  vTaskDelete(xHandleStandard); //delete standard-task
+  delay(100);
+  fanet.end();
+
+
+  esp_wifi_set_mode(WIFI_MODE_NULL);
+  esp_wifi_stop();
+  //esp_bt_controller_disable();
+
+
+  display.clearDisplay();
+  display.setTextColor(WHITE);
+  display.setTextSize(4);
+  display.setCursor(20,20);
+  display.print("OFF");
+  display.display();  
+
+
+  delay(2000);
+
+  display.ssd1306_command(SSD1306_DISPLAYOFF);
+
+  // switch all off
+  axp.setChgLEDMode(AXP20X_LED_OFF);
+  axp.setPowerOutPut(AXP192_LDO2, AXP202_OFF); //LORA
+  axp.setPowerOutPut(AXP192_LDO3, AXP202_OFF); //GPS
+  axp.setPowerOutPut(AXP192_DCDC1, AXP202_ON); //OLED-Display 3V3
+  axp.setPowerOutPut(AXP192_DCDC2, AXP202_OFF); // NC
+  axp.setPowerOutPut(AXP192_EXTEN, AXP202_OFF);
+  delay(20);
+
+  esp_sleep_enable_ext0_wakeup((gpio_num_t) AXP_IRQ, 0); // 1 = High, 0 = Low
+
+  esp_deep_sleep_start();
+
+}
 
 
 void taskBackGround(void *pvParameters){
@@ -655,6 +733,22 @@ void taskBackGround(void *pvParameters){
 
     }
     //yield();
+    if (AXP192_Irq){
+      if (axp.readIRQ() == AXP_PASS) {
+        if (axp.isPEKLongtPressIRQ()) {
+          Serial.println(F("Long Press IRQ"));
+          Serial.flush();
+          powerOff();
+        }
+        if (axp.isPEKShortPressIRQ()) {
+          Serial.println(F("Short Press IRQ"));
+          Serial.flush();
+        }
+        axp.clearIRQ();
+      }
+      AXP192_Irq = false;
+    }
+
     delay(1);
 	}
 }

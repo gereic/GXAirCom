@@ -79,6 +79,7 @@ class FanetLora {
 public:
     FanetLora(); //constructor
     bool begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset, int dio0);
+    void end(void);
     String getMyDevId(void);
     void setPilotname(String name);
     void setAircraftType(eFanetAircraftType type);
