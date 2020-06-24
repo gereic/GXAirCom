@@ -159,8 +159,10 @@ void setupAXP192(){
     axp.clearIRQ();
     //axp.setChgLEDMode(AXP20X_LED_BLINK_1HZ);
     Serial.println("ready");
+    status.BoardVersion = 11;
   }else{
     Serial.println("AXP192 not found");
+    status.BoardVersion = 07;
   }
 }
 
@@ -281,6 +283,16 @@ void startOLED(){
 
 void printSettings(){
   Serial.println("**** SETTINGS ****");
+  if (setting.band == 0){
+    Serial.println("BAND=868mhz");
+  }else{
+    Serial.println("BAND=915mhz");
+  }
+  Serial.print("BAND=");Serial.println(setting.band);
+  Serial.print("OUTPUT LK8EX1=");Serial.println(setting.outputLK8EX1);
+  Serial.print("OUTPUT FLARM=");Serial.println(setting.outputFLARM);
+  Serial.print("OUTPUT GPS=");Serial.println(setting.outputGPS);
+  Serial.print("OUTPUT FANET=");Serial.println(setting.outputFANET);
   Serial.print("WIFI SSID=");Serial.println(setting.ssid);
   Serial.print("WIFI PW=");Serial.println(setting.password);
   Serial.print("Aircraft=");Serial.println(fanet.getAircraftType(setting.AircraftType));
@@ -450,7 +462,6 @@ void readGPS(){
     //int c = NMeaSerial.read();
     lineBuffer[recBufferIndex] = NMeaSerial.read();
     nmea.process(lineBuffer[recBufferIndex]);
-    //Serial.write(lineBuffer[recBufferIndex]);
     if (lineBuffer[recBufferIndex] == '\n'){
       lineBuffer[recBufferIndex] = '\r';
       recBufferIndex++;
@@ -458,7 +469,7 @@ void readGPS(){
       recBufferIndex++;
       lineBuffer[recBufferIndex] = 0; //zero-termination
       String s = lineBuffer;
-      sendData2Client(s);
+      if (setting.outputGPS) sendData2Client(s);
       recBufferIndex = 0;
     }else{
       if (lineBuffer[recBufferIndex] != '\r'){
@@ -511,13 +522,13 @@ void sendLK8EX(uint32_t tAct){
     String s = "$LK8EX1,";
 
     s += "999999,"; //raw pressure in hPascal: hPA*100 (example for 1013.25 becomes  101325) 
-    s += String((uint32_t)(status.GPS_alt,2)) + ","; // altitude in meters, relative to QNH 1013.25
+    s += String(status.GPS_alt,2) + ","; // altitude in meters, relative to QNH 1013.25
     s += String((int32_t)(status.ClimbRate * 100.0)) + ","; //climbrate in cm/s
     //s += String(status.) + ",";
     s += "99,"; //temperature
     s += String(status.vBatt,2) + ",";
     s = flarm.addChecksum(s);
-    sendData2Client(s);
+    if (setting.outputLK8EX1) sendData2Client(s);
     tOld = tAct;
   }
 }
@@ -537,7 +548,12 @@ void taskStandard(void *pvParameters){
   FlarmtrackingData PilotFlarmData;
 
 
-  NMeaSerial.begin(GPSBAUDRATE,SERIAL_8N1,GPSRX,GPSTX,false);
+  if (status.BoardVersion == 07){
+    NMeaSerial.begin(GPSBAUDRATE,SERIAL_8N1,12,15,false);
+  }else{
+    NMeaSerial.begin(GPSBAUDRATE,SERIAL_8N1,34,12,false);
+  }
+  
   // Change the echoing messages to the ones recognized by the MicroNMEA library
   MicroNMEA::sendSentence(NMeaSerial, "$PSTMSETPAR,1201,0x00000042");
   MicroNMEA::sendSentence(NMeaSerial, "$PSTMSAVEPAR");
@@ -548,12 +564,17 @@ void taskStandard(void *pvParameters){
   delay(1000);
   //clear serial buffer
   while (NMeaSerial.available())
-    NMeaSerial.read();  
-  pinMode(PPSPIN, INPUT);
-  attachInterrupt(digitalPinToInterrupt(PPSPIN), ppsHandler, FALLING);
+    NMeaSerial.read();
+  if (status.BoardVersion == 11){  
+    //only on new boards we have an pps-pin
+    pinMode(PPSPIN, INPUT);
+    attachInterrupt(digitalPinToInterrupt(PPSPIN), ppsHandler, FALLING);
+  }
 
   // create a binary semaphore for task synchronization
-  fanet.begin(SCK, MISO, MOSI, SS,RST, DIO0);
+  long frequency = FREQUENCY868;
+  if (setting.band == BAND915)frequency = FREQUENCY915; 
+  fanet.begin(SCK, MISO, MOSI, SS,RST, DIO0,frequency);
   fanet.setPilotname(setting.PilotName);
   fanet.setAircraftType(setting.AircraftType);
   setting.myDevId = fanet.getMyDevId();
@@ -584,7 +605,7 @@ void taskStandard(void *pvParameters){
       }
       if ((tAct - tFlarmState) >= 5000){
           tFlarmState = tAct;
-          sendData2Client(flarm.writeDataPort());
+          if (setting.outputFLARM) sendData2Client(flarm.writeDataPort());
       }
     }
     if (sendTestData == 1){
@@ -601,24 +622,32 @@ void taskStandard(void *pvParameters){
       sendTestData = 0;
     }
     fanet.run();
+    status.fanetRx = fanet.rxCount;
+    status.fanetTx = fanet.txCount;
     if (fanet.isNewMsg()){
       //write msg to udp !!
       String msg = fanet.getactMsg() + "\n";
-      sendData2Client(msg);
+      if (setting.outputFANET) sendData2Client(msg);
     }
     if (fanet.getTrackingData(&tFanetData)){
       if (nmea.isValid()){
         fanet.getMyTrackingData(&myFanetData);
         Fanet2FlarmData(&myFanetData,&myFlarmData);
         Fanet2FlarmData(&tFanetData,&PilotFlarmData);
-        sendData2Client(flarm.writeFlarmData(&myFlarmData,&PilotFlarmData));        
+        if (setting.outputFLARM) sendData2Client(flarm.writeFlarmData(&myFlarmData,&PilotFlarmData));        
       }
     }
     flarm.run();
     sendLK8EX(tAct);
+    if (status.BoardVersion == 07){
+      if ((tAct - tOldPPS) >= 1000){
+        ppsTriggered = true;
+      }
+    }
     if (ppsTriggered){
       ppsTriggered = false;
-      //Serial.println("PPS-Triggered");
+      //Serial.print("PPS-Triggered t=");Serial.println(status.tGPSCycle);
+      status.tGPSCycle = tAct - tOldPPS;
       if (nmea.isValid()){
         long alt = 0;
         nmea.getAltitude(alt);
@@ -629,8 +658,8 @@ void taskStandard(void *pvParameters){
         status.GPS_alt = alt/1000.;
         status.GPS_course = nmea.getCourse()/1000.;
         status.GPS_NumSat = nmea.getNumSatellites();
-        if (oldAlt == 0) oldAlt = status.GPS_alt;
-        status.ClimbRate = (status.GPS_alt - oldAlt) / (float(tAct - tOldPPS) / 1000.0);
+        if (oldAlt == 0) oldAlt = status.GPS_alt;        
+        status.ClimbRate = (status.GPS_alt - oldAlt) / (float(status.tGPSCycle) / 1000.0);
         oldAlt = status.GPS_alt;
         MyFanetData.climb = status.ClimbRate;
         MyFanetData.lat = status.GPS_Lat;

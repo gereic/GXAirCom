@@ -139,15 +139,15 @@ void FanetLora::onReceive(int packetSize) {
 }
 
 
-bool FanetLora::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset, int dio0){
+bool FanetLora::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset, int dio0,long frequency){
   checkMyDevId(); //get Dev-Id out of MAC
   Serial.print("MyDevId:");Serial.println(getMyDevId());
   //SPI LoRa pins
   SPI.begin(sck, miso, mosi, ss);
   //setup LoRa transceiver module
   LoRa.setPins(ss, reset, dio0);
-
-  while (!LoRa.begin(BAND) && counter < 10) {
+  Serial.print("Start Lora Frequency=");Serial.println(frequency);
+  while (!LoRa.begin(frequency) && counter < 10) {
     Serial.print(".");
     counter++;
     delay(500);
@@ -232,6 +232,7 @@ String FanetLora::CreateFNFMSG(char *recBuff,uint8_t size){
   //Serial.println(msg);
   actMsg = msg;
   newMsg = true;
+  rxCount++;
   return msg;
 
 }
@@ -280,6 +281,7 @@ void FanetLora::sendPilotName(void){
         LoRa.write(myDevId[2]);
         LoRa.print(_PilotName);
         LoRa.endPacket();   
+        txCount++;
     }
 }
 
@@ -441,7 +443,8 @@ void FanetLora::writeMsgType2(String name){
     LoRa.write(myDevId[1]);
     LoRa.write(myDevId[2]);
     LoRa.print(name);
-    LoRa.endPacket();   
+    LoRa.endPacket(); 
+    txCount++;  
 }
 
 
@@ -454,6 +457,7 @@ void FanetLora::writeMsgType3(String msg){
     LoRa.write(0); //extended header
     LoRa.print(msg);
     LoRa.endPacket(); 
+    txCount++;
 }
 
 
@@ -513,7 +517,8 @@ void FanetLora::writeMsgType4(weatherData *wData){
     for (int i = 0;i < sendindex;i++){
         LoRa.write(sendBuffer[i]);
     }
-    LoRa.endPacket();   
+    LoRa.endPacket();  
+    txCount++; 
 }
 
 void FanetLora::writeTrackingData2FANET(trackingData *tData){
@@ -576,7 +581,8 @@ void FanetLora::writeTrackingData2FANET(trackingData *tData){
     for (int i = 0;i < sendindex;i++){
         LoRa.write(sendBuffer[i]);
     }
-    LoRa.endPacket();   
+    LoRa.endPacket();  
+    txCount++; 
 }
 
 bool FanetLora::getMyTrackingData(trackingData *tData){

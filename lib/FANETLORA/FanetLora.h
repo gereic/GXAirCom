@@ -20,7 +20,8 @@
 //866E6 for Europe
 //915E6 for North America
 //#define BAND 866E6
-#define BAND 868200012
+#define FREQUENCY868 868200012
+#define FREQUENCY915 916039978
 #define FANET_HEADER_SIZE 4
 #define ManuId 0x08 //0x08 ... Getronix; 0x07 ... SoftRF
 
@@ -78,7 +79,7 @@ typedef struct {
 class FanetLora {
 public:
     FanetLora(); //constructor
-    bool begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset, int dio0);
+    bool begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset, int dio0,long frequency);
     void end(void);
     String getMyDevId(void);
     void setPilotname(String name);
@@ -96,6 +97,8 @@ public:
     bool getMyTrackingData(trackingData *tData);
     void printFanetData(trackingData tData);
     void sendPilotName(void);
+    uint16_t txCount;
+    uint16_t rxCount;
 
     /*
     String getFlarmExp(void);

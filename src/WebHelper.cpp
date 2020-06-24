@@ -3,7 +3,7 @@
 // Globals
 AsyncWebServer server(80);
 WebSocketsServer webSocket = WebSocketsServer(1337);
-char msg_buf[255];
+char msg_buf[500];
 int led_state = 0;
 #define MAXCLIENTS 10
 uint8_t clientPages[MAXCLIENTS];
@@ -18,7 +18,7 @@ void onWebSocketEvent(uint8_t client_num,
                       uint8_t * payload,
                       size_t length) {
 
-  StaticJsonDocument<300> doc;                      //Memory pool
+  StaticJsonDocument<500> doc;                      //Memory pool
   JsonObject root = doc.to<JsonObject>();
   DeserializationError error;
   uint8_t value = 0;
@@ -62,10 +62,15 @@ void onWebSocketEvent(uint8_t client_num,
         if (clientPages[client_num] == 1){
           doc["headline"] = APPNAME "-" VERSION;
           doc["myDevId"] = setting.myDevId;
+          doc["band"] = setting.band;
           doc["ssid"] = setting.ssid;
           doc["password"] = setting.password;
           doc["PilotName"] = setting.PilotName;
           doc["output"] = setting.outputMode;
+          doc["oGPS"] = setting.outputGPS;
+          doc["oFlarm"] = setting.outputFLARM;
+          doc["oFanet"] = setting.outputFANET;
+          doc["oLK8EX1"] = setting.outputLK8EX1;
           doc["testmode"] = setting.testMode;
           doc["wifioff"] = (uint8_t)setting.bSwitchWifiOff3Min;
           doc["UDPServerIP"] = setting.UDPServerIP;
@@ -73,10 +78,15 @@ void onWebSocketEvent(uint8_t client_num,
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
         }else if (clientPages[client_num] == 10){
+          doc["band"] = setting.band;
           doc["ssid"] = setting.ssid;
           doc["password"] = setting.password;
           doc["PilotName"] = setting.PilotName;
           doc["output"] = setting.outputMode;
+          doc["oGPS"] = setting.outputGPS;
+          doc["oFlarm"] = setting.outputFLARM;
+          doc["oFanet"] = setting.outputFANET;
+          doc["oLK8EX1"] = setting.outputLK8EX1;
           doc["wifioff"] = (uint8_t)setting.bSwitchWifiOff3Min;
           doc["UDPServerIP"] = setting.UDPServerIP;
           doc["UDPSendPort"] = setting.UDPSendPort;
@@ -119,10 +129,15 @@ void onWebSocketEvent(uint8_t client_num,
         value = doc["save"];
         if (value == 1){
           //general settings-page
+          setting.band = doc["band"].as<uint8_t>();
           setting.ssid = doc["ssid"].as<String>();
           setting.password = doc["password"].as<String>();
           setting.PilotName = doc["PilotName"].as<String>();
           setting.outputMode = doc["output"].as<uint8_t>();
+          setting.outputGPS = doc["oGPS"].as<uint8_t>();
+          setting.outputFLARM = doc["oFlarm"].as<uint8_t>();
+          setting.outputFANET = doc["oFanet"].as<uint8_t>();
+          setting.outputLK8EX1 = doc["oLK8EX1"].as<uint8_t>();
           setting.bSwitchWifiOff3Min = (bool)doc["wifioff"].as<uint8_t>();
           setting.UDPServerIP = doc["UDPServerIP"].as<String>();
           setting.UDPSendPort = doc["UDPSendPort"].as<uint16_t>();
@@ -262,7 +277,7 @@ void Web_loop(void){
   webSocket.loop();
   if ((tAct - tLife) >= 500){
     tLife = tAct;
-    StaticJsonDocument<200> doc;                      //Memory pool
+    StaticJsonDocument<300> doc;                      //Memory pool
     doc.clear();
     doc["counter"] = counter;
     doc["vBatt"] = String(status.vBatt,2);
@@ -273,6 +288,8 @@ void Web_loop(void){
     doc["gpsAlt"] = String(status.GPS_alt,1);
     doc["gpsSpeed"] = String(status.GPS_speed,2);
     doc["climbrate"] = String(status.ClimbRate,1);
+    doc["fanetTx"] = status.fanetTx;
+    doc["fanetRx"] = status.fanetRx;
     serializeJson(doc, msg_buf);
     for (int i = 0;i <MAXCLIENTS;i++){
       if (clientPages[i] == 1){

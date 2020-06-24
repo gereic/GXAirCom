@@ -5,6 +5,11 @@ Preferences preferences;
 void load_configFile(void){
     Serial.println("LOAD CONFIG FILE");
     preferences.begin("settings", false);                         //Ordner settings anlegen/verwenden
+    setting.band = preferences.getUChar("BAND",BAND868); //
+    setting.outputLK8EX1 = preferences.getUChar("OLK8EX1",1); //
+    setting.outputFLARM = preferences.getUChar("OFLARM",1); //
+    setting.outputGPS = preferences.getUChar("OGPS",1); //
+    setting.outputFANET = preferences.getUChar("OFANET",1); //
     setting.PilotName = preferences.getString("PILOTNAME","");
     setting.ssid = preferences.getString("WIFI_SSID","");
     setting.password = preferences.getString("WIFI_PW","");
@@ -20,6 +25,11 @@ void load_configFile(void){
 void write_configFile(void){
     Serial.println("WRITE CONFIG FILE");
     preferences.begin("settings", false);                         //Ordner settings anlegen/verwenden
+    preferences.putUChar("BAND",setting.band); //
+    preferences.putUChar("OLK8EX1",setting.outputLK8EX1); //
+    preferences.putUChar("OFLARM",setting.outputFLARM); //
+    preferences.putUChar("OGPS",setting.outputGPS); //
+    preferences.putUChar("OFANET",setting.outputFANET); //
     preferences.putString("PILOTNAME",setting.PilotName);
     preferences.putString("WIFI_SSID",setting.ssid);
     preferences.putString("WIFI_PW",setting.password);

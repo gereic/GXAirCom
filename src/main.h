@@ -13,8 +13,16 @@
 #define OUTPUT_SERIAL 0
 #define OUTPUT_UDP 1
 
+#define BAND868 0
+#define BAND915 1
+
 struct SettingsData{
   String myDevId; //my device-ID
+  uint8_t band;
+  uint8_t outputLK8EX1;
+  uint8_t outputFLARM;
+  uint8_t outputGPS;
+  uint8_t outputFANET;
   String ssid; //WIFI SSID
   String password; //WIFI PASSWORD
   String PilotName; //Pilotname
@@ -38,6 +46,10 @@ struct statusData{
   float GPS_course;
   uint8_t GPS_NumSat;
   float ClimbRate;
+  uint16_t fanetTx;
+  uint16_t fanetRx;
+  uint8_t BoardVersion;
+  uint32_t tGPSCycle;
 };
 
 #endif
