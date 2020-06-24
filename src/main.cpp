@@ -283,6 +283,7 @@ void startOLED(){
 
 void printSettings(){
   Serial.println("**** SETTINGS ****");
+  Serial.print("Board-Version=V");Serial.println(String((float)status.BoardVersion/10,1));
   if (setting.band == 0){
     Serial.println("BAND=868mhz");
   }else{
