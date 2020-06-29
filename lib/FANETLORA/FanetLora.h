@@ -23,7 +23,30 @@
 #define FREQUENCY868 868200012
 #define FREQUENCY915 916039978
 #define FANET_HEADER_SIZE 4
-#define ManuId 0x08 //0x08 ... Getronix; 0x07 ... SoftRF
+#define ManuId 0x07 // for the moment we use soft-Rf, cause then airwhere is showing it on the map
+//#define ManuId 0xFA 
+/*
+Manufacturer IDs:
+0x00		[reserved]
+0x01		Skytraxx
+0x03		BitBroker.eu
+0x04		AirWhere
+0x05		Windline
+0x06		Burnair.ch
+0x07		SoftRF
+...
+0x11		FANET+ (incl FLARM. Currently Skytraxx, and Naviter)
+...
+0xE0		OGN Tracker
+...
+0xFA		Various
+		0x0001-0x00FF		GetroniX
+0xFB		Espressif based base stations, address is last 2bytes of MAC 
+0xFC		Unregistered Devices
+0xFD		Unregistered Devices
+0xFE		[Multicast]
+0xFF		[reserved]
+*/
 
 
 enum class eFanetAircraftType {

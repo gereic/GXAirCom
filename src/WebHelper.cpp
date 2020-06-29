@@ -3,8 +3,8 @@
 // Globals
 AsyncWebServer server(80);
 WebSocketsServer webSocket = WebSocketsServer(1337);
-char msg_buf[500];
 int led_state = 0;
+char msg_buf[500];
 #define MAXCLIENTS 10
 uint8_t clientPages[MAXCLIENTS];
 
@@ -28,15 +28,15 @@ void onWebSocketEvent(uint8_t client_num,
     // Client has disconnected
     case WStype_DISCONNECTED:
       if (client_num < MAXCLIENTS) clientPages[client_num] = 0;
-      Serial.printf("[%u] Disconnected!\n", client_num);
+      log_d("[%u] Disconnected!", client_num);
       break;
 
     // New client has connected
     case WStype_CONNECTED:
       {
         IPAddress ip = webSocket.remoteIP(client_num);
-        Serial.printf("[%u] Connection from ", client_num);
-        Serial.println(ip.toString());        
+        log_d("[%u] Connection from ", client_num);
+        log_d("%s",ip.toString());        
       }
       break;
 
@@ -45,22 +45,20 @@ void onWebSocketEvent(uint8_t client_num,
 
       // Print out raw message
       
-      Serial.printf("[%u] Received text: %s\n", client_num, payload);      
+      log_d("[%u] Received text: %s", client_num, payload);      
       error = deserializeJson(doc, payload);
       if (error) {   //Check for errors in parsing
-        Serial.print(F("deserializeJson() failed: "));
-        Serial.println(error.c_str());
+        log_e("deserializeJson() failed: %s",error.c_str());
         return;
     
       }
       if (root.containsKey("page")){
         value = doc["page"];                    //Get value of sensor measurement
         if (client_num < MAXCLIENTS) clientPages[client_num] = value;
-        Serial.print("page=");
-        Serial.println(value);
+        log_d("page=%d",value);
         doc.clear();
         if (clientPages[client_num] == 1){
-          doc["headline"] = APPNAME "-" VERSION;
+          doc["headline"] = APPNAME "-" VERSION " ";
           doc["myDevId"] = setting.myDevId;
           doc["band"] = setting.band;
           doc["ssid"] = setting.ssid;
@@ -75,6 +73,7 @@ void onWebSocketEvent(uint8_t client_num,
           doc["wifioff"] = (uint8_t)setting.bSwitchWifiOff3Min;
           doc["UDPServerIP"] = setting.UDPServerIP;
           doc["UDPSendPort"] = setting.UDPSendPort;
+          doc["compiledate"] = String(compile_date);
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
         }else if (clientPages[client_num] == 10){
@@ -142,12 +141,13 @@ void onWebSocketEvent(uint8_t client_num,
           setting.UDPServerIP = doc["UDPServerIP"].as<String>();
           setting.UDPSendPort = doc["UDPSendPort"].as<uint16_t>();
           setting.testMode = doc["testmode"].as<uint8_t>();
-          Serial.println("write config-to file --> rebooting");
-          Serial.flush();
+          log_i("write config-to file --> rebooting");
           delay(500);
           write_configFile();
 
         }
+      }else if (root.containsKey("rLoopTime")){
+        status.tMaxLoop = 0; //reset looptime
       }else if (root.containsKey("sendfanet")){
         //test-page
         value = doc["sendfanet"];
@@ -199,9 +199,15 @@ void onWebSocketEvent(uint8_t client_num,
 }
 
 String processor(const String& var){
+  if (xHandleBle){
+    //delect ble-task to free some memory
+    vTaskDelete(xHandleBle); //delete standard-task
+    delay(100);
+    xHandleBle = NULL;
+  }
+  
   String sRet = "";
   if(var == "SOCKETIP")
-    Serial.println(status.myIP);
     return status.myIP;
   return "";
 }
@@ -209,8 +215,7 @@ String processor(const String& var){
 // Callback: send 404 if requested file does not exist
 void onPageNotFound(AsyncWebServerRequest *request) {
   IPAddress remote_ip = request->client()->remoteIP();
-  Serial.println("[" + remote_ip.toString() +
-                  "] HTTP GET request of " + request->url());
+  log_e("[%s] HTTP GET request of %s",remote_ip.toString().c_str(),request->url());
   request->send(404, "text/plain", "Not found");
 }
 
@@ -290,10 +295,14 @@ void Web_loop(void){
     doc["climbrate"] = String(status.ClimbRate,1);
     doc["fanetTx"] = status.fanetTx;
     doc["fanetRx"] = status.fanetRx;
+    doc["tLoop"] = status.tLoop;
+    doc["tMaxLoop"] = status.tMaxLoop;
+    doc["freeHeap"] = xPortGetFreeHeapSize();
+    doc["fHeapMin"] = xPortGetMinimumEverFreeHeapSize();
     serializeJson(doc, msg_buf);
     for (int i = 0;i <MAXCLIENTS;i++){
       if (clientPages[i] == 1){
-        //Serial.printf("Sending to [%u]: %s\n", i, msg_buf);
+        log_d("Sending to [%u]: %s", i, msg_buf);
         webSocket.sendTXT(i, msg_buf);
       }
     }

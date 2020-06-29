@@ -15,12 +15,13 @@
 #include "WebHelper.h"
 #include "fileOps.h"
 #include <SPIFFS.h>
-
+#include <ble.h>
 
 //Libraries for OLED Display
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <BluetoothSerial.h>
 
 //define programming OTA
 #define OTAPROGRAMMING
@@ -30,6 +31,8 @@
 struct SettingsData setting;
 struct statusData status;
 String host_name = APPNAME "-";
+
+const char compile_date[] = __DATE__ " " __TIME__;
 
 //WebServer server(80);
 
@@ -49,13 +52,11 @@ weatherData testWeatherData;
 String testString;
 uint8_t sendTestData = 0;
 
-bool WifiConnectOk = false;
+uint8_t WifiConnectOk = 0;
 IPAddress local_IP(192,168,1,1);
 IPAddress gateway(192,168,1,1);
 IPAddress subnet(255,255,255,0);
 const char* ap_default_psk = "12345678"; ///< Default PSK.
-
-WiFiUDP udp;
 
 volatile bool ppsTriggered = false;
 
@@ -64,22 +65,38 @@ AXP20X_Class axp;
 volatile bool AXP192_Irq = false;
 volatile float BattCurrent = 0.0;
 
+bool newStationConnected = false;
+
 #define SDA2 13
 #define SCL2 14
+
+BluetoothSerial SerialBT;
+uint8_t btOk;
+
+const byte ADCBOARDVOLTAGE_PIN = 35; // Prefer Use of ADC1 (8 channels, attached to GPIOs 32 - 39) . ADC2 (10 channels, attached to GPIOs 0, 2, 4, 12 - 15 and 25 - 27)
+const byte ADC_BITS = 10; // 10 - 12 bits
 
 TwoWire i2cOLED = TwoWire(1);
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &i2cOLED, OLED_RST);
 
+ unsigned long ble_low_heap_timer=0;
+ bool deviceConnected = false;
+ String ble_data="";
+ bool ble_mutex=false;
 
 
 TaskHandle_t xHandleStandard = NULL;
 TaskHandle_t xHandleBackground = NULL;
+TaskHandle_t xHandleBle = NULL;
+TaskHandle_t xHandleMemory = NULL;
 
 /********** function prototypes ******************/
 void setupAXP192();
 void taskStandard(void *pvParameters);
 void taskBackGround(void *pvParameters);
+void taskBle(void *pvParameters);
+void taskMemory(void *pvParameters);
 void setupOTAProgramming();
 void setupWifi();
 void IRAM_ATTR ppsHandler(void);
@@ -97,17 +114,44 @@ void Fanet2FlarmData(trackingData *FanetData,FlarmtrackingData *FlarmDataData);
 void sendLK8EX(uint32_t tAct);
 void powerOff();
 esp_sleep_wakeup_cause_t print_wakeup_reason();
+void WiFiEvent(WiFiEvent_t event);
+void listConnectedStations();
+float readBattvoltage();
 
 void sendData2Client(String data){
   if (setting.outputMode == OUTPUT_UDP){
     //output via udp
-    if (WiFi.status() == WL_CONNECTED){
+    if (WifiConnectOk == 2){ //connected to wifi or a client is connected to me
+      WiFiUDP udp;
       udp.beginPacket(setting.UDPServerIP.c_str(),setting.UDPSendPort);
       udp.write((uint8_t *)data.c_str(),data.length());
       udp.endPacket();    
     }
-  }else{
-    Serial.print(data); //output over serial-connection
+  }else if (setting.outputMode == OUTPUT_SERIAL){//output over serial-connection
+    Serial.print(data); 
+  }else if (setting.outputMode == OUTPUT_BLUETOOTH){//output over bluetooth serial
+    if (btOk == 1){
+      if (SerialBT.hasClient()){
+        //log_i("sending to bt-device %s",data.c_str());
+        SerialBT.print(data);
+      }    
+    }
+  }else if (setting.outputMode == OUTPUT_BLE){ //output over ble-connection
+    if (xHandleBle){
+      if ((ble_data.length() + data.length()) <512){
+        while(ble_mutex){
+          delay(100);
+        };
+        ble_data=ble_data+data;
+      }else{
+        if (!ble_mutex){
+          ble_data="";
+        }
+      }
+    }else{
+      ble_data = "";
+      ble_mutex = false;
+    }
   }
 }
 
@@ -129,13 +173,13 @@ void writeTrackingData(uint32_t tAct){
 
 static void IRAM_ATTR AXP192_Interrupt_handler() {
   AXP192_Irq = true;
-  Serial.println("AXP192 IRQ");
+  log_v("AXP192 IRQ");
 }
 
 void setupAXP192(){
   i2cOLED.beginTransmission(AXP192_SLAVE_ADDRESS);
   if (i2cOLED.endTransmission() == 0) {
-    Serial.print("init AXP192 -->");
+    log_v("init AXP192 -->");
     axp.begin(i2cOLED, AXP192_SLAVE_ADDRESS);
 
     axp.setChgLEDMode(AXP20X_LED_LOW_LEVEL);
@@ -158,10 +202,10 @@ void setupAXP192(){
     axp.enableIRQ(AXP202_PEK_LONGPRESS_IRQ | AXP202_PEK_SHORTPRESS_IRQ, true);
     axp.clearIRQ();
     //axp.setChgLEDMode(AXP20X_LED_BLINK_1HZ);
-    Serial.println("ready");
+    log_v("ready");
     status.BoardVersion = 11;
   }else{
-    Serial.println("AXP192 not found");
+    log_e("AXP192 not found");
     status.BoardVersion = 07;
   }
 }
@@ -170,55 +214,114 @@ void IRAM_ATTR ppsHandler(void){
   ppsTriggered = true;
 }
 
-void setupWifi(){
-  WifiConnectOk = false;
-  WiFi.mode(WIFI_STA);
-  delay(10);
-  if (WiFi.SSID() != setting.ssid || WiFi.psk() != setting.password)
-    {
-      Serial.println(F("WiFi config changed."));
+void listConnectedStations(){
+  wifi_sta_list_t wifi_sta_list;
+  tcpip_adapter_sta_list_t adapter_sta_list;
+ 
+  memset(&wifi_sta_list, 0, sizeof(wifi_sta_list));
+  memset(&adapter_sta_list, 0, sizeof(adapter_sta_list));
+ 
+  esp_wifi_ap_get_sta_list(&wifi_sta_list);
+  tcpip_adapter_get_sta_list(&wifi_sta_list, &adapter_sta_list);
+  if (adapter_sta_list.num > 0){
+    WifiConnectOk = 2;
+  }else{
+    WifiConnectOk = 1;
+  }
+  for (int i = 0; i < adapter_sta_list.num; i++) {
+ 
+ 
+    tcpip_adapter_sta_info_t station = adapter_sta_list.sta[i];
+    log_v("station nr %d",i);
+    log_v("MAC: ");
+ 
+    log_v("%02X:%02X:%02X:%02X:%02X:%02X", station.mac[0], station.mac[1], station.mac[2], station.mac[3], station.mac[4], station.mac[5]);  
+    String sIP = ip4addr_ntoa(&(station.ip));
+    log_v("IP: %s",sIP);    
+  }
+}
 
+void WiFiEvent(WiFiEvent_t event){
+  switch(event){
+    case SYSTEM_EVENT_AP_START:
+        log_d("AP started. IP: [%s]", WiFi.softAPIP().toString().c_str() );
+        break;
+    case SYSTEM_EVENT_AP_STOP:
+        log_d("AP Stopped");
+        break;
+    case SYSTEM_EVENT_AP_STADISCONNECTED:
+        newStationConnected = true;
+        log_d("WiFi Client Disconnected");
+        break;
+    case SYSTEM_EVENT_AP_STACONNECTED:
+      log_d("SYSTEM_EVENT_AP_STACONNECTED");
+      break;
+    case SYSTEM_EVENT_STA_GOT_IP:
+      log_d("SYSTEM_EVENT_STA_GOT_IP!!!!!!!!!!!!");
+      break;
+    case SYSTEM_EVENT_AP_STAIPASSIGNED:
+      newStationConnected = true;
+      log_d("SYSTEM_EVENT_AP_STAIPASSIGNED!!!!!!!!!!!!");
+      break;
+
+    default:
+      log_d("Unhandled WiFi Event: %d", event );
+      break;
+  }
+}
+
+
+
+void setupWifi(){
+  WifiConnectOk = 0;
+  
+  WiFi.onEvent(WiFiEvent);
+  log_i("hostname=%s",host_name.c_str());
+  WiFi.setHostname(host_name.c_str());
+  delay(10);
+  if ((setting.ssid.length() > 0) && (setting.password.length() > 0)){
+    WiFi.mode(WIFI_STA);
+    if ((WiFi.SSID() != setting.ssid || WiFi.psk() != setting.password)){
       // ... Try to connect to WiFi station.
       WiFi.begin(setting.ssid.c_str(), setting.password.c_str());
-
-      // ... Pritn new SSID
-      Serial.print(F("new SSID: "));
-      Serial.println(WiFi.SSID());
-
-    }
-    else
-    {
+    } else {
       // ... Begin with sdk config.
       WiFi.begin();
     }
-    WiFi.setHostname(host_name.c_str());
-    Serial.println(F("Wait for WiFi connection."));
+    log_i("Wait for WiFi connection.");
     uint32_t wifiTimeout = millis();
     while (WiFi.status() != WL_CONNECTED && millis() - wifiTimeout < 10000) {
       delay(500);
-      Serial.print(".");
-    }Serial.println("");
-  //}
+      log_i(".");
+    }
+    
+  }
   if(WiFi.status() == WL_CONNECTED){
     // ... print IP Address
     status.myIP = WiFi.localIP().toString();
+    WifiConnectOk = 2;
   } else{
-    Serial.println(F("Can not connect to WiFi station. Go into AP mode."));
+    log_i("Can not connect to WiFi station. Go into AP mode.");
     // Go into software AP mode.
     WiFi.mode(WIFI_AP);
     delay(10);
     //WiFi.setHostname(host_name.c_str());
-    Serial.print(F("Setting soft-AP configuration ... "));
-    Serial.println(WiFi.softAPConfig(local_IP, gateway, subnet) ?
-      F("Ready") : F("Failed!"));
-    Serial.print(F("Setting soft-AP ... "));
-    Serial.println(WiFi.softAP(host_name.c_str(), ap_default_psk) ?
-      F("Ready") : F("Failed!"));    
+    log_i("Setting soft-AP configuration ... ");
+    if(WiFi.softAPConfig(local_IP, gateway, subnet)){
+      log_i("Ready");
+    }else{
+      log_i("Failed!");
+    }
+    log_i("Setting soft-AP ... ");
+    if (WiFi.softAP(host_name.c_str(), ap_default_psk)){
+      log_i("Ready");
+    }else{
+      log_i("Failed!");
+    }
     status.myIP = WiFi.softAPIP().toString();
+    WifiConnectOk = 1;
   }
-  Serial.print(F("IP address: "));
-  Serial.println(status.myIP);
-  WifiConnectOk = true;
+  log_i("IP address: %s",status.myIP.c_str());
   Web_setup();
 }
 
@@ -227,7 +330,7 @@ void setupOTAProgramming(){
     ArduinoOTA
     .onStart([]() {
       String type;
-      Serial.println(F("stopping standard-task"));
+      log_i("stopping standard-task");
       vTaskDelete(xHandleStandard); //delete standard-task
       if (ArduinoOTA.getCommand() == U_FLASH)
         type = "sketch";
@@ -237,21 +340,21 @@ void setupOTAProgramming(){
 
       // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
       setting.wifiDownTime = 0; //don't switch off Wifi during upload
-      Serial.println("Start updating " + type);
+      log_i("Start updating %s",type);
     })
     .onEnd([]() {
-      Serial.println("\nEnd");
+      log_i("\nEnd");
     })
     .onProgress([](unsigned int progress, unsigned int total) {
-      //Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+      log_v("Progress: %u%%\r", (progress / (total / 100)));
     })
     .onError([](ota_error_t error) {
-      Serial.printf("Error[%u]: ", error);
-      if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
-      else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
-      else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
-      else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
-      else if (error == OTA_END_ERROR) Serial.println("End Failed");
+      log_e("Error[%u]: ", error);
+      if (error == OTA_AUTH_ERROR) log_e("Auth Failed");
+      else if (error == OTA_BEGIN_ERROR) log_e("Begin Failed");
+      else if (error == OTA_CONNECT_ERROR) log_e("Connect Failed");
+      else if (error == OTA_RECEIVE_ERROR) log_e("Receive Failed");
+      else if (error == OTA_END_ERROR) log_e("End Failed");
     });
 
   ArduinoOTA.begin();  
@@ -267,7 +370,7 @@ void startOLED(){
 
   //initialize OLED
   if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3c, false, false)) { // Address 0x3C for 128x32
-    Serial.println(F("SSD1306 allocation failed"));
+    log_e("SSD1306 allocation failed");
     for(;;); // Don't proceed, loop forever
   }
   display.clearDisplay();
@@ -282,36 +385,35 @@ void startOLED(){
 }
 
 void printSettings(){
-  Serial.println("**** SETTINGS ****");
-  Serial.print("Board-Version=V");Serial.println(String((float)status.BoardVersion/10,1));
+  log_i("**** SETTINGS ****");
+  log_i("Board-Version=V%s",String((float)status.BoardVersion/10,1));
   if (setting.band == 0){
-    Serial.println("BAND=868mhz");
+    log_i("BAND=868mhz");
   }else{
-    Serial.println("BAND=915mhz");
+    log_i("BAND=915mhz");
   }
-  Serial.print("BAND=");Serial.println(setting.band);
-  Serial.print("OUTPUT LK8EX1=");Serial.println(setting.outputLK8EX1);
-  Serial.print("OUTPUT FLARM=");Serial.println(setting.outputFLARM);
-  Serial.print("OUTPUT GPS=");Serial.println(setting.outputGPS);
-  Serial.print("OUTPUT FANET=");Serial.println(setting.outputFANET);
-  Serial.print("WIFI SSID=");Serial.println(setting.ssid);
-  Serial.print("WIFI PW=");Serial.println(setting.password);
-  Serial.print("Aircraft=");Serial.println(fanet.getAircraftType(setting.AircraftType));
-  Serial.print("Pilotname=");Serial.println(setting.PilotName);
-  Serial.print("Switch WIFI OFF after 3 min=");Serial.println(setting.bSwitchWifiOff3Min);
-  Serial.print("Wifi-down-time=");Serial.println(setting.wifiDownTime/1000.);
-  Serial.print("Output-Mode=");Serial.println(setting.outputMode);
-  Serial.print("UDP_SERVER=");Serial.println(setting.UDPServerIP);
-  Serial.print("UDP_PORT=");Serial.println(setting.UDPSendPort);
-  Serial.print("TESTMODE=");Serial.println(setting.testMode);
+  log_i("BAND=%d",setting.band);
+  log_i("OUTPUT LK8EX1=%d",setting.outputLK8EX1);
+  log_i("OUTPUT FLARM=%d",setting.outputFLARM);
+  log_i("OUTPUT GPS=%d",setting.outputGPS);
+  log_i("OUTPUT FANET=%d",setting.outputFANET);
+  log_i("WIFI SSID=%s",setting.ssid.c_str());
+  log_i("WIFI PW=%s",setting.password.c_str());
+  log_i("Aircraft=%s",fanet.getAircraftType(setting.AircraftType).c_str());
+  log_i("Pilotname=%s",setting.PilotName.c_str());
+  log_i("Switch WIFI OFF after 3 min=%d",setting.bSwitchWifiOff3Min);
+  log_i("Wifi-down-time=%d",setting.wifiDownTime/1000.);
+  log_i("Output-Mode=%d",setting.outputMode);
+  log_i("UDP_SERVER=%s",setting.UDPServerIP.c_str());
+  log_i("UDP_PORT=%d",setting.UDPSendPort);
+  log_i("TESTMODE=%d",setting.testMode);
 }
 
 void listSpiffsFiles(){
   File root = SPIFFS.open("/");
   File file = root.openNextFile();
   while(file){  
-    Serial.print("FILE: ");
-    Serial.println(file.name());
+    log_i("FILE: %s",file.name());
 
     file = root.openNextFile();
   }  
@@ -328,13 +430,13 @@ esp_sleep_wakeup_cause_t print_wakeup_reason(){
 
   switch(wakeup_reason)
   {
-    case ESP_SLEEP_WAKEUP_UNDEFINED : Serial.println("wakeup undefined --> possible by reset"); break;
-    case ESP_SLEEP_WAKEUP_EXT0 : Serial.println("Wakeup EXT0"); break;
-    case ESP_SLEEP_WAKEUP_EXT1 : Serial.println("Wakeup EXIT1"); break;
-    case ESP_SLEEP_WAKEUP_TIMER : Serial.println("Wakeup TIMER"); break;
-    case ESP_SLEEP_WAKEUP_TOUCHPAD : Serial.println("Wakeup TOUCHPAD"); break;
-    case ESP_SLEEP_WAKEUP_ULP : Serial.println("Wakeup ULP"); break;
-    default : Serial.printf("Wakeup was not caused by deep sleep: %d\n",wakeup_reason); break;
+    case ESP_SLEEP_WAKEUP_UNDEFINED : log_i("wakeup undefined --> possible by reset"); break;
+    case ESP_SLEEP_WAKEUP_EXT0 : log_i("Wakeup EXT0"); break;
+    case ESP_SLEEP_WAKEUP_EXT1 : log_i("Wakeup EXIT1"); break;
+    case ESP_SLEEP_WAKEUP_TIMER : log_i("Wakeup TIMER"); break;
+    case ESP_SLEEP_WAKEUP_TOUCHPAD : log_i("Wakeup TOUCHPAD"); break;
+    case ESP_SLEEP_WAKEUP_ULP : log_i("Wakeup ULP"); break;
+    default : log_i("Wakeup was not caused by deep sleep: %d",wakeup_reason); break;
   }
   return wakeup_reason;
 }
@@ -345,15 +447,38 @@ void setup() {
   // put your setup code here, to run once:  
   Serial.begin(115200);
 
+  /*
+  log_e("*********** LOG Error *********");
+  log_w("*********** LOG Warning *********");
+  log_i("*********** LOG Info *********");
+  log_d("*********** LOG Debug *********");
+  log_v("*********** LOG Verbose *********");
+  
+  */
+  log_i("SDK-Version=%s",ESP.getSdkVersion());
+  log_i("CPU-Speed=%d",ESP.getCpuFreqMHz());
+  log_i("Total heap: %d", ESP.getHeapSize());
+  log_i("Free heap: %d", ESP.getFreeHeap());
+  log_i("Total PSRAM: %d", ESP.getPsramSize());
+  log_i("Free PSRAM: %d", ESP.getFreePsram());
+  log_i("compiled at %s",compile_date);
+
   esp_sleep_wakeup_cause_t reason = print_wakeup_reason(); //print reason for wakeup
   
   i2cOLED.begin(OLED_SDA, OLED_SCL);
 
   setupAXP192();
 
+  if (status.BoardVersion == 07){
+    analogReadResolution(ADC_BITS); // Default of 12 is not very linear. Recommended to use 10 or 11 depending on needed resolution.
+    //analogSetAttenuation(ADC_11db); // Default is 11db which is very noisy. Recommended to use 2.5 or 6. Options ADC_0db (1.1V), ADC_2_5db (1.5V), ADC_6db (2.2V), ADC_11db (3.9V but max VDD=3.3V)
+    pinMode(ADCBOARDVOLTAGE_PIN, INPUT);
+  }
+
+
     // Make sure we can read the file system
   if( !SPIFFS.begin(true)){
-    Serial.println("Error mounting SPIFFS");
+    log_e("Error mounting SPIFFS");
     while(1);
   }
 
@@ -362,9 +487,10 @@ void setup() {
   startOLED();
 
   load_configFile(); //load configuration
+  btOk = 0;
+
 
   
-
 
   //setting.ssid = "WLAN_EICHLER";
   //setting.password = "magest172";
@@ -382,7 +508,14 @@ void setup() {
   printSettings();
 
   xTaskCreatePinnedToCore(taskStandard, "taskStandard", 6500, NULL, 10, &xHandleStandard, ARDUINO_RUNNING_CORE1); //standard task
-  xTaskCreatePinnedToCore(taskBackGround, "taskBackGround", 6500, NULL, 1, &xHandleBackground, ARDUINO_RUNNING_CORE1); //background task
+  xTaskCreatePinnedToCore(taskBackGround, "taskBackGround", 6500, NULL, 5, &xHandleBackground, ARDUINO_RUNNING_CORE1); //background task
+  if (setting.outputMode == OUTPUT_BLE){
+    esp_bt_controller_enable(ESP_BT_MODE_BLE);
+    esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT);
+    xTaskCreatePinnedToCore(taskBle, "taskBle", 4096, NULL, 7, &xHandleBle, ARDUINO_RUNNING_CORE1);
+  }
+  xTaskCreatePinnedToCore(taskMemory, "taskMemory", 4096, NULL, 1, &xHandleMemory, ARDUINO_RUNNING_CORE1);
+  
 
 }
 
@@ -390,6 +523,50 @@ void loop() {
   // put your main code here, to run repeatedly:
   //delay(1000); //wait 1second
 }
+
+void taskMemory(void *pvParameters) {
+
+	 while (1)
+	 {
+     log_d("current free heap: %d, minimum ever free heap: %d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
+     vTaskDelay(1000 / portTICK_PERIOD_MS);
+   }
+}
+
+void taskBle(void *pvParameters) {
+
+	// BLEServer *pServer;
+
+	 delay(2000);
+	 start_ble(host_name);
+	 delay(1000);
+	 while (1)
+	 {
+	   // only send if we have more than 31k free heap space.
+	   if (xPortGetFreeHeapSize()>BLE_LOW_HEAP)
+	   {
+		   ble_low_heap_timer = millis();
+		   if (ble_data.length()>0)
+           {
+			   ble_mutex=true;
+			   BLESendChunks(ble_data);
+			   ble_data="";
+			   ble_mutex=false;
+           }
+	   }
+	   else
+	   {
+		   log_d( " BLE congested - Waiting - Current free heap: %d, minimum ever free heap: %d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
+		   ble_mutex=true;
+		   log_d("CLEARING BLEOUT");
+		   ble_data="";
+		   ble_mutex=false;
+	   }
+
+
+	   vTaskDelay(100);
+	 }
+  }
 
 String setStringSize(String s,uint8_t sLen){
   uint8_t actLen = (uint8_t)s.length();
@@ -401,15 +578,34 @@ String setStringSize(String s,uint8_t sLen){
   return sRet;
 }
 
+float readBattvoltage(){
+// multisample ADC
+const byte NO_OF_SAMPLES = 5;
+uint32_t adc_reading = 0;
+analogRead(ADCBOARDVOLTAGE_PIN); // First measurement has the biggest difference on my board, this line just skips the first measurement
+for (int i = 0; i < NO_OF_SAMPLES; i++) {
+uint16_t thisReading = analogRead(ADCBOARDVOLTAGE_PIN);
+adc_reading += thisReading;
+}
+adc_reading /= NO_OF_SAMPLES;
+// Convert ADC reading to voltage in deciVolt, 1024/2048/4096 not hardcoded but calculated depending on the set ADC_BITS
+byte voltage = adc_reading * 39 * 2 / (1 << ADC_BITS); // 3.9V because of 11dB, 100K/100K Voltage Divider, maxResolution (1024/2048/4096) 
+return (float)voltage / 10.0; 
+}
+
 void printBattVoltage(uint32_t tAct){
   static uint32_t tBatt = millis();
   if ((tAct - tBatt) >= 5000){
     tBatt = tAct;
-    if (axp.isBatteryConnect()) {
-      status.vBatt = axp.getBattVoltage()/1000.;
+    if (status.BoardVersion == 11){
+      if (axp.isBatteryConnect()) {
+        status.vBatt = axp.getBattVoltage()/1000.;
+      }else{
+        log_w("no Batt");
+        status.vBatt = 0.0;
+      }
     }else{
-      Serial.println("no Batt");
-      status.vBatt = 0.0;
+      status.vBatt = readBattvoltage();
     }
   }
 }
@@ -459,8 +655,6 @@ void readGPS(){
   
   while(NMeaSerial.available()){
     if (recBufferIndex >= 255) recBufferIndex = 0; //Buffer overrun
-    //Serial.write(NMeaSerial.read());
-    //int c = NMeaSerial.read();
     lineBuffer[recBufferIndex] = NMeaSerial.read();
     nmea.process(lineBuffer[recBufferIndex]);
     if (lineBuffer[recBufferIndex] == '\n'){
@@ -478,7 +672,6 @@ void readGPS(){
       }
     }  
   }
-  //Serial.println("GPS ready");
 }
 
 eFlarmAircraftType Fanet2FlarmAircraft(eFanetAircraftType aircraft){
@@ -538,6 +731,7 @@ void sendLK8EX(uint32_t tAct){
 
 void taskStandard(void *pvParameters){
   static uint32_t tLife = millis();
+  static uint32_t tLoop = millis();
   static uint8_t counter = 0;
   static uint32_t tPilotName = millis();
   static uint32_t tFlarmState = millis();
@@ -582,6 +776,17 @@ void taskStandard(void *pvParameters){
   host_name += setting.myDevId; //String((ESP32_getChipId() & 0xFFFFFF), HEX);
   flarm.begin();
 
+  if (setting.outputMode == OUTPUT_BLUETOOTH){
+    log_i("starting bluetooth_serial %s",host_name.c_str());
+    SerialBT.begin(host_name); //Bluetooth device name
+    SerialBT.print(APPNAME " Bluetooth Starting");
+    btOk = 1;
+  }
+
+
+
+
+
   display.setTextColor(WHITE);
   display.setTextSize(2);
   display.setCursor(0,40);
@@ -591,10 +796,13 @@ void taskStandard(void *pvParameters){
   delay(1000);
 
   //udp.begin(UDPPORT);
-
+  tLoop = millis();
   while(1){    
     // put your main code here, to run repeatedly:
     uint32_t tAct = millis();
+    status.tLoop = tAct - tLoop;
+    tLoop = tAct;
+    if (status.tMaxLoop < status.tLoop) status.tMaxLoop = status.tLoop;
     printBattVoltage(tAct);
     readGPS();
     printGPSData(tAct);
@@ -647,7 +855,7 @@ void taskStandard(void *pvParameters){
     }
     if (ppsTriggered){
       ppsTriggered = false;
-      //Serial.print("PPS-Triggered t=");Serial.println(status.tGPSCycle);
+      log_v("PPS-Triggered t=%d",status.tGPSCycle);
       status.tGPSCycle = tAct - tOldPPS;
       if (nmea.isValid()){
         long alt = 0;
@@ -684,8 +892,6 @@ void taskStandard(void *pvParameters){
 
     if ((tAct - tLife) >= LifeCount){
       tLife = tAct;
-      //Serial.print(F("Standard-task running "));
-      //Serial.println(counter);
       counter++;
     }    
     delay(1);
@@ -694,7 +900,7 @@ void taskStandard(void *pvParameters){
 
 void powerOff(){
   axp.clearIRQ();
-  Serial.println(F("stopping standard-task"));
+  log_i("stopping standard-task");
   vTaskDelete(xHandleStandard); //delete standard-task
   delay(100);
   fanet.end();
@@ -736,29 +942,51 @@ void powerOff(){
 void taskBackGround(void *pvParameters){
   static uint32_t tLife = millis();
   static uint8_t counter = 0;
+  static uint32_t warning_time=0;
+  delay(1500);
+  
   setupWifi();
-  setupOTAProgramming();
+  #ifdef OTAPROGRAMMING
+  //if ((setting.outputMode != OUTPUT_BLUETOOTH) && (setting.outputMode != OUTPUT_BLE)){
+    setupOTAProgramming();
+  //}
+  
+  #endif
   while (1){
     uint32_t tAct = millis();
+    if (xPortGetMinimumEverFreeHeapSize()<100000)
+    {
+      if (millis()>warning_time)
+      {
+        log_w( "*****LOOP current free heap: %d, minimum ever free heap: %d ******", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
+        warning_time=millis()+1000;
+      }
+    }
+	if (xPortGetMinimumEverFreeHeapSize()<1000)
+	{
+    log_e( "*****LOOP current free heap: %d, minimum ever free heap: %d ******", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
+		log_e("System Low on Memory - xPortGetMinimumEverFreeHeapSize < 2KB");
+		log_e("ESP Restarting !");
+		esp_restart();
+	}
+
     if  (WifiConnectOk){
       Web_loop();
       #ifdef OTAPROGRAMMING
-      ArduinoOTA.handle();
+      //if ((setting.outputMode != OUTPUT_BLUETOOTH) && (setting.outputMode != OUTPUT_BLE)){
+        ArduinoOTA.handle();
+      //}
       #endif
     }
     if (( tAct > setting.wifiDownTime) && (setting.wifiDownTime!=0)){
       setting.wifiDownTime=0;
-      WifiConnectOk=false;
+      WifiConnectOk=0;
       esp_wifi_set_mode(WIFI_MODE_NULL);
       esp_wifi_stop();
-      Serial.println("******************WEBCONFIG Setting - WIFI STOPPING************************* ");
+      log_i("******************WEBCONFIG Setting - WIFI STOPPING*************************");
     }
     if ((tAct - tLife) >= LifeCount){
       tLife = tAct;
-      //Serial.print(F("Background running wifi="));
-      //Serial.print(WifiConnectOk);
-      //Serial.print(F(" "));
-      //Serial.println(counter);
       counter++;
 
     }
@@ -766,19 +994,20 @@ void taskBackGround(void *pvParameters){
     if (AXP192_Irq){
       if (axp.readIRQ() == AXP_PASS) {
         if (axp.isPEKLongtPressIRQ()) {
-          Serial.println(F("Long Press IRQ"));
-          Serial.flush();
+          log_v("Long Press IRQ");
           powerOff();
         }
         if (axp.isPEKShortPressIRQ()) {
-          Serial.println(F("Short Press IRQ"));
-          Serial.flush();
+          log_v("Short Press IRQ");
         }
         axp.clearIRQ();
       }
       AXP192_Irq = false;
     }
-
+    if (newStationConnected){
+      //listConnectedStations();
+      newStationConnected = false;
+    }
     delay(1);
 	}
 }

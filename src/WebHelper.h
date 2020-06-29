@@ -18,6 +18,8 @@ extern trackingData testTrackingData;
 extern weatherData testWeatherData;
 extern String testString;
 extern uint8_t sendTestData;
+extern TaskHandle_t xHandleBle;
+extern const char compile_date[];
 
 void Web_setup(void);
 void Web_loop(void);

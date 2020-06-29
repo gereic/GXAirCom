@@ -60,7 +60,7 @@ String FanetLora::getMyDevId(void){
 
 void FanetLora::onReceive(int packetSize) {
   if (packetSize == 0) return;          // if there's no packet, return
-  //Serial.println(F("onReceive"));
+  log_v("onReceive");
   int i = 0;
   i16Packetsize = 0;
   while (LoRa.available()) {
@@ -71,89 +71,24 @@ void FanetLora::onReceive(int packetSize) {
       }      
   }
   i16Packetsize = i;
-
-  /*
-  if (packetSize >= MAXPACKETSIZE){
-    for (int i = 0; i < packetSize; i++) {
-        LoRa.read();
-    }
-    Serial.println(F("FANET-->Overflow"));
-    u8PacketOverflow++; //msg to long
-    u8PacketError++;
-    return;
-  }
-  for (int i = 0; i < packetSize; i++) {
-    arRec[i] = LoRa.read();
-  }
-  */
-
-  //PacketSize = packetSize;
-  //uint8_t arRec[50];
-  // received a packet
-  //if (packetSize > 50){
-  //  u8PacketOverflow ++;
-    //Serial.print("error packetSize to big ");
-    //Serial.print(packetSize);
-    //Serial.println();
-  //  for (int i = 0; i < packetSize; i++) {
-  //    LoRa.read();
-  //  }
-  //  return;
-  //}
-  //if (u8ewMessage){
-  //  u8PacketError++;
-    //Serial.print("error buffer not empty");
-    //Serial.println();
-  //  for (int i = 0; i < packetSize; i++) {
-  //    LoRa.read();
-  //  }
-  //  return;
-  //}
-  //counter++;
-
-  // read packet
-  //for (int i = 0; i < packetSize; i++) {
-  //  arRec[i] = LoRa.read();
-    //Serial.print(getHexFromByte(arRec[i]));
-  //}
-  //i16Packetsize = packetSize;
-  //u8ewMessage = 1;
-  //Serial.println();
-  //decodePacket(&arRec[0],packetSize);
-  //display.display();
-
-
-  
-  /*
-  // received a packet
-  Serial.print("Received packet '");
-  // read packet
-  for (int i = 0; i < packetSize; i++) {
-    Serial.print((char)LoRa.read());
-  }
-
-  // print RSSI of packet
-  Serial.print("' with RSSI ");
-  Serial.println(LoRa.packetRssi());
-  */
 }
 
 
 bool FanetLora::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset, int dio0,long frequency){
   checkMyDevId(); //get Dev-Id out of MAC
-  Serial.print("MyDevId:");Serial.println(getMyDevId());
+  log_i("MyDevId:%s",getMyDevId());
   //SPI LoRa pins
   SPI.begin(sck, miso, mosi, ss);
   //setup LoRa transceiver module
   LoRa.setPins(ss, reset, dio0);
-  Serial.print("Start Lora Frequency=");Serial.println(frequency);
+  log_i("Start Lora Frequency=%d",frequency);
   while (!LoRa.begin(frequency) && counter < 10) {
-    Serial.print(".");
+    log_i(".");
     counter++;
     delay(500);
   }
   if (counter == 10) {
-    Serial.println("Starting LoRa failed!"); 
+    log_e("Starting LoRa failed!"); 
   }
   LoRa.setSignalBandwidth(250E3); //set Bandwidth to 250kHz
   LoRa.setSpreadingFactor(7); //set spreading-factor to 7
@@ -162,7 +97,7 @@ bool FanetLora::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset,
   LoRa.enableCrc();
   //LoRa.setTxPower(10); //10dbm + 4dbm antenna --> max 14dbm
   LoRa.setTxPower(20); //full Power
-  Serial.println("LoRa Initialization OK!");
+  log_i("LoRa Initialization OK!");
 
 
 
@@ -191,16 +126,9 @@ String FanetLora::CreateFNFMSG(char *recBuff,uint8_t size){
   fanet_header_t *tHeader = (fanet_header_t *)&recBuff[0];
   if ((myDevId[0] == recBuff[1]) && (myDevId[1] == recBuff[2]) && (myDevId[2] == recBuff[3])){
       //this is me --> abort
-      Serial.println("source is my id --> abort");
+      log_v("source is my id --> abort");
       return "";
   }
-
-  //Serial.print("type:");Serial.println(tHeader->type);
-  //Serial.print("forward:");Serial.println(tHeader->forward);
-  //Serial.print("exHeader:");Serial.println(tHeader->ext_header);
-  //Serial.print("manu:");Serial.println(getHexFromByte(tHeader->vendor));
-  //Serial.print("uniqueId:");Serial.println(getHexFromWord(tHeader->address));
-
   uint8_t offset = 4;
   if (tHeader->ext_header){
       offset ++;
@@ -208,7 +136,6 @@ String FanetLora::CreateFNFMSG(char *recBuff,uint8_t size){
       if (tHeader->signature) offset += 4; //if signature add 4 Byte for signature
   } 
   uint8_t msgLen = (size - offset);
-  //Serial.print("LEN=");Serial.println(msgLen);
   msg = "#FNF " + getHexFromByte(recBuff[1]) + "," + getHexFromWord(tHeader->address) + ",";
   if ((tHeader->ext_header) && (tHeader->unicast)){
       msg += "0,";
@@ -227,9 +154,8 @@ String FanetLora::CreateFNFMSG(char *recBuff,uint8_t size){
       actTrackingData.DevId = getHexFromByte(recBuff[1],true) + getHexFromWord(tHeader->address,true);
       getTrackingInfo(payload,msgLen);
   }else if (tHeader->type == 2){
-      //Serial.println("************ name received *********************");
+      log_v("************ name received *********************");
   }
-  //Serial.println(msg);
   actMsg = msg;
   newMsg = true;
   rxCount++;
@@ -253,19 +179,8 @@ void FanetLora::getLoraMsg(void){
 }
 
 void FanetLora::run(void){    
-    //uint32_t tAct = millis();
-    //if (PacketSize > 0){
-    //i16Packetsize = LoRa.parsePacket();
     onReceive(LoRa.parsePacket());
     if (i16Packetsize > 0){
-        /*
-        Serial.print("new lora-msg size=");
-        Serial.println(i16Packetsize);
-        for (int i = 0; i < i16Packetsize; i++) {
-            Serial.print(getHexFromByte(arRec[i]));
-        }
-        Serial.println("");
-        */
         getLoraMsg();
         i16Packetsize = 0;
     }
@@ -273,7 +188,7 @@ void FanetLora::run(void){
 
 void FanetLora::sendPilotName(void){
     if (_PilotName.length() > 0){
-        //Serial.println("sending fanet-name");
+        log_v("sending fanet-name:%s",_PilotName);
         LoRa.beginPacket();
         LoRa.write(0x42);
         LoRa.write(myDevId[0]);

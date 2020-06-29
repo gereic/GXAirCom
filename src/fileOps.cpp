@@ -3,7 +3,7 @@
 Preferences preferences;  
 
 void load_configFile(void){
-    Serial.println("LOAD CONFIG FILE");
+    log_i("LOAD CONFIG FILE");
     preferences.begin("settings", false);                         //Ordner settings anlegen/verwenden
     setting.band = preferences.getUChar("BAND",BAND868); //
     setting.outputLK8EX1 = preferences.getUChar("OLK8EX1",1); //
@@ -23,7 +23,7 @@ void load_configFile(void){
 }
 
 void write_configFile(void){
-    Serial.println("WRITE CONFIG FILE");
+    log_i("WRITE CONFIG FILE");
     preferences.begin("settings", false);                         //Ordner settings anlegen/verwenden
     preferences.putUChar("BAND",setting.band); //
     preferences.putUChar("OLK8EX1",setting.outputLK8EX1); //

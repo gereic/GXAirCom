@@ -49,6 +49,11 @@ function onClose(evt) {
     setTimeout(function() { wsConnect(url) }, 2000);
 }
  
+function resetMaxLoopTime(){
+  var obj = {rLoopTime : 1};
+  doSend(JSON.stringify(obj));
+
+}
 // Called when a message is received from the server
 function onMessage(evt) {
  
@@ -96,6 +101,10 @@ window.addEventListener("load", init, false);
  
 <table>
   <tr>
+    <th>compile date</th>
+    <td id="compiledate"></td>
+  </tr>
+  <tr>
     <th>Device-ID</th>
     <td id="myDevId"></td>
   </tr>
@@ -123,6 +132,8 @@ window.addEventListener("load", init, false);
     <td><select name="output" id="output" disabled>
       <option value="0">serial</option>
       <option value="1">udp</option>
+      <option value="2">bluetooth serial</option>
+      <option value="3">bluetooth ble</option>
     </select></td>
   </tr>
   <tr>
@@ -196,6 +207,23 @@ window.addEventListener("load", init, false);
   <tr>
     <th>fanet tx-count</th>
     <td id="fanetTx"></td>
+  </tr>
+  <tr>
+    <th>current loop-time [ms]</th>
+    <td id="tLoop"></td>
+  </tr>
+  <tr>
+    <th>max loop-time [ms]</th>
+    <td id="tMaxLoop"></td>
+    <td><button onClick="resetMaxLoopTime()">reset</button></td>
+  </tr>
+  <tr>
+    <th>actual free heap</th>
+    <td id="freeHeap"></td>
+  </tr>
+  <tr>
+    <th>min ever free heap</th>
+    <td id="fHeapMin"></td>
   </tr>
   <tr>
     <th>Live-Counter</th>

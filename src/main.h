@@ -7,11 +7,17 @@
 #define VERSION "0.9"
 #define APPNAME "GXAirCom"
 
+#define BLE_LOW_HEAP 10000
+#define MAX_BLE_LOW_HEAP_TIME 30000
+
+
 #define ARDUINO_RUNNING_CORE0 0
 #define ARDUINO_RUNNING_CORE1 1
 
 #define OUTPUT_SERIAL 0
 #define OUTPUT_UDP 1
+#define OUTPUT_BLUETOOTH 2
+#define OUTPUT_BLE 3
 
 #define BAND868 0
 #define BAND915 1
@@ -50,6 +56,8 @@ struct statusData{
   uint16_t fanetRx;
   uint8_t BoardVersion;
   uint32_t tGPSCycle;
+  uint32_t tLoop; //current Loop-time
+  uint32_t tMaxLoop; //max Loop-time
 };
 
 #endif
