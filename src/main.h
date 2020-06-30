@@ -29,6 +29,7 @@ struct SettingsData{
   uint8_t outputFLARM;
   uint8_t outputGPS;
   uint8_t outputFANET;
+  uint8_t awLiveTracking; //airwhere live-tracking
   String ssid; //WIFI SSID
   String password; //WIFI PASSWORD
   String PilotName; //Pilotname

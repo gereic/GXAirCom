@@ -267,6 +267,7 @@ const char* MicroNMEA::parseTime(const char* s)
 {
 	if (*s == ',')
 		return skipField(s);
+	_fixTime = String(s).substring(0,6);
 	_hour = parseUnsignedInt(s, 2);
 	_minute = parseUnsignedInt(s + 2, 2);
 	_second = parseUnsignedInt(s + 4, 2);

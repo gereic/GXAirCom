@@ -6,6 +6,7 @@ void load_configFile(void){
     log_i("LOAD CONFIG FILE");
     preferences.begin("settings", false);                         //Ordner settings anlegen/verwenden
     setting.band = preferences.getUChar("BAND",BAND868); //
+    setting.awLiveTracking = preferences.getUChar("AWLIVE",0); //
     setting.outputLK8EX1 = preferences.getUChar("OLK8EX1",1); //
     setting.outputFLARM = preferences.getUChar("OFLARM",1); //
     setting.outputGPS = preferences.getUChar("OGPS",1); //
@@ -26,6 +27,7 @@ void write_configFile(void){
     log_i("WRITE CONFIG FILE");
     preferences.begin("settings", false);                         //Ordner settings anlegen/verwenden
     preferences.putUChar("BAND",setting.band); //
+    preferences.putUChar("AWLIVE",setting.awLiveTracking); //
     preferences.putUChar("OLK8EX1",setting.outputLK8EX1); //
     preferences.putUChar("OFLARM",setting.outputFLARM); //
     preferences.putUChar("OGPS",setting.outputGPS); //

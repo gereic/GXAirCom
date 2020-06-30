@@ -70,6 +70,9 @@ bool newStationConnected = false;
 #define SDA2 13
 #define SCL2 14
 
+#define AIRWHERE_UDP_PORT 5555
+String airwhere_web_ip = "37.128.187.9";
+
 BluetoothSerial SerialBT;
 uint8_t btOk;
 
@@ -117,6 +120,15 @@ esp_sleep_wakeup_cause_t print_wakeup_reason();
 void WiFiEvent(WiFiEvent_t event);
 void listConnectedStations();
 float readBattvoltage();
+void sendAWUdp(String msg);
+void sendAWUdp(String msg){
+  if (WiFi.status() == WL_CONNECTED){
+      WiFiUDP udp;
+      udp.beginPacket(airwhere_web_ip.c_str(),AIRWHERE_UDP_PORT);
+      udp.write((uint8_t *)msg.c_str(),msg.length());
+      udp.endPacket();
+  }      
+}
 
 void sendData2Client(String data){
   if (setting.outputMode == OUTPUT_UDP){
@@ -841,6 +853,25 @@ void taskStandard(void *pvParameters){
     if (fanet.getTrackingData(&tFanetData)){
       if (nmea.isValid()){
         fanet.getMyTrackingData(&myFanetData);
+        if (setting.awLiveTracking){
+          char chs[20];
+          String msg = nmea.getFixTime() + ","
+                    + setting.myDevId + ","
+                    + tFanetData.DevId + ","
+                    + String((uint8_t)tFanetData.aircraftType) + ",";
+          sprintf(chs,"%02.6f",tFanetData.lat);
+          msg += String(chs) + ",";
+          sprintf(chs,"%02.6f",tFanetData.lon);
+          msg += String(chs) + ",0,0,";
+          sprintf(chs,"%0.2f",tFanetData.heading);
+          msg += String(chs) + ",";
+          sprintf(chs,"%0.2f",tFanetData.speed * 0.53996);
+          msg += String(chs) + ",";
+          sprintf(chs,"%0.2f",tFanetData.altitude);
+          msg += String(chs) + ",-50";
+          //log_e("%s",msg.c_str());
+          sendAWUdp(msg);
+        }
         Fanet2FlarmData(&myFanetData,&myFlarmData);
         Fanet2FlarmData(&tFanetData,&PilotFlarmData);
         if (setting.outputFLARM) sendData2Client(flarm.writeFlarmData(&myFlarmData,&PilotFlarmData));        
@@ -856,6 +887,7 @@ void taskStandard(void *pvParameters){
     if (ppsTriggered){
       ppsTriggered = false;
       log_v("PPS-Triggered t=%d",status.tGPSCycle);
+      //log_e("GPS-FixTime=%s",nmea.getFixTime().c_str());
       status.tGPSCycle = tAct - tOldPPS;
       if (nmea.isValid()){
         long alt = 0;
@@ -876,6 +908,25 @@ void taskStandard(void *pvParameters){
         MyFanetData.altitude = status.GPS_alt;
         MyFanetData.speed = status.GPS_speed; //speed in cm/s --> we need km/h
         MyFanetData.heading = status.GPS_course;
+        if (setting.awLiveTracking){
+          char chs[20];
+          String msg = nmea.getFixTime() + ","
+                    + setting.myDevId + ","
+                    + setting.myDevId + ","
+                    + String((uint8_t)fanet.getAircraftType()) + ",";
+          sprintf(chs,"%02.6f",status.GPS_Lat);
+          msg += String(chs) + ",";
+          sprintf(chs,"%02.6f",status.GPS_Lon);
+          msg += String(chs) + ",0,0,";
+          sprintf(chs,"%0.2f",status.GPS_course);
+          msg += String(chs) + ",";
+          sprintf(chs,"%0.2f",status.GPS_speed * 0.53996);
+          msg += String(chs) + ",";
+          sprintf(chs,"%0.2f",status.GPS_alt);
+          msg += String(chs) + ",0";
+          //log_e("%s",msg.c_str());
+          sendAWUdp(msg);
+        }
       }else{
         status.GPS_Fix = 0;
         status.GPS_speed = 0.0;

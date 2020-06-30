@@ -116,6 +116,10 @@ public:
 		return _hundredths;
 	}
 
+	String getFixTime(void) const {
+		return _fixTime;
+	}
+
 	long getSpeed(void) const {
 		return _speed;
 	}
@@ -176,6 +180,7 @@ private:
 	// Variables parsed and kept for user
 	char _navSystem;
 	bool _isValid;
+	String _fixTime; //fixtime
 	long _latitude, _longitude; // In millionths of a degree
 	long _altitude; // In millimetres
 	long _geoidAlt; // in millimetres

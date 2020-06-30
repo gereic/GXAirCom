@@ -101,7 +101,7 @@ window.addEventListener("load", init, false);
  
 <table>
   <tr>
-    <th>compile date</th>
+    <th>built</th>
     <td id="compiledate"></td>
   </tr>
   <tr>
@@ -122,6 +122,19 @@ window.addEventListener("load", init, false);
   <tr>
     <th>WIFI Password</th>
     <td id="password"></td>
+  </tr>
+  <tr>
+    <th>Aircraft Type</th>
+    <td><select name="type" id="type" disabled>
+      <option value="0">Unknown</option>
+      <option value="1">Paraglider</option>
+      <option value="2">Hangglider</option>
+      <option value="3">Balloon</option>
+      <option value="4">Glider</option>
+      <option value="5">Powered Aircraft</option>
+      <option value="6">Helicopter</option>
+      <option value="7">UAV</option>
+    </select></td>
   </tr>
   <tr>
     <th>PilotName</th>
@@ -153,6 +166,10 @@ window.addEventListener("load", init, false);
     <td><input type="checkbox" id="oLK8EX1" name="oLK8EX1" disabled></td>
   </tr>
   <tr>
+    <th>airwhere live-tracking</th>
+    <td><input type="checkbox" id="awlive" name="awlive" disabled></td>
+  </tr>
+  <tr>
     <th>UDP-IP</th>
     <td id="UDPServerIP"></td>
   </tr>
@@ -165,7 +182,7 @@ window.addEventListener("load", init, false);
     <td><input type="checkbox" id="wifioff" name="wifioff" disabled></td>
   </tr>
   <tr>
-    <th>Testmode</th>
+    <th>developer-mode</th>
     <td><input type="checkbox" id="testmode" name="testmode" disabled></td>
   </tr>
   <tr>
