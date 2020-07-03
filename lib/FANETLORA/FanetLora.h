@@ -69,6 +69,7 @@ typedef struct {
   float speed; //km/h
   float climb; //m/s
   float heading; //deg
+  int rssi; //rssi
 } trackingData;
 
 typedef struct {
@@ -190,9 +191,10 @@ protected:
     bool bFAXOk;
     bool bInitOk;
     */
-private:
+private:  
   static void onReceive(int packetSize);
   String CreateFNFMSG(char *recBuff,uint8_t size);
+  int actrssi;
 
   typedef struct fanet_header_t {
     unsigned int type           :6;

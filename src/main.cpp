@@ -123,10 +123,11 @@ float readBattvoltage();
 void sendAWUdp(String msg);
 void sendAWUdp(String msg){
   if (WiFi.status() == WL_CONNECTED){
-      WiFiUDP udp;
-      udp.beginPacket(airwhere_web_ip.c_str(),AIRWHERE_UDP_PORT);
-      udp.write((uint8_t *)msg.c_str(),msg.length());
-      udp.endPacket();
+    //log_e("%s",msg.c_str());
+    WiFiUDP udp;
+    udp.beginPacket(airwhere_web_ip.c_str(),AIRWHERE_UDP_PORT);
+    udp.write((uint8_t *)msg.c_str(),msg.length());
+    udp.endPacket();
   }      
 }
 
@@ -853,6 +854,8 @@ void taskStandard(void *pvParameters){
     if (fanet.getTrackingData(&tFanetData)){
       if (nmea.isValid()){
         fanet.getMyTrackingData(&myFanetData);
+        //Serial.printf("LAT=%.6f\n",tFanetData.lat);
+        //Serial.printf("LON=%.6f\n",tFanetData.lon);
         if (setting.awLiveTracking){
           char chs[20];
           String msg = nmea.getFixTime() + ","
@@ -868,7 +871,8 @@ void taskStandard(void *pvParameters){
           sprintf(chs,"%0.2f",tFanetData.speed * 0.53996);
           msg += String(chs) + ",";
           sprintf(chs,"%0.2f",tFanetData.altitude);
-          msg += String(chs) + ",-50";
+          //msg += String(chs) + ",-50";
+          msg += String(chs) + "," + String(tFanetData.rssi);
           //log_e("%s",msg.c_str());
           sendAWUdp(msg);
         }
@@ -1042,6 +1046,9 @@ void taskBackGround(void *pvParameters){
 
     }
     //yield();
+    if ((status.vBatt < 3.3) && (status.vBatt > 1.0)) {
+      powerOff(); //power off, when battery is empty !!
+    }
     if (AXP192_Irq){
       if (axp.readIRQ() == AXP_PASS) {
         if (axp.isPEKLongtPressIRQ()) {

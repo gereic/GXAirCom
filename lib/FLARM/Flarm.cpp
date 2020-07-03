@@ -57,6 +57,7 @@ String Flarm::addChecksum(String s){
 }
 
 String Flarm::writeFlarmData(FlarmtrackingData *myData,FlarmtrackingData *movePilotData){
+    
     float pilotBearing = CalcBearingA( myData->lat, myData->lon,movePilotData->lat,movePilotData->lon);
     float pilotDistance = distance(myData->lat, myData->lon,movePilotData->lat,movePilotData->lon, 'K') ;
     float rads = deg2rad(pilotBearing);
@@ -64,6 +65,26 @@ String Flarm::writeFlarmData(FlarmtrackingData *myData,FlarmtrackingData *movePi
     float relEast=sin(rads) * pilotDistance * 1000;
     float relVert = movePilotData->altitude - myData->altitude;
     float currentSpeed = movePilotData->speed/KMPH_TO_MS;
+    /*
+    Serial.printf("myLat=%.6f\n",myData->lat);
+    Serial.printf("myLon=%.6f\n",myData->lon);
+    Serial.printf("otherLat=%.6f\n",movePilotData->lat);
+    Serial.printf("otherLon=%.6f\n",movePilotData->lon);
+    Serial.printf("distance=%.6f\n",pilotDistance);
+    Serial.printf("bearing=%.6f\n",pilotBearing);
+    Serial.printf("relNorth=%.6f\n",relNorth);
+    Serial.printf("relEast=%.6f\n",relEast);
+    */
+    /*
+    Serial.print("myLat=");Serial.printf(myData->lat);
+    Serial.print("myLon=");Serial.println(myData->lon);
+    Serial.print("otherLat=");Serial.println(movePilotData->lat);
+    Serial.print("otherLon=");Serial.println(movePilotData->lon);
+    Serial.print("distance=");Serial.println(pilotDistance);
+    Serial.print("bearing=");Serial.println(pilotBearing);
+    Serial.print("relNorth=");Serial.println(relNorth);
+    Serial.print("relEast=");Serial.println(relEast);
+    */
     String movingpilotData = "$PFLAA,0," + String((int32_t)round(relNorth)) + "," + String((int32_t)round(relEast)) + "," + String((int32_t)round(relVert)) + ",2," +
     		                    movePilotData->DevId + "," + (int32_t)round(movePilotData->heading) + ",0,"  +
 								 String(currentSpeed,1) + "," + String(movePilotData->climb,1) + ","+ getHexFromByte1(uint8_t(movePilotData->aircraftType));

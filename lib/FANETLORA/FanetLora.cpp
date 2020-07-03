@@ -152,6 +152,7 @@ String FanetLora::CreateFNFMSG(char *recBuff,uint8_t size){
   msg += payload;
   if (tHeader->type == 1){
       actTrackingData.DevId = getHexFromByte(recBuff[1],true) + getHexFromWord(tHeader->address,true);
+      actTrackingData.rssi = actrssi;
       getTrackingInfo(payload,msgLen);
   }else if (tHeader->type == 2){
       log_v("************ name received *********************");
@@ -181,6 +182,7 @@ void FanetLora::getLoraMsg(void){
 void FanetLora::run(void){    
     onReceive(LoRa.parsePacket());
     if (i16Packetsize > 0){
+        actrssi = LoRa.packetRssi();
         getLoraMsg();
         i16Packetsize = 0;
     }
@@ -290,11 +292,11 @@ bool FanetLora::getTrackingData(trackingData *tData){
 void FanetLora::getTrackingInfo(String line,uint16_t length){
     char arPayload[23];
     
-    int32_t lat_i = 0;
-    int32_t lon_i = 0;
-
     line.toCharArray(arPayload,sizeof(arPayload));
 
+    /*
+    int32_t lat_i = 0;
+    int32_t lon_i = 0;
     ((uint8_t*)&lat_i)[0] = getByteFromHex(&arPayload[0]);
     ((uint8_t*)&lat_i)[1] = getByteFromHex(&arPayload[2]);
     ((uint8_t*)&lat_i)[2] = getByteFromHex(&arPayload[4]);
@@ -302,9 +304,21 @@ void FanetLora::getTrackingInfo(String line,uint16_t length){
     ((uint8_t*)&lon_i)[0] = getByteFromHex(&arPayload[6]);
     ((uint8_t*)&lon_i)[1] = getByteFromHex(&arPayload[8]);
     ((uint8_t*)&lon_i)[2] = getByteFromHex(&arPayload[10]);
-
     actTrackingData.lat = (float) lat_i / 93206.0f;
     actTrackingData.lon = (float) lon_i / 46603.0f;
+    */
+
+    // integer values /
+    int32_t lati = getByteFromHex(&arPayload[4])<<16 | getByteFromHex(&arPayload[2])<<8 | getByteFromHex(&arPayload[0]);
+    if(lati & 0x00800000)
+      lati |= 0xFF000000;
+    int32_t loni = getByteFromHex(&arPayload[10])<<16 | getByteFromHex(&arPayload[8])<<8 | getByteFromHex(&arPayload[6]);
+    if(loni & 0x00800000)
+      loni |= 0xFF000000;
+    actTrackingData.lat = (float)lati / 93206.0f;
+    actTrackingData.lon = (float)loni / 46603.0f;
+    //Serial.print("FANETlat=");Serial.println(actTrackingData.lat);
+    //Serial.print("FANETlon=");Serial.println(actTrackingData.lon);
 
     uint16_t Type = (uint16_t(getByteFromHex(&arPayload[14])) << 8) + uint16_t(getByteFromHex(&arPayload[12]));
     uint16_t altitude = Type & 0x7FF;

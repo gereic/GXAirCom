@@ -45,7 +45,7 @@ void onWebSocketEvent(uint8_t client_num,
 
       // Print out raw message
       
-      log_d("[%u] Received text: %s", client_num, payload);      
+      log_d("[%u] Received text: %s", client_num, *payload);      
       error = deserializeJson(doc, payload);
       if (error) {   //Check for errors in parsing
         log_e("deserializeJson() failed: %s",error.c_str());
