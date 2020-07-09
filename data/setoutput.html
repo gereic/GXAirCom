@@ -36,7 +36,7 @@ function onOpen(evt) {
     console.log("Connected");
     
     // write page-number --> then we get all values for page
-    doSend(JSON.stringify({ page : 11 }));//send page-number
+    doSend(JSON.stringify({ page : 12 }));//send page-number
 }
  
 // Called when the WebSocket connection is closed
@@ -54,9 +54,14 @@ function callMainPage(){
 }
 
 function sendValues(){  
-  var obj = {band : document.getElementById("band").value,
-            type : document.getElementById("type").value,
-            PilotName : document.getElementById("PilotName").value,
+  var obj = {output : document.getElementById("output").value,
+            oGPS : Number(document.getElementById("oGPS").checked),
+            oFlarm : Number(document.getElementById("oFlarm").checked),
+            oFanet : Number(document.getElementById("oFanet").checked),
+            oLK8EX1 : Number(document.getElementById("oLK8EX1").checked),
+            awlive : Number(document.getElementById("awlive").checked),
+            UDPServerIP : document.getElementById("UDPServerIP").value,
+            UDPSendPort : document.getElementById("UDPSendPort").value,
             save : 1 };
   doSend(JSON.stringify(obj));
   document.getElementById("btnsave").innerText  = "rebooting ..."
@@ -115,32 +120,45 @@ window.addEventListener("load", init, false);
       <h3>%BUILD%</h3>
     </div>
     <fieldset>
-      <legend><b>general settings</b></legend>
+      <legend><b>output settings</b></legend>
       <table style="width:100&#37;">
         <tbody>
           <tr>
-            <th>Radio Frequency</th>
-            <td><select name="band" id="band">
-              <option value="0">868mhz</option>
-              <option value="1">915mhz</option>
+            <th>output</th>
+            <td><select name="output" id="output">
+              <option value="0">serial</option>
+              <option value="1">udp</option>
+              <option value="2">bluetooth serial</option>
+              <option value="3">bluetooth ble</option>
             </select></td>
           </tr>
           <tr>
-            <th>Aircraft Type</th>
-            <td><select name="type" id="type">
-              <option value="0">Unknown</option>
-              <option value="1">Paraglider</option>
-              <option value="2">Hangglider</option>
-              <option value="3">Balloon</option>
-              <option value="4">Glider</option>
-              <option value="5">Powered Aircraft</option>
-              <option value="6">Helicopter</option>
-              <option value="7">UAV</option>
-            </select></td>
+            <th>output GPS</th>
+            <td><input type="checkbox" id="oGPS" name="oGPS"></td>
           </tr>
           <tr>
-            <th>PilotName</th>
-            <td><input type="text" id="PilotName" name="PilotName"></td>
+            <th>output FLARM</th>
+            <td><input type="checkbox" id="oFlarm" name="oFlarm"></td>
+          </tr>
+          <tr>
+            <th>output FANET</th>
+            <td><input type="checkbox" id="oFanet" name="oFanet"></td>
+          </tr>
+          <tr>
+            <th>output LK8EX1</th>
+            <td><input type="checkbox" id="oLK8EX1" name="oLK8EX1"></td>
+          </tr>
+          <tr>
+            <th>airwhere live-tracking</th>
+            <td><input type="checkbox" id="awlive" name="awlive"></td>
+          </tr>
+          <tr>
+            <th>UDP-IP</th>
+            <td><input type="text" id="UDPServerIP" name="UDPServerIP"></td>
+          </tr>
+          <tr>
+            <th>UDP-Port</th>
+            <td><input type="number" id="UDPSendPort" name="UDPSendPort"></td>
           </tr>
         </tbody>      
       </table>

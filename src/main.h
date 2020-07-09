@@ -4,7 +4,7 @@
 #ifndef __MAIN_H__
 #define __MAIN_H__
 
-#define VERSION "0.9"
+#define VERSION "1.0.0"
 #define APPNAME "GXAirCom"
 
 #define BLE_LOW_HEAP 10000

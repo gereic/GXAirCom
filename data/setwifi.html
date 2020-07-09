@@ -36,7 +36,7 @@ function onOpen(evt) {
     console.log("Connected");
     
     // write page-number --> then we get all values for page
-    doSend(JSON.stringify({ page : 11 }));//send page-number
+    doSend(JSON.stringify({ page : 13 }));//send page-number
 }
  
 // Called when the WebSocket connection is closed
@@ -54,9 +54,9 @@ function callMainPage(){
 }
 
 function sendValues(){  
-  var obj = {band : document.getElementById("band").value,
-            type : document.getElementById("type").value,
-            PilotName : document.getElementById("PilotName").value,
+  var obj = {ssid : document.getElementById("ssid").value,
+            password : document.getElementById("password").value,
+            wifioff : Number(document.getElementById("wifioff").checked),
             save : 1 };
   doSend(JSON.stringify(obj));
   document.getElementById("btnsave").innerText  = "rebooting ..."
@@ -115,32 +115,20 @@ window.addEventListener("load", init, false);
       <h3>%BUILD%</h3>
     </div>
     <fieldset>
-      <legend><b>general settings</b></legend>
+      <legend><b>output settings</b></legend>
       <table style="width:100&#37;">
         <tbody>
           <tr>
-            <th>Radio Frequency</th>
-            <td><select name="band" id="band">
-              <option value="0">868mhz</option>
-              <option value="1">915mhz</option>
-            </select></td>
+            <th>WIFI SSID</th>
+            <td><input type="text" id="ssid" name="ssid"></td>
           </tr>
           <tr>
-            <th>Aircraft Type</th>
-            <td><select name="type" id="type">
-              <option value="0">Unknown</option>
-              <option value="1">Paraglider</option>
-              <option value="2">Hangglider</option>
-              <option value="3">Balloon</option>
-              <option value="4">Glider</option>
-              <option value="5">Powered Aircraft</option>
-              <option value="6">Helicopter</option>
-              <option value="7">UAV</option>
-            </select></td>
+            <th>WIFI Password</th>
+            <td><input type="text" id="password" name="password"></td>
           </tr>
           <tr>
-            <th>PilotName</th>
-            <td><input type="text" id="PilotName" name="PilotName"></td>
+            <th>Wifi off after 3min</th>
+            <td><input type="checkbox" id="wifioff" name="wifioff"></td>
           </tr>
         </tbody>      
       </table>

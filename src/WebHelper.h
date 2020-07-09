@@ -8,6 +8,7 @@
 #include "fileOps.h"
 #include <string>
 #include <math.h>
+#include <Update.h>
 
 //extern WebServer server;
 extern struct SettingsData setting;

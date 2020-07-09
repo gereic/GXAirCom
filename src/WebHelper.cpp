@@ -58,7 +58,6 @@ void onWebSocketEvent(uint8_t client_num,
         log_d("page=%d",value);
         doc.clear();
         if (clientPages[client_num] == 1){
-          doc["headline"] = APPNAME "-" VERSION " ";
           doc["myDevId"] = setting.myDevId;
           doc["band"] = setting.band;
           doc["ssid"] = setting.ssid;
@@ -71,29 +70,33 @@ void onWebSocketEvent(uint8_t client_num,
           doc["oFanet"] = setting.outputFANET;
           doc["oLK8EX1"] = setting.outputLK8EX1;
           doc["awlive"] = setting.awLiveTracking;
-          doc["testmode"] = setting.testMode;
           doc["wifioff"] = (uint8_t)setting.bSwitchWifiOff3Min;
           doc["UDPServerIP"] = setting.UDPServerIP;
           doc["UDPSendPort"] = setting.UDPSendPort;
           doc["compiledate"] = String(compile_date);
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
-        }else if (clientPages[client_num] == 10){
+        }else if (clientPages[client_num] == 11){ //settings general
           doc["band"] = setting.band;
-          doc["ssid"] = setting.ssid;
-          doc["password"] = setting.password;
           doc["type"] = (uint8_t)setting.AircraftType;
           doc["PilotName"] = setting.PilotName;
+          serializeJson(doc, msg_buf);
+          webSocket.sendTXT(client_num, msg_buf);
+        }else if (clientPages[client_num] == 12){ //settings output
           doc["output"] = setting.outputMode;
           doc["oGPS"] = setting.outputGPS;
           doc["oFlarm"] = setting.outputFLARM;
           doc["oFanet"] = setting.outputFANET;
           doc["oLK8EX1"] = setting.outputLK8EX1;
           doc["awlive"] = setting.awLiveTracking;
-          doc["wifioff"] = (uint8_t)setting.bSwitchWifiOff3Min;
           doc["UDPServerIP"] = setting.UDPServerIP;
           doc["UDPSendPort"] = setting.UDPSendPort;
-          doc["testmode"] = setting.testMode;
+          serializeJson(doc, msg_buf);
+          webSocket.sendTXT(client_num, msg_buf);
+        }else if (clientPages[client_num] == 13){ //settings wifi
+          doc["ssid"] = setting.ssid;
+          doc["password"] = setting.password;
+          doc["wifioff"] = (uint8_t)setting.bSwitchWifiOff3Min;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
         }else if (clientPages[client_num] == 101){ //msg-type 1 test
@@ -132,21 +135,21 @@ void onWebSocketEvent(uint8_t client_num,
         value = doc["save"];
         if (value == 1){
           //general settings-page
-          setting.band = doc["band"].as<uint8_t>();
-          setting.ssid = doc["ssid"].as<String>();
-          setting.password = doc["password"].as<String>();
-          setting.AircraftType = (eFanetAircraftType)doc["type"].as<uint8_t>();
-          setting.PilotName = doc["PilotName"].as<String>();
-          setting.outputMode = doc["output"].as<uint8_t>();
-          setting.outputGPS = doc["oGPS"].as<uint8_t>();
-          setting.outputFLARM = doc["oFlarm"].as<uint8_t>();
-          setting.outputFANET = doc["oFanet"].as<uint8_t>();
-          setting.outputLK8EX1 = doc["oLK8EX1"].as<uint8_t>();
-          setting.awLiveTracking = doc["awlive"].as<uint8_t>();
-          setting.bSwitchWifiOff3Min = (bool)doc["wifioff"].as<uint8_t>();
-          setting.UDPServerIP = doc["UDPServerIP"].as<String>();
-          setting.UDPSendPort = doc["UDPSendPort"].as<uint16_t>();
-          setting.testMode = doc["testmode"].as<uint8_t>();
+          if (root.containsKey("band")) setting.band = doc["band"].as<uint8_t>();          
+          if (root.containsKey("ssid")) setting.ssid = doc["ssid"].as<String>();
+          if (root.containsKey("password")) setting.password = doc["password"].as<String>();
+          if (root.containsKey("type")) setting.AircraftType = (eFanetAircraftType)doc["type"].as<uint8_t>();
+          if (root.containsKey("PilotName")) setting.PilotName = doc["PilotName"].as<String>();
+          if (root.containsKey("output")) setting.outputMode = doc["output"].as<uint8_t>();
+          if (root.containsKey("oGPS")) setting.outputGPS = doc["oGPS"].as<uint8_t>();
+          if (root.containsKey("oFlarm")) setting.outputFLARM = doc["oFlarm"].as<uint8_t>();
+          if (root.containsKey("oFanet")) setting.outputFANET = doc["oFanet"].as<uint8_t>();
+          if (root.containsKey("oLK8EX1")) setting.outputLK8EX1 = doc["oLK8EX1"].as<uint8_t>();
+          if (root.containsKey("awlive")) setting.awLiveTracking = doc["awlive"].as<uint8_t>();
+          if (root.containsKey("wifioff")) setting.bSwitchWifiOff3Min = (bool)doc["wifioff"].as<uint8_t>();
+          if (root.containsKey("UDPServerIP")) setting.UDPServerIP = doc["UDPServerIP"].as<String>();
+          if (root.containsKey("UDPSendPort")) setting.UDPSendPort = doc["UDPSendPort"].as<uint16_t>();
+          if (root.containsKey("testmode")) setting.testMode = doc["testmode"].as<uint8_t>();
           log_i("write config-to file --> rebooting");
           delay(500);
           write_configFile();
@@ -213,8 +216,17 @@ String processor(const String& var){
   }
   
   String sRet = "";
-  if(var == "SOCKETIP")
+  log_e("%s",var.c_str());
+  if(var == "SOCKETIP"){
     return status.myIP;
+  }else if (var == "APPNAME"){
+    return APPNAME;
+  }else if (var == "VERSION"){
+    return VERSION;
+  }else if (var == "BUILD"){
+    return String(compile_date);
+  }
+    
   return "";
 }
 
@@ -225,13 +237,61 @@ void onPageNotFound(AsyncWebServerRequest *request) {
   request->send(404, "text/plain", "Not found");
 }
 
+static int restartNow = false;
+
+static void handle_update_progress_cb(AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
+  uint32_t free_space = (ESP.getFreeSketchSpace() - 0x1000) & 0xFFFFF000;
+  if (!index){
+    Serial.print("Total bytes:    "); Serial.println(SPIFFS.totalBytes());
+    Serial.print("Used bytes:     "); Serial.println(SPIFFS.usedBytes());
+    Serial.println(filename);
+    Serial.println("Update");
+    //Update.runAsync(true);
+    if (filename == "spiffs.bin"){
+      if (!Update.begin(0x30000,U_SPIFFS)) {
+        Update.printError(Serial);
+      }
+    }else{
+      if (!Update.begin(free_space,U_FLASH)) {
+        Update.printError(Serial);
+      }
+    }
+  }
+
+  if (Update.write(data, len) != len) {
+    Update.printError(Serial);
+  }
+
+  if (final) {
+    if (!Update.end(true)){
+      Update.printError(Serial);
+    } else {
+      restartNow = true;//Set flag so main loop can issue restart call
+      Serial.println("Update complete");      
+    }
+  }
+}
+
 void Web_setup(void){
   for (int i = 0;i < MAXCLIENTS;i++) clientPages[i] = 0;
   // On HTTP request for root, provide index.html file
+  server.on("/fwupdate", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(SPIFFS, request->url() + ".html", "text/html",false,processor);
+  });
+  // handler for the /update form POST (once file upload finishes)
+  server.on("/fwupdate", HTTP_POST, [](AsyncWebServerRequest *request){
+      request->send(200);
+    }, handle_update_progress_cb);
   server.on("/settings.html", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, request->url(), "text/html",false,processor);
   });
   server.on("/setgeneral.html", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(SPIFFS, request->url(), "text/html",false,processor);
+  });
+  server.on("/setoutput.html", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(SPIFFS, request->url(), "text/html",false,processor);
+  });
+  server.on("/setwifi.html", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, request->url(), "text/html",false,processor);
   });
   server.on("/settest.html", HTTP_GET, [](AsyncWebServerRequest *request){
@@ -242,6 +302,9 @@ void Web_setup(void){
   });
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, "/index.html", "text/html",false,processor);
+  });
+  server.on("/info.html", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(SPIFFS, request->url(), "text/html",false,processor);
   });
   server.on("/msgtype1.html", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, request->url(), "text/html",false,processor);
@@ -283,6 +346,7 @@ void Web_setup(void){
 void Web_loop(void){
   static uint32_t tLife = millis();
   static uint16_t counter = 0;
+  static uint32_t tRestart = millis();
   uint32_t tAct = millis();
   // Look for and handle WebSocket data
   webSocket.loop();
@@ -313,5 +377,12 @@ void Web_loop(void){
       }
     }
     counter++;
+  }
+  if (restartNow){
+    if ((tAct - tRestart) >= 1000){
+      ESP.restart();
+    }    
+  }else{
+    tRestart = tAct;
   }
 }
