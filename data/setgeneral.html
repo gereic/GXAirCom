@@ -7,7 +7,7 @@
 <title>GXAirCom</title>
 <script language="javascript" type="text/javascript">
  
-var url = "ws://%SOCKETIP%:1337/";
+ var url = "ws://" + window.location.host + ":1337/";
  
 // This is called when the page finishes loading
 function init() {
@@ -54,9 +54,11 @@ function callMainPage(){
 }
 
 function sendValues(){  
-  var obj = {band : document.getElementById("band").value,
+  var obj = {board : document.getElementById("board").value,
+            band : document.getElementById("band").value,
             type : document.getElementById("type").value,
             PilotName : document.getElementById("PilotName").value,
+            testmode : Number(document.getElementById("testmode").checked),
             save : 1 };
   doSend(JSON.stringify(obj));
   document.getElementById("btnsave").innerText  = "rebooting ..."
@@ -112,12 +114,20 @@ window.addEventListener("load", init, false);
     <div style='text-align:center;color:#eaeaea;'>
       <noscript>JavaScript aktivieren um GXAirCom benutzen zu können<br></noscript>
       <h1>%APPNAME%-%VERSION%</h1>
-      <h3>%BUILD%</h3>
+      <h3>build-date: %BUILD%</h3>
+      <h3>%PILOT%</h3>      
     </div>
     <fieldset>
       <legend><b>general settings</b></legend>
       <table style="width:100&#37;">
         <tbody>
+          <tr>
+            <th>Board Type</th>
+            <td><select name="board" id="board">
+              <option value="0">TTGO T-Beam T22_V1.0</option>
+              <option value="1">HELTEC / TTGO LORA</option>
+            </select></td>
+          </tr>
           <tr>
             <th>Radio Frequency</th>
             <td><select name="band" id="band">
@@ -141,6 +151,10 @@ window.addEventListener("load", init, false);
           <tr>
             <th>PilotName</th>
             <td><input type="text" id="PilotName" name="PilotName"></td>
+          </tr>
+          <tr>
+            <th>developer-mode</th>
+            <td><input type="checkbox" id="testmode" name="testmode"></td>
           </tr>
         </tbody>      
       </table>

@@ -16,6 +16,11 @@
 
 #define FANET_DEBUG
 
+
+#define MAXNEIGHBOURS 64
+#define NEIGHBOURSLIFETIME 240000 //4min
+//#define NEIGHBOURSLIFETIME 60000 //4min
+
 //433E6 for Asia
 //866E6 for Europe
 //915E6 for North America
@@ -61,7 +66,7 @@ enum class eFanetAircraftType {
 };
 
 typedef struct {
-  String DevId;
+  uint32_t devId;
   float lat; //latitude
   float lon; //longitude
   float altitude; //altitude [m]
@@ -89,6 +94,20 @@ typedef struct {
 } stateData;
 
 typedef struct {
+  uint32_t tLastMsg; //timestamp of neighbour (if 0 --> empty slot)
+  uint32_t devId; //devId
+  String name; //name of neughbour
+  eFanetAircraftType aircraftType; //
+  float lat; //latitude
+  float lon; //longitude
+  float altitude; //altitude [m]
+  float speed; //km/h
+  float climb; //m/s
+  float heading; //deg
+  int rssi; //rssi
+} neighbour;
+
+typedef struct {
   float lat; //latitude
   float lon; //longitude
   float temp; //temp [°C]
@@ -106,6 +125,9 @@ public:
     bool begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset, int dio0,long frequency);
     void end(void);
     String getMyDevId(void);
+    String getDevId(uint32_t devId);
+    String getNeighbourName(uint32_t devId);
+    uint8_t getNeighboursCount(void);
     void setPilotname(String name);
     void setAircraftType(eFanetAircraftType type);
     void writeTrackingData2FANET(trackingData *tData);
@@ -123,6 +145,7 @@ public:
     void sendPilotName(void);
     uint16_t txCount;
     uint16_t rxCount;
+    neighbour neighbours[MAXNEIGHBOURS];
 
     /*
     String getFlarmExp(void);
@@ -156,6 +179,7 @@ protected:
     bool newData = false;
     void getTrackingInfo(String line,uint16_t length);
     void printAircraftType(eFanetAircraftType type);
+
 
 
     /*
@@ -194,6 +218,10 @@ protected:
 private:  
   static void onReceive(int packetSize);
   String CreateFNFMSG(char *recBuff,uint8_t size);
+  int16_t getneighbourIndex(uint32_t devId);
+  void insertNameToNeighbour(uint32_t devId, String name);
+  void insertDataToNeighbour(uint32_t devId, trackingData *Data);
+  void clearNeighbours(uint32_t tAct);
   int actrssi;
 
   typedef struct fanet_header_t {

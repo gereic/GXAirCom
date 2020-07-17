@@ -36,7 +36,7 @@ function onOpen(evt) {
     console.log("Connected");
     
     // write page-number --> then we get all values for page
-    doSend(JSON.stringify({ page : 103 })); //send page
+    doSend(JSON.stringify({ page : 14 }));//send page-number
 }
  
 // Called when the WebSocket connection is closed
@@ -49,10 +49,21 @@ function onClose(evt) {
     setTimeout(function() { wsConnect(url) }, 2000);
 }
 
+function callMainPage(){
+  window.location="/index.html"
+}
+
 function sendValues(){  
-  var obj = {msg : document.getElementById("msg").value,
-            sendfanet : 3 };
+  var obj = {gsawid : document.getElementById("gsawid").value,
+            gslat : document.getElementById("gslat").value,
+            gslon : document.getElementById("gslon").value,
+            gsalt : document.getElementById("gsalt").value,
+            gsmode : Number(document.getElementById("gsmode").checked),
+            save : 1 };
   doSend(JSON.stringify(obj));
+  document.getElementById("btnsave").innerText  = "rebooting ..."
+  var delay = 2000;
+  setTimeout( callMainPage, delay )
 }
  
 // Called when a message is received from the server
@@ -65,8 +76,20 @@ function onMessage(evt) {
     var myObj = JSON.parse(evt.data);
     for (var key of Object.keys(myObj)) {
         console.log(key + " -> " + myObj[key])
-        document.getElementById(key).textContent = myObj[key];
-        document.getElementById(key).value = myObj[key];
+        var e = document.getElementById(key);
+        if (e instanceof HTMLSelectElement) {     // <select>
+          document.getElementById(key).value = myObj[key];
+        }else if ((e instanceof HTMLInputElement ) && (e.getAttribute('type') == 'checkbox')){     // <input checkbox>
+          if (myObj[key] == 1){
+            document.getElementById(key).checked = true;
+          }else{
+            document.getElementById(key).checked = false;
+          }
+          
+        }else{
+          document.getElementById(key).textContent = myObj[key];
+          document.getElementById(key).value = myObj[key];
+        }
     }
 }
  
@@ -93,26 +116,42 @@ window.addEventListener("load", init, false);
       <h1>%APPNAME%-%VERSION%</h1>
       <h3>build-date: %BUILD%</h3>
       <h3>%PILOT%</h3>      
-    </div>    
+    </div>
     <fieldset>
-      <legend><b>Trackin (Type = 1)</b></legend>    
+      <legend><b>ground station settings</b></legend>
       <table style="width:100&#37;">
         <tbody>
           <tr>
-            <th>name</th>
-            <td><input type="text" id="msg" name="msg"></td>
+            <th>Ground-Station mode</th>
+            <td><input type="checkbox" id="gsmode" name="gsmode"></td>
+          </tr>
+          <tr>
+            <th>Airwhere ID</th>
+            <td><input type="text" id="gsawid" name="gsawid"></td>
+          </tr>
+          <tr>
+            <th>lat [DD.dddddd] (ground-station)</th>
+            <td><input type="number" id="gslat" name="gslat"></td>
+          </tr>
+          <tr>
+            <th>lon [DD.dddddd] (ground-station)</th>
+            <td><input type="number" id="gslon" name="gslon"></td>
+          </tr>
+          <tr>
+            <th>alt [m] (ground-station)</th>
+            <td><input type="number" id="gsalt" name="gsalt"></td>
           </tr>
         </tbody>      
       </table>
       <br>
-      <button id="btnsend" name="btnsend" onClick="sendValues()" class="button bgrn">send</button>
+      <button id="btnsave" name="btnsave" onClick="sendValues()" class="button bgrn">save and reboot</button>
     </fieldset>
     <p></p>
     <p></p>
     <table style="width:100&#37;">
       <tr>
         <td style="width:100&#37;">
-          <button onClick="location.href='/developmenue.html'">back</button>
+          <button onClick="location.href='/settings.html'">back</button>
         </td>
       </tr>
     </table>

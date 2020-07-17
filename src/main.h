@@ -1,10 +1,11 @@
 #include <FanetLora.h>
+#include <string.h>
 
 
 #ifndef __MAIN_H__
 #define __MAIN_H__
 
-#define VERSION "1.0.0"
+#define VERSION "1.0.1"
 #define APPNAME "GXAirCom"
 
 #define BLE_LOW_HEAP 10000
@@ -19,10 +20,15 @@
 #define OUTPUT_BLUETOOTH 2
 #define OUTPUT_BLE 3
 
+#define BOARD_T_BEAM 0
+#define BOARD_HELTEC_LORA 1
+
 #define BAND868 0
 #define BAND915 1
 
 struct SettingsData{
+  String appw; //access-point-Password
+  uint8_t boardType;
   String myDevId; //my device-ID
   uint8_t band;
   uint8_t outputLK8EX1;
@@ -40,6 +46,11 @@ struct SettingsData{
   uint16_t UDPSendPort; //Port of udp-server
   uint8_t outputMode; //output-mode
   uint8_t testMode;
+  uint8_t GSMode; //ground-station-mode
+  float GSLAT; //Ground-Station Latitude
+  float GSLON; //Ground-Station Longitude
+  float GSAlt; //Ground-Station altitude
+  String GSAWID; //Ground-Station ID
 };
 
 struct statusData{
@@ -55,7 +66,7 @@ struct statusData{
   float ClimbRate;
   uint16_t fanetTx;
   uint16_t fanetRx;
-  uint8_t BoardVersion;
+  bool bHasAXP192;
   uint32_t tGPSCycle;
   uint32_t tLoop; //current Loop-time
   uint32_t tMaxLoop; //max Loop-time

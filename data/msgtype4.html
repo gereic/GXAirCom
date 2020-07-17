@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <link rel="stylesheet" href="style.css">
-<meta charset="utf-8" />
-<title>test</title>
- 
+<link rel="stylesheet" href="style.css">
+<meta charset='utf-8'>
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>GXAirCom</title>
 <script language="javascript" type="text/javascript">
  
-var url = "ws://%SOCKETIP%:1337/";
+ var url = "ws://" + window.location.host + ":1337/";
  
 // This is called when the page finishes loading
 function init() {
@@ -95,57 +95,79 @@ window.addEventListener("load", init, false);
 </script>
 </head>
 <body>
-<h1 id="headline"></h1>
- 
-<table>
-  <tr>
-    <th>lat [DD.dddddd]</th>
-    <td><input type="number" id="lat" name="lat"></td>
-  </tr>
-  <tr>
-    <th>lon [DD.dddddd]</th>
-    <td><input type="number" id="lon" name="lon"></td>
-  </tr>
-  <tr>
-    <th>temp [°C]</th>
-    <td><input type="number" id="temp" name="temp"></td>
-  </tr>
-  <tr>
-    <th>wind heading [°]</th>
-    <td><input type="number" id="wHeading" name="wHeading"></td>
-  </tr>
-  <tr>
-    <th>wind speed [km/h]</th>
-    <td><input type="number" id="wSpeed" name="wSpeed"></td>
-  </tr>
-  <tr>
-    <th>wind gust [km/h]</th>
-    <td><input type="number" id="wGust" name="wGust"></td>
-  </tr>
-  <tr>
-    <th>Humidity [&#37;]</th>
-    <td><input type="number" id="hum" name="hum"></td>
-  </tr>
-  <tr>
-    <th>pressure [hPa]</th>
-    <td><input type="number" id="pressure" name="pressure"></td>
-  </tr>
-  <tr>
-    <th>charge [&#37;]</th>
-    <td><input type="number" id="charge" name="charge"></td>
-  </tr>
-  <tr>
-    <td colspan="2"><button id="btnsend" onClick="sendValues()">send</button></td>
-  </tr>
-  <tr>
-    <td colspan="2"><button onClick="location.href='/settest.html'">back</button></td>
-  </tr>
-  <tr>
-    <td colspan="2"><button onClick="location.href='/index.html'">main</button></td>
-  </tr>
-  <tr>
-    <td colspan="2"><div style='text-align:right;font-size:11px;'><hr><a href='https://www.getronix.at' target='_blank' style='color:#aaa;'>GXAirCom by Gerald Eichler</a></div></td>
-  </tr>
-</table>
+  <div style="text-align:left;display:inline-block;color:#eaeaea;min-width:340px;">
+    <div style='text-align:center;color:#eaeaea;'>
+      <noscript>JavaScript aktivieren um GXAirCom benutzen zu können<br></noscript>
+      <h1>%APPNAME%-%VERSION%</h1>
+      <h3>build-date: %BUILD%</h3>
+      <h3>%PILOT%</h3>      
+    </div>    
+    <fieldset>
+      <legend><b>Trackin (Type = 1)</b></legend>    
+      <table style="width:100&#37;">
+        <tbody>
+          <tr>
+            <th>lat [DD.dddddd]</th>
+            <td><input type="number" id="lat" name="lat"></td>
+          </tr>
+          <tr>
+            <th>lon [DD.dddddd]</th>
+            <td><input type="number" id="lon" name="lon"></td>
+          </tr>
+          <tr>
+            <th>temp [°C]</th>
+            <td><input type="number" id="temp" name="temp"></td>
+          </tr>
+          <tr>
+            <th>wind heading [°]</th>
+            <td><input type="number" id="wHeading" name="wHeading"></td>
+          </tr>
+          <tr>
+            <th>wind speed [km/h]</th>
+            <td><input type="number" id="wSpeed" name="wSpeed"></td>
+          </tr>
+          <tr>
+            <th>wind gust [km/h]</th>
+            <td><input type="number" id="wGust" name="wGust"></td>
+          </tr>
+          <tr>
+            <th>Humidity [&#37;]</th>
+            <td><input type="number" id="hum" name="hum"></td>
+          </tr>
+          <tr>
+            <th>pressure [hPa]</th>
+            <td><input type="number" id="pressure" name="pressure"></td>
+          </tr>
+          <tr>
+            <th>charge [&#37;]</th>
+            <td><input type="number" id="charge" name="charge"></td>
+          </tr>
+        </tbody>      
+      </table>
+      <br>
+      <button id="btnsend" name="btnsend" onClick="sendValues()" class="button bgrn">send</button>
+    </fieldset>
+    <p></p>
+    <p></p>
+    <table style="width:100&#37;">
+      <tr>
+        <td style="width:100&#37;">
+          <button onClick="location.href='/developmenue.html'">back</button>
+        </td>
+      </tr>
+    </table>
+    <p></p>
+    <p></p>
+    <table style="width:100&#37;">
+      <tr>
+        <td style="width:100&#37;">
+          <button onClick="location.href='/index.html'">main menu</button>
+        </td>
+      </tr>
+    </table>
+    <p></p>
+    <div style='text-align:right;font-size:11px;'><hr><a href='https://www.getronix.at' target='_blank' style='color:#aaa;'>GXAirCom by Gerald Eichler</a>
+    </div>
+  </div>
 </body>
 </html>

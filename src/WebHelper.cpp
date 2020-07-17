@@ -8,6 +8,8 @@ char msg_buf[500];
 #define MAXCLIENTS 10
 uint8_t clientPages[MAXCLIENTS];
 
+String DevelopMenue = "<table style=\"width:100&#37;\"><tr><td style=\"width:100&#37;\"><button onClick=\"location.href='/developmenue.html'\">developer menue</button></td></tr></table><p></p><p></p>";
+
 /***********************************************************
  * Functions
  */
@@ -17,7 +19,6 @@ void onWebSocketEvent(uint8_t client_num,
                       WStype_t type,
                       uint8_t * payload,
                       size_t length) {
-
   StaticJsonDocument<500> doc;                      //Memory pool
   JsonObject root = doc.to<JsonObject>();
   DeserializationError error;
@@ -28,15 +29,15 @@ void onWebSocketEvent(uint8_t client_num,
     // Client has disconnected
     case WStype_DISCONNECTED:
       if (client_num < MAXCLIENTS) clientPages[client_num] = 0;
-      log_d("[%u] Disconnected!", client_num);
+      log_i("[%u] Disconnected!", client_num);
       break;
 
     // New client has connected
     case WStype_CONNECTED:
       {
         IPAddress ip = webSocket.remoteIP(client_num);
-        log_d("[%u] Connection from ", client_num);
-        log_d("%s",ip.toString());        
+        log_i("[%u] Connection from ", client_num);
+        //log_i("%s",ip.toString());        
       }
       break;
 
@@ -45,17 +46,17 @@ void onWebSocketEvent(uint8_t client_num,
 
       // Print out raw message
       
-      log_d("[%u] Received text: %s", client_num, *payload);      
+      log_i("[%u] Received text: %s", client_num, payload);      
       error = deserializeJson(doc, payload);
       if (error) {   //Check for errors in parsing
-        log_e("deserializeJson() failed: %s",error.c_str());
+        log_i("deserializeJson() failed: %s",error.c_str());
         return;
     
       }
       if (root.containsKey("page")){
         value = doc["page"];                    //Get value of sensor measurement
         if (client_num < MAXCLIENTS) clientPages[client_num] = value;
-        log_d("page=%d",value);
+        log_i("page=%d",value);
         doc.clear();
         if (clientPages[client_num] == 1){
           doc["myDevId"] = setting.myDevId;
@@ -77,9 +78,11 @@ void onWebSocketEvent(uint8_t client_num,
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
         }else if (clientPages[client_num] == 11){ //settings general
+          doc["board"] = setting.boardType;
           doc["band"] = setting.band;
           doc["type"] = (uint8_t)setting.AircraftType;
           doc["PilotName"] = setting.PilotName;
+          doc["testmode"] = setting.testMode;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
         }else if (clientPages[client_num] == 12){ //settings output
@@ -94,9 +97,18 @@ void onWebSocketEvent(uint8_t client_num,
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
         }else if (clientPages[client_num] == 13){ //settings wifi
+          doc["appw"] = setting.appw;
           doc["ssid"] = setting.ssid;
           doc["password"] = setting.password;
           doc["wifioff"] = (uint8_t)setting.bSwitchWifiOff3Min;
+          serializeJson(doc, msg_buf);
+          webSocket.sendTXT(client_num, msg_buf);
+        }else if (clientPages[client_num] == 14){ //settings ground station
+          doc["gsawid"] = setting.GSAWID;
+          doc["gslat"] = setting.GSLAT;
+          doc["gslon"] = setting.GSLON;
+          doc["gsalt"] = setting.GSAlt;
+          doc["gsmode"] = setting.GSMode;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
         }else if (clientPages[client_num] == 101){ //msg-type 1 test
@@ -134,7 +146,9 @@ void onWebSocketEvent(uint8_t client_num,
         //save settings-page
         value = doc["save"];
         if (value == 1){
-          //general settings-page
+          //general settings-page          
+          if (root.containsKey("appw")) setting.appw = doc["appw"].as<String>();          
+          if (root.containsKey("board")) setting.boardType = doc["board"].as<uint8_t>();          
           if (root.containsKey("band")) setting.band = doc["band"].as<uint8_t>();          
           if (root.containsKey("ssid")) setting.ssid = doc["ssid"].as<String>();
           if (root.containsKey("password")) setting.password = doc["password"].as<String>();
@@ -150,6 +164,11 @@ void onWebSocketEvent(uint8_t client_num,
           if (root.containsKey("UDPServerIP")) setting.UDPServerIP = doc["UDPServerIP"].as<String>();
           if (root.containsKey("UDPSendPort")) setting.UDPSendPort = doc["UDPSendPort"].as<uint16_t>();
           if (root.containsKey("testmode")) setting.testMode = doc["testmode"].as<uint8_t>();
+          if (root.containsKey("gsawid")) setting.GSAWID = doc["gsawid"].as<String>();
+          if (root.containsKey("gslat")) setting.GSLAT = doc["gslat"].as<float>();
+          if (root.containsKey("gslon")) setting.GSLON = doc["gslon"].as<float>();
+          if (root.containsKey("gsalt")) setting.GSAlt = doc["gsalt"].as<float>();
+          if (root.containsKey("gsmode")) setting.GSMode = doc["gsmode"].as<uint8_t>();
           log_i("write config-to file --> rebooting");
           delay(500);
           write_configFile();
@@ -216,15 +235,23 @@ String processor(const String& var){
   }
   
   String sRet = "";
-  log_e("%s",var.c_str());
+  log_i("%s",var.c_str());
   if(var == "SOCKETIP"){
     return status.myIP;
   }else if (var == "APPNAME"){
     return APPNAME;
+  }else if (var == "PILOT"){
+    return setting.PilotName;
   }else if (var == "VERSION"){
     return VERSION;
   }else if (var == "BUILD"){
     return String(compile_date);
+  }else if (var == "DEVELOPER"){
+    if (setting.testMode){
+      return DevelopMenue;
+    }else{
+      return "";
+    }
   }
     
   return "";
@@ -246,6 +273,8 @@ static void handle_update_progress_cb(AsyncWebServerRequest *request, String fil
     Serial.print("Used bytes:     "); Serial.println(SPIFFS.usedBytes());
     Serial.println(filename);
     Serial.println("Update");
+    log_i("stopping standard-task");
+    vTaskDelete(xHandleStandard); //delete standard-task
     //Update.runAsync(true);
     if (filename == "spiffs.bin"){
       if (!Update.begin(0x30000,U_SPIFFS)) {
@@ -288,13 +317,16 @@ void Web_setup(void){
   server.on("/setgeneral.html", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, request->url(), "text/html",false,processor);
   });
+  server.on("/setgs.html", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(SPIFFS, request->url(), "text/html",false,processor);
+  });
   server.on("/setoutput.html", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, request->url(), "text/html",false,processor);
   });
   server.on("/setwifi.html", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, request->url(), "text/html",false,processor);
   });
-  server.on("/settest.html", HTTP_GET, [](AsyncWebServerRequest *request){
+  server.on("/developmenue.html", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, request->url(), "text/html",false,processor);
   });
   server.on("/index.html", HTTP_GET, [](AsyncWebServerRequest *request){

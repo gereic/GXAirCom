@@ -22,5 +22,7 @@ extern uint8_t sendTestData;
 extern TaskHandle_t xHandleBle;
 extern const char compile_date[];
 
+extern TaskHandle_t xHandleStandard;
+
 void Web_setup(void);
 void Web_loop(void);

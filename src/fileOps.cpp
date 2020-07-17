@@ -5,6 +5,8 @@ Preferences preferences;
 void load_configFile(void){
     log_i("LOAD CONFIG FILE");
     preferences.begin("settings", false);                         //Ordner settings anlegen/verwenden
+    setting.appw = preferences.getString("APPW","12345678");
+    setting.boardType = preferences.getUChar("BOARDTYPE",BOARD_T_BEAM); //
     setting.band = preferences.getUChar("BAND",BAND868); //
     setting.awLiveTracking = preferences.getUChar("AWLIVE",0); //
     setting.outputLK8EX1 = preferences.getUChar("OLK8EX1",1); //
@@ -20,12 +22,19 @@ void load_configFile(void){
     setting.UDPSendPort = preferences.getUInt("UDP_PORT",10110); //Port of udp-server
     setting.outputMode = preferences.getUChar("OutputMode",OUTPUT_SERIAL); //output-mode
     setting.testMode = preferences.getUChar("TESTMODE",0); //testmode
+    setting.GSMode = preferences.getUChar("GSMode",0);
+    setting.GSLAT = preferences.getFloat("GSLAT",0.0);
+    setting.GSLON = preferences.getFloat("GSLON",0.0);
+    setting.GSAlt = preferences.getFloat("GSALT",0.0);
+    setting.GSAWID = preferences.getString("GSAWID","");
     preferences.end(); 
 }
 
 void write_configFile(void){
     log_i("WRITE CONFIG FILE");
     preferences.begin("settings", false);                         //Ordner settings anlegen/verwenden
+    preferences.putString("APPW",setting.appw);
+    preferences.putUChar("BOARDTYPE",setting.boardType); //
     preferences.putUChar("BAND",setting.band); //
     preferences.putUChar("AWLIVE",setting.awLiveTracking); //
     preferences.putUChar("OLK8EX1",setting.outputLK8EX1); //
@@ -41,6 +50,11 @@ void write_configFile(void){
     preferences.putUInt("UDP_PORT",setting.UDPSendPort); //Port of udp-server
     preferences.putUChar("OutputMode",setting.outputMode);
     preferences.putUChar("TESTMODE",setting.testMode);
+    preferences.putUChar("GSMode",setting.GSMode);
+    preferences.putFloat("GSLAT",setting.GSLAT);
+    preferences.putFloat("GSLON",setting.GSLON);
+    preferences.putFloat("GSALT",setting.GSAlt);
+    preferences.putString("GSAWID",setting.GSAWID);
     preferences.end(); 
     ESP.restart();
 }

@@ -7,7 +7,7 @@
 <title>GXAirCom</title>
 <script language="javascript" type="text/javascript">
  
-var url = "ws://%SOCKETIP%:1337/";
+ var url = "ws://" + window.location.host + ":1337/";
  
 // This is called when the page finishes loading
 function init() {
@@ -117,7 +117,8 @@ window.addEventListener("load", init, false);
     <div style='text-align:center;color:#eaeaea;'>
       <noscript>JavaScript aktivieren um GXAirCom benutzen zu können<br></noscript>
       <h1>%APPNAME%-%VERSION%</h1>
-      <h3>%BUILD%</h3>
+      <h3>build-date: %BUILD%</h3>
+      <h3>%PILOT%</h3>      
     </div>
     <fieldset>
       <legend><b>output settings</b></legend>

@@ -44,7 +44,8 @@ void FanetLora::checkMyDevId(){
   myDevId[0] = ManuId;//Manufacturer GetroniX
   myDevId[1] = uint8_t(chipmacid >> 40);
   myDevId[2] = uint8_t(chipmacid >> 32); //last 2 Bytes of MAC
-  _myData.DevId = getHexFromByte(myDevId[0],true) + getHexFromByte(myDevId[2],true) + getHexFromByte(myDevId[1],true);
+  _myData.devId = ((uint32_t)myDevId[0] << 16) | ((uint32_t)myDevId[1] << 8) | (uint32_t)myDevId[2];
+  //_myData.DevId = getHexFromByte(myDevId[0],true) + getHexFromByte(myDevId[2],true) + getHexFromByte(myDevId[1],true);
   //_myData.DevId = String(uint8_t(chipmacid >> 24),HEX) + String(uint8_t(chipmacid >> 32),HEX) + String(uint8_t(chipmacid >> 40),HEX);
   //Serial.print("MAC:");Serial.println(((uint32_t)chipmacid & 0xFFFFFF), HEX);
   //Serial.print("MAC:");Serial.println(((uint32_t)(chipmacid >> 32) & 0xFFFFFF), HEX);
@@ -55,7 +56,7 @@ void FanetLora::end(void){
 }
 
 String FanetLora::getMyDevId(void){
-    return _myData.DevId;
+    return getDevId(_myData.devId);
 }
 
 void FanetLora::onReceive(int packetSize) {
@@ -109,9 +110,77 @@ bool FanetLora::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset,
   // put the radio into receive mode
   //LoRa.onReceive(onReceive);
   //LoRa.receive();
+  for (int i = 0; i < MAXNEIGHBOURS; i++){ //clear neighbours list
+    neighbours[i].devId = 0; 
+  }
+
   return true;
 }
 
+String FanetLora::getNeighbourName(uint32_t devId){
+  for (int i = 0; i < MAXNEIGHBOURS; i++){
+    if (neighbours[i].devId == devId){
+      return neighbours[i].name; //found entry
+    }
+  }
+  return "";
+}
+
+int16_t FanetLora::getneighbourIndex(uint32_t devId){
+  int16_t iRet = -1;
+  for (int i = 0; i < MAXNEIGHBOURS; i++){
+    if (neighbours[i].devId == devId){
+      return i; //found entry
+    }
+    if ((neighbours[i].devId == 0) && (iRet < 0)){
+      iRet = i; //found empty one
+    }
+  }
+  return iRet;
+}
+
+void FanetLora::insertNameToNeighbour(uint32_t devId, String name){
+  int16_t index = getneighbourIndex(devId);
+  //log_i("devId=%i",devId);
+  //log_i("name=%s",name.c_str());
+  //log_i("index=%i",index);
+  if (index < 0) return;
+  neighbours[index].devId = devId;
+  neighbours[index].tLastMsg = millis();
+  neighbours[index].name = name;
+}
+
+void FanetLora::insertDataToNeighbour(uint32_t devId, trackingData *Data){
+  int16_t index = getneighbourIndex(devId);
+  //log_i("devId=%i",devId);
+  //log_i("index=%i",index);
+  if (index < 0) return;
+  neighbours[index].devId = devId;
+  neighbours[index].tLastMsg = millis();
+  neighbours[index].aircraftType = Data->aircraftType;
+  neighbours[index].lat = Data->lat;
+  neighbours[index].lon = Data->lon;
+  neighbours[index].altitude = Data->altitude;
+  neighbours[index].speed = Data->speed;
+  neighbours[index].climb = Data->climb;
+  neighbours[index].heading = Data->heading;
+  neighbours[index].rssi = Data->rssi;
+}
+
+void FanetLora::clearNeighbours(uint32_t tAct){
+  static uint32_t tCheck = millis();
+  if ((tAct - tCheck) >= 5000){ //check only every 5 seconds
+    tCheck = tAct;
+    for (int i = 0; i < MAXNEIGHBOURS; i++){
+      if (neighbours[i].devId){
+        if ((tCheck - neighbours[i].tLastMsg) >= NEIGHBOURSLIFETIME){ //if we get no msg in 4min --> del neighbour
+          //log_i("clear slot %i devId %s",i,getDevId(neighbours[i].devId).c_str());
+          neighbours[i].devId = 0; //clear slot
+        }
+      }
+    }
+  }
+}
 
 void FanetLora::setPilotname(String name){
     _PilotName = name;
@@ -121,8 +190,19 @@ void FanetLora::setAircraftType(eFanetAircraftType type){
     _myData.aircraftType = type;
 }
 
+uint8_t FanetLora::getNeighboursCount(void){
+  uint8_t countRet = 0;
+  for (int i = 0; i < MAXNEIGHBOURS; i++){
+    if (neighbours[i].devId){
+      countRet++;
+    }
+  }
+  return countRet;
+}
+
 String FanetLora::CreateFNFMSG(char *recBuff,uint8_t size){
-  String msg = "";  
+  String msg = ""; 
+  uint32_t devId =  ((uint32_t)recBuff[1] << 16) | ((uint32_t)recBuff[2] << 8) | (uint32_t)recBuff[3];
   fanet_header_t *tHeader = (fanet_header_t *)&recBuff[0];
   if ((myDevId[0] == recBuff[1]) && (myDevId[1] == recBuff[2]) && (myDevId[2] == recBuff[3])){
       //this is me --> abort
@@ -145,17 +225,21 @@ String FanetLora::CreateFNFMSG(char *recBuff,uint8_t size){
   msg += "0,"; //signature always 0
   msg += getHexFromByte(tHeader->type) + ",";
   msg += getHexFromByte(msgLen) + ",";
-  String payload = "";
+  String payload = ""; 
+  String msg2 = ""; 
   for (int i = offset;i < size;i++){
       payload += getHexFromByte(recBuff[i],true);
+      msg2 += recBuff[i];
   }
   msg += payload;
   if (tHeader->type == 1){
-      actTrackingData.DevId = getHexFromByte(recBuff[1],true) + getHexFromWord(tHeader->address,true);
+      //actTrackingData.DevId = getHexFromByte(recBuff[1],true) + getHexFromWord(tHeader->address,true);
+      actTrackingData.devId = ((uint32_t)recBuff[1] << 16) | ((uint32_t)recBuff[2] << 8) | (uint32_t)recBuff[3];
       actTrackingData.rssi = actrssi;
       getTrackingInfo(payload,msgLen);
+      insertDataToNeighbour(devId,&actTrackingData);
   }else if (tHeader->type == 2){
-      log_v("************ name received *********************");
+      insertNameToNeighbour(devId,msg2);
   }
   actMsg = msg;
   newMsg = true;
@@ -180,12 +264,13 @@ void FanetLora::getLoraMsg(void){
 }
 
 void FanetLora::run(void){    
-    onReceive(LoRa.parsePacket());
-    if (i16Packetsize > 0){
-        actrssi = LoRa.packetRssi();
-        getLoraMsg();
-        i16Packetsize = 0;
-    }
+  onReceive(LoRa.parsePacket());
+  if (i16Packetsize > 0){
+      actrssi = LoRa.packetRssi();
+      getLoraMsg();
+      i16Packetsize = 0;
+  }
+  clearNeighbours(millis());
 }
 
 void FanetLora::sendPilotName(void){
@@ -294,20 +379,6 @@ void FanetLora::getTrackingInfo(String line,uint16_t length){
     
     line.toCharArray(arPayload,sizeof(arPayload));
 
-    /*
-    int32_t lat_i = 0;
-    int32_t lon_i = 0;
-    ((uint8_t*)&lat_i)[0] = getByteFromHex(&arPayload[0]);
-    ((uint8_t*)&lat_i)[1] = getByteFromHex(&arPayload[2]);
-    ((uint8_t*)&lat_i)[2] = getByteFromHex(&arPayload[4]);
-
-    ((uint8_t*)&lon_i)[0] = getByteFromHex(&arPayload[6]);
-    ((uint8_t*)&lon_i)[1] = getByteFromHex(&arPayload[8]);
-    ((uint8_t*)&lon_i)[2] = getByteFromHex(&arPayload[10]);
-    actTrackingData.lat = (float) lat_i / 93206.0f;
-    actTrackingData.lon = (float) lon_i / 46603.0f;
-    */
-
     // integer values /
     int32_t lati = getByteFromHex(&arPayload[4])<<16 | getByteFromHex(&arPayload[2])<<8 | getByteFromHex(&arPayload[0]);
     if(lati & 0x00800000)
@@ -330,19 +401,17 @@ void FanetLora::getTrackingInfo(String line,uint16_t length){
 
     uint16_t speed = uint16_t(getByteFromHex(&arPayload[16]));
     if (speed & 0x80){
-        speed = (speed & 0x80) * 5;
-    }else{
-        speed = (speed & 0x80);
+        speed = (speed & 0x007F) * 5;
     }
     actTrackingData.speed = float(speed) * 0.5;
 
     int8_t climb = int8_t(getByteFromHex(&arPayload[18]));
+    int8_t climb2 = (climb & 0x7F) | (climb&(1<<6))<<1; //create 2-complement
     if (climb & 0x80){
-        climb = (climb & 0x80) * 5;
+        actTrackingData.climb = float(climb2) * 5.0 / 10.0;
     }else{
-        climb = (climb & 0x80);
+        actTrackingData.climb = float(climb2) / 10.0;
     }
-    actTrackingData.climb = float(climb) * 0.1;
 
     actTrackingData.heading = float(getByteFromHex(&arPayload[20])) * 360 / 255;
     if (actTrackingData.heading  < 0) actTrackingData.heading += 360.0;
@@ -479,7 +548,7 @@ void FanetLora::writeTrackingData2FANET(trackingData *tData){
     }
 
     int climb10         = constrain((int)roundf(tData->climb * 10.0f), -315, 315);
-    if(climb10 > 63) {
+    if(abs(climb10) > 63) {
         pkt->climb_scale  = 1;
         pkt->climb        = ((climb10 + (climb10 >= 0 ? 2 : -2)) / 5);
     } else {
@@ -540,10 +609,13 @@ void FanetLora::printAircraftType(eFanetAircraftType type){
   }
 }
 
+String FanetLora::getDevId(uint32_t devId){
+  return getHexFromByte((devId >> 16) & 0xFF,true) + getHexFromByte((devId) & 0xFF,true) + getHexFromByte((devId >> 8) & 0xFF,true);
+}
 
 void FanetLora::printFanetData(trackingData tData){
     Serial.print("id=");
-    Serial.println(tData.DevId);
+    Serial.println(getDevId(tData.devId));
     printAircraftType(tData.aircraftType);
     Serial.print("lat=");
     Serial.println(tData.lat,5);

@@ -7,7 +7,7 @@
 <title>GXAirCom</title>
 <script language="javascript" type="text/javascript">
  
-var url = "ws://%SOCKETIP%:1337/";
+ var url = "ws://" + window.location.host + ":1337/";
  
 // This is called when the page finishes loading
 function init() {
@@ -54,7 +54,8 @@ function callMainPage(){
 }
 
 function sendValues(){  
-  var obj = {ssid : document.getElementById("ssid").value,
+  var obj = {appw : document.getElementById("appw").value,
+            ssid : document.getElementById("ssid").value,
             password : document.getElementById("password").value,
             wifioff : Number(document.getElementById("wifioff").checked),
             save : 1 };
@@ -112,12 +113,19 @@ window.addEventListener("load", init, false);
     <div style='text-align:center;color:#eaeaea;'>
       <noscript>JavaScript aktivieren um GXAirCom benutzen zu können<br></noscript>
       <h1>%APPNAME%-%VERSION%</h1>
-      <h3>%BUILD%</h3>
+      <h3>build-date: %BUILD%</h3>
+      <h3>%PILOT%</h3>      
     </div>
     <fieldset>
       <legend><b>output settings</b></legend>
       <table style="width:100&#37;">
         <tbody>
+          <tr>
+            <th>ACCESS-POINT Password</th>
+            <td><input type="text" id="appw" name="appw"></td>
+          </tr>
+          <p></p>
+          <p></p>      
           <tr>
             <th>WIFI SSID</th>
             <td><input type="text" id="ssid" name="ssid"></td>
