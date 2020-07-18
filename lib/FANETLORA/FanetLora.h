@@ -12,6 +12,7 @@
 #include <string.h>
 #include <SPI.h>
 #include <LoRa.h>
+#include <tools.h>
 
 
 #define FANET_DEBUG

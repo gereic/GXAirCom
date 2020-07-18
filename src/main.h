@@ -5,7 +5,7 @@
 #ifndef __MAIN_H__
 #define __MAIN_H__
 
-#define VERSION "1.0.1"
+#define VERSION "1.0.2"
 #define APPNAME "GXAirCom"
 
 #define BLE_LOW_HEAP 10000
@@ -22,6 +22,7 @@
 
 #define BOARD_T_BEAM 0
 #define BOARD_HELTEC_LORA 1
+#define BOARD_T_BEAM_V07 2
 
 #define BAND868 0
 #define BAND915 1

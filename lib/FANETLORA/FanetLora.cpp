@@ -128,7 +128,18 @@ String FanetLora::getNeighbourName(uint32_t devId){
 
 int16_t FanetLora::getneighbourIndex(uint32_t devId){
   int16_t iRet = -1;
+  uint32_t tElapsed = 0;
+  uint32_t tMaxElapsed = 0;
+  int16_t iOldestEntry = -1;
+  uint32_t tAct = millis();
   for (int i = 0; i < MAXNEIGHBOURS; i++){
+    if (!neighbours[i].devId){
+      tElapsed = gettimeElapsed(tAct,neighbours[i].tLastMsg);
+      if (tElapsed > tMaxElapsed){
+        tMaxElapsed = tElapsed;
+        iOldestEntry = i;
+      }
+    }    
     if (neighbours[i].devId == devId){
       return i; //found entry
     }
@@ -136,7 +147,11 @@ int16_t FanetLora::getneighbourIndex(uint32_t devId){
       iRet = i; //found empty one
     }
   }
-  return iRet;
+  if (iRet >= 0){
+    return iRet; //we give back an empty slot
+  }else{
+    return iOldestEntry; //we tell the oldest entry to override !! (only if we to much traffic)
+  }
 }
 
 void FanetLora::insertNameToNeighbour(uint32_t devId, String name){

@@ -190,10 +190,11 @@ void printGSData(uint32_t tAct){
       display.drawXBitmap(88, 10, Helicopter40_bits,Helicopter40_width, Helicopter40_height,WHITE);      
       break;
     case eFanetAircraftType::UAV:
-      display.drawXBitmap(88, 12, UFORX_bits,UFORX_width, UFORX_height,WHITE);      
+      display.drawXBitmap(88, 12, UAVRX_bits,UAVRX_width, UAVRX_height,WHITE);      
       break;
     
     default:
+      display.drawXBitmap(88, 12, UFORX_bits,UFORX_width, UFORX_height,WHITE);      
       break;
     }
     
@@ -452,7 +453,7 @@ void setupWifi(){
   delay(10);
   //we connecto to wifi
   if ((setting.ssid.length() > 0) && (setting.password.length() > 0)){
-    esp_wifi_set_auto_connect(true);
+    //esp_wifi_set_auto_connect(true);
     WiFi.status();
     WiFi.mode(WIFI_MODE_APSTA);
     //WiFi.mode(WIFI_STA);
@@ -722,9 +723,15 @@ void setup() {
   if (setting.boardType == BOARD_T_BEAM){    
     i2cOLED.begin(OLED_SDA, OLED_SCL);
     setupAXP192();
-  }else{    
+  }else if (setting.boardType == BOARD_T_BEAM_V07){
+    i2cOLED.begin(OLED_SDA, OLED_SCL);
+    status.bHasAXP192 = false;
+  }else if (setting.boardType == BOARD_HELTEC_LORA){    
     i2cOLED.begin(4, 15);
     status.bHasAXP192 = false;
+  }else{
+    log_e("wrong-board-definition --> please correct");
+    //wrong board-definition !!
   }
 
   if (!status.bHasAXP192){
@@ -920,8 +927,18 @@ void printScanning(uint32_t tAct){
       display.drawXBitmap(1,6,Antenna_bits,Antenna_width,Antenna_height,WHITE);
       display.drawXBitmap(42,6,WFTX_bits,WFTX_width,WFTX_height,WHITE);
       display.drawXBitmap(66, 30, WFRX_bits,WFRX_width, WFRX_height,WHITE );
+      display.drawXBitmap(88, 6, UAVRX_bits,UAVRX_width, UAVRX_height,WHITE);      
+      break;
+    case 16: 
+      display.drawXBitmap(1,6,Antenna_bits,Antenna_width,Antenna_height,WHITE);
+      break;
+    case 17: 
+      display.drawXBitmap(1,6,Antenna_bits,Antenna_width,Antenna_height,WHITE);
+      display.drawXBitmap(42,6,WFTX_bits,WFTX_width,WFTX_height,WHITE);
+      display.drawXBitmap(66, 30, WFRX_bits,WFRX_width, WFRX_height,WHITE );
       display.drawXBitmap(88, 6, UFORX_bits,UFORX_width, UFORX_height,WHITE);      
       break;
+
 
 
     
@@ -929,7 +946,7 @@ void printScanning(uint32_t tAct){
       break;
     }
     icon++;
-    if (icon > 15) icon = 2;
+    if (icon > 17) icon = 2;
 
     display.setTextSize(1);
     display.setCursor(0,54);
@@ -1329,15 +1346,15 @@ void taskBackGround(void *pvParameters){
   #endif
   while (1){
     uint32_t tAct = millis();
-    if (xPortGetMinimumEverFreeHeapSize()<80000)
+    if (xPortGetMinimumEverFreeHeapSize()<100000)
     {
       if (millis()>warning_time)
       {
-        log_w( "*****LOOP current free heap: %d, minimum ever free heap: %d ******", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
+        //log_w( "*****LOOP current free heap: %d, minimum ever free heap: %d ******", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
         warning_time=millis()+1000;
       }
     }
-	if (xPortGetMinimumEverFreeHeapSize()<1000)
+	if (xPortGetMinimumEverFreeHeapSize()<5000)
 	{
     log_e( "*****LOOP current free heap: %d, minimum ever free heap: %d ******", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
 		log_e("System Low on Memory - xPortGetMinimumEverFreeHeapSize < 2KB");

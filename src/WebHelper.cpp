@@ -59,6 +59,7 @@ void onWebSocketEvent(uint8_t client_num,
         log_i("page=%d",value);
         doc.clear();
         if (clientPages[client_num] == 1){
+          doc["board"] = setting.boardType;
           doc["myDevId"] = setting.myDevId;
           doc["band"] = setting.band;
           doc["ssid"] = setting.ssid;
