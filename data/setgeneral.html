@@ -56,6 +56,7 @@ function callMainPage(){
 function sendValues(){  
   var obj = {board : document.getElementById("board").value,
             band : document.getElementById("band").value,
+            power : document.getElementById("power").value,
             type : document.getElementById("type").value,
             PilotName : document.getElementById("PilotName").value,
             testmode : Number(document.getElementById("testmode").checked),
@@ -135,6 +136,10 @@ window.addEventListener("load", init, false);
               <option value="0">868mhz</option>
               <option value="1">915mhz</option>
             </select></td>
+          </tr>
+          <tr>
+            <th>output-power (0-14)</th>
+            <td><input type="number" id="power" name="power" min="0" max="14" step="1"></td>
           </tr>
           <tr>
             <th>Aircraft Type</th>

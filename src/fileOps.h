@@ -9,5 +9,6 @@ extern SettingsData setting;
 
 void load_configFile(void);
 void write_configFile(void);
+void write_screenNumber(void);
 
 #endif

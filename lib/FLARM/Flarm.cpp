@@ -96,7 +96,19 @@ String Flarm::writeFlarmData(FlarmtrackingData *myData,FlarmtrackingData *movePi
 
 
 String Flarm::writeDataPort(void){
-    return addChecksum("$PFLAU,6,1,2,1,0,144,0,235,446");
+    String s = "$PFLAU," + String(neighbors) + ",1," + String(GPSState) + ",1,0,0,0,0,0";
+    //return addChecksum("$PFLAU,6,1,2,1,0,144,0,235,446");
+    return addChecksum(s);
+}
+
+String Flarm::writeVersion(void){
+    String s = "$PFLAV,A,1.00,1.00,GXAircom";
+    return addChecksum(s);
+}
+
+String Flarm::writeSelfTestResult(void){
+    String s = "$PFLAE,A,0,0"; //no error 
+    return addChecksum(s);
 }
 
 void Flarm::run(void){    

@@ -1,7 +1,7 @@
 // Copyright (c) Sandeep Mistry. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-#include <LoRa.h>
+#include "LoRa.h"
 
 // registers
 #define REG_FIFO                 0x00
@@ -62,6 +62,11 @@
 #else
     #define ISR_PREFIX
 #endif
+
+float sx_airtime = 0.0f;
+bool armed = false;
+
+
 
 LoRaClass::LoRaClass() :
   _spiSettings(LORA_DEFAULT_SPI_FREQUENCY, MSBFIRST, SPI_MODE0),
@@ -142,6 +147,49 @@ int LoRaClass::begin(long frequency)
   idle();
 
   return 1;
+}
+
+uint8_t LoRaClass::getOpMode(void)
+{
+	return readRegister(REG_OP_MODE);
+}
+
+bool LoRaClass::setArmed(bool mode,void(*callback)(int))
+{
+	if(mode == armed)
+		return true;
+
+	/* transmit packet in buffer */
+	while(getOpMode() == LORA_TX_MODE)
+		delay(1);
+
+	LoRa.onReceive(NULL);
+
+	/* store mode */
+	uint8_t opmode = getOpMode();
+
+	/* update state */
+	armed = mode;
+
+	if(mode)
+	{
+		/* enable rx */
+		if(opmode != LORA_TX_MODE)
+			LoRa.receive();
+	}
+	else
+	{
+		/* enter power save */
+		LoRa.sleep();
+	}
+
+  LoRa.onReceive(callback);
+	return true;
+}
+
+bool LoRaClass::isArmed(void)
+{
+	return armed;
 }
 
 void LoRaClass::end()
@@ -253,6 +301,290 @@ int LoRaClass::parsePacket(int size)
 
   return packetLength;
 }
+
+bool LoRaClass::setOpMode(uint8_t mode)
+{
+#if (SX1272_debug_mode > 0)
+	switch (mode)
+	{
+	case LORA_RXCONT_MODE:
+		printf("## SX1272 opmode: rx continous\n");
+	break;
+	case LORA_TX_MODE:
+		printf("## SX1272 opmode: tx\n");
+	break;
+	case LORA_SLEEP_MODE:
+		printf("## SX1272 opmode: sleep\n");
+	break;
+	case LORA_STANDBY_MODE:
+		printf("## SX1272 opmode: standby\n");
+	break;
+	case LORA_CAD_MODE:
+		printf("## SX1272 opmode: cad\n");
+	break;
+	default:
+		printf("## SX1272 opmode: unknown\n");
+	}
+#endif
+
+	/* set mode */
+	writeRegister(REG_OP_MODE, mode);
+
+	/* wait for frequency synthesis, 10ms timeout */
+	uint8_t opmode = 0;
+	for(int i=0; i<10 && opmode != mode; i++)
+	{
+		delay(1);
+		opmode = readRegister(REG_OP_MODE);
+	}
+
+#if (SX1272_debug_mode > 1)
+	printf("## SX1272 opmode: %02X\n", opmode);
+#endif
+
+	return mode == opmode;
+}
+
+
+int LoRaClass::channel_free4tx(bool doCAD)
+{
+	uint8_t mode = getOpMode();
+	mode &= LORA_MODE_MASK;
+
+	/* are we transmitting anyway? */
+	if(mode == LORA_TX_MODE)
+		return TX_TX_ONGOING;
+
+	/* in case of receiving, is it ongoing? */
+	for(int i=0; i<4 && (mode == LORA_RXCONT_MODE || mode == LORA_RXSINGLE_MODE); i++)
+	{
+		if(readRegister(REG_MODEM_STAT) & 0x0B)
+			return TX_RX_ONGOING;
+		delay(1);
+	}
+
+	/* CAD not required */
+	if(doCAD == false)
+		return TX_OK;
+
+	/*
+	 * CAD
+	 */
+
+	setOpMode(LORA_STANDBY_MODE);
+	writeRegister(REG_IRQ_FLAGS, IRQ_CAD_DONE | IRQ_CAD_DETECTED);	/* clearing flags */
+	setOpMode(LORA_CAD_MODE);
+
+	/* wait for CAD completion */
+//TODO: it may enter a life lock here...
+	uint8_t iflags;
+	while(((iflags=readRegister(REG_IRQ_FLAGS)) & IRQ_CAD_DONE) == 0)
+		delay(1);
+
+	if(iflags & IRQ_CAD_DETECTED)
+	{
+		/* re-establish old mode */
+		if(mode == LORA_RXCONT_MODE || mode == LORA_RXSINGLE_MODE || mode == LORA_SLEEP_MODE)
+			setOpMode(mode);
+
+		return TX_RX_ONGOING;
+	}
+
+	return TX_OK;
+}
+
+int LoRaClass::writeRegister_burst(uint8_t address, uint8_t *data, int length){
+	select();
+	/* bit 7 set to write registers */
+	address |= 0x80;
+
+  _spi->beginTransaction(_spiSettings);
+  _spi->transfer(address);
+  _spi->transferBytes(data,0,length);
+  _spi->endTransaction();
+	unselect();
+
+	return 0;
+}
+
+bool LoRaClass::setCodingRate(uint8_t cr)
+{
+#if (SX1272_debug_mode > 0)
+	printf("## SX1272 CR:%02X\n", cr);
+#endif
+
+	/* store state */
+	uint8_t opmode = getOpMode();
+	if(opmode == LORA_TX_MODE)
+		return false;
+
+	/* set appropriate mode */
+	if(opmode != LORA_STANDBY_MODE && !setOpMode(LORA_STANDBY_MODE))
+		return false;
+
+	uint8_t config1 = readRegister(REG_MODEM_CONFIG_1);
+	config1 = (cr&CR_MASK) | (config1&~CR_MASK);
+	writeRegister(REG_MODEM_CONFIG_1, config1);
+
+	/* restore state */
+	if(opmode != LORA_STANDBY_MODE)
+		return setOpMode(opmode);
+	else
+		return true;
+}
+
+float LoRaClass::expectedAirTime_ms(void)
+{
+	/* LORA */
+        float bw = 0.0f;
+        uint8_t cfg1 = readRegister(REG_MODEM_CONFIG_1);
+        uint8_t bw_reg = cfg1 & 0xC0;
+        switch( bw_reg )
+        {
+        case 0:		// 125 kHz
+            bw = 125000.0f;
+            break;
+        case 0x40: 	// 250 kHz
+            bw = 250000.0f;
+            break;
+        case 0x80: 	// 500 kHz
+            bw = 500000.0f;
+            break;
+        }
+
+        // Symbol rate : time for one symbol (secs)
+        uint8_t sf_reg = readRegister(REG_MODEM_CONFIG_2)>>4;
+        //float sf = sf_reg<6 ? 6.0f : sf_reg;
+        float rs = bw / ( 1 << sf_reg );
+        float ts = 1 / rs;
+        // time of preamble
+        float tPreamble = ( readRegister(REG_PREAMBLE_LSB) + 4.25f ) * ts;		//note: assuming preamble < 256
+        // Symbol length of payload and time
+        int pktlen = readRegister(REG_PAYLOAD_LENGTH);					//note: assuming CRC on -> 16, fixed length
+        int coderate = (cfg1 >> 3) & 0x7;
+        float tmp = ceil( (8 * pktlen - 4 * sf_reg + 28 + 16 - 20) / (float)( 4 * ( sf_reg ) ) ) * ( coderate + 4 );
+        float nPayload = 8 + ( ( tmp > 0 ) ? tmp : 0 );
+        float tPayload = nPayload * ts;
+        // Time on air
+        float tOnAir = (tPreamble + tPayload) * 1000.0f;
+
+        return tOnAir;
+}
+
+
+int LoRaClass::writeFifo(uint8_t addr, uint8_t *data, int length)
+{
+	/* select location */
+	writeRegister(REG_FIFO_ADDR_PTR, addr);
+
+	/* write data */
+	return writeRegister_burst(REG_FIFO, data, length);
+}
+
+int LoRaClass::sendFrame(uint8_t *data, int length, uint8_t cr){
+#if (SX1272_debug_mode > 0)
+	printf("## SX1272 send frame...");
+#endif
+
+	/* channel accessible? */
+	int state = channel_free4tx(true);
+	if(state != TX_OK)
+		return state;
+
+	/*
+	 * Prepare TX
+	 */
+	setOpMode(LORA_STANDBY_MODE);
+
+	//todo: check fifo is empty, no rx data..
+
+	/* adjust coding rate */
+	setCodingRate(cr);
+
+	/* upload frame */
+  writeFifo(0x00, data, length);
+	writeRegister(REG_FIFO_TX_BASE_ADDR, 0x00);
+	writeRegister(REG_PAYLOAD_LENGTH, length);
+
+	/* prepare irq */
+	if(_onReceive)
+	{
+		/* clear flag */
+		//writeRegister(REG_IRQ_FLAGS, IRQ_TX_DONE);
+		//setDio0Irq(DIO0_TX_DONE_LORA);
+	}
+
+	/* update air time */
+	sx_airtime += expectedAirTime_ms();
+
+	/* tx */
+	setOpMode(LORA_TX_MODE);
+  // clear IRQ's
+  writeRegister(REG_IRQ_FLAGS, IRQ_TX_DONE_MASK);
+
+	/* bypass waiting */
+	if(_onReceive)
+	{
+#if (SX1272_debug_mode > 1)
+		printf("INT\n");
+#endif
+		writeRegister(REG_OP_MODE, MODE_LONG_RANGE_MODE | MODE_RX_CONTINUOUS);
+    return TX_OK;
+	}
+
+	for(int i=0; i<100 && getOpMode() == LORA_TX_MODE; i++)
+	{
+#if (SX1272_debug_mode > 0)
+		printf(".");
+#endif
+		delay(5);
+	}
+#if (SX1272_debug_mode > 0)
+	printf("done\n");
+#endif
+	return TX_OK;
+
+}
+
+int LoRaClass::getFrame(uint8_t *data, int max_length){
+	const int received = readRegister(REG_RX_NB_BYTES);
+	const int rxstartaddr = readRegister(REG_FIFO_RX_CURRENT_ADDR);
+	readFifo(rxstartaddr, data, min(received, max_length));
+
+	return min(received, max_length);
+}
+
+void LoRaClass::readFifo(uint8_t addr, uint8_t *data, int length){
+	/* select location */
+	writeRegister(REG_FIFO_ADDR_PTR, addr);
+
+	/* upload data */
+	select();
+	_spi->transfer(REG_FIFO);
+        for (int i = 0; i < length; i++)
+		data[i] = _spi->transfer(0);
+	unselect();
+
+#if (SX1272_debug_mode > 1)
+	Serial.print(F("## SX1272 read fifo, length="));
+	Serial.print(length, DEC);
+
+	Serial.print(" [");
+	for (int i = 0; i < length; i++)
+	{
+		Serial.print(data[i], HEX);
+		if(i < length-1)
+			Serial.print(", ");
+	}
+	Serial.println("]");
+#endif
+
+}
+
+int LoRaClass::getRssi(void){
+  return (readRegister(REG_PKT_RSSI_VALUE) - (_frequency < 868E6 ? 164 : 157));
+}
+
 
 int LoRaClass::packetRssi()
 {
@@ -667,6 +999,42 @@ uint8_t LoRaClass::readRegister(uint8_t address)
 void LoRaClass::writeRegister(uint8_t address, uint8_t value)
 {
   singleTransfer(address | 0x80, value);
+}
+
+uint8_t LoRaClass::readRegister_burst(uint8_t address, uint8_t *data, int length)
+{
+	select();
+
+	/* bit 7 cleared to read in registers */
+	address &= 0x7F;
+
+  uint8_t * out;
+
+  out=data;  
+
+  _spi->beginTransaction(_spiSettings);
+  _spi->transfer(address);
+  _spi->transferBytes( data, out, length);
+	_spi->endTransaction();
+	unselect();
+
+	return 0;
+}
+
+float LoRaClass::get_airlimit(void)
+{
+	static uint32_t last = 0;
+	uint32_t current = millis();
+	uint32_t dt = current - last;
+	last = current;
+
+	/* reduce airtime by 1% */
+	sx_airtime -= dt*0.01f;
+	if(sx_airtime < 0.0f)
+		sx_airtime = 0.0f;
+
+	/* air time over 3min average -> 1800ms air time allowed */
+	return sx_airtime / 1800.0f;
 }
 
 uint8_t LoRaClass::singleTransfer(uint8_t address, uint8_t value)

@@ -44,14 +44,22 @@ typedef struct {
 } FlarmtrackingData;
 
 
+#define FLARM_NO_GPS 0
+#define FLARM_GPS_FIX3d_GROUND 2
+#define FLARM_GPS_FIX3d_AIR 2
+
 
 class Flarm {
 public:
     Flarm(); //constructor
     bool begin(void);
     void run(void); //has to be called cyclic
+    uint8_t neighbors;
+    uint8_t GPSState;
     String writeFlarmData(FlarmtrackingData *myData,FlarmtrackingData *movePilotData);
     String writeDataPort(void);
+    String writeVersion(void);
+    String writeSelfTestResult(void);
     String addChecksum(String s);
 protected:
     

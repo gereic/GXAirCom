@@ -15,14 +15,15 @@ extern struct SettingsData setting;
 extern struct statusData status;
 extern FanetLora fanet;
 
-extern trackingData testTrackingData;  
-extern weatherData testWeatherData;
+extern FanetLora::trackingData testTrackingData;  
+extern FanetLora::weatherData testWeatherData;
 extern String testString;
 extern uint8_t sendTestData;
 extern TaskHandle_t xHandleBle;
 extern const char compile_date[];
 
 extern TaskHandle_t xHandleStandard;
+extern bool WebUpdateRunning;
 
 void Web_setup(void);
 void Web_loop(void);

@@ -81,6 +81,7 @@ void onWebSocketEvent(uint8_t client_num,
         }else if (clientPages[client_num] == 11){ //settings general
           doc["board"] = setting.boardType;
           doc["band"] = setting.band;
+          doc["power"] = setting.LoraPower;
           doc["type"] = (uint8_t)setting.AircraftType;
           doc["PilotName"] = setting.PilotName;
           doc["testmode"] = setting.testMode;
@@ -150,10 +151,11 @@ void onWebSocketEvent(uint8_t client_num,
           //general settings-page          
           if (root.containsKey("appw")) setting.appw = doc["appw"].as<String>();          
           if (root.containsKey("board")) setting.boardType = doc["board"].as<uint8_t>();          
+          if (root.containsKey("power")) setting.LoraPower = constrain(doc["power"].as<uint8_t>(),0,14);          
           if (root.containsKey("band")) setting.band = doc["band"].as<uint8_t>();          
           if (root.containsKey("ssid")) setting.ssid = doc["ssid"].as<String>();
           if (root.containsKey("password")) setting.password = doc["password"].as<String>();
-          if (root.containsKey("type")) setting.AircraftType = (eFanetAircraftType)doc["type"].as<uint8_t>();
+          if (root.containsKey("type")) setting.AircraftType = (FanetLora::aircraft_t)doc["type"].as<uint8_t>();
           if (root.containsKey("PilotName")) setting.PilotName = doc["PilotName"].as<String>();
           if (root.containsKey("output")) setting.outputMode = doc["output"].as<uint8_t>();
           if (root.containsKey("oGPS")) setting.outputGPS = doc["oGPS"].as<uint8_t>();
@@ -184,7 +186,7 @@ void onWebSocketEvent(uint8_t client_num,
           //send fanet msgtype 1
           testTrackingData.lat = doc["lat"].as<float>();
           testTrackingData.lon = doc["lon"].as<float>();
-          testTrackingData.aircraftType = (eFanetAircraftType)doc["type"].as<uint8_t>();
+          testTrackingData.aircraftType = (FanetLora::aircraft_t)doc["type"].as<uint8_t>();
           testTrackingData.altitude = doc["alt"].as<float>();
           testTrackingData.speed = doc["speed"].as<float>();
           testTrackingData.climb = doc["climb"].as<float>();
@@ -236,7 +238,7 @@ String processor(const String& var){
   }
   
   String sRet = "";
-  log_i("%s",var.c_str());
+  //log_i("%s",var.c_str());
   if(var == "SOCKETIP"){
     return status.myIP;
   }else if (var == "APPNAME"){
@@ -261,7 +263,7 @@ String processor(const String& var){
 // Callback: send 404 if requested file does not exist
 void onPageNotFound(AsyncWebServerRequest *request) {
   IPAddress remote_ip = request->client()->remoteIP();
-  log_e("[%s] HTTP GET request of %s",remote_ip.toString().c_str(),request->url());
+  log_e("[%s] HTTP GET request of %s",remote_ip.toString().c_str(),request->url().c_str());
   request->send(404, "text/plain", "Not found");
 }
 
@@ -270,12 +272,14 @@ static int restartNow = false;
 static void handle_update_progress_cb(AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
   uint32_t free_space = (ESP.getFreeSketchSpace() - 0x1000) & 0xFFFFF000;
   if (!index){
-    Serial.print("Total bytes:    "); Serial.println(SPIFFS.totalBytes());
-    Serial.print("Used bytes:     "); Serial.println(SPIFFS.usedBytes());
-    Serial.println(filename);
-    Serial.println("Update");
-    log_i("stopping standard-task");
-    vTaskDelete(xHandleStandard); //delete standard-task
+    //Serial.print("Total bytes:    "); Serial.println(SPIFFS.totalBytes());
+    //Serial.print("Used bytes:     "); Serial.println(SPIFFS.usedBytes());
+    //Serial.println(filename);
+    //Serial.println("Update");
+    //log_i("stopping standard-task");
+    //vTaskDelete(xHandleStandard); //delete standard-task
+    WebUpdateRunning = true;
+    delay(500); //wait 1 second until tasks are stopped
     //Update.runAsync(true);
     if (filename == "spiffs.bin"){
       if (!Update.begin(0x30000,U_SPIFFS)) {
@@ -388,7 +392,7 @@ void Web_loop(void){
     StaticJsonDocument<300> doc;                      //Memory pool
     doc.clear();
     doc["counter"] = counter;
-    doc["vBatt"] = String(status.vBatt,2);
+    doc["vBatt"] = String((float)status.vBatt/1000.,2);
     doc["gpsFix"] = status.GPS_Fix;
     doc["gpsNumSat"] = status.GPS_NumSat;
     doc["gpslat"] = String(status.GPS_Lat,6);

@@ -3,9 +3,8 @@
 #include <WiFi.h>
 #include <esp_wifi.h>
 #include <WiFiClient.h>
-#include <ArduinoOTA.h>
 #include <SPI.h>
-#include <LoRa.h>
+//#include <LoRa.h>
 #include <FanetLora.h>
 #include <Flarm.h>
 #include <MicroNMEA.h>
@@ -26,9 +25,14 @@
 #include <BluetoothSerial.h>
 
 //define programming OTA
-#define OTAPROGRAMMING
+//#define OTAPROGRAMMING
+#ifdef OTAPROGRAMMING
+  #include <ArduinoOTA.h>
+#endif
 
 #define LifeCount 5000
+
+bool WebUpdateRunning = false;
 
 struct SettingsData setting;
 struct statusData status;
@@ -46,17 +50,17 @@ HardwareSerial NMeaSerial(2);
 char nmeaBuffer[100];
 MicroNMEA nmea(nmeaBuffer, sizeof(nmeaBuffer));
 
-trackingData MyFanetData;  
+FanetLora::trackingData MyFanetData;  
 
 
-trackingData testTrackingData;
-weatherData testWeatherData;
+FanetLora::trackingData testTrackingData;
+FanetLora::weatherData testWeatherData;
 String testString;
 uint8_t sendTestData = 0;
 
 uint8_t WifiConnectOk = 0;
 IPAddress local_IP(192,168,4,1);
-IPAddress gateway(192,168,4,1);
+IPAddress gateway(192,168,4,250);
 IPAddress subnet(255,255,255,0);
 
 volatile bool ppsTriggered = false;
@@ -100,7 +104,9 @@ void taskStandard(void *pvParameters);
 void taskBackGround(void *pvParameters);
 void taskBle(void *pvParameters);
 void taskMemory(void *pvParameters);
+#ifdef OTAPROGRAMMING
 void setupOTAProgramming();
+#endif
 void setupWifi();
 void IRAM_ATTR ppsHandler(void);
 void startOLED();
@@ -108,28 +114,103 @@ void printSettings();
 void listSpiffsFiles();
 void readGPS();
 void printGPSData(uint32_t tAct);
+void DrawRadarScreen(uint32_t tAct,uint8_t mode);
+void DrawRadarPilot(uint8_t neighborIndex);
 void printGSData(uint32_t tAct);
 void printBattVoltage(uint32_t tAct);
 void printScanning(uint32_t tAct);
 String setStringSize(String s,uint8_t sLen);
-void writeTrackingData(uint32_t tAct);
+//void writeTrackingData(uint32_t tAct);
 void sendData2Client(String data);
-eFlarmAircraftType Fanet2FlarmAircraft(eFanetAircraftType aircraft);
-void Fanet2FlarmData(trackingData *FanetData,FlarmtrackingData *FlarmDataData);
+eFlarmAircraftType Fanet2FlarmAircraft(FanetLora::aircraft_t aircraft);
+void Fanet2FlarmData(FanetLora::trackingData *FanetData,FlarmtrackingData *FlarmDataData);
 void sendLK8EX(uint32_t tAct);
 void powerOff();
 esp_sleep_wakeup_cause_t print_wakeup_reason();
 void WiFiEvent(WiFiEvent_t event);
-void listConnectedStations();
+//void listConnectedStations();
 float readBattvoltage();
-void sendAWTrackingdata(trackingData *FanetData);
+void sendAWTrackingdata(FanetLora::trackingData *FanetData);
 void sendAWGroundStationdata(uint32_t tAct);
 void sendAWUdp(String msg);
+void checkFlyingState(uint32_t tAct);
+void DrawAngleLine(int16_t x,int16_t y,int16_t length,float deg);
+void sendFlarmData(uint32_t tAct);
+
+
+void sendFlarmData(uint32_t tAct){
+  static uint32_t tSend = millis();
+  static uint32_t tSendStatus = millis();
+  FlarmtrackingData myFlarmData;
+  FlarmtrackingData PilotFlarmData;
+  FanetLora::trackingData tFanetData;  
+  uint8_t countNeighbours = 0;
+
+  if (!setting.outputFLARM) return;
+
+  if (timeOver(tAct,tSendStatus,FLARM_UPDATE_STATE)){
+    tSendStatus = tAct;
+    sendData2Client(flarm.writeVersion());
+    sendData2Client(flarm.writeSelfTestResult());
+  }
+
+  if (timeOver(tAct,tSend,FLARM_UPDATE_RATE)){
+    tSend = tAct;
+    if (status.GPS_Fix){
+      Fanet2FlarmData(&fanet._myData,&myFlarmData);
+      for (int i = 0; i < MAXNEIGHBOURS; i++){
+        if (fanet.neighbours[i].devId){
+          tFanetData.aircraftType = fanet.neighbours[i].aircraftType;
+          tFanetData.altitude = fanet.neighbours[i].altitude;
+          tFanetData.climb = fanet.neighbours[i].climb;
+          tFanetData.devId = fanet.neighbours[i].devId;
+          tFanetData.heading = fanet.neighbours[i].heading;
+          tFanetData.lat = fanet.neighbours[i].lat;
+          tFanetData.lon = fanet.neighbours[i].lon;
+          tFanetData.speed = fanet.neighbours[i].speed;
+          Fanet2FlarmData(&tFanetData,&PilotFlarmData);
+          sendData2Client(flarm.writeFlarmData(&myFlarmData,&PilotFlarmData));    
+          countNeighbours++;    
+        }
+      }
+      flarm.GPSState = FLARM_GPS_FIX3d_AIR;
+    }else{
+      flarm.GPSState = FLARM_NO_GPS;
+    }
+    flarm.neighbors = countNeighbours;
+    sendData2Client(flarm.writeDataPort());
+  }
+}
+
+void checkFlyingState(uint32_t tAct){
+  static uint32_t tOk = millis();
+  if (status.flying){
+    //flying
+    if ((!status.GPS_Fix) || (status.GPS_speed < MIN_FLIGHT_SPEED)){
+      if (timeOver(tAct,tOk,MIN_GROUND_TIME)){
+        status.flying = false;
+      }
+    }else{
+      tOk = tAct;
+    }
+  }else{
+    //on ground
+    if ((status.GPS_Fix) && (status.GPS_speed > MIN_FLIGHT_SPEED)){
+      if (timeOver(tAct,tOk,MIN_FLIGHT_TIME)){
+        status.flying = true;
+      }
+    }else{
+      tOk = tAct;
+    }
+  }
+
+}
+
 
 void printGSData(uint32_t tAct){
   static uint32_t tRefresh = millis();
   static uint8_t index = 0;
-  if ((tAct - tRefresh) >= 1000){
+  //if ((tAct - tRefresh) >= 1000){
     tRefresh = tAct;
     char buf[10];
     display.clearDisplay();
@@ -171,25 +252,25 @@ void printGSData(uint32_t tAct){
 
     switch (fanet.neighbours[index].aircraftType)
     {
-    case eFanetAircraftType::PARA_GLIDER:
+    case FanetLora::aircraft_t ::paraglider :
       display.drawXBitmap(88, 12, PGRX_bits,PGRX_width, PGRX_height,WHITE);      
       break;
-    case eFanetAircraftType::HANG_GLIDER:
+    case FanetLora::aircraft_t::hangglider :
       display.drawXBitmap(88, 12, HGRX_bits,HGRX_width, HGRX_height,WHITE);      
       break;
-    case eFanetAircraftType::BALLOON:
+    case FanetLora::aircraft_t::balloon :
       display.drawXBitmap(88, 12, BLRX_bits,BLRX_width, BLRX_height,WHITE);      
       break;
-    case eFanetAircraftType::GLIDER:
+    case FanetLora::aircraft_t::glider :
       display.drawXBitmap(88, 12, SPRX_bits,SPRX_width, SPRX_height,WHITE);      
       break;
-    case eFanetAircraftType::POWERED_AIRCRAFT:
+    case FanetLora::aircraft_t::poweredAircraft :
       display.drawXBitmap(88, 12, Airplane40_bits,Airplane40_width, Airplane40_height,WHITE);      
       break;
-    case eFanetAircraftType::HELICOPTER_ROTORCRAFT:
+    case FanetLora::aircraft_t::helicopter :
       display.drawXBitmap(88, 10, Helicopter40_bits,Helicopter40_width, Helicopter40_height,WHITE);      
       break;
-    case eFanetAircraftType::UAV:
+    case FanetLora::aircraft_t::uav:
       display.drawXBitmap(88, 12, UAVRX_bits,UAVRX_width, UAVRX_height,WHITE);      
       break;
     
@@ -226,8 +307,7 @@ void printGSData(uint32_t tAct){
     index ++;
     if (index >= MAXNEIGHBOURS) index = 0;
 
-  }
-  return;
+  //}
 }
 
 void sendAWGroundStationdata(uint32_t tAct){
@@ -250,7 +330,7 @@ void sendAWGroundStationdata(uint32_t tAct){
   sendAWUdp(msg);
 }
 
-void sendAWTrackingdata(trackingData *FanetData){
+void sendAWTrackingdata(FanetLora::trackingData *FanetData){
   if ((!setting.awLiveTracking) && (!setting.GSMode )) return;
 
   char chs[20];
@@ -292,7 +372,8 @@ void sendAWUdp(String msg){
 void sendData2Client(String data){
   if (setting.outputMode == OUTPUT_UDP){
     //output via udp
-    if (WifiConnectOk == 2){ //connected to wifi or a client is connected to me
+    if ((WiFi.status() == WL_CONNECTED) || (WiFi.softAPgetStationNum() > 0)){ //connected to wifi or a client is connected to me
+      //log_i("sending udp");
       WiFiUDP udp;
       udp.beginPacket(setting.UDPServerIP.c_str(),setting.UDPSendPort);
       udp.write((uint8_t *)data.c_str(),data.length());
@@ -326,19 +407,20 @@ void sendData2Client(String data){
   }
 }
 
-
+/*
 void writeTrackingData(uint32_t tAct){
   static uint32_t tSend = millis();
   if (status.GPS_Fix == 1){
     if ((tAct - tSend) >= 5000){
       MyFanetData.aircraftType = fanet.getAircraftType();
-      fanet.writeTrackingData2FANET(&MyFanetData);
+      fanet.setMyTrackingData(&MyFanetData);
       tSend = tAct;
     }
   }else{
     tSend = tAct;
   }
 }
+*/
 
 
 
@@ -385,6 +467,7 @@ void IRAM_ATTR ppsHandler(void){
   ppsTriggered = true;
 }
 
+/*
 void listConnectedStations(){
   wifi_sta_list_t wifi_sta_list;
   tcpip_adapter_sta_list_t adapter_sta_list;
@@ -411,6 +494,7 @@ void listConnectedStations(){
     log_v("IP: %s",sIP);    
   }
 }
+*/
 
 void WiFiEvent(WiFiEvent_t event){
   switch(event){
@@ -447,22 +531,43 @@ void setupWifi(){
   WifiConnectOk = 0;
   WiFi.mode(WIFI_OFF);
   delay(500);
+  WiFi.persistent(false);
+  log_i("Setting soft-AP ... ");
+  //if (WiFi.softAP(host_name.c_str(), setting.appw.c_str(),rand() % 12 + 1,0,2)){
+    if (WiFi.softAP(host_name.c_str(), setting.appw.c_str())){
+    log_i("Ready");
+  }else{
+    log_i("Failed!");
+  }
+  delay(10);
+  log_i("Setting soft-AP configuration ... ");
+  if(WiFi.softAPConfig(local_IP, gateway, subnet)){
+    log_i("Ready");
+  }else{
+    log_i("Failed!");
+  }
+  delay(10);
   WiFi.onEvent(WiFiEvent);
+
   log_i("hostname=%s",host_name.c_str());
   WiFi.setHostname(host_name.c_str());
-  delay(10);
+  //now configure access-point
+  //so we have wifi connect and access-point at same time
   //we connecto to wifi
   if ((setting.ssid.length() > 0) && (setting.password.length() > 0)){
     //esp_wifi_set_auto_connect(true);
+    log_i("Try to connect to WiFi ...");
     WiFi.status();
     WiFi.mode(WIFI_MODE_APSTA);
     //WiFi.mode(WIFI_STA);
     if ((WiFi.SSID() != setting.ssid || WiFi.psk() != setting.password)){
       // ... Try to connect to WiFi station.
       WiFi.begin(setting.ssid.c_str(), setting.password.c_str());
+      delay(2000);
     } else {
       // ... Begin with sdk config.
       WiFi.begin();
+      delay(2000);
     }
     log_i("Wait for WiFi connection.");
     uint32_t wifiTimeout = millis();
@@ -480,32 +585,18 @@ void setupWifi(){
   } else{
     log_i("Can not connect to WiFi station. Go into AP mode.");
     // Go into software AP mode.
+    WiFi.status();
     WiFi.mode(WIFI_AP);
     delay(10);
     //WiFi.setHostname(host_name.c_str());
-  }
-  //now configure access-point
-  //so we have wifi connect and access-point at same time
-  log_i("Setting soft-AP ... ");
-  if (WiFi.softAP(host_name.c_str(), setting.appw.c_str(),rand() % 12 + 1,0,2)){
-    log_i("Ready");
-  }else{
-    log_i("Failed!");
-  }
-  delay(100);
-  log_i("Setting soft-AP configuration ... ");
-  if(WiFi.softAPConfig(local_IP, gateway, subnet)){
-    log_i("Ready");
-  }else{
-    log_i("Failed!");
+    WifiConnectOk = 1;
   }
   //status.myIP = WiFi.softAPIP().toString();
-  WifiConnectOk = 1;
   log_i("my APIP=%s",local_IP.toString().c_str());
   Web_setup();
 }
 
-
+#ifdef OTAPROGRAMMING
 void setupOTAProgramming(){
     ArduinoOTA
     .onStart([]() {
@@ -539,6 +630,7 @@ void setupOTAProgramming(){
 
   ArduinoOTA.begin();  
 }
+#endif
 
 //Initialize OLED display
 void startOLED(){
@@ -552,30 +644,27 @@ void startOLED(){
     delay(100);
   }
 
-  /*
-  u8g2.begin();
-  u8g2.setFont(u8g2_font_6x10_tf);
-  u8g2.setFontRefHeightExtendedText();
-  u8g2.setDrawColor(1);
-  u8g2.setFontPosTop();
-  u8g2.setFontDirection(0);
-  */
   //initialize OLED
   if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3c, false, false)) { // Address 0x3C for 128x32
     log_e("SSD1306 allocation failed");
     for(;;); // Don't proceed, loop forever
   }
+  display.setTextColor(WHITE);
   display.clearDisplay();
   display.drawXBitmap(0,2,G_Logo_bits,G_Logo_width,G_Logo_height,WHITE);
   display.display();
-  delay(300);
+  delay(1000);
   display.drawXBitmap(30,2,X_Logo_bits,X_Logo_width,X_Logo_height,WHITE);
   display.display();
-  delay(300);
+  delay(1000);
   display.drawXBitmap(69,2,AirCom_Logo_bits,AirCom_Logo_width,AirCom_Logo_height,WHITE);
+  display.setTextSize(1);
+  display.setCursor(85,55);
+  display.print(VERSION);
   display.display();
-  delay(3000);
+  //delay(1000);
 
+  /*
   display.clearDisplay();
   display.setTextColor(WHITE);
   display.setTextSize(2);
@@ -584,6 +673,7 @@ void startOLED(){
   display.setCursor(0,18);
   display.print(VERSION);
   display.display();
+  */
 }
 
 void printSettings(){
@@ -597,6 +687,7 @@ void printSettings(){
     log_i("BAND=915mhz");
   }
   log_i("BAND=%d",setting.band);
+  log_i("LORA_POWER=%d",setting.LoraPower);
   log_i("OUTPUT LK8EX1=%d",setting.outputLK8EX1);
   log_i("OUTPUT FLARM=%d",setting.outputFLARM);
   log_i("OUTPUT GPS=%d",setting.outputGPS);
@@ -674,7 +765,10 @@ void setup() {
   log_i("Free PSRAM: %d", ESP.getFreePsram());
   log_i("compiled at %s",compile_date);
 
-  esp_sleep_wakeup_cause_t reason = print_wakeup_reason(); //print reason for wakeup
+
+
+  //esp_sleep_wakeup_cause_t reason = print_wakeup_reason(); //print reason for wakeup
+  print_wakeup_reason(); //print reason for wakeup
 
 
     // Make sure we can read the file system
@@ -689,6 +783,7 @@ void setup() {
   //setting.ssid = "WLAN_EICHLER";
   //setting.password = "magest172";
 
+  pinMode(BUTTON2, INPUT_PULLUP);
 
   if (setting.GSMode){ // we are ground-station
     setting.outputMode = OUTPUT_SERIAL;
@@ -743,7 +838,6 @@ void setup() {
   startOLED();
 
   btOk = 0;
-
 
   xTaskCreatePinnedToCore(taskStandard, "taskStandard", 6500, NULL, 10, &xHandleStandard, ARDUINO_RUNNING_CORE1); //standard task
   xTaskCreatePinnedToCore(taskBackGround, "taskBackGround", 6500, NULL, 5, &xHandleBackground, ARDUINO_RUNNING_CORE1); //background task
@@ -840,21 +934,24 @@ void printBattVoltage(uint32_t tAct){
     tBatt = tAct;
     if (status.bHasAXP192){
       if (axp.isBatteryConnect()) {
-        status.vBatt = axp.getBattVoltage()/1000.;
+        status.vBatt = (uint16_t)axp.getBattVoltage();
       }else{
         log_w("no Batt");
-        status.vBatt = 0.0;
+        status.vBatt = 0;
       }
     }else{
-      status.vBatt = readBattvoltage();
+      status.vBatt = uint16_t(readBattvoltage()*1000);      
     }
+    //log_i("Batt =%dV",status.vBatt);
+    status.BattPerc = scale(status.vBatt,BATTEMPTY,BATTFULL,0,100);
+    //log_i("Batt =%d%%",status.BattPerc);
   }
 }
 
 void printScanning(uint32_t tAct){
   static uint32_t tPrint = millis();
   static uint8_t icon = 0;
-  if ((tAct - tPrint) >= 300){
+  //if ((tAct - tPrint) >= 300){
     tPrint = tAct;
     display.clearDisplay();
     switch (icon)
@@ -953,17 +1050,212 @@ void printScanning(uint32_t tAct){
     display.print("Scanning the skyes...");
 
     display.display();
+  //}
+}
+void DrawRadarPilot(uint8_t neighborIndex){
+  float pilotDistance = 0.0;
+  int bearing = 0;
+  float rads;
+  int relNorth;
+  int relEast;
+
+  display.setCursor(95,0);
+  display.printf("%4d", fanet.neighbours[neighborIndex].rssi);
+  display.setCursor(68,16);
+  if (fanet.neighbours[neighborIndex].name.length() > 0){
+    display.print(fanet.neighbours[neighborIndex].name);
+  }else{
+    display.print(fanet.getDevId(fanet.neighbours[neighborIndex].devId));
   }
+  pilotDistance = distance(fanet._myData.lat, fanet._myData.lon,fanet.neighbours[neighborIndex].lat,fanet.neighbours[neighborIndex].lon, 'K') * 1000 ;
+  bearing = CalcBearingA( fanet._myData.lat, fanet._myData.lon,fanet.neighbours[neighborIndex].lat,fanet.neighbours[neighborIndex].lon);
+  rads = deg2rad(bearing + (fanet._myData.heading * -1));
+  relNorth=(int)(((cos(rads) * 16) * -1) + 32-8);
+  relEast=(int)((sin(rads) * 16) + 32-8);
+  //log_i("bearing=%i",bearing);
+  //log_i("relNorth=%i",relNorth);
+  //log_i("relEast=%i",relEast);
+  switch (fanet.neighbours[neighborIndex].aircraftType)
+  {
+  case FanetLora::aircraft_t ::paraglider :
+    display.drawXBitmap(relEast, relNorth, Paraglider16_bits,16, 16,WHITE);      
+    break;
+  case FanetLora::aircraft_t::hangglider :
+    display.drawXBitmap(relEast, relNorth, Hangglider16_bits,16, 16,WHITE);      
+    break;
+  case FanetLora::aircraft_t::balloon :
+    display.drawXBitmap(relEast, relNorth, Ballon16_bits,16, 16,WHITE);      
+    break;
+  case FanetLora::aircraft_t::glider :
+    display.drawXBitmap(relEast, relNorth, Sailplane16_bits,16, 16,WHITE);      
+    break;
+  case FanetLora::aircraft_t::poweredAircraft :
+    display.drawXBitmap(relEast, relNorth, Airplane16_bits,16, 16,WHITE);      
+    break;
+  case FanetLora::aircraft_t::helicopter :
+    display.drawXBitmap(relEast, relNorth, Helicopter16_bits,16, 16,WHITE);      
+    break;
+  case FanetLora::aircraft_t::uav:
+    display.drawXBitmap(relEast, relNorth, UAV16_bits,16, 16,WHITE);      
+    break;
+  
+  default:
+    display.drawXBitmap(relEast, relNorth, UFO16_bits,16, 16,WHITE);      
+    break;
+  }
+  if (pilotDistance > 1000){
+    pilotDistance /= 1000;
+    display.setCursor(68,28);
+    display.printf("%skm",setStringSize(String(pilotDistance,1),5).c_str());
+  }else{
+    display.setCursor(75,28);
+    display.printf("%sm",setStringSize(String(pilotDistance,0),5).c_str());
+  }
+  display.setCursor(75,40); //display relative alt
+  display.printf("%sm",setStringSize(String(fanet.neighbours[neighborIndex].altitude - fanet._myData.altitude,0),5).c_str());
+  display.setCursor(75,52); //display climbing
+  display.printf("%sms",setStringSize(String(fanet.neighbours[neighborIndex].climb,1),5).c_str());
+
+}
+
+void DrawAngleLine(int16_t x,int16_t y,int16_t length,float deg){
+  int16_t xStart;
+  int16_t yStart;
+  int16_t xEnd;
+  int16_t yEnd;
+  float rads;
+  rads = deg2rad(deg);
+  xStart=(int)(((sin(rads) * length/2) * 1) + x);
+  yStart=(int)(((cos(rads) * length/2) * -1) + y);
+  xEnd=(int)(((sin(rads) * length/2) * -1) + x);
+  yEnd=(int)(((cos(rads) * length/2) * 1) + y);
+  display.drawLine(xStart,yStart,xEnd,yEnd,WHITE);
+  /*
+  log_i("deg=%0.1f",deg);
+  log_i("X-Start=%i",xStart);
+  log_i("Y-Start=%i",yStart);
+  log_i("X-End=%i",xEnd);
+  log_i("Y-End=%i",yEnd);    
+  */
+}
+
+void DrawRadarScreen(uint32_t tAct,uint8_t mode){
+  static uint32_t tPrint = millis();
+  static float angle = 0.0;
+  static uint8_t neighborIndex = 0;
+  int index;
+  int16_t xStart;
+  int16_t yStart;
+  float rads;
+  
+  //TODO delete !!
+  /*
+  fanet._myData.lat = 48.072900;
+  fanet._myData.lon = 14.734774;
+  fanet._myData.altitude = 1000;
+  */
+  String s = "";
+  //if ((tAct - tPrint) >= 1000){
+    tPrint = tAct;
+    display.clearDisplay();
+    //display.drawCircle(32,32,28,WHITE);
+    //display.drawCircle(32,32,18,WHITE);
+    display.setTextSize(1);
+    display.setCursor(0,0);
+    display.printf("%d%%",status.BattPerc);
+    display.setCursor(0,56);
+    if (status.flying){
+      display.print("F");
+    }else{
+      display.print("G");
+    }
+    display.drawCircle(32,32,25,WHITE);
+    //display.drawCircle(32,32,1,WHITE);
+
+    /*
+    if (digitalRead(BUTTON2)){
+      fanet._myData.heading = 0.0;
+    }else{
+      fanet._myData.heading = 45.0;
+    }
+    */
+
+    //fanet._myData.heading = angle;
+    //angle += 15.0;
+    //if (angle >= 360.0) angle = 0;
+    DrawAngleLine(32,32,50,fanet._myData.heading * -1);
+    DrawAngleLine(32,32,50,(fanet._myData.heading + 90) * -1);
+    rads = deg2rad(fanet._myData.heading * -1);
+    xStart=(int)(((sin(rads) * 29) * 1) + 32);
+    yStart=(int)(((cos(rads) * 29) * -1) + 32);
+    display.setCursor(xStart-2,yStart-3);
+    display.print("N");
+
+    //display.drawFastHLine(0,32,64,WHITE);
+    //display.drawFastVLine(32,8,56,WHITE);
+    display.setTextSize(1);
+    display.setCursor(50,0);
+    switch (mode)
+    {
+    case RADAR_CLOSEST:
+      display.print("CLOSEST");
+      if (status.GPS_Fix == 0){
+        display.setCursor(50,16);
+        display.print("NO GPS-FIX");
+        break;
+      } 
+      index = fanet.getNearestNeighborIndex();
+      //log_i("index %i",index);
+      if (index < 0) break;
+      neighborIndex = index;
+      DrawRadarPilot(neighborIndex);
+      break;
+    case RADAR_LIST:
+      display.print("LIST");
+      if (status.GPS_Fix == 0){
+        display.setCursor(50,16);
+        display.print("NO GPS-FIX");
+        break;
+      } 
+      index = fanet.getNextNeighbor(neighborIndex);
+      if (index < 0) break;
+      neighborIndex = index;
+      DrawRadarPilot(neighborIndex);
+      break;
+    case RADAR_FRIENDS:
+      display.print("FRIENDS");
+      if (status.GPS_Fix == 0){
+        display.setCursor(50,16);
+        display.print("NO GPS-FIX");
+        break;
+      } 
+      break;    
+    default:
+      break;
+    }
+
+
+
+
+    display.display();
+  //}
 }
 
 void printGPSData(uint32_t tAct){
   static uint32_t tPrint = millis();
   String s = "";
-  if ((tAct - tPrint) >= 1000){
-    display.fillRect(0,0,128,64,BLACK);
+  //if ((tAct - tPrint) >= 1000){
+    tPrint = tAct;
+    display.clearDisplay();
     display.setTextSize(2);
     display.setCursor(0,0);
-    display.print(setStringSize(String(status.vBatt,1) + "V",4));
+    display.print(setStringSize(String(status.BattPerc) + "% ",4));
+    if (status.flying){
+      display.print("F");
+    }else{
+      display.print("G");
+    }
+
 
     display.setTextSize(2);
     display.setCursor(55,0);
@@ -989,8 +1281,7 @@ void printGPSData(uint32_t tAct){
 
     display.display();
 
-    tPrint = tAct;
-  }
+  //}
 }
 
 void readGPS(){
@@ -1018,30 +1309,29 @@ void readGPS(){
   }
 }
 
-eFlarmAircraftType Fanet2FlarmAircraft(eFanetAircraftType aircraft){
+eFlarmAircraftType Fanet2FlarmAircraft(FanetLora::aircraft_t aircraft){
   switch (aircraft)
   {
-  case eFanetAircraftType::UNKNOWN:
-    return eFlarmAircraftType::UNKNOWN;
-  case eFanetAircraftType::PARA_GLIDER:
+  case FanetLora::aircraft_t::paraglider :
     return eFlarmAircraftType::PARA_GLIDER;
-  case eFanetAircraftType::HANG_GLIDER:
+  case FanetLora::aircraft_t::hangglider :
     return eFlarmAircraftType::HANG_GLIDER;
-  case eFanetAircraftType::BALLOON:
+  case FanetLora::aircraft_t::balloon :
     return eFlarmAircraftType::BALLOON;
-  case eFanetAircraftType::GLIDER:
+  case FanetLora::aircraft_t::glider :
     return eFlarmAircraftType::GLIDER_MOTOR_GLIDER;
-  case eFanetAircraftType::POWERED_AIRCRAFT:
+  case FanetLora::aircraft_t::poweredAircraft :
     return eFlarmAircraftType::TOW_PLANE;
-  case eFanetAircraftType::HELICOPTER_ROTORCRAFT:
+  case FanetLora::aircraft_t::helicopter :
     return eFlarmAircraftType::HELICOPTER_ROTORCRAFT;
-  case eFanetAircraftType::UAV:
+  case FanetLora::aircraft_t::uav :
     return eFlarmAircraftType::UAV;
+  default:
+    return eFlarmAircraftType::UNKNOWN;
   }
-  return eFlarmAircraftType::UNKNOWN;
 }
 
-void Fanet2FlarmData(trackingData *FanetData,FlarmtrackingData *FlarmDataData){
+void Fanet2FlarmData(FanetLora::trackingData *FanetData,FlarmtrackingData *FlarmDataData){
   FlarmDataData->aircraftType = Fanet2FlarmAircraft(FanetData->aircraftType);
   FlarmDataData->altitude = FanetData->altitude;
   FlarmDataData->climb = FanetData->climb;
@@ -1064,7 +1354,7 @@ void sendLK8EX(uint32_t tAct){
     s += String((int32_t)(status.ClimbRate * 100.0)) + ","; //climbrate in cm/s
     //s += String(status.) + ",";
     s += "99,"; //temperature
-    s += String(status.vBatt,2) + ",";
+    s += String((float)status.vBatt / 1000.,2) + ",";
     s = flarm.addChecksum(s);
     sendData2Client(s);
     tOld = tAct;
@@ -1077,16 +1367,13 @@ void taskStandard(void *pvParameters){
   static uint32_t tLife = millis();
   static uint32_t tLoop = millis();
   static uint8_t counter = 0;
-  static uint32_t tPilotName = millis();
   static uint32_t tFlarmState = millis();
   static float oldAlt = 0.0;
   static uint32_t tOldPPS = millis();
-  trackingData tFanetData;  
-  trackingData myFanetData;  
-  FlarmtrackingData myFlarmData;
-  FlarmtrackingData PilotFlarmData;
-  bool bRecOk = false;
-
+  static uint32_t tDisplay = millis();
+  FanetLora::trackingData myFanetData;  
+  FanetLora::trackingData tFanetData;  
+  
   tFanetData.rssi = 0;
 
 
@@ -1117,9 +1404,14 @@ void taskStandard(void *pvParameters){
   // create a binary semaphore for task synchronization
   long frequency = FREQUENCY868;
   if (setting.band == BAND915)frequency = FREQUENCY915; 
-  fanet.begin(SCK, MISO, MOSI, SS,RST, DIO0,frequency);
+  fanet.begin(SCK, MISO, MOSI, SS,RST, DIO0,frequency,setting.LoraPower);
   fanet.setPilotname(setting.PilotName);
   fanet.setAircraftType(setting.AircraftType);
+  if ((setting.testMode == 0) && (!setting.GSMode)){ //not in testmode and not ground-station
+    fanet.autobroadcast = true;
+  }else{
+    fanet.autobroadcast = false;
+  }
   setting.myDevId = fanet.getMyDevId();
   host_name += setting.myDevId; //String((ESP32_getChipId() & 0xFFFFFF), HEX);
   if (!setting.GSMode){ // we are ground-station)
@@ -1137,9 +1429,8 @@ void taskStandard(void *pvParameters){
 
 
   display.setTextColor(WHITE);
-  display.setTextSize(2);
-  display.setCursor(0,40);
-  display.print("ID:");
+  display.setTextSize(1);
+  display.setCursor(0,55);
   display.print(setting.myDevId);
   display.display();
   delay(3000);
@@ -1152,32 +1443,62 @@ void taskStandard(void *pvParameters){
     status.tLoop = tAct - tLoop;
     tLoop = tAct;
     if (status.tMaxLoop < status.tLoop) status.tMaxLoop = status.tLoop;
+    
+    /*
+    if (digitalRead(BUTTON2)){
+      status.GPS_Fix = 1;
+      status.GPS_speed = 0.0;
+    }else{
+      status.GPS_Fix = 1;
+      status.GPS_speed = 22.0;
+    }
+    */
+    checkFlyingState(tAct);
     printBattVoltage(tAct);
     readGPS();
-    if (setting.GSMode){
-      //log_i("neghbours=%u",fanet.getNeighboursCount());
-      if (fanet.getNeighboursCount() == 0){
-        printScanning(tAct);
+    sendFlarmData(tAct);
+    if (timeOver(tAct,tDisplay,DISPLAY_UPDATE_RATE)){
+      tDisplay = tAct;
+      if (setting.GSMode){
+        //log_i("neghbours=%u",fanet.getNeighboursCount());
+        if (fanet.getNeighboursCount() == 0){
+          printScanning(tAct);
+        }else{
+          printGSData(tAct);
+        }
       }else{
-        printGSData(tAct);
+        switch (setting.screenNumber)
+        {
+        case 0:
+          /* code */
+          printGPSData(tAct);
+          break;
+        case 1:
+          DrawRadarScreen(tAct,RADAR_LIST);
+          break;
+        case 2:
+          DrawRadarScreen(tAct,RADAR_CLOSEST);
+          break;
+        case 3:
+          DrawRadarScreen(tAct,RADAR_FRIENDS);
+          break;
+        default:
+          break;
+        }
       }
-    }else{
-      printGPSData(tAct);
     }
+    /*
     if ((setting.testMode == 0) && (!setting.GSMode)){ //not in testmode and not ground-station
-      writeTrackingData(tAct);
-      if ((tAct - tPilotName) >= 24000){
-          tPilotName = tAct;
-          fanet.sendPilotName();
-      }
-      if ((tAct - tFlarmState) >= 5000){
+      //writeTrackingData(tAct);
+      if ((tAct - tFlarmState) >= 1000){
           tFlarmState = tAct;
           if (setting.outputFLARM) sendData2Client(flarm.writeDataPort());
       }
     }
+    */
     if (sendTestData == 1){
       log_i("sending msgtype 1");
-      fanet.writeTrackingData2FANET(&testTrackingData);
+      fanet.writeMsgType1(&testTrackingData);
       sendTestData = 0;
     }else if (sendTestData == 2){
       log_i("sending msgtype 2 %s",testString.c_str());
@@ -1203,18 +1524,11 @@ void taskStandard(void *pvParameters){
     if (fanet.getTrackingData(&tFanetData)){
         //log_i("new Tracking-Data");
         sendAWTrackingdata(&tFanetData);
-        if (setting.GSMode){
-          bRecOk = true; //now we received the first aircraft
-          //log_i("bRecOk");
-        }
         if (nmea.isValid()){
         fanet.getMyTrackingData(&myFanetData);
         //Serial.printf("LAT=%.6f\n",tFanetData.lat);
         //Serial.printf("LON=%.6f\n",tFanetData.lon);
 
-        Fanet2FlarmData(&myFanetData,&myFlarmData);
-        Fanet2FlarmData(&tFanetData,&PilotFlarmData);
-        if (setting.outputFLARM) sendData2Client(flarm.writeFlarmData(&myFlarmData,&PilotFlarmData));        
       }
     }
     flarm.run();
@@ -1247,7 +1561,14 @@ void taskStandard(void *pvParameters){
         MyFanetData.lon = status.GPS_Lon;
         MyFanetData.altitude = status.GPS_alt;
         MyFanetData.speed = status.GPS_speed; //speed in cm/s --> we need km/h
-        MyFanetData.heading = status.GPS_course;
+        if (status.flying){
+          MyFanetData.heading = status.GPS_course;
+        }else{
+          MyFanetData.heading = 0.0;
+        }
+        //MyFanetData.heading = status.GPS_course;
+        
+        fanet.setMyTrackingData(&MyFanetData); //set Data on fanet
         if (setting.awLiveTracking){
           char chs[20];
           String msg = nmea.getFixTime() + ","
@@ -1287,13 +1608,25 @@ void taskStandard(void *pvParameters){
     }
     sendAWGroundStationdata(tAct); //send ground-station-data    
     delay(1);
+    if (WebUpdateRunning) break;
   }
+  log_i("stopp standard-task");
+  display.clearDisplay();
+  display.setTextSize(2);
+  display.setCursor(10,5);
+  display.print("FW-UPDATE");
+  display.setCursor(10,30);
+  display.print("wait...");
+  display.display();
+  fanet.end();
+  vTaskDelete(xHandleStandard); //delete standard-task
 }
 
 void powerOff(){
   axp.clearIRQ();
   log_i("stopping standard-task");
-  vTaskDelete(xHandleStandard); //delete standard-task
+  //vTaskDelete(xHandleStandard); //delete standard-task
+  WebUpdateRunning = true;
   delay(100);
   fanet.end();
 
@@ -1303,16 +1636,36 @@ void powerOff(){
   //esp_bt_controller_disable();
 
 
+  /*
   display.clearDisplay();
   display.setTextColor(WHITE);
   display.setTextSize(4);
   display.setCursor(20,20);
   display.print("OFF");
-  display.display();  
-
-
-  delay(2000);
-
+  display.display(); 
+  */
+  display.setTextColor(WHITE);
+  display.clearDisplay();
+  display.drawXBitmap(0,2,G_Logo_bits,G_Logo_width,G_Logo_height,WHITE);
+  display.drawXBitmap(30,2,X_Logo_bits,X_Logo_width,X_Logo_height,WHITE);
+  display.drawXBitmap(69,2,AirCom_Logo_bits,AirCom_Logo_width,AirCom_Logo_height,WHITE);
+  display.setTextSize(1);
+  display.setCursor(85,55);
+  display.print(VERSION);
+  display.setCursor(0,55);
+  display.print(setting.myDevId);
+  display.display();
+  delay(1000);
+  display.clearDisplay();
+  display.drawXBitmap(0,2,G_Logo_bits,G_Logo_width,G_Logo_height,WHITE);
+  display.drawXBitmap(30,2,X_Logo_bits,X_Logo_width,X_Logo_height,WHITE);
+  display.display();
+  delay(1000);
+  display.clearDisplay();
+  display.drawXBitmap(0,2,G_Logo_bits,G_Logo_width,G_Logo_height,WHITE);
+  display.display();
+  delay(1000);
+  display.clearDisplay();
   display.ssd1306_command(SSD1306_DISPLAYOFF);
 
   // switch all off
@@ -1383,7 +1736,7 @@ void taskBackGround(void *pvParameters){
 
     }
     //yield();
-    if ((status.vBatt < 3.3) && (status.vBatt > 1.0)) {
+    if ((status.vBatt < BATTEMPTY) && (status.vBatt > 0)) {
       powerOff(); //power off, when battery is empty !!
     }
     if (AXP192_Irq){
@@ -1394,6 +1747,9 @@ void taskBackGround(void *pvParameters){
         }
         if (axp.isPEKShortPressIRQ()) {
           log_v("Short Press IRQ");
+          setting.screenNumber ++;
+          if (setting.screenNumber > MAXSCREENS) setting.screenNumber = 0;
+          write_screenNumber(); //save screennumber in File
         }
         axp.clearIRQ();
       }

@@ -8,6 +8,7 @@ void load_configFile(void){
     setting.appw = preferences.getString("APPW","12345678");
     setting.boardType = preferences.getUChar("BOARDTYPE",BOARD_T_BEAM); //
     setting.band = preferences.getUChar("BAND",BAND868); //
+    setting.LoraPower = preferences.getUChar("LORA_POWER",10);//
     setting.awLiveTracking = preferences.getUChar("AWLIVE",0); //
     setting.outputLK8EX1 = preferences.getUChar("OLK8EX1",1); //
     setting.outputFLARM = preferences.getUChar("OFLARM",1); //
@@ -16,7 +17,7 @@ void load_configFile(void){
     setting.PilotName = preferences.getString("PILOTNAME","");
     setting.ssid = preferences.getString("WIFI_SSID","");
     setting.password = preferences.getString("WIFI_PW","");
-    setting.AircraftType = (eFanetAircraftType)preferences.getUChar("AIRCRAFTTYPE",1);
+    setting.AircraftType = (FanetLora::aircraft_t)preferences.getUChar("AIRCRAFTTYPE",1);
     setting.bSwitchWifiOff3Min = preferences.getBool("SWOFF3MIN",false);
     setting.UDPServerIP = preferences.getString("UDP_SERVER","192.168.0.110"); //UDP-IP-Adress for sending Pakets
     setting.UDPSendPort = preferences.getUInt("UDP_PORT",10110); //Port of udp-server
@@ -27,6 +28,7 @@ void load_configFile(void){
     setting.GSLON = preferences.getFloat("GSLON",0.0);
     setting.GSAlt = preferences.getFloat("GSALT",0.0);
     setting.GSAWID = preferences.getString("GSAWID","");
+    setting.screenNumber = preferences.getUChar("SCREEN",0);
     preferences.end(); 
 }
 
@@ -36,6 +38,7 @@ void write_configFile(void){
     preferences.putString("APPW",setting.appw);
     preferences.putUChar("BOARDTYPE",setting.boardType); //
     preferences.putUChar("BAND",setting.band); //
+    preferences.putUChar("LORA_POWER",setting.LoraPower);//
     preferences.putUChar("AWLIVE",setting.awLiveTracking); //
     preferences.putUChar("OLK8EX1",setting.outputLK8EX1); //
     preferences.putUChar("OFLARM",setting.outputFLARM); //
@@ -55,6 +58,12 @@ void write_configFile(void){
     preferences.putFloat("GSLON",setting.GSLON);
     preferences.putFloat("GSALT",setting.GSAlt);
     preferences.putString("GSAWID",setting.GSAWID);
-    preferences.end(); 
     ESP.restart();
+}
+
+void write_screenNumber(void){
+    log_i("WRITE CONFIG FILE");
+    preferences.begin("settings", false);
+    preferences.putUChar("SCREEN",setting.screenNumber);
+    preferences.end();
 }

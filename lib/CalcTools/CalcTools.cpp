@@ -25,12 +25,12 @@ double distance(double lat1, double lon1, double lat2, double lon2, char unit) {
   dist = rad2deg(dist);
   dist = dist * 60 * 1.1515;
   switch(unit) {
-    case 'M':
+    case 'M': //meile
       break;
-    case 'K':
+    case 'K': //kilometer
       dist = dist * 1.609344;
       break;
-    case 'N':
+    case 'N': //nautische Meile
       dist = dist * 0.8684;
       break;
   }
