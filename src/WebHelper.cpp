@@ -151,7 +151,7 @@ void onWebSocketEvent(uint8_t client_num,
           //general settings-page          
           if (root.containsKey("appw")) setting.appw = doc["appw"].as<String>();          
           if (root.containsKey("board")) setting.boardType = doc["board"].as<uint8_t>();          
-          if (root.containsKey("power")) setting.LoraPower = constrain(doc["power"].as<uint8_t>(),0,14);          
+          if (root.containsKey("power")) setting.LoraPower = constrain(doc["power"].as<uint8_t>(),0,20);          
           if (root.containsKey("band")) setting.band = doc["band"].as<uint8_t>();          
           if (root.containsKey("ssid")) setting.ssid = doc["ssid"].as<String>();
           if (root.containsKey("password")) setting.password = doc["password"].as<String>();

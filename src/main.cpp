@@ -1125,10 +1125,10 @@ void DrawAngleLine(int16_t x,int16_t y,int16_t length,float deg){
   int16_t yEnd;
   float rads;
   rads = deg2rad(deg);
-  xStart=(int)(((sin(rads) * length/2) * 1) + x);
-  yStart=(int)(((cos(rads) * length/2) * -1) + y);
-  xEnd=(int)(((sin(rads) * length/2) * -1) + x);
-  yEnd=(int)(((cos(rads) * length/2) * 1) + y);
+  xStart=(int)roundf(((sin(rads) * length/2) * 1) + x);
+  yStart=(int)roundf(((cos(rads) * length/2) * -1) + y);
+  xEnd=(int)roundf(((sin(rads) * length/2) * -1) + x);
+  yEnd=(int)roundf(((cos(rads) * length/2) * 1) + y);  
   display.drawLine(xStart,yStart,xEnd,yEnd,WHITE);
   /*
   log_i("deg=%0.1f",deg);
@@ -1200,7 +1200,7 @@ void DrawRadarScreen(uint32_t tAct,uint8_t mode){
     case RADAR_CLOSEST:
       display.print("CLOSEST");
       if (status.GPS_Fix == 0){
-        display.setCursor(50,16);
+        display.setCursor(60,16);
         display.print("NO GPS-FIX");
         break;
       } 
@@ -1213,7 +1213,7 @@ void DrawRadarScreen(uint32_t tAct,uint8_t mode){
     case RADAR_LIST:
       display.print("LIST");
       if (status.GPS_Fix == 0){
-        display.setCursor(50,16);
+        display.setCursor(60,16);
         display.print("NO GPS-FIX");
         break;
       } 
@@ -1457,7 +1457,8 @@ void taskStandard(void *pvParameters){
     printBattVoltage(tAct);
     readGPS();
     sendFlarmData(tAct);
-    if (timeOver(tAct,tDisplay,DISPLAY_UPDATE_RATE)){
+    if (((timeOver(tAct,tDisplay,DISPLAY_UPDATE_RATE) && (setting.screenNumber != 1))) ||
+       ((timeOver(tAct,tDisplay,2000) && (setting.screenNumber == 1)))) {
       tDisplay = tAct;
       if (setting.GSMode){
         //log_i("neghbours=%u",fanet.getNeighboursCount());

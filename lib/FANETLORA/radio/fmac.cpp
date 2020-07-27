@@ -205,6 +205,7 @@ bool FanetMac::begin(Fapp &app,long frequency,uint8_t level)
 	LoRa.enableCrc();
 	//LoRa.setTxPower(10); //10dbm + 4dbm antenna --> max 14dbm
 	//LoRa.setTxPower(10); //+4dB antenna gain (skytraxx/lynx) -> max allowed output (14dBm) (20 //full Power)
+	log_i("set tx Power");
 	LoRa.setTxPower(level); //+4dB antenna gain (skytraxx/lynx) -> max allowed output (14dBm) (20 //full Power)
 	//LoRa.onReceive(frameRxWrapper);
 	//LoRa.sleep(); //enter sleep mode
