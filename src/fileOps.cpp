@@ -19,7 +19,7 @@ void load_configFile(void){
     setting.password = preferences.getString("WIFI_PW","");
     setting.AircraftType = (FanetLora::aircraft_t)preferences.getUChar("AIRCRAFTTYPE",1);
     setting.bSwitchWifiOff3Min = preferences.getBool("SWOFF3MIN",false);
-    setting.UDPServerIP = preferences.getString("UDP_SERVER","192.168.0.110"); //UDP-IP-Adress for sending Pakets
+    setting.UDPServerIP = preferences.getString("UDP_SERVER","192.168.4.2"); //UDP-IP-Adress for sending Pakets
     setting.UDPSendPort = preferences.getUInt("UDP_PORT",10110); //Port of udp-server
     setting.outputMode = preferences.getUChar("OutputMode",OUTPUT_SERIAL); //output-mode
     setting.testMode = preferences.getUChar("TESTMODE",0); //testmode
