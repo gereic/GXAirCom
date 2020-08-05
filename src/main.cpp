@@ -1457,6 +1457,50 @@ void taskStandard(void *pvParameters){
     printBattVoltage(tAct);
     readGPS();
     sendFlarmData(tAct);
+    if (setting.GSMode){
+      if (timeOver(tAct,tDisplay,DISPLAY_UPDATE_RATE_GS)){
+        tDisplay = tAct;
+        //log_i("neghbours=%u",fanet.getNeighboursCount());
+        if (fanet.getNeighboursCount() == 0){
+          printScanning(tAct);
+        }else{
+          printGSData(tAct);
+        }
+      }
+    }else{
+        switch (setting.screenNumber)
+        {
+        case 0: //main-Display
+          if (timeOver(tAct,tDisplay,DISPLAY_UPDATE_RATE)){
+            tDisplay = tAct;
+            printGPSData(tAct);          
+          }
+          break;
+        case 1: //radar-screen with list
+          if (timeOver(tAct,tDisplay,DISPLAY_UPDATE_RATE2)){
+            tDisplay = tAct;
+            DrawRadarScreen(tAct,RADAR_LIST);
+          }
+          break;
+        case 2: //radar-screen with closest
+          if (timeOver(tAct,tDisplay,DISPLAY_UPDATE_RATE)){
+            tDisplay = tAct;
+            DrawRadarScreen(tAct,RADAR_CLOSEST);
+          }
+          break;
+        case 3: //list aircrafts
+          if (timeOver(tAct,tDisplay,DISPLAY_UPDATE_RATE)){
+            tDisplay = tAct;
+            //DrawAircraftList();
+          }
+          break;
+        default:
+          break;
+        }
+
+    }
+
+
     if (((timeOver(tAct,tDisplay,DISPLAY_UPDATE_RATE) && (setting.screenNumber != 1))) ||
        ((timeOver(tAct,tDisplay,2000) && (setting.screenNumber == 1)))) {
       tDisplay = tAct;
@@ -1468,24 +1512,6 @@ void taskStandard(void *pvParameters){
           printGSData(tAct);
         }
       }else{
-        switch (setting.screenNumber)
-        {
-        case 0:
-          /* code */
-          printGPSData(tAct);
-          break;
-        case 1:
-          DrawRadarScreen(tAct,RADAR_LIST);
-          break;
-        case 2:
-          DrawRadarScreen(tAct,RADAR_CLOSEST);
-          break;
-        case 3:
-          DrawRadarScreen(tAct,RADAR_FRIENDS);
-          break;
-        default:
-          break;
-        }
       }
     }
     /*
