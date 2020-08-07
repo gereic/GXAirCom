@@ -268,6 +268,13 @@ uint32_t FanetLora::getDevIdFromMac(MacAddr *adr){
   return  ((uint32_t)adr->manufacturer << 16) + (uint32_t)adr->id;
 }
 
+MacAddr FanetLora::getMacFromDevId(uint32_t devId){
+  MacAddr adr;
+  adr.manufacturer = (devId >> 16) & 0xFF;
+  adr.id = devId & 0xFFFF;
+  return adr;
+}
+
 bool FanetLora::is_broadcast_ready(int num_neighbors)
 {
   if (!autobroadcast) //autobroadcast not enabled
@@ -294,7 +301,7 @@ int FanetLora::serialize_msg(String name,uint8_t*& buffer){
 		buffer = new uint8_t[namelength+1];
 		buffer[0] = 0; //normal msg
     memcpy(&buffer[1], name.c_str(), namelength);
-		return namelength;
+		return namelength+1;
 }
 
 int FanetLora::serialize_name(String name,uint8_t*& buffer){
@@ -325,10 +332,10 @@ bool FanetLora::frm2txBuffer(Frame *frm){
 
 void FanetLora::sendMSG(String msg){
     if (msg.length() > 0){
-        log_i("sending fanet-msg:%s",msg.c_str());
         Frame *frm = new Frame(fmac.myAddr);
         frm->type = FRM_TYPE_MESSAGE;
         frm->payload_length = serialize_msg(msg,frm->payload);
+        log_i("sending fanet-msg:%s length=%d",msg.c_str(),frm->payload_length);
         frm2txBuffer(frm);
         txCount++;
     }
@@ -336,7 +343,7 @@ void FanetLora::sendMSG(String msg){
 
 void FanetLora::sendName(String name){
     if (name.length() > 0){
-        //log_i("sending fanet-name:%s",name.c_str());
+        log_i("sending fanet-name:%s",name.c_str());
         Frame *frm = new Frame(fmac.myAddr);
         frm->type = FRM_TYPE_NAME;
         frm->payload_length = serialize_name(name,frm->payload);
@@ -513,8 +520,19 @@ void FanetLora::writeMsgType2(String name){
 }
 
 
-void FanetLora::writeMsgType3(String msg){
-    sendMSG(msg);
+void FanetLora::writeMsgType3(uint32_t devId,String msg){
+    if (msg.length() > 0){
+        //log_i("sending fanet-msg:%s",msg.c_str());
+        Frame *frm = new Frame(fmac.myAddr);
+        frm->type = FRM_TYPE_MESSAGE;
+        //frm->dest = getMacFromDevId(devId);
+        //frm->dest = MacAddr();
+        //frm->dest = NIL;
+        frm->payload_length = serialize_msg(msg,frm->payload);
+        log_i("sending fanet-msg:%s length=%d",msg.c_str(),frm->payload_length);
+        frm2txBuffer(frm);
+        txCount++;
+    }
     txCount++;
 }
 

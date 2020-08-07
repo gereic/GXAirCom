@@ -36,7 +36,7 @@ function onOpen(evt) {
     console.log("Connected");
     
     // write page-number --> then we get all values for page
-    doSend(JSON.stringify({ page : 102 })); //send page
+    doSend(JSON.stringify({ page : 2 })); //send page
 }
  
 // Called when the WebSocket connection is closed
@@ -50,8 +50,9 @@ function onClose(evt) {
 }
 
 function sendValues(){  
-  var obj = {name : document.getElementById("name").value,
-            sendfanet : 2 };
+  var obj = {receiver : document.getElementById("receiver").value,
+            msg : document.getElementById("msg").value,
+            sendfanet : 3 };
   doSend(JSON.stringify(obj));
 }
  
@@ -95,27 +96,23 @@ window.addEventListener("load", init, false);
       <h3>%PILOT%</h3>      
     </div>    
     <fieldset>
-      <legend><b>Name (Type = 2)</b></legend>    
+      <legend><b>send message to device</b></legend>    
       <table style="width:100&#37;">
         <tbody>
           <tr>
-            <th>name</th>
-            <td><input type="text" id="name" name="name"></td>
+            <th>receiver</th>
+            <td><select name="receiver" id="receiver">
+              %NEIGHBOURS%
+            </select></td>
+          </tr>          <tr>
+            <th>message</th>
+            <td><input type="text" id="msg" name="msg"></td>
           </tr>
         </tbody>      
       </table>
       <br>
       <button id="btnsend" name="btnsend" onClick="sendValues()" class="button bgrn">send</button>
     </fieldset>
-    <p></p>
-    <p></p>
-    <table style="width:100&#37;">
-      <tr>
-        <td style="width:100&#37;">
-          <button onClick="location.href='/developmenue.html'">back</button>
-        </td>
-      </tr>
-    </table>
     <p></p>
     <p></p>
     <table style="width:100&#37;">

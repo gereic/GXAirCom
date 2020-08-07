@@ -1,0 +1,6 @@
+*************************************************************************
+V1.2.3 
+added support for sending messages to other knwon devices via webinterface
+Radar screen: device-names will be cutted to 10 characters max.
+
+   

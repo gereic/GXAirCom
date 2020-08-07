@@ -168,7 +168,7 @@ public:
   void setMyTrackingData(trackingData *tData);
   void writeMsgType1(trackingData *tData);
   void writeMsgType2(String name);
-  void writeMsgType3(String msg);
+  void writeMsgType3(uint32_t devId,String msg);
   void writeMsgType4(weatherData *wData);
   String getAircraftType(aircraft_t type);
   aircraft_t getAircraftType(void);
@@ -221,6 +221,7 @@ private:
   void insertDataToNeighbour(uint32_t devId, trackingData *Data);
   void clearNeighbours(uint32_t tAct);
   uint32_t getDevIdFromMac(MacAddr *adr);
+  MacAddr getMacFromDevId(uint32_t devId);
   int serialize_name(String name,uint8_t*& buffer);
   int serialize_msg(String name,uint8_t*& buffer);
   int serialize_service(weatherData *wData,uint8_t*& buffer);

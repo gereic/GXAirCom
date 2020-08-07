@@ -78,6 +78,8 @@ void onWebSocketEvent(uint8_t client_num,
           doc["compiledate"] = String(compile_date);
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
+        }else if (clientPages[client_num] == 2){ //sendmessage
+
         }else if (clientPages[client_num] == 11){ //settings general
           doc["board"] = setting.boardType;
           doc["band"] = setting.band;
@@ -199,6 +201,7 @@ void onWebSocketEvent(uint8_t client_num,
         }else if (value == 3){
           //msg
           testString = doc["msg"].as<String>();
+          fanetReceiver = strtol( doc["receiver"].as<String>().c_str(), NULL, 16);
           sendTestData = value;          
         }else if (value == 4){
           //send fanet msgtype 4
@@ -255,6 +258,14 @@ String processor(const String& var){
     }else{
       return "";
     }
+  }else if (var == "NEIGHBOURS"){
+    sRet = "";
+    for (int i = 0; i < MAXNEIGHBOURS; i++){
+      if (fanet.neighbours[i].devId){
+        sRet += "<option value=\"" + fanet.getDevId(fanet.neighbours[i].devId) + "\">" + fanet.neighbours[i].name + " " + fanet.getDevId(fanet.neighbours[i].devId) + "</option>\r\n";
+      }
+    }
+    return sRet;
   }
     
   return "";
@@ -335,6 +346,9 @@ void Web_setup(void){
     request->send(SPIFFS, request->url(), "text/html",false,processor);
   });
   server.on("/index.html", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(SPIFFS, request->url(), "text/html",false,processor);
+  });
+  server.on("/sendmessage.html", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, request->url(), "text/html",false,processor);
   });
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){

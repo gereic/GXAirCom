@@ -56,6 +56,7 @@ FanetLora::trackingData MyFanetData;
 FanetLora::trackingData testTrackingData;
 FanetLora::weatherData testWeatherData;
 String testString;
+uint32_t fanetReceiver;
 uint8_t sendTestData = 0;
 
 uint8_t WifiConnectOk = 0;
@@ -1063,7 +1064,7 @@ void DrawRadarPilot(uint8_t neighborIndex){
   display.printf("%4d", fanet.neighbours[neighborIndex].rssi);
   display.setCursor(68,16);
   if (fanet.neighbours[neighborIndex].name.length() > 0){
-    display.print(fanet.neighbours[neighborIndex].name);
+    display.print(fanet.neighbours[neighborIndex].name.substring(0,10)); //max. 10 signs
   }else{
     display.print(fanet.getDevId(fanet.neighbours[neighborIndex].devId));
   }
@@ -1533,7 +1534,7 @@ void taskStandard(void *pvParameters){
       sendTestData = 0;
     }else if (sendTestData == 3){
       log_i("sending msgtype 3 %s",testString.c_str());
-      fanet.writeMsgType3(testString);
+      fanet.writeMsgType3(fanetReceiver,testString);
       sendTestData = 0;
     }else if (sendTestData == 4){
       log_i("sending msgtype 4");
