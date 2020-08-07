@@ -335,7 +335,7 @@ void FanetLora::sendMSG(String msg){
         Frame *frm = new Frame(fmac.myAddr);
         frm->type = FRM_TYPE_MESSAGE;
         frm->payload_length = serialize_msg(msg,frm->payload);
-        log_i("sending fanet-msg:%s length=%d",msg.c_str(),frm->payload_length);
+        //log_i("sending fanet-msg:%s length=%d",msg.c_str(),frm->payload_length);
         frm2txBuffer(frm);
         txCount++;
     }
@@ -525,11 +525,9 @@ void FanetLora::writeMsgType3(uint32_t devId,String msg){
         //log_i("sending fanet-msg:%s",msg.c_str());
         Frame *frm = new Frame(fmac.myAddr);
         frm->type = FRM_TYPE_MESSAGE;
-        //frm->dest = getMacFromDevId(devId);
-        //frm->dest = MacAddr();
-        //frm->dest = NIL;
+        frm->dest = getMacFromDevId(devId);
         frm->payload_length = serialize_msg(msg,frm->payload);
-        log_i("sending fanet-msg:%s length=%d",msg.c_str(),frm->payload_length);
+        //log_i("sending fanet-msg:%s length=%d",msg.c_str(),frm->payload_length);
         frm2txBuffer(frm);
         txCount++;
     }

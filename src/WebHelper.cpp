@@ -266,6 +266,22 @@ String processor(const String& var){
       }
     }
     return sRet;
+  }else if (var == "NEIGHBOURSLIST"){
+    sRet = "";
+    for (int i = 0; i < MAXNEIGHBOURS; i++){
+      if (fanet.neighbours[i].devId){
+        sRet += "<tr><th><a href=\"https://www.google.com/maps/search/?api=1&query=" + String(fanet.neighbours[i].lat,6) + "," + String(fanet.neighbours[i].lon,6)+ "\"  target=\"_blank\">" + fanet.neighbours[i].name + " [" + fanet.getDevId(fanet.neighbours[i].devId) + "]</a></th>" + 
+        "<td>lat: " + String(fanet.neighbours[i].lat,6) + "</td>" + 
+        "<td>lon: " + String(fanet.neighbours[i].lon,6) + "</td>" + 
+        "<td>alt: " + String(fanet.neighbours[i].altitude,0) + "m</td>" +
+        "<td>speed: " + String(fanet.neighbours[i].speed,0) + "km/h</td>" +
+        "<td>climb: " + String(fanet.neighbours[i].climb,0) + "m/s</td>" +
+        "<td>heading: " + String(fanet.neighbours[i].heading,0) + "m/s</td>" +
+        "</th>" +
+        "\r\n";
+      }
+    }
+    return sRet;
   }
     
   return "";
@@ -330,6 +346,9 @@ void Web_setup(void){
   server.on("/settings.html", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, request->url(), "text/html",false,processor);
   });
+  server.on("/fullsettings.html", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(SPIFFS, request->url(), "text/html",false,processor);
+  });
   server.on("/setgeneral.html", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, request->url(), "text/html",false,processor);
   });
@@ -349,6 +368,9 @@ void Web_setup(void){
     request->send(SPIFFS, request->url(), "text/html",false,processor);
   });
   server.on("/sendmessage.html", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(SPIFFS, request->url(), "text/html",false,processor);
+  });
+  server.on("/neighbours.html", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, request->url(), "text/html",false,processor);
   });
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
