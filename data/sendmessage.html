@@ -105,12 +105,16 @@ window.addEventListener("load", init, false);
               %NEIGHBOURS%
               <!--<option value="000000">broadcast to all</option>-->
             </select></td>
-          </tr>          <tr>
+          </tr>          
+          <tr>
             <th>message</th>
-            <td><input type="text" id="msg" name="msg"></td>
+            <td><input type="text" id="msg" name="msg" maxlength="66"></td>
           </tr>
         </tbody>      
       </table>
+      <br>
+      * Limited to 66 characters max
+      <br>
       <br>
       <button id="btnsend" name="btnsend" onClick="sendValues()" class="button bgrn">send</button>
     </fieldset>
