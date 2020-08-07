@@ -36,7 +36,7 @@ function onOpen(evt) {
     console.log("Connected");
     
     // write page-number --> then we get all values for page
-    doSend(JSON.stringify({ page : 13 }));//send page-number
+    doSend(JSON.stringify({ page : 10 }));//send page-number
 }
  
 // Called when the WebSocket connection is closed
@@ -134,170 +134,188 @@ window.addEventListener("load", init, false);
 </script>
 </head>
 <body>
-
-<div style="text-align: left; display: inline-block; color: #eaeaea; min-width: 340px;">
-<div style="text-align: center; color: #eaeaea;"><noscript>JavaScript aktivieren um GXAirCom benutzen zu können<br></noscript>
-<h1>%APPNAME%-%VERSION%</h1>
-<h3>build-date: %BUILD%</h3>
-<h3>%PILOT%</h3>
-</div>
-<!--     General Settings --><fieldset><legend><strong>general settings</strong></legend>
-<table style="width: 100%;">
-<tbody>
-<tr>
-<th>Board Type</th>
-<td><select id="board" name="board">
-<option value="0">TTGO T-Beam T22_V1.0</option>
-<option value="2">TTGO T-Beam T22_V07</option>
-<option value="1">HELTEC / TTGO LORA</option>
-</select></td>
-</tr>
-<tr>
-<th>Radio Frequency</th>
-<td><select id="band" name="band">
-<option value="0">868mhz</option>
-<option value="1">915mhz</option>
-</select></td>
-</tr>
-<tr>
-<th>output-power</th>
-<td><select id="power" name="power">
-<option value="5">LOW</option>
-<option value="10">MID</option>
-<option value="14">HIGH</option>
-<option value="17">MAX</option>
-</select></td>
-</tr>
-<tr>
-<th>Aircraft Type</th>
-<td><select id="type" name="type">
-<option value="0">Unknown</option>
-<option value="1">Paraglider</option>
-<option value="2">Hangglider</option>
-<option value="3">Balloon</option>
-<option value="4">Glider</option>
-<option value="5">Powered Aircraft</option>
-<option value="6">Helicopter</option>
-<option value="7">UAV</option>
-</select></td>
-</tr>
-<tr>
-<th>PilotName</th>
-<td><input id="PilotName" name="PilotName" type="text" /></td>
-</tr>
-<tr>
-<th>developer-mode</th>
-<td><input id="testmode" name="testmode" type="checkbox" /></td>
-</tr>
-</tbody>
-</table>
-</fieldset><br /> <!--     Output settings --><fieldset><legend><strong>output settings</strong></legend>
-<table style="width: 100%;">
-<tbody>
-<tr>
-<th>output</th>
-<td><select id="output" name="output">
-<option value="0">serial</option>
-<option value="1">udp</option>
-<option value="2">bluetooth serial</option>
-<option value="3">bluetooth ble</option>
-</select></td>
-</tr>
-<tr>
-<th>output GPS</th>
-<td><input id="oGPS" name="oGPS" type="checkbox" /></td>
-</tr>
-<tr>
-<th>output FLARM</th>
-<td><input id="oFlarm" name="oFlarm" type="checkbox" /></td>
-</tr>
-<tr>
-<th>output FANET</th>
-<td><input id="oFanet" name="oFanet" type="checkbox" /></td>
-</tr>
-<tr>
-<th>output LK8EX1</th>
-<td><input id="oLK8EX1" name="oLK8EX1" type="checkbox" /></td>
-</tr>
-<tr>
-<th>airwhere live-tracking</th>
-<td><input id="awlive" name="awlive" type="checkbox" /></td>
-</tr>
-<tr>
-<th>UDP-IP</th>
-<td><input id="UDPServerIP" name="UDPServerIP" type="text" /></td>
-</tr>
-<tr>
-<th>UDP-Port</th>
-<td><input id="UDPSendPort" name="UDPSendPort" type="number" /></td>
-</tr>
-</tbody>
-</table>
-</fieldset><br /> <!-- Wifi Settings --><fieldset><legend><strong>wifi settings</strong></legend>&nbsp;&nbsp;
-<table style="width: 100%;">
-<tbody>
-<tr>
-<th>GXAirCom wifi Password</th>
-<td><input id="appw" name="appw" type="text" /></td>
-</tr>
-<tr>
-<th>Internet WIFI Name</th>
-<td><input id="ssid" name="ssid" type="text" /></td>
-</tr>
-<tr>
-<th>Internet WIFI Password</th>
-<td><input id="password" name="password" type="text" /></td>
-</tr>
-<tr>
-<th>Wifi off after 3min</th>
-<td><input id="wifioff" name="wifioff" type="checkbox" /></td>
-</tr>
-</tbody>
-</table>
-</fieldset><br /> <!--     Ground Station Settings --><fieldset><legend><strong>ground station settings</strong></legend>
-<table style="width: 100%;">
-<tbody>
-<tr>
-<th>Ground-Station mode</th>
-<td><input id="gsmode" name="gsmode" type="checkbox" /></td>
-</tr>
-<tr>
-<th>Airwhere ID</th>
-<td><input id="gsawid" name="gsawid" type="text" /></td>
-</tr>
-<tr>
-<th>lat [DD.dddddd] (ground-station)</th>
-<td><input id="gslat" name="gslat" type="number" /></td>
-</tr>
-<tr>
-<th>lon [DD.dddddd] (ground-station)</th>
-<td><input id="gslon" name="gslon" type="number" /></td>
-</tr>
-<tr>
-<th>alt [m] (ground-station)</th>
-<td><input id="gsalt" name="gsalt" type="number" /></td>
-</tr>
-</tbody>
-</table>
-</fieldset><br />
-<table style="width: 100%;">
-<tbody>
-<tr>
-<td style="width: 100%;">
-<button id="btnsave" name="btnsave" onClick="sendValues()" class="button bgrn">save and reboot</button>
-</td>
-</tr>
-</tbody>
-</table>
-<table style="width: 100%;">
-<tbody>
-<tr>
-<td style="width: 100%;">
-<button onClick="location.href='/index.html'">ignore changes and go back</button>
-</td>
-</tr>
-</tbody>
-</table>
-<p>&nbsp;</p>
-<div style="text-align: right; font-size: 11px;"><hr /><a style="color: #aaa;" href="https://www.getronix.at" target="_blank" rel="noopener">GXAirCom by Gerald Eichler</a></div>
-</div>
+  <div style="text-align:left;display:inline-block;color:#eaeaea;min-width:340px;">
+    <div style='text-align:center;color:#eaeaea;'>
+      <noscript>JavaScript aktivieren um GXAirCom benutzen zu können<br></noscript>
+      <h1>%APPNAME%-%VERSION%</h1>
+      <h3>build-date: %BUILD%</h3>
+      <h3>%PILOT%</h3>      
+    </div>
+    <fieldset>
+      <legend><b>general settings</b></legend>
+      <table style="width:100&#37;">
+        <tbody>
+          <tr>
+            <th>Board Type</th>
+            <td><select name="board" id="board">
+              <option value="0">TTGO T-Beam T22_V1.0</option>
+              <option value="2">TTGO T-Beam T22_V07</option>
+              <option value="1">HELTEC / TTGO LORA</option>
+            </select></td>
+          </tr>
+          <tr>
+            <th>Radio Frequency</th>
+            <td><select name="band" id="band">
+              <option value="0">868mhz</option>
+              <option value="1">915mhz</option>
+            </select></td>
+          </tr>
+          <tr>
+            <th>output-power</th>
+            <td><select name="power" id="power">
+              <option value="5">LOW</option>
+              <option value="10">MID</option>
+              <option value="14">HIGH</option>
+              <option value="17">MAX</option>
+            </select></td>
+          </tr>
+          <tr>
+            <th>Aircraft Type</th>
+            <td><select name="type" id="type">
+              <option value="0">Unknown</option>
+              <option value="1">Paraglider</option>
+              <option value="2">Hangglider</option>
+              <option value="3">Balloon</option>
+              <option value="4">Glider</option>
+              <option value="5">Powered Aircraft</option>
+              <option value="6">Helicopter</option>
+              <option value="7">UAV</option>
+            </select></td>
+          </tr>
+          <tr>
+            <th>PilotName</th>
+            <td><input type="text" id="PilotName" name="PilotName"></td>
+          </tr>
+          <tr>
+            <th>developer-mode</th>
+            <td><input type="checkbox" id="testmode" name="testmode"></td>
+          </tr>
+        </tbody>      
+      </table>
+    </fieldset>
+    <p></p>
+    <p></p>
+    <fieldset>
+      <legend><b>output settings</b></legend>
+      <table style="width:100&#37;">
+        <tbody>
+          <tr>
+            <th>output</th>
+            <td><select name="output" id="output">
+              <option value="0">serial</option>
+              <option value="1">udp</option>
+              <option value="2">bluetooth serial</option>
+              <option value="3">bluetooth ble</option>
+            </select></td>
+          </tr>
+          <tr>
+            <th>output GPS</th>
+            <td><input type="checkbox" id="oGPS" name="oGPS"></td>
+          </tr>
+          <tr>
+            <th>output FLARM</th>
+            <td><input type="checkbox" id="oFlarm" name="oFlarm"></td>
+          </tr>
+          <tr>
+            <th>output FANET</th>
+            <td><input type="checkbox" id="oFanet" name="oFanet"></td>
+          </tr>
+          <tr>
+            <th>output LK8EX1</th>
+            <td><input type="checkbox" id="oLK8EX1" name="oLK8EX1"></td>
+          </tr>
+          <tr>
+            <th>airwhere live-tracking</th>
+            <td><input type="checkbox" id="awlive" name="awlive"></td>
+          </tr>
+          <tr>
+            <th>UDP-IP</th>
+            <td><input type="text" id="UDPServerIP" name="UDPServerIP"></td>
+          </tr>
+          <tr>
+            <th>UDP-Port</th>
+            <td><input type="number" id="UDPSendPort" name="UDPSendPort"></td>
+          </tr>
+        </tbody>      
+      </table>
+    </fieldset>
+    <p></p>
+    <p></p>
+    <fieldset>
+      <legend><b>WIFI settings</b></legend>
+      <table style="width:100&#37;">
+        <tbody>
+          <tr>
+            <th>ACCESS-POINT Password</th>
+            <td><input type="text" id="appw" name="appw"></td>
+          </tr>
+          <p></p>
+          <p></p>      
+          <tr>
+            <th>WIFI SSID</th>
+            <td><input type="text" id="ssid" name="ssid"></td>
+          </tr>
+          <tr>
+            <th>WIFI Password</th>
+            <td><input type="text" id="password" name="password"></td>
+          </tr>
+          <tr>
+            <th>Wifi off after 3min</th>
+            <td><input type="checkbox" id="wifioff" name="wifioff"></td>
+          </tr>
+        </tbody>      
+      </table>
+    </fieldset>
+    <p></p>
+    <p></p>
+    <fieldset>
+      <legend><b>ground station settings</b></legend>
+      <table style="width:100&#37;">
+        <tbody>
+          <tr>
+            <th>Ground-Station mode</th>
+            <td><input type="checkbox" id="gsmode" name="gsmode"></td>
+          </tr>
+          <tr>
+            <th>Airwhere ID</th>
+            <td><input type="text" id="gsawid" name="gsawid"></td>
+          </tr>
+          <tr>
+            <th>lat [DD.dddddd] (ground-station)</th>
+            <td><input type="number" id="gslat" name="gslat"></td>
+          </tr>
+          <tr>
+            <th>lon [DD.dddddd] (ground-station)</th>
+            <td><input type="number" id="gslon" name="gslon"></td>
+          </tr>
+          <tr>
+            <th>alt [m] (ground-station)</th>
+            <td><input type="number" id="gsalt" name="gsalt"></td>
+          </tr>
+        </tbody>      
+      </table>
+    </fieldset>
+    <p></p>
+    <p></p>
+    <table style="width:100&#37;">
+      <tr>
+        <td style="width:100&#37;">
+          <button id="btnsave" name="btnsave" onClick="sendValues()" class="button bgrn">save and reboot</button>
+        </td>
+      </tr>
+    </table>
+    <p></p>
+    <p></p>
+    <table style="width:100&#37;">
+      <tr>
+        <td style="width:100&#37;">
+          <button onClick="location.href='/index.html'">main menu</button>
+        </td>
+      </tr>
+    </table>
+    <p></p>
+    <div style='text-align:right;font-size:11px;'><hr><a href='https://www.getronix.at' target='_blank' style='color:#aaa;'>GXAirCom by Gerald Eichler</a>
+    </div>
+  </div>
+</body>
+</html>

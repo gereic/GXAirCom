@@ -80,6 +80,45 @@ void onWebSocketEvent(uint8_t client_num,
           webSocket.sendTXT(client_num, msg_buf);
         }else if (clientPages[client_num] == 2){ //sendmessage
 
+        }else if (clientPages[client_num] == 10){ //full settings
+          doc.clear();
+          doc["board"] = setting.boardType;
+          doc["band"] = setting.band;
+          doc["power"] = setting.LoraPower;
+          doc["type"] = (uint8_t)setting.AircraftType;
+          doc["PilotName"] = setting.PilotName;
+          doc["testmode"] = setting.testMode;
+          serializeJson(doc, msg_buf);
+          webSocket.sendTXT(client_num, msg_buf);
+
+          doc.clear();
+          doc["output"] = setting.outputMode;
+          doc["oGPS"] = setting.outputGPS;
+          doc["oFlarm"] = setting.outputFLARM;
+          doc["oFanet"] = setting.outputFANET;
+          doc["oLK8EX1"] = setting.outputLK8EX1;
+          doc["awlive"] = setting.awLiveTracking;
+          doc["UDPServerIP"] = setting.UDPServerIP;
+          doc["UDPSendPort"] = setting.UDPSendPort;
+          serializeJson(doc, msg_buf);
+          webSocket.sendTXT(client_num, msg_buf);
+
+          doc.clear();
+          doc["appw"] = setting.appw;
+          doc["ssid"] = setting.ssid;
+          doc["password"] = setting.password;
+          doc["wifioff"] = (uint8_t)setting.bSwitchWifiOff3Min;
+          serializeJson(doc, msg_buf);
+          webSocket.sendTXT(client_num, msg_buf);
+
+          doc.clear();
+          doc["gsawid"] = setting.GSAWID;
+          doc["gslat"] = setting.GSLAT;
+          doc["gslon"] = setting.GSLON;
+          doc["gsalt"] = setting.GSAlt;
+          doc["gsmode"] = setting.GSMode;
+          serializeJson(doc, msg_buf);
+          webSocket.sendTXT(client_num, msg_buf);
         }else if (clientPages[client_num] == 11){ //settings general
           doc["board"] = setting.boardType;
           doc["band"] = setting.band;
