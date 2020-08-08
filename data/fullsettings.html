@@ -81,6 +81,7 @@ function sendValues(){
   awlive : Number(document.getElementById("awlive").checked),
   UDPServerIP : document.getElementById("UDPServerIP").value,
   UDPSendPort : document.getElementById("UDPSendPort").value,
+  ognlive : Number(document.getElementById("ognlive").checked),
   
   save : 1 
 			};
@@ -187,6 +188,14 @@ window.addEventListener("load", init, false);
             <td><input type="text" id="PilotName" name="PilotName"></td>
           </tr>
           <tr>
+            <th>airwhere live-tracking</th>
+            <td><input type="checkbox" id="awlive" name="awlive"></td>
+          </tr>
+          <tr>
+            <th>OGN live-tracking</th>
+            <td><input type="checkbox" id="ognlive" name="ognlive"></td>
+          </tr>
+          <tr>
             <th>developer-mode</th>
             <td><input type="checkbox" id="testmode" name="testmode"></td>
           </tr>
@@ -223,10 +232,6 @@ window.addEventListener("load", init, false);
           <tr>
             <th>output LK8EX1</th>
             <td><input type="checkbox" id="oLK8EX1" name="oLK8EX1"></td>
-          </tr>
-          <tr>
-            <th>airwhere live-tracking</th>
-            <td><input type="checkbox" id="awlive" name="awlive"></td>
           </tr>
           <tr>
             <th>UDP-IP</th>

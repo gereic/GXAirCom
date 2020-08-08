@@ -117,6 +117,7 @@ void onWebSocketEvent(uint8_t client_num,
           doc["gslon"] = setting.GSLON;
           doc["gsalt"] = setting.GSAlt;
           doc["gsmode"] = setting.GSMode;
+          doc["ognlive"] = setting.OGNLiveTracking;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
         }else if (clientPages[client_num] == 11){ //settings general
@@ -213,6 +214,7 @@ void onWebSocketEvent(uint8_t client_num,
           if (root.containsKey("gslon")) setting.GSLON = doc["gslon"].as<float>();
           if (root.containsKey("gsalt")) setting.GSAlt = doc["gsalt"].as<float>();
           if (root.containsKey("gsmode")) setting.GSMode = doc["gsmode"].as<uint8_t>();
+          if (root.containsKey("ognlive")) setting.OGNLiveTracking = doc["ognlive"].as<uint8_t>();
           log_i("write config-to file --> rebooting");
           delay(500);
           write_configFile();

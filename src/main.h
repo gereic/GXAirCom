@@ -1,11 +1,12 @@
 #include <FanetLora.h>
 #include <string.h>
+#include <Ogn.h>
 
 
 #ifndef __MAIN_H__
 #define __MAIN_H__
 
-#define VERSION "V1.2.4"
+#define VERSION "V1.2.5"
 #define APPNAME "GXAirCom"
 
 #define BLE_LOW_HEAP 10000
@@ -77,6 +78,7 @@ struct SettingsData{
   float GSLON; //Ground-Station Longitude
   float GSAlt; //Ground-Station altitude
   String GSAWID; //Ground-Station ID
+  uint8_t OGNLiveTracking; //OGN-Live-Tracking
   uint8_t screenNumber; //number of default-screen
 };
 

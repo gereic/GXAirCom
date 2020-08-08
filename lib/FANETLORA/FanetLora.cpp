@@ -343,7 +343,7 @@ void FanetLora::sendMSG(String msg){
 
 void FanetLora::sendName(String name){
     if (name.length() > 0){
-        log_i("sending fanet-name:%s",name.c_str());
+        //log_i("sending fanet-name:%s",name.c_str());
         Frame *frm = new Frame(fmac.myAddr);
         frm->type = FRM_TYPE_NAME;
         frm->payload_length = serialize_name(name,frm->payload);

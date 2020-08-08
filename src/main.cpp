@@ -50,6 +50,8 @@ HardwareSerial NMeaSerial(2);
 char nmeaBuffer[100];
 MicroNMEA nmea(nmeaBuffer, sizeof(nmeaBuffer));
 
+Ogn ogn;
+
 FanetLora::trackingData MyFanetData;  
 
 
@@ -710,6 +712,7 @@ void printSettings(){
   log_i("GS LON=%02.6f",setting.GSLON);
   log_i("GS LON=%0.2f",setting.GSAlt);
   log_i("GS AWID=%s",setting.GSAWID);
+  log_i("OGN-Livetracking=%d",setting.OGNLiveTracking);
 }
 
 void listSpiffsFiles(){
@@ -1426,6 +1429,13 @@ void taskStandard(void *pvParameters){
   }
 
 
+  if (setting.OGNLiveTracking){
+    ogn.begin(setting.myDevId,APPNAME " " VERSION);
+    if (setting.GSMode){
+      ogn.setGPS(setting.GSLAT,setting.GSLON,setting.GSAlt,0.0,0.0);
+    }
+    //ogn.setGPS(status.GPS_Lat,status.GPS_Lon,status.GPS_alt,status.GPS_speed,status.GPS_course);
+  } 
 
 
 
@@ -1445,6 +1455,8 @@ void taskStandard(void *pvParameters){
     tLoop = tAct;
     if (status.tMaxLoop < status.tLoop) status.tMaxLoop = status.tLoop;
     
+
+    if (setting.OGNLiveTracking) ogn.run();
     /*
     if (digitalRead(BUTTON2)){
       status.GPS_Fix = 1;
@@ -1551,6 +1563,9 @@ void taskStandard(void *pvParameters){
     }
     if (fanet.getTrackingData(&tFanetData)){
         //log_i("new Tracking-Data");
+        if (setting.OGNLiveTracking){
+          ogn.sendTrackingData(tFanetData.lat ,tFanetData.lon,tFanetData.altitude,tFanetData.speed,tFanetData.heading,tFanetData.climb,fanet.getDevId(tFanetData.devId) ,(Ogn::aircraft_t)tFanetData.aircraftType);
+        } 
         sendAWTrackingdata(&tFanetData);
         if (nmea.isValid()){
         fanet.getMyTrackingData(&myFanetData);
@@ -1595,7 +1610,11 @@ void taskStandard(void *pvParameters){
           MyFanetData.heading = 0.0;
         }
         //MyFanetData.heading = status.GPS_course;
-        
+        if (setting.OGNLiveTracking){
+          ogn.setGPS(status.GPS_Lat,status.GPS_Lon,status.GPS_alt,status.GPS_speed,status.GPS_course);
+          ogn.sendTrackingData(status.GPS_Lat,status.GPS_Lon,status.GPS_alt,status.GPS_speed,status.GPS_course,status.ClimbRate,fanet.getMyDevId() ,(Ogn::aircraft_t)fanet.getAircraftType());
+        } 
+
         fanet.setMyTrackingData(&MyFanetData); //set Data on fanet
         if (setting.awLiveTracking){
           char chs[20];
@@ -1647,6 +1666,7 @@ void taskStandard(void *pvParameters){
   display.print("wait...");
   display.display();
   fanet.end();
+  if (setting.OGNLiveTracking) ogn.end();
   vTaskDelete(xHandleStandard); //delete standard-task
 }
 
