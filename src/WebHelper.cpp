@@ -442,6 +442,10 @@ void Web_setup(void){
   server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, request->url(), "text/css");
   });
+  server.on("/communicator.html", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(SPIFFS, request->url(), "text/html",false,processor);
+  });
+
 
   // On HTTP request for style sheet, provide style.css
   //server.on("/style.css", HTTP_GET, onCSSRequest);
