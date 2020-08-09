@@ -6,3 +6,6 @@ Radar screen: device-names will be cutted to 10 characters max.
 V1.2.4
 enabled option for sending messages to all detected devices via webinterface
 limited the text message to 66 characters max.
+
+V1.2.5
+added support for OGN-Live-Tracking

@@ -28,6 +28,7 @@ void load_configFile(void){
     setting.GSLON = preferences.getFloat("GSLON",0.0);
     setting.GSAlt = preferences.getFloat("GSALT",0.0);
     setting.GSAWID = preferences.getString("GSAWID","");
+    setting.OGNLiveTracking = preferences.getUChar("OGN_LIVE",0);
     setting.screenNumber = preferences.getUChar("SCREEN",0);
     preferences.end(); 
 }
@@ -58,6 +59,7 @@ void write_configFile(void){
     preferences.putFloat("GSLON",setting.GSLON);
     preferences.putFloat("GSALT",setting.GSAlt);
     preferences.putString("GSAWID",setting.GSAWID);
+    preferences.putUChar("OGN_LIVE",setting.OGNLiveTracking);
     ESP.restart();
 }
 

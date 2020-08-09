@@ -18,3 +18,13 @@ int32_t scale(int32_t value,int32_t inLow, int32_t inHigh, int32_t outLow, int32
     if (value >= inHigh) return outHigh;
     return map(value,inLow,inHigh,outLow,outHigh);
 }
+
+int32_t getStringValue(String s,String begin,String end,int32_t fromIndex,String *sRet){
+    int pos = s.indexOf(begin,fromIndex);
+    if (pos < 0) return -1;
+    pos += begin.length();
+    int pos2 = s.indexOf(end);
+    if (pos2 < 0) return -1;
+    *sRet = s.substring(pos,pos2);
+    return pos2;
+}
