@@ -59,6 +59,7 @@ private:
     uint32_t tStatus;
     uint32_t tRecBaecon;
     uint8_t initOk;
+    uint8_t GPSOK;
 };
 
 #endif

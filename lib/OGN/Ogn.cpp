@@ -14,6 +14,7 @@ bool Ogn::begin(String user,String version){
     _version = version;
     _user = "FNB" + user; //base-station
     connected = false;
+    GPSOK = 0;
     return true;
 }
 
@@ -75,10 +76,10 @@ void Ogn::checkLine(String line){
     if (initOk == 0){
         pos = getStringValue(line,"server ","\r\n",0,&s);
         if (pos > 0){
-            initOk = 1;
             tStatus = millis() - OGNSTATUSINTERVALL;
             tRecBaecon = millis() - OGNSTATUSINTERVALL;
             _servername = s;
+            initOk = 1;
             //log_i("servername=%s",_servername.c_str());
         }
         //_servername = s;
@@ -92,6 +93,7 @@ void Ogn::setGPS(float lat,float lon,float alt,float speed,float heading){
     _alt = alt;
     _speed = speed;
     _heading = heading;
+    GPSOK = 1;
 }
 
 uint8_t Ogn::getSenderDetails(aircraft_t aircraftType,String devId){
@@ -131,36 +133,44 @@ uint8_t Ogn::getSenderDetails(aircraft_t aircraftType,String devId){
 }
 
 void Ogn::sendTrackingData(float lat,float lon,float alt,float speed,float heading,float climb,String devId,aircraft_t aircraftType){
+    if ((WiFi.status() != WL_CONNECTED) || (initOk < 10)) return; //nothing todo
     char buff[200];
-    int latDeg = int(lat);
-    int latMin = (roundf((lat - int(lat)) * 60 * 1000));
-    int lonDeg = int(lon);
-    int lonMin = (roundf((lon - int(lon)) * 60 * 1000));
+    float lLat = abs(lat);
+    float lLon = abs(lon);
+    int latDeg = int(lLat);
+    int latMin = (roundf((lLat - int(lLat)) * 60 * 1000));
+    int lonDeg = int(lLon);
+    int lonMin = (roundf((lLon - int(lLon)) * 60 * 1000));
     String sTime = getActTimeString();
     if (sTime.length() <= 0) return;
 
-    sprintf (buff,"FLR%s>APRS,TCPIP*,qAS,%s:/%sh%02d%02d.%02dN/%03d%02d.%02dEg%03d/%03d/A=%06d !W%01d%01d! id%02X%s %+03.ffpm\r\n"
-                ,devId.c_str(),_servername.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,lonDeg,lonMin/1000,lonMin/10 %100,int(heading),int(speed * 0.53996),int(alt * 3.28084),int(latMin %10),int(latMin %10),getSenderDetails(aircraftType,devId),devId.c_str(),climb*196.85f);
+    //sprintf (buff,"FLR%s>APRS,TCPIP*,qAS,%s:/%sh%02d%02d.%02d%c/%03d%02d.%02d%cg%03d/%03d/A=%06d !W%01d%01d! id%02X%s %+04.ffpm\r\n"
+    //            ,devId.c_str(),_servername.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,(lat < 0)?'S':'N',lonDeg,lonMin/1000,lonMin/10 %100,(lon < 0)?'W':'E',int(heading),int(speed * 0.53996),int(alt * 3.28084),int(latMin %10),int(latMin %10),getSenderDetails(aircraftType,devId),devId.c_str(),climb*196.85f);
+    sprintf (buff,"FLR%s>APRS,qAR:/%sh%02d%02d.%02d%c/%03d%02d.%02d%cg%03d/%03d/A=%06d !W%01d%01d! id%02X%s %+04.ffpm\r\n"
+                ,devId.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,(lat < 0)?'S':'N',lonDeg,lonMin/1000,lonMin/10 %100,(lon < 0)?'W':'E',int(heading),int(speed * 0.53996),int(alt * 3.28084),int(latMin %10),int(latMin %10),getSenderDetails(aircraftType,devId),devId.c_str(),climb*196.85f);
     client.print(buff);                
     //log_i("%s",buff);
 }
 
 void Ogn::sendReceiverStatus(String sTime){
-    String sStatus = _user + ">APRS,TCPIP*,qAS," + _servername + ":>" + sTime + "h h00 v1.0.0.GX\r\n";
+    String sStatus = _user + ">APRS,TCPIP*,qAC," + _servername + ":>" + sTime + "h h00 v1.0.0.GX\r\n";
     client.print(sStatus);
     //log_i("%s",sStatus.c_str());
 }
 
 void Ogn::sendReceiverBeacon(String sTime){
     char buff[200];
-    int latDeg = int(_lat);
-    int latMin = (roundf((_lat - int(_lat)) * 60 * 1000));
-    int lonDeg = int(_lon);
-    int lonMin = (roundf((_lon - int(_lon)) * 60 * 1000));
+    float lLat = abs(_lat);
+    float lLon = abs(_lon);
+    int latDeg = int(lLat);
+    int latMin = (roundf((lLat - int(lLat)) * 60 * 1000));
+    int lonDeg = int(lLon);
+    int lonMin = (roundf((lLon - int(lLon)) * 60 * 1000));
 
-    sprintf (buff,"%s>APRS,TCPIP*,qAS,%s:/%sh%02d%02d.%02dNI%03d%02d.%02dE&%03d/%03d/A=%06d !W%01d%01d!\r\n"
-                ,_user.c_str(),_servername.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,lonDeg,lonMin/1000,lonMin/10 %100,int(_heading),int(_speed * 0.53996),int(_alt * 3.28084),int(latMin %10),int(latMin %10));
-    client.print(buff);                
+    sprintf (buff,"%s>APRS,TCPIP*,qAC,%s:/%sh%02d%02d.%02d%cI%03d%02d.%02d%c&%03d/%03d/A=%06d !W%01d%01d!\r\n"
+                ,_user.c_str(),_servername.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,(_lat < 0)?'S':'N',lonDeg,lonMin/1000,lonMin/10 %100,(_lon < 0)?'W':'E',int(_heading),int(_speed * 0.53996),int(_alt * 3.28084),int(latMin %10),int(latMin %10));
+    client.print(buff); 
+    initOk = 10; //now we can send, because we have sent GPS-Position               
     //log_i("%s",buff);
 }
 
@@ -176,7 +186,7 @@ String Ogn::getActTimeString(){
 }
 
 void Ogn::sendStatus(uint32_t tAct){
-    if (initOk == 1){
+    if (initOk > 0){
         
         if ((tAct - tStatus) >= OGNSTATUSINTERVALL){
             tStatus = tAct;
@@ -185,10 +195,11 @@ void Ogn::sendStatus(uint32_t tAct){
                 sendReceiverStatus(sTime);
             }
         }
-        if ((_lat != NAN) && (_lon != NAN)){
+        if (GPSOK){
             if ((tAct - tRecBaecon) >= OGNSTATUSINTERVALL){
                 tRecBaecon = tAct;
                 String sTime = getActTimeString();
+                //log_i("_lat=%f",_lat);
                 if (sTime.length() > 0){
                     sendReceiverBeacon(sTime);
                 }

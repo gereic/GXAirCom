@@ -61,7 +61,6 @@ String testString;
 uint32_t fanetReceiver;
 uint8_t sendTestData = 0;
 
-uint8_t WifiConnectOk = 0;
 IPAddress local_IP(192,168,4,1);
 IPAddress gateway(192,168,4,250);
 IPAddress subnet(255,255,255,0);
@@ -481,9 +480,9 @@ void listConnectedStations(){
   esp_wifi_ap_get_sta_list(&wifi_sta_list);
   tcpip_adapter_get_sta_list(&wifi_sta_list, &adapter_sta_list);
   if (adapter_sta_list.num > 0){
-    WifiConnectOk = 2;
+    status.WifiConnect = 2;
   }else{
-    WifiConnectOk = 1;
+    status.WifiConnect = 1;
   }
   for (int i = 0; i < adapter_sta_list.num; i++) {
  
@@ -502,24 +501,26 @@ void listConnectedStations(){
 void WiFiEvent(WiFiEvent_t event){
   switch(event){
     case SYSTEM_EVENT_AP_START:
-        log_d("AP started. IP: [%s]", WiFi.softAPIP().toString().c_str() );
-        break;
+      log_d("AP started. IP: [%s]", WiFi.softAPIP().toString().c_str() );
+      break;
     case SYSTEM_EVENT_AP_STOP:
-        log_d("AP Stopped");
-        break;
+      log_d("AP Stopped");
+      break;
     case SYSTEM_EVENT_AP_STADISCONNECTED:
-        newStationConnected = true;
-        log_d("WiFi Client Disconnected");
-        break;
+      newStationConnected = true;
+      log_d("WiFi Client Disconnected");
+      break;
     case SYSTEM_EVENT_AP_STACONNECTED:
       log_d("SYSTEM_EVENT_AP_STACONNECTED");
       break;
     case SYSTEM_EVENT_STA_GOT_IP:
-      log_d("SYSTEM_EVENT_STA_GOT_IP!!!!!!!!!!!!");
+      //log_i("SYSTEM_EVENT_STA_GOT_IP!!!!!!!!!!!!");
+      status.myIP = WiFi.localIP().toString();
+      log_i("my IP=%s",status.myIP.c_str());
       break;
     case SYSTEM_EVENT_AP_STAIPASSIGNED:
       newStationConnected = true;
-      log_d("SYSTEM_EVENT_AP_STAIPASSIGNED!!!!!!!!!!!!");
+      log_i("SYSTEM_EVENT_AP_STAIPASSIGNED!!!!!!!!!!!!");
       break;
 
     default:
@@ -531,10 +532,11 @@ void WiFiEvent(WiFiEvent_t event){
 
 
 void setupWifi(){
-  WifiConnectOk = 0;
+  status.WifiConnect = 0;
   WiFi.mode(WIFI_OFF);
-  delay(500);
+  //delay(500);
   WiFi.persistent(false);
+  WiFi.onEvent(WiFiEvent);
   log_i("Setting soft-AP ... ");
   //if (WiFi.softAP(host_name.c_str(), setting.appw.c_str(),rand() % 12 + 1,0,2)){
     if (WiFi.softAP(host_name.c_str(), setting.appw.c_str())){
@@ -550,14 +552,13 @@ void setupWifi(){
     log_i("Failed!");
   }
   delay(10);
-  WiFi.onEvent(WiFiEvent);
 
   log_i("hostname=%s",host_name.c_str());
   WiFi.setHostname(host_name.c_str());
   //now configure access-point
   //so we have wifi connect and access-point at same time
   //we connecto to wifi
-  if ((setting.ssid.length() > 0) && (setting.password.length() > 0)){
+  if ((setting.ssid.length() > 0) && (setting.password.length() > 0) && (setting.WifiConnect)){
     //esp_wifi_set_auto_connect(true);
     log_i("Try to connect to WiFi ...");
     WiFi.status();
@@ -580,20 +581,17 @@ void setupWifi(){
     }
     
   }
-  if(WiFi.status() == WL_CONNECTED){
+  //if(WiFi.status() == WL_CONNECTED){
     // ... print IP Address
-    status.myIP = WiFi.localIP().toString();
-    log_i("my IP=%s",status.myIP.c_str());
-    WifiConnectOk = 2;
-  } else{
-    log_i("Can not connect to WiFi station. Go into AP mode.");
-    // Go into software AP mode.
-    WiFi.status();
-    WiFi.mode(WIFI_AP);
-    delay(10);
-    //WiFi.setHostname(host_name.c_str());
-    WifiConnectOk = 1;
-  }
+    //status.myIP = WiFi.localIP().toString();
+    //log_i("my IP=%s",status.myIP.c_str());
+  //} else{
+  //  log_i("Can not connect to WiFi station. Go into AP mode.");
+  //  // Go into software AP mode.
+  //  WiFi.status();
+  //  WiFi.mode(WIFI_AP);
+  //}
+  status.WifiConnect = 1;
   //status.myIP = WiFi.softAPIP().toString();
   log_i("my APIP=%s",local_IP.toString().c_str());
   Web_setup();
@@ -695,6 +693,7 @@ void printSettings(){
   log_i("OUTPUT FLARM=%d",setting.outputFLARM);
   log_i("OUTPUT GPS=%d",setting.outputGPS);
   log_i("OUTPUT FANET=%d",setting.outputFANET);
+  log_i("WIFI connect=%d",setting.WifiConnect);
   log_i("WIFI SSID=%s",setting.ssid.c_str());
   log_i("WIFI PW=%s",setting.password.c_str());
   log_i("Aircraft=%s",fanet.getAircraftType(setting.AircraftType).c_str());
@@ -1375,6 +1374,7 @@ void taskStandard(void *pvParameters){
   static float oldAlt = 0.0;
   static uint32_t tOldPPS = millis();
   static uint32_t tDisplay = millis();
+  static uint32_t tTest = millis();
   FanetLora::trackingData myFanetData;  
   FanetLora::trackingData tFanetData;  
   
@@ -1457,6 +1457,14 @@ void taskStandard(void *pvParameters){
     
 
     if (setting.OGNLiveTracking) ogn.run();
+
+    /*
+    if (timeOver(tAct,tTest,1000)){
+      tTest = tAct;
+      ogn.setGPS(setting.GSLAT,setting.GSLON,setting.GSAlt,0.0,0.0);
+      ogn.sendTrackingData(setting.GSLAT + 0.1,setting.GSLON + 0.1,setting.GSAlt,0,123,0,fanet.getMyDevId() ,(Ogn::aircraft_t)fanet.getAircraftType());
+    }
+    */
     /*
     if (digitalRead(BUTTON2)){
       status.GPS_Fix = 1;
@@ -1513,7 +1521,7 @@ void taskStandard(void *pvParameters){
 
     }
 
-
+    /*
     if (((timeOver(tAct,tDisplay,DISPLAY_UPDATE_RATE) && (setting.screenNumber != 1))) ||
        ((timeOver(tAct,tDisplay,2000) && (setting.screenNumber == 1)))) {
       tDisplay = tAct;
@@ -1527,6 +1535,7 @@ void taskStandard(void *pvParameters){
       }else{
       }
     }
+    */
     /*
     if ((setting.testMode == 0) && (!setting.GSMode)){ //not in testmode and not ground-station
       //writeTrackingData(tAct);
@@ -1734,8 +1743,10 @@ void powerOff(){
 
 void taskBackGround(void *pvParameters){
   static uint32_t tLife = millis();
+  static uint32_t tWifiCheck = millis();
   static uint8_t counter = 0;
   static uint32_t warning_time=0;
+
   delay(1500);
   
   setupWifi();
@@ -1747,6 +1758,17 @@ void taskBackGround(void *pvParameters){
   #endif
   while (1){
     uint32_t tAct = millis();
+    if ((setting.ssid.length() > 0) && (setting.password.length() > 0) && (setting.WifiConnect) && (WiFi.status() != WL_CONNECTED) && (status.WifiConnect)){
+      if (timeOver(tAct,tWifiCheck,WIFI_RECONNECT_TIME)){
+        tWifiCheck = tAct;
+        log_i("WiFi not connected. Try to reconnect");
+        WiFi.disconnect();
+        WiFi.mode(WIFI_OFF);
+        WiFi.persistent(false);
+        WiFi.mode(WIFI_MODE_APSTA);
+        WiFi.begin(setting.ssid.c_str(), setting.password.c_str());        
+      }
+    }
     if (xPortGetMinimumEverFreeHeapSize()<100000)
     {
       if (millis()>warning_time)
@@ -1763,7 +1785,7 @@ void taskBackGround(void *pvParameters){
 		esp_restart();
 	}
 
-    if  (WifiConnectOk){
+    if  (status.WifiConnect){
       Web_loop();
       #ifdef OTAPROGRAMMING
       //if ((setting.outputMode != OUTPUT_BLUETOOTH) && (setting.outputMode != OUTPUT_BLE)){
@@ -1773,7 +1795,7 @@ void taskBackGround(void *pvParameters){
     }
     if (( tAct > setting.wifiDownTime) && (setting.wifiDownTime!=0)){
       setting.wifiDownTime=0;
-      WifiConnectOk=0;
+      status.WifiConnect=0;
       esp_wifi_set_mode(WIFI_MODE_NULL);
       esp_wifi_stop();
       log_i("******************WEBCONFIG Setting - WIFI STOPPING*************************");
