@@ -6,7 +6,7 @@
 #ifndef __MAIN_H__
 #define __MAIN_H__
 
-#define VERSION "V1.2.5"
+#define VERSION "V1.2.6"
 #define APPNAME "GXAirCom"
 
 #define BLE_LOW_HEAP 10000
@@ -43,6 +43,8 @@
 #define MIN_FLIGHT_TIME 10000
 #define MIN_GROUND_TIME 60000
 
+#define WIFI_RECONNECT_TIME 10000
+
 #define BUTTON2 38
 
 #define DISPLAY_UPDATE_RATE 500
@@ -63,6 +65,7 @@ struct SettingsData{
   uint8_t outputGPS;
   uint8_t outputFANET;
   uint8_t awLiveTracking; //airwhere live-tracking
+  bool WifiConnect; //connect to wifi and keep connected
   String ssid; //WIFI SSID
   String password; //WIFI PASSWORD
   String PilotName; //Pilotname
@@ -101,6 +104,7 @@ struct statusData{
   uint32_t tLoop; //current Loop-time
   uint32_t tMaxLoop; //max Loop-time
   bool flying;
+  bool WifiConnect;
 };
 
 #endif

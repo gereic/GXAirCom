@@ -69,6 +69,7 @@ function sendValues(){
   gsmode : Number(document.getElementById("gsmode").checked),
   
   appw : document.getElementById("appw").value,
+  wificonnect : Number(document.getElementById("wificonnect").checked),
   ssid : document.getElementById("ssid").value,
   password : document.getElementById("password").value,
   wifioff : Number(document.getElementById("wifioff").checked),
@@ -256,6 +257,10 @@ window.addEventListener("load", init, false);
           </tr>
           <p></p>
           <p></p>      
+          <tr>
+            <th>Wifi connect (try to reconnect, if no connection)</th>
+            <td><input type="checkbox" id="wificonnect" name="wificonnect"></td>
+          </tr>
           <tr>
             <th>WIFI SSID</th>
             <td><input type="text" id="ssid" name="ssid"></td>

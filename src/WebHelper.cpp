@@ -105,6 +105,7 @@ void onWebSocketEvent(uint8_t client_num,
 
           doc.clear();
           doc["appw"] = setting.appw;
+          doc["wificonnect"] = (uint8_t)setting.WifiConnect;
           doc["ssid"] = setting.ssid;
           doc["password"] = setting.password;
           doc["wifioff"] = (uint8_t)setting.bSwitchWifiOff3Min;
@@ -195,6 +196,7 @@ void onWebSocketEvent(uint8_t client_num,
           if (root.containsKey("board")) setting.boardType = doc["board"].as<uint8_t>();          
           if (root.containsKey("power")) setting.LoraPower = constrain(doc["power"].as<uint8_t>(),0,20);          
           if (root.containsKey("band")) setting.band = doc["band"].as<uint8_t>();          
+          if (root.containsKey("wificonnect")) setting.WifiConnect = (bool)doc["wificonnect"].as<uint8_t>();
           if (root.containsKey("ssid")) setting.ssid = doc["ssid"].as<String>();
           if (root.containsKey("password")) setting.password = doc["password"].as<String>();
           if (root.containsKey("type")) setting.AircraftType = (FanetLora::aircraft_t)doc["type"].as<uint8_t>();

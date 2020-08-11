@@ -15,6 +15,7 @@ void load_configFile(void){
     setting.outputGPS = preferences.getUChar("OGPS",1); //
     setting.outputFANET = preferences.getUChar("OFANET",1); //
     setting.PilotName = preferences.getString("PILOTNAME","");
+    setting.WifiConnect = preferences.getUChar("WIFI_CONNECT",0); //
     setting.ssid = preferences.getString("WIFI_SSID","");
     setting.password = preferences.getString("WIFI_PW","");
     setting.AircraftType = (FanetLora::aircraft_t)preferences.getUChar("AIRCRAFTTYPE",1);
@@ -46,6 +47,7 @@ void write_configFile(void){
     preferences.putUChar("OGPS",setting.outputGPS); //
     preferences.putUChar("OFANET",setting.outputFANET); //
     preferences.putString("PILOTNAME",setting.PilotName);
+    preferences.putUChar("WIFI_CONNECT",setting.WifiConnect); //
     preferences.putString("WIFI_SSID",setting.ssid);
     preferences.putString("WIFI_PW",setting.password);
     preferences.putUChar("AIRCRAFTTYPE",uint8_t(setting.AircraftType));
