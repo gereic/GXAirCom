@@ -1429,7 +1429,6 @@ void taskStandard(void *pvParameters){
   }
 
 
-  /*
   if (setting.OGNLiveTracking){
     ogn.begin(setting.myDevId,APPNAME " " VERSION);
     if (setting.GSMode){
@@ -1437,7 +1436,6 @@ void taskStandard(void *pvParameters){
     }
     //ogn.setGPS(status.GPS_Lat,status.GPS_Lon,status.GPS_alt,status.GPS_speed,status.GPS_course);
   } 
-  */
 
 
 
@@ -1460,11 +1458,13 @@ void taskStandard(void *pvParameters){
 
     if (setting.OGNLiveTracking) ogn.run();
 
+    /*
     if (timeOver(tAct,tTest,1000)){
       tTest = tAct;
       ogn.setGPS(setting.GSLAT,setting.GSLON,setting.GSAlt,0.0,0.0);
       ogn.sendTrackingData(setting.GSLAT + 0.1,setting.GSLON + 0.1,setting.GSAlt,0,123,0,fanet.getMyDevId() ,(Ogn::aircraft_t)fanet.getAircraftType());
     }
+    */
     /*
     if (digitalRead(BUTTON2)){
       status.GPS_Fix = 1;

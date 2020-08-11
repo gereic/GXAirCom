@@ -192,7 +192,7 @@ public:
 
 	/* device -> air */
 	bool is_broadcast_ready(int num_neighbors);
-	void broadcast_successful(int type) { last_tx = millis(); }
+	void broadcast_successful(int type) { last_tx = millis(); txCount++; }
 
 	/* air -> device */
 	void handle_acked(bool ack, MacAddr &addr);
