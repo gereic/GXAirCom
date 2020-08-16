@@ -9,3 +9,6 @@ limited the text message to 66 characters max.
 
 V1.2.5
 added support for OGN-Live-Tracking
+
+V1.3.0
+added support for GY-86-module (MS5611 baro, HMC5883L compass ,MPU6050 6-axis acc/gyro ) on Pin 13 SDA and ping 14 SCL (second i2c)

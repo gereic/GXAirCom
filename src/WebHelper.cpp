@@ -119,6 +119,12 @@ void onWebSocketEvent(uint8_t client_num,
           doc["gsalt"] = setting.GSAlt;
           doc["gsmode"] = setting.GSMode;
           doc["ognlive"] = setting.OGNLiveTracking;
+
+          doc["vSinkTh"] = serialized(String(setting.vario.sinkingThreshold,2));
+          doc["vClimbTh"] = serialized(String(setting.vario.climbingThreshold,2));
+          doc["vVol"] = setting.vario.volume;
+          doc["vBeepFly"] = setting.vario.BeepOnlyWhenFlying;
+
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
         }else if (clientPages[client_num] == 11){ //settings general
@@ -217,6 +223,12 @@ void onWebSocketEvent(uint8_t client_num,
           if (root.containsKey("gsalt")) setting.GSAlt = doc["gsalt"].as<float>();
           if (root.containsKey("gsmode")) setting.GSMode = doc["gsmode"].as<uint8_t>();
           if (root.containsKey("ognlive")) setting.OGNLiveTracking = doc["ognlive"].as<uint8_t>();
+          //vario
+          if (root.containsKey("vSinkTh")) setting.vario.sinkingThreshold = doc["vSinkTh"].as<float>();
+          if (root.containsKey("vClimbTh")) setting.vario.climbingThreshold = doc["vClimbTh"].as<float>();
+          if (root.containsKey("vNClimbSens")) setting.vario.nearClimbingSensitivity = doc["vNClimbSens"].as<float>();
+          if (root.containsKey("vVol")) setting.vario.volume = doc["vVol"].as<uint8_t>();
+          if (root.containsKey("vBeepFly")) setting.vario.BeepOnlyWhenFlying = doc["vBeepFly"].as<uint8_t>();
           log_i("write config-to file --> rebooting");
           delay(500);
           write_configFile();

@@ -24,6 +24,14 @@
 #include <Adafruit_SSD1306.h>
 #include <BluetoothSerial.h>
 
+//Libraries for Vario
+#include <Baro.h>
+#include <beeper.h>
+#include <toneAC.h>
+
+#define USE_BEEPER
+
+
 //define programming OTA
 //#define OTAPROGRAMMING
 #ifdef OTAPROGRAMMING
@@ -95,6 +103,14 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &i2cOLED);
  String ble_data="";
  bool ble_mutex=false;
 
+Baro baro;
+beeper Beeper(BEEP_VELOCITY_DEFAULT_SINKING_THRESHOLD,BEEP_VELOCITY_DEFAULT_CLIMBING_THRESHOLD,BEEP_VELOCITY_DEFAULT_NEAR_CLIMBING_SENSITIVITY,BEEP_DEFAULT_VOLUME);
+#define PINBUZZER 0
+int freq = 2000;
+int channel = 0;
+int resolution = 8;
+
+TaskHandle_t xHandleBaro = NULL;
 TaskHandle_t xHandleStandard = NULL;
 TaskHandle_t xHandleBackground = NULL;
 TaskHandle_t xHandleBle = NULL;
@@ -102,6 +118,7 @@ TaskHandle_t xHandleMemory = NULL;
 
 /********** function prototypes ******************/
 void setupAXP192();
+void taskBaro(void *pvParameters);
 void taskStandard(void *pvParameters);
 void taskBackGround(void *pvParameters);
 void taskBle(void *pvParameters);
@@ -712,6 +729,11 @@ void printSettings(){
   log_i("GS LON=%0.2f",setting.GSAlt);
   log_i("GS AWID=%s",setting.GSAWID);
   log_i("OGN-Livetracking=%d",setting.OGNLiveTracking);
+  //vario
+  log_i("VarioSinkingThreshold=%0.2f",setting.vario.sinkingThreshold);
+  log_i("VarioClimbingThreshold=%0.2f",setting.vario.climbingThreshold);
+  log_i("VarioNearClimbingSensitivity=%0.2f",setting.vario.nearClimbingSensitivity);
+  log_i("VarioVolume=%d",setting.vario.volume);
 }
 
 void listSpiffsFiles(){
@@ -751,6 +773,32 @@ void setup() {
   
   // put your setup code here, to run once:  
   Serial.begin(115200);
+
+  ledcSetup(channel, freq, resolution);
+  ledcAttachPin(PINBUZZER, channel);  
+
+  /*
+
+    ledcWriteTone(channel, 2000);
+  
+  for (int dutyCycle = 0; dutyCycle <= 255; dutyCycle=dutyCycle+10){
+  
+    Serial.println(dutyCycle);
+  
+    ledcWrite(channel, dutyCycle);
+    delay(1000);
+  }
+  
+  ledcWrite(channel, 125);
+  
+  for (int freq = 255; freq < 10000; freq = freq + 250){
+  
+     Serial.println(freq);
+  
+     ledcWriteTone(channel, freq);
+     delay(1000);
+  }
+  */
 
   /*
   log_e("*********** LOG Error *********");
@@ -842,18 +890,77 @@ void setup() {
 
   btOk = 0;
 
+  xTaskCreatePinnedToCore(taskBaro, "taskBaro", 6500, NULL, 100, &xHandleBaro, ARDUINO_RUNNING_CORE1); //high priority task
   xTaskCreatePinnedToCore(taskStandard, "taskStandard", 6500, NULL, 10, &xHandleStandard, ARDUINO_RUNNING_CORE1); //standard task
   xTaskCreatePinnedToCore(taskBackGround, "taskBackGround", 6500, NULL, 5, &xHandleBackground, ARDUINO_RUNNING_CORE1); //background task
   if (setting.outputMode == OUTPUT_BLE){
     esp_bt_controller_enable(ESP_BT_MODE_BLE);
     esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT);
     xTaskCreatePinnedToCore(taskBle, "taskBle", 4096, NULL, 7, &xHandleBle, ARDUINO_RUNNING_CORE1);
+  }else if (setting.outputMode == OUTPUT_BLUETOOTH){
+    esp_bt_controller_enable(ESP_BT_MODE_CLASSIC_BT);
+    esp_bt_controller_mem_release(ESP_BT_MODE_BLE);
   }else{
     esp_bt_controller_disable();
     esp_bt_controller_mem_release(ESP_BT_MODE_BTDM);
   }
   xTaskCreatePinnedToCore(taskMemory, "taskMemory", 4096, NULL, 1, &xHandleMemory, ARDUINO_RUNNING_CORE1);
   
+
+}
+
+void taskBaro(void *pvParameters){
+  static uint32_t tRefresh = millis();
+  uint8_t u8Volume = setting.vario.volume;
+  log_i("starting baro-task ");  
+  TwoWire i2cBaro = TwoWire(0);
+  Wire.begin(SDA2,SCL2,400000);
+  i2cBaro.begin(SDA2,SCL2,400000); //init i2cBaro for Baro
+  if (baro.begin(&i2cBaro)){
+    status.bHasVario = true;
+    Beeper.setThresholds(setting.vario.sinkingThreshold,setting.vario.climbingThreshold,setting.vario.nearClimbingSensitivity);
+    Beeper.setVolume(u8Volume);
+    //Beeper.setGlidingBeepState(true);
+    //Beeper.setGlidingAlarmState(true);
+
+  }else{
+    log_i("no baro found --> end baro-task ");  
+    status.bHasVario = false;    
+  }
+  if (status.bHasVario){
+    while (1){
+      uint32_t tAct = millis();
+      /*
+      if (u8Volume != setting.vario.volume){
+        u8Volume = setting.vario.volume;
+        Beeper.setVolume(u8Volume);
+      }
+      */
+      if ((!status.flying) && (setting.vario.BeepOnlyWhenFlying)){
+        Beeper.setVolume(0);
+      }else{
+        Beeper.setVolume(setting.vario.volume);
+      }
+      baro.run();
+      if (baro.isNewVAlues()){
+        baro.getValues(&status.pressure,&status.varioAlt,&status.ClimbRate,&status.varioTemp);
+        #ifdef USE_BEEPER
+        Beeper.setVelocity(status.ClimbRate);
+        #endif
+      }
+      if (timeOver(tAct,tRefresh,200)){
+        tRefresh = tAct;
+        baro.getValues(&status.pressure,&status.varioAlt,&status.ClimbRate,&status.varioTemp);
+      }      
+      #ifdef USE_BEEPER
+        Beeper.update();
+      #endif      
+      delay(1);
+      if (WebUpdateRunning) break;
+    }
+  }
+  log_i("stopp baro-task");
+  vTaskDelete(xHandleBaro); //delete baro-task
 
 }
 
@@ -1266,6 +1373,8 @@ void printGPSData(uint32_t tAct){
     s = "";
     if (status.GPS_Fix == 1){
       s = setStringSize(String(round(MyFanetData.altitude),0) + "m",6);
+    }else if (status.bHasVario){
+      s = setStringSize(String(round(status.varioAlt),0) + "m",6);
     }
     display.print(s);
 
@@ -1352,11 +1461,23 @@ void sendLK8EX(uint32_t tAct){
     //String s = "$LK8EX1,101300,99999,99999,99,999,";
     String s = "$LK8EX1,";
 
-    s += "999999,"; //raw pressure in hPascal: hPA*100 (example for 1013.25 becomes  101325) 
-    s += String(status.GPS_alt,2) + ","; // altitude in meters, relative to QNH 1013.25
-    s += String((int32_t)(status.ClimbRate * 100.0)) + ","; //climbrate in cm/s
-    //s += String(status.) + ",";
-    s += "99,"; //temperature
+    if (status.bHasVario){
+      s += String(status.pressure,2) + ","; //raw pressure in hPascal: hPA*100 (example for 1013.25 becomes  101325) 
+      if (status.GPS_Fix){
+        s += String(status.GPS_alt,2) + ","; // altitude in meters, relative to QNH 1013.25
+      }else{
+        s += String(status.varioAlt,2) + ","; // altitude in meters, relative to QNH 1013.25
+      }
+      s += String((int32_t)(status.ClimbRate * 100.0)) + ","; //climbrate in cm/s
+      s += String(status.varioTemp,1) + ","; //temperature
+    }else{
+      s += "999999,"; //raw pressure in hPascal: hPA*100 (example for 1013.25 becomes  101325) 
+      s += String(status.GPS_alt,2) + ","; // altitude in meters, relative to QNH 1013.25
+      s += String((int32_t)(status.ClimbRate * 100.0)) + ","; //climbrate in cm/s
+      //s += String(status.) + ",";
+      s += "99,"; //temperature
+    }
+    
     s += String((float)status.vBatt / 1000.,2) + ",";
     s = flarm.addChecksum(s);
     sendData2Client(s);
@@ -1375,6 +1496,7 @@ void taskStandard(void *pvParameters){
   static uint32_t tOldPPS = millis();
   static uint32_t tDisplay = millis();
   static uint32_t tTest = millis();
+  String s = "";
   FanetLora::trackingData myFanetData;  
   FanetLora::trackingData tFanetData;  
   
@@ -1457,7 +1579,15 @@ void taskStandard(void *pvParameters){
     
 
     if (setting.OGNLiveTracking) ogn.run();
-
+    if (setting.outputMode == OUTPUT_BLUETOOTH){
+      s = "";
+      while(SerialBT.available()){
+        s += SerialBT.read();
+      }
+      if (s.length() > 0){
+        log_i("%s",s.c_str());
+      }
+    }
     /*
     if (timeOver(tAct,tTest,1000)){
       tTest = tAct;
@@ -1603,22 +1733,26 @@ void taskStandard(void *pvParameters){
         status.GPS_Lat = nmea.getLatitude() / 1000000.;
         status.GPS_Lon = nmea.getLongitude() / 1000000.;  
         status.GPS_alt = alt/1000.;
-        status.GPS_course = nmea.getCourse()/1000.;
+        if (status.flying){
+          status.GPS_course = nmea.getCourse()/1000.;
+        }else{
+          if (status.bHasVario){
+            status.GPS_course = baro.getHeading(); //if we are not flying, copy heading
+          }else{
+            status.GPS_course = 0.0;
+          }
+        }
+        
         status.GPS_NumSat = nmea.getNumSatellites();
         if (oldAlt == 0) oldAlt = status.GPS_alt;        
-        status.ClimbRate = (status.GPS_alt - oldAlt) / (float(status.tGPSCycle) / 1000.0);
+        if (!status.bHasVario) status.ClimbRate = (status.GPS_alt - oldAlt) / (float(status.tGPSCycle) / 1000.0);        
         oldAlt = status.GPS_alt;
         MyFanetData.climb = status.ClimbRate;
         MyFanetData.lat = status.GPS_Lat;
         MyFanetData.lon = status.GPS_Lon;
         MyFanetData.altitude = status.GPS_alt;
         MyFanetData.speed = status.GPS_speed; //speed in cm/s --> we need km/h
-        if (status.flying){
-          MyFanetData.heading = status.GPS_course;
-        }else{
-          MyFanetData.heading = 0.0;
-        }
-        //MyFanetData.heading = status.GPS_course;
+        MyFanetData.heading = status.GPS_course;
         if (setting.OGNLiveTracking){
           ogn.setGPS(status.GPS_Lat,status.GPS_Lon,status.GPS_alt,status.GPS_speed,status.GPS_course);
           ogn.sendTrackingData(status.GPS_Lat,status.GPS_Lon,status.GPS_alt,status.GPS_speed,status.GPS_course,status.ClimbRate,fanet.getMyDevId() ,(Ogn::aircraft_t)fanet.getAircraftType());
@@ -1652,7 +1786,7 @@ void taskStandard(void *pvParameters){
         status.GPS_alt = 0.0;
         status.GPS_course = 0.0;
         status.GPS_NumSat = 0;
-        status.ClimbRate = 0.0;
+        if (!status.bHasVario) status.ClimbRate = 0.0;
         oldAlt = 0.0;
       }
       tOldPPS = tAct;

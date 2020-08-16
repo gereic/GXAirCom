@@ -6,7 +6,7 @@
 #ifndef __MAIN_H__
 #define __MAIN_H__
 
-#define VERSION "V1.2.6"
+#define VERSION "V1.3.0"
 #define APPNAME "GXAirCom"
 
 #define BLE_LOW_HEAP 10000
@@ -54,6 +54,16 @@
 #define FLARM_UPDATE_RATE 1000
 #define FLARM_UPDATE_STATE 60000
 
+struct VarioSettings{
+  float sinkingThreshold;
+  float climbingThreshold;
+  float nearClimbingSensitivity;
+  uint8_t volume;
+  bool BeepOnlyWhenFlying;
+};
+
+
+
 struct SettingsData{
   String appw; //access-point-Password
   uint8_t boardType;
@@ -83,6 +93,7 @@ struct SettingsData{
   String GSAWID; //Ground-Station ID
   uint8_t OGNLiveTracking; //OGN-Live-Tracking
   uint8_t screenNumber; //number of default-screen
+  VarioSettings vario; //variosettings
 };
 
 struct statusData{
@@ -95,11 +106,15 @@ struct statusData{
   float GPS_alt;
   float GPS_speed;
   float GPS_course;
+  float pressure;
+  float varioAlt;
+  float varioTemp;
   uint8_t GPS_NumSat;
   float ClimbRate;
   uint16_t fanetTx;
   uint16_t fanetRx;
   bool bHasAXP192;
+  bool bHasVario;
   uint32_t tGPSCycle;
   uint32_t tLoop; //current Loop-time
   uint32_t tMaxLoop; //max Loop-time
