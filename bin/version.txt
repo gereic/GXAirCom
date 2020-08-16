@@ -13,3 +13,5 @@ added support for OGN-Live-Tracking
 V1.2.6
 Deleted some unused html pages on webserver and added communicator.html as a simpler web interface to be shown on Android Communicator App Version 1.1
 
+V1.2.7 
+Commented out "Bluetooth Serial" option from Fullsettings.html config as it´s not implemented and crashes the module if selected.
