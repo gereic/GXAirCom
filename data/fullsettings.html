@@ -56,6 +56,7 @@ function callMainPage(){
 function sendValues(){  
   var obj = {
   board : document.getElementById("board").value,
+  disp : document.getElementById("disp").value,
   band : document.getElementById("band").value,
   power : document.getElementById("power").value,
   type : document.getElementById("type").value,
@@ -158,6 +159,13 @@ window.addEventListener("load", init, false);
               <option value="0">TTGO T-Beam T22_V1.0</option>
               <option value="2">TTGO T-Beam T22_V07</option>
               <option value="1">HELTEC / TTGO LORA</option>
+            </select></td>
+          </tr>
+          <tr>
+            <th>Display Type</th>
+            <td><select name="disp" id="disp">
+              <option value="0">0.96' OLED</option>
+              <option value="1">2.9' E-Ink</option>
             </select></td>
           </tr>
           <tr>

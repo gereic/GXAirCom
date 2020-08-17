@@ -184,6 +184,7 @@ bool FanetMac::begin(Fapp &app,long frequency,uint8_t level)
 	/* configure phy radio */
 	//SPI LoRa pins
 	SPI.begin(SCK, MISO, MOSI, SS);
+	
 	//setup LoRa transceiver module
 	LoRa.setPins(SS, RST, DIO0);
 	//long frequency = FREQUENCY868;

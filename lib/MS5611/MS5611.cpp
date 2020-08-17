@@ -34,6 +34,13 @@ bool MS5611::begin(TwoWire *pi2c,ms5611_osr_t osr)
     pWire = pi2c;
     //pWire->begin();
 
+    //check sensor exists
+    pWire->beginTransmission(MS5611_ADDRESS);
+    uint8_t error = pWire->endTransmission();
+    if (error != 0){
+        return false; //sensor not existing
+    }
+
     reset();
 
     setOversampling(osr);

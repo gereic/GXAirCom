@@ -31,6 +31,9 @@ void load_configFile(void){
     setting.GSAWID = preferences.getString("GSAWID","");
     setting.OGNLiveTracking = preferences.getUChar("OGN_LIVE",0);
     setting.screenNumber = preferences.getUChar("SCREEN",0);
+    setting.displayType = preferences.getUChar("Display",0);
+
+
     //vario
     setting.vario.sinkingThreshold = preferences.getFloat("vSinkTh",-2.0);
     setting.vario.climbingThreshold = preferences.getFloat("vClimbTh",0.2);
@@ -70,6 +73,7 @@ void write_configFile(void){
     preferences.putFloat("GSALT",setting.GSAlt);
     preferences.putString("GSAWID",setting.GSAWID);
     preferences.putUChar("OGN_LIVE",setting.OGNLiveTracking);
+    preferences.putUChar("Display",setting.displayType);
 
     //vario
     preferences.putFloat("vSinkTh",setting.vario.sinkingThreshold);

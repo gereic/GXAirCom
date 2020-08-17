@@ -14,6 +14,7 @@ bool Baro::begin(TwoWire *pi2c){
   uint8_t initCount = 0;
   while(!ms5611.begin(pi2c,MS5611_ULTRA_HIGH_RES))
   {
+    log_i("no sensor found");
     initCount++;
     if (initCount >= 5){
       return false; //no baro found

@@ -12,3 +12,4 @@ added support for OGN-Live-Tracking
 
 V1.3.0
 added support for GY-86-module (MS5611 baro, HMC5883L compass ,MPU6050 6-axis acc/gyro ) on Pin 13 SDA and ping 14 SCL (second i2c)
+added support for 2.9' e-ink-display --> have to remove 2 resistors (R17,R20 near Lora-Chip left bottom side)

@@ -83,6 +83,7 @@ void onWebSocketEvent(uint8_t client_num,
         }else if (clientPages[client_num] == 10){ //full settings
           doc.clear();
           doc["board"] = setting.boardType;
+          doc["disp"] = setting.displayType;
           doc["band"] = setting.band;
           doc["power"] = setting.LoraPower;
           doc["type"] = (uint8_t)setting.AircraftType;
@@ -200,6 +201,7 @@ void onWebSocketEvent(uint8_t client_num,
           //general settings-page          
           if (root.containsKey("appw")) setting.appw = doc["appw"].as<String>();          
           if (root.containsKey("board")) setting.boardType = doc["board"].as<uint8_t>();          
+          if (root.containsKey("disp")) setting.displayType = doc["disp"].as<uint8_t>();          
           if (root.containsKey("power")) setting.LoraPower = constrain(doc["power"].as<uint8_t>(),0,20);          
           if (root.containsKey("band")) setting.band = doc["band"].as<uint8_t>();          
           if (root.containsKey("wificonnect")) setting.WifiConnect = (bool)doc["wificonnect"].as<uint8_t>();

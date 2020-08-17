@@ -1,6 +1,5 @@
-#include <FanetLora.h>
 #include <string.h>
-#include <Ogn.h>
+#include <FanetLora.h>
 
 
 #ifndef __MAIN_H__
@@ -54,6 +53,10 @@
 #define FLARM_UPDATE_RATE 1000
 #define FLARM_UPDATE_STATE 60000
 
+//defines for display
+#define OLED0_96 0
+#define EINK2_9  1
+
 struct VarioSettings{
   float sinkingThreshold;
   float climbingThreshold;
@@ -67,6 +70,7 @@ struct VarioSettings{
 struct SettingsData{
   String appw; //access-point-Password
   uint8_t boardType;
+  uint8_t displayType;
   String myDevId; //my device-ID
   uint8_t band;
   uint8_t LoraPower; //output-Power 5-20db

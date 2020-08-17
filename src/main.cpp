@@ -16,6 +16,10 @@
 #include <SPIFFS.h>
 #include <ble.h>
 #include <icons.h>
+#include <Screen.h>
+#include <Ogn.h>
+
+
 //#include <U8g2lib.h>
 
 //Libraries for OLED Display
@@ -97,6 +101,7 @@ const byte ADC_BITS = 10; // 10 - 12 bits
 TwoWire i2cOLED = TwoWire(1);
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &i2cOLED);
+Screen screen;
 
  unsigned long ble_low_heap_timer=0;
  bool deviceConnected = false;
@@ -680,24 +685,13 @@ void startOLED(){
   display.setCursor(85,55);
   display.print(VERSION);
   display.display();
-  //delay(1000);
-
-  /*
-  display.clearDisplay();
-  display.setTextColor(WHITE);
-  display.setTextSize(2);
-  display.setCursor(0,0);
-  display.print(APPNAME);
-  display.setCursor(0,18);
-  display.print(VERSION);
-  display.display();
-  */
 }
 
 void printSettings(){
   log_i("**** SETTINGS ****");
   log_i("Access-point password=%s",setting.appw.c_str());
   log_i("Board-Type=%d",setting.boardType);
+  log_i("Display-Type=%d",setting.displayType);
   log_i("AXP192=%d",uint8_t(status.bHasAXP192));
   if (setting.band == 0){
     log_i("BAND=868mhz");
@@ -777,37 +771,6 @@ void setup() {
   ledcSetup(channel, freq, resolution);
   ledcAttachPin(PINBUZZER, channel);  
 
-  /*
-
-    ledcWriteTone(channel, 2000);
-  
-  for (int dutyCycle = 0; dutyCycle <= 255; dutyCycle=dutyCycle+10){
-  
-    Serial.println(dutyCycle);
-  
-    ledcWrite(channel, dutyCycle);
-    delay(1000);
-  }
-  
-  ledcWrite(channel, 125);
-  
-  for (int freq = 255; freq < 10000; freq = freq + 250){
-  
-     Serial.println(freq);
-  
-     ledcWriteTone(channel, freq);
-     delay(1000);
-  }
-  */
-
-  /*
-  log_e("*********** LOG Error *********");
-  log_w("*********** LOG Warning *********");
-  log_i("*********** LOG Info *********");
-  log_d("*********** LOG Debug *********");
-  log_v("*********** LOG Verbose *********");
-  
-  */
   log_i("SDK-Version=%s",ESP.getSdkVersion());
   log_i("CPU-Speed=%d",ESP.getCpuFreqMHz());
   log_i("Total heap: %d", ESP.getHeapSize());
@@ -816,11 +779,8 @@ void setup() {
   log_i("Free PSRAM: %d", ESP.getFreePsram());
   log_i("compiled at %s",compile_date);
 
-
-
   //esp_sleep_wakeup_cause_t reason = print_wakeup_reason(); //print reason for wakeup
   print_wakeup_reason(); //print reason for wakeup
-
 
     // Make sure we can read the file system
   if( !SPIFFS.begin(true)){
@@ -831,25 +791,14 @@ void setup() {
   //listSpiffsFiles();
   load_configFile(); //load configuration
 
-  //setting.ssid = "WLAN_EICHLER";
-  //setting.password = "magest172";
 
   pinMode(BUTTON2, INPUT_PULLUP);
 
   if (setting.GSMode){ // we are ground-station
     setting.outputMode = OUTPUT_SERIAL;
-    /*
-    setting.outputFANET = 0;
-    setting.outputFLARM = 0;
-    setting.outputGPS = 0;
-    setting.outputLK8EX1 = 0;
-    */
     setting.bSwitchWifiOff3Min = false;
   }
   
-
-  //setting.ssid = "WLAN_EICHLER";
-  //setting.password = "magest172";
   if (setting.outputMode == OUTPUT_UDP){
     setting.bSwitchWifiOff3Min = false;    
   }
@@ -858,6 +807,9 @@ void setup() {
   }else{
     setting.wifiDownTime = 0;
   }
+
+  //setting.ssid = "WLAN_EICHLER";
+  //setting.password = "magest172";
   //setting.bSwitchWifiOff3Min = false;
   //setting.wifiDownTime = 0;
 
@@ -886,8 +838,9 @@ void setup() {
     pinMode(ADCBOARDVOLTAGE_PIN, INPUT);
   }
 
-  startOLED();
-
+  if (setting.displayType == OLED0_96) startOLED();  
+  if (setting.displayType == EINK2_9) screen.begin();  
+  
   btOk = 0;
 
   xTaskCreatePinnedToCore(taskBaro, "taskBaro", 6500, NULL, 100, &xHandleBaro, ARDUINO_RUNNING_CORE1); //high priority task
@@ -1561,12 +1514,14 @@ void taskStandard(void *pvParameters){
 
 
 
-  display.setTextColor(WHITE);
-  display.setTextSize(1);
-  display.setCursor(0,55);
-  display.print(setting.myDevId);
-  display.display();
-  delay(3000);
+  if (setting.displayType == OLED0_96){
+    display.setTextColor(WHITE);
+    display.setTextSize(1);
+    display.setCursor(0,55);
+    display.print(setting.myDevId);
+    display.display();
+    delay(3000);
+  }
 
   //udp.begin(UDPPORT);
   tLoop = millis();
@@ -1588,6 +1543,8 @@ void taskStandard(void *pvParameters){
         log_i("%s",s.c_str());
       }
     }
+
+    if (setting.displayType == EINK2_9) screen.run();  
     /*
     if (timeOver(tAct,tTest,1000)){
       tTest = tAct;
@@ -1608,47 +1565,49 @@ void taskStandard(void *pvParameters){
     printBattVoltage(tAct);
     readGPS();
     sendFlarmData(tAct);
-    if (setting.GSMode){
-      if (timeOver(tAct,tDisplay,DISPLAY_UPDATE_RATE_GS)){
-        tDisplay = tAct;
-        //log_i("neghbours=%u",fanet.getNeighboursCount());
-        if (fanet.getNeighboursCount() == 0){
-          printScanning(tAct);
-        }else{
-          printGSData(tAct);
+    if (setting.displayType == OLED0_96){
+      if (setting.GSMode){
+        if (timeOver(tAct,tDisplay,DISPLAY_UPDATE_RATE_GS)){
+          tDisplay = tAct;
+          //log_i("neghbours=%u",fanet.getNeighboursCount());
+          if (fanet.getNeighboursCount() == 0){
+            printScanning(tAct);
+          }else{
+            printGSData(tAct);
+          }
         }
-      }
-    }else{
-        switch (setting.screenNumber)
-        {
-        case 0: //main-Display
-          if (timeOver(tAct,tDisplay,DISPLAY_UPDATE_RATE)){
-            tDisplay = tAct;
-            printGPSData(tAct);          
+      }else{
+          switch (setting.screenNumber)
+          {
+          case 0: //main-Display
+            if (timeOver(tAct,tDisplay,DISPLAY_UPDATE_RATE)){
+              tDisplay = tAct;
+              printGPSData(tAct);          
+            }
+            break;
+          case 1: //radar-screen with list
+            if (timeOver(tAct,tDisplay,DISPLAY_UPDATE_RATE2)){
+              tDisplay = tAct;
+              DrawRadarScreen(tAct,RADAR_LIST);
+            }
+            break;
+          case 2: //radar-screen with closest
+            if (timeOver(tAct,tDisplay,DISPLAY_UPDATE_RATE)){
+              tDisplay = tAct;
+              DrawRadarScreen(tAct,RADAR_CLOSEST);
+            }
+            break;
+          case 3: //list aircrafts
+            if (timeOver(tAct,tDisplay,DISPLAY_UPDATE_RATE)){
+              tDisplay = tAct;
+              //DrawAircraftList();
+            }
+            break;
+          default:
+            break;
           }
-          break;
-        case 1: //radar-screen with list
-          if (timeOver(tAct,tDisplay,DISPLAY_UPDATE_RATE2)){
-            tDisplay = tAct;
-            DrawRadarScreen(tAct,RADAR_LIST);
-          }
-          break;
-        case 2: //radar-screen with closest
-          if (timeOver(tAct,tDisplay,DISPLAY_UPDATE_RATE)){
-            tDisplay = tAct;
-            DrawRadarScreen(tAct,RADAR_CLOSEST);
-          }
-          break;
-        case 3: //list aircrafts
-          if (timeOver(tAct,tDisplay,DISPLAY_UPDATE_RATE)){
-            tDisplay = tAct;
-            //DrawAircraftList();
-          }
-          break;
-        default:
-          break;
-        }
 
+      }
     }
 
     /*
@@ -1801,13 +1760,15 @@ void taskStandard(void *pvParameters){
     if (WebUpdateRunning) break;
   }
   log_i("stopp standard-task");
-  display.clearDisplay();
-  display.setTextSize(2);
-  display.setCursor(10,5);
-  display.print("FW-UPDATE");
-  display.setCursor(10,30);
-  display.print("wait...");
-  display.display();
+  if (setting.displayType == OLED0_96){
+    display.clearDisplay();
+    display.setTextSize(2);
+    display.setCursor(10,5);
+    display.print("FW-UPDATE");
+    display.setCursor(10,30);
+    display.print("wait...");
+    display.display();
+  }
   fanet.end();
   if (setting.OGNLiveTracking) ogn.end();
   vTaskDelete(xHandleStandard); //delete standard-task
@@ -1835,30 +1796,32 @@ void powerOff(){
   display.print("OFF");
   display.display(); 
   */
-  display.setTextColor(WHITE);
-  display.clearDisplay();
-  display.drawXBitmap(0,2,G_Logo_bits,G_Logo_width,G_Logo_height,WHITE);
-  display.drawXBitmap(30,2,X_Logo_bits,X_Logo_width,X_Logo_height,WHITE);
-  display.drawXBitmap(69,2,AirCom_Logo_bits,AirCom_Logo_width,AirCom_Logo_height,WHITE);
-  display.setTextSize(1);
-  display.setCursor(85,55);
-  display.print(VERSION);
-  display.setCursor(0,55);
-  display.print(setting.myDevId);
-  display.display();
-  delay(1000);
-  display.clearDisplay();
-  display.drawXBitmap(0,2,G_Logo_bits,G_Logo_width,G_Logo_height,WHITE);
-  display.drawXBitmap(30,2,X_Logo_bits,X_Logo_width,X_Logo_height,WHITE);
-  display.display();
-  delay(1000);
-  display.clearDisplay();
-  display.drawXBitmap(0,2,G_Logo_bits,G_Logo_width,G_Logo_height,WHITE);
-  display.display();
-  delay(1000);
-  display.clearDisplay();
-  display.ssd1306_command(SSD1306_DISPLAYOFF);
-
+  if (setting.displayType == OLED0_96){
+    display.setTextColor(WHITE);
+    display.clearDisplay();
+    display.drawXBitmap(0,2,G_Logo_bits,G_Logo_width,G_Logo_height,WHITE);
+    display.drawXBitmap(30,2,X_Logo_bits,X_Logo_width,X_Logo_height,WHITE);
+    display.drawXBitmap(69,2,AirCom_Logo_bits,AirCom_Logo_width,AirCom_Logo_height,WHITE);
+    display.setTextSize(1);
+    display.setCursor(85,55);
+    display.print(VERSION);
+    display.setCursor(0,55);
+    display.print(setting.myDevId);
+    display.display();
+    delay(1000);
+    display.clearDisplay();
+    display.drawXBitmap(0,2,G_Logo_bits,G_Logo_width,G_Logo_height,WHITE);
+    display.drawXBitmap(30,2,X_Logo_bits,X_Logo_width,X_Logo_height,WHITE);
+    display.display();
+    delay(1000);
+    display.clearDisplay();
+    display.drawXBitmap(0,2,G_Logo_bits,G_Logo_width,G_Logo_height,WHITE);
+    display.display();
+    delay(1000);
+    display.clearDisplay();
+    display.ssd1306_command(SSD1306_DISPLAYOFF);
+  }
+  if (setting.displayType == EINK2_9) screen.end();
   // switch all off
   axp.setChgLEDMode(AXP20X_LED_OFF);
   axp.setPowerOutPut(AXP192_LDO2, AXP202_OFF); //LORA
