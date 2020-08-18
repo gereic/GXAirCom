@@ -26,7 +26,7 @@ bool Baro::begin(TwoWire *pi2c){
   xMutex = xSemaphoreCreateMutex();
   
   // initialize device
-  Serial.println("Initializing I2C devices...");
+  log_i("Initializing I2C devices...");
   accelgyro.initialize();
   // reset offsets  
   accelgyro.setXAccelOffset(-1617);
@@ -40,12 +40,12 @@ bool Baro::begin(TwoWire *pi2c){
   accelgyro.setSleepEnabled(false);
   //accelgyro.setDMPEnabled();
   mag.initialize();
-  Serial.println(mag.testConnection() ? "HMC5883L connection successful" : "HMC5883L connection failed");
+  //Serial.println(mag.testConnection() ? "HMC5883L connection successful" : "HMC5883L connection failed");
 
   // verify connection
-  Serial.println("Testing device connections...");
-  Serial.println(accelgyro.testConnection() ? "MPU6050 connection successful" : "MPU6050 connection failed"); 
-  Serial.print("size of data:"); Serial.println(sizeof(logData));  
+  //Serial.println("Testing device connections...");
+  //Serial.println(accelgyro.testConnection() ? "MPU6050 connection successful" : "MPU6050 connection failed"); 
+  //Serial.print("size of data:"); Serial.println(sizeof(logData));  
   memset(&logData,0,sizeof(logData));
   countReadings = 0;
   logData.newData = 0x80; //first measurement

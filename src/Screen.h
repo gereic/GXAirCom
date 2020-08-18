@@ -52,6 +52,7 @@ private:
   void drawCompass(int16_t x, int16_t y, int16_t width, int16_t height,float value);
   void drawBatt(int16_t x, int16_t y, int16_t width, int16_t height,uint8_t value);
   void drawSatCount(int16_t x, int16_t y, int16_t width, int16_t height,uint8_t value);
+  void getTextPositions(int16_t *posx, int16_t *posy,int16_t x, int16_t y, int16_t width, int16_t height,String sText);
   String getWDir(float dir);
   uint8_t stepCount;
   struct screenMainData{

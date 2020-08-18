@@ -220,7 +220,7 @@ void Screen::drawBatt(int16_t x, int16_t y, int16_t width, int16_t height,uint8_
     uint16_t posx,posy;
     
     posx = 104;
-    posy = 8;
+    posy = 4;
     //log_i("%d",value);
     if (value == 255){
         if (timeOver(tAct,tCharging,1000)){
@@ -294,7 +294,20 @@ void Screen::drawSatCount(int16_t x, int16_t y, int16_t width, int16_t height,ui
     while (e_ink.nextPage());
 }
 
+void Screen::getTextPositions(int16_t *posx, int16_t *posy,int16_t x, int16_t y, int16_t width, int16_t height,String sText){
+    *posx = 0;
+    *posy = 0;
+    int16_t tbx, tby; 
+    uint16_t tbw, tbh;
+    e_ink.getTextBounds(sText.c_str(),x, y, &tbx, &tby, &tbw, &tbh);
+    *posx = (width-(tbx + tbw)) / 2;
+    *posy = y + height-1;
+    //log_i("%d %d %d %d %d %d",tbx, tby, tbw, tbh,*posx,*posy);
+}
+
 void Screen::drawMainScreen(void){
+    int16_t posx = 0;
+    int16_t posy = 0;
     static screenMainData data;
     screenMainData actData;
     static bool bForceUpdate = false;
@@ -314,21 +327,51 @@ void Screen::drawMainScreen(void){
         e_ink.setTextSize(1);       
         e_ink.setFullWindow();
         e_ink.firstPage();
+        e_ink.setFont(&NotoSansBold6pt7b);
+        getTextPositions(&posx,&posy,0,35,128,10,setting.PilotName);        
         do
         {
-            /*
-            e_ink.drawInvertedBitmap(0, 0,fix1icons,  16, 16, GxEPD_BLACK);   //GxEPD_BLACK);
-            e_ink.drawInvertedBitmap(24, 0,fix2icons,  16, 16, GxEPD_BLACK);   //GxEPD_BLACK);
-            e_ink.drawInvertedBitmap(48, 0,pauseicons,  24, 24, GxEPD_BLACK);   //GxEPD_BLACK);
-            e_ink.drawInvertedBitmap(76, 0,norecordicons,  24, 24, GxEPD_BLACK);   //GxEPD_BLACK);
-            */
+
+           switch (setting.AircraftType)
+           {
+           case FanetLora::paraglider :
+               e_ink.drawXBitmap(0, 0, Paraglider16_bits, 16, 16, GxEPD_BLACK);   //GxEPD_BLACK);
+               break;
+           case FanetLora::hangglider :
+               e_ink.drawXBitmap(0, 0, Hangglider16_bits, 16, 16, GxEPD_BLACK);   //GxEPD_BLACK);
+               break;
+           case FanetLora::balloon :
+               e_ink.drawXBitmap(0, 0, Ballon16_bits, 16, 16, GxEPD_BLACK);   //GxEPD_BLACK);
+               break;
+           case FanetLora::glider :
+               e_ink.drawXBitmap(0, 0, Sailplane16_bits, 16, 16, GxEPD_BLACK);   //GxEPD_BLACK);
+               break;
+           case FanetLora::poweredAircraft :
+               e_ink.drawXBitmap(0, 0, Airplane16_bits, 16, 16, GxEPD_BLACK);   //GxEPD_BLACK);
+               break;
+           case FanetLora::helicopter :
+               e_ink.drawXBitmap(0, 0, Helicopter16_bits, 16, 16, GxEPD_BLACK);   //GxEPD_BLACK);
+               break;
+           case FanetLora::uav :
+               e_ink.drawXBitmap(0, 0, UAV16_bits, 16, 16, GxEPD_BLACK);   //GxEPD_BLACK);
+               break;
+           
+           default:
+               e_ink.drawXBitmap(0, 0, UFO16_bits, 16, 16, GxEPD_BLACK);   //GxEPD_BLACK);
+               break;
+           }
             e_ink.drawFastHLine(0,52,e_ink.width(),GxEPD_BLACK);
             e_ink.drawFastHLine(0,101,e_ink.width(),GxEPD_BLACK);
             e_ink.drawFastHLine(0,150,e_ink.width(),GxEPD_BLACK);
             e_ink.drawFastHLine(0,199,e_ink.width(),GxEPD_BLACK);
             e_ink.drawFastHLine(0,248,e_ink.width(),GxEPD_BLACK);
             e_ink.setFont(&FreeSansBold9pt7b);            
+            e_ink.setFont(&NotoSansBold6pt7b);
+            e_ink.setCursor(posx,posy);
+            e_ink.print(setting.PilotName);
             e_ink.setFont(&NotoSans6pt7b);
+            e_ink.setCursor(50,11);
+            e_ink.print(setting.myDevId);
             e_ink.setCursor(5,62);
             e_ink.print("Altitude");
             e_ink.setCursor(98, 97);
@@ -359,7 +402,7 @@ void Screen::drawMainScreen(void){
         }
         if ((abs(data.battPercent - actData.battPercent) >= 1) || (bForceUpdate) || (actData.battPercent == 255)){
             data.battPercent = actData.battPercent;
-            drawBatt(104,0,24,24,data.battPercent);
+            drawBatt(104,0,24,16,data.battPercent);
         }
         if ((abs(data.alt - actData.alt) >= 1.0) || (bForceUpdate)){
             data.alt = actData.alt;
