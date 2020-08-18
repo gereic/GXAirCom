@@ -313,13 +313,10 @@ String processor(const String& var){
     sRet = "";
     for (int i = 0; i < MAXNEIGHBOURS; i++){
       if (fanet.neighbours[i].devId){
-        sRet += "<tr><th><a href=\"https://www.google.com/maps/search/?api=1&query=" + String(fanet.neighbours[i].lat,6) + "," + String(fanet.neighbours[i].lon,6)+ "\"  target=\"_blank\">" + fanet.neighbours[i].name + " [" + fanet.getDevId(fanet.neighbours[i].devId) + "]</a></th>" + 
-        "<td>lat: " + String(fanet.neighbours[i].lat,6) + "</td>" + 
-        "<td>lon: " + String(fanet.neighbours[i].lon,6) + "</td>" + 
-        "<td>alt: " + String(fanet.neighbours[i].altitude,0) + "m</td>" +
-        "<td>speed: " + String(fanet.neighbours[i].speed,0) + "km/h</td>" +
-        "<td>climb: " + String(fanet.neighbours[i].climb,0) + "m/s</td>" +
-        "<td>heading: " + String(fanet.neighbours[i].heading,0) + "m/s</td>" +
+        sRet += "<tr><th><a href=\"https://www.google.com/maps/search/?api=1&query=" + String(fanet.neighbours[i].lat,6) + "," + String(fanet.neighbours[i].lon,6)+ "\"  target=\"_blank\">" + fanet.neighbours[i].name + "<br> [" + fanet.getDevId(fanet.neighbours[i].devId) + "]</a></th>" + 
+        "<td>lat: " + String(fanet.neighbours[i].lat,6) + " <br> lon: " + String(fanet.neighbours[i].lon,6) + "</td>" + 
+        "<td>alt: " + String(fanet.neighbours[i].altitude,0) + "m <br>speed: " + String(fanet.neighbours[i].speed,0) + "km/h </td>" +
+        "<td>climb: " + String(fanet.neighbours[i].climb,0) + "m/s <br>heading: " + String(fanet.neighbours[i].heading,0) + "° </td>" +
         "</th>" +
         "\r\n";
       }

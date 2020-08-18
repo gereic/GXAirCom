@@ -5,14 +5,26 @@
 <meta charset='utf-8'>
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
 <title>GXAirCom</title>
+
+<style>
+  table {
+    border-collapse: collapse;
+  }
+  
+  table, td, th {
+    border: 1px solid green;
+    padding: 2px
+  }
+  </style>
+
 </head>
 <body>
   <div style="text-align:left;display:inline-block;color:#eaeaea;min-width:340px;">
     <div style='text-align:center;color:#eaeaea;'>
       <noscript>JavaScript aktivieren um GXAirCom benutzen zu können<br></noscript>
-      <h1>%APPNAME%-%VERSION%</h1>
-      <h3>build-date: %BUILD%</h3>
-      <h3>%PILOT%</h3>      
+ <!--     <h1>%APPNAME%-%VERSION%</h1> 
+      <h3>build-date: %BUILD%</h3> -->
+      <h3>Connected to: %PILOT%</h3>      
     </div>
     <style>td{padding:0px 5px;}</style>
     <div>
@@ -32,7 +44,7 @@
       </tr>
     </table>
     <p></p>
-    <div style='text-align:right;font-size:11px;'><hr><a href='https://www.getronix.at' target='_blank' style='color:#aaa;'>GXAirCom by Gerald Eichler</a>
+    <div style='text-align:right;font-size:11px;'><hr><a href='https://www.getronix.at' target='_blank' style='color:#aaa;'>GXAirCom %VERSION% (%BUILD%) by Gerald Eichler</a>
     </div>
   </div>
 </body>
