@@ -102,8 +102,11 @@ struct SettingsData{
 
 struct statusData{
   String myIP; //my IP-Adress
+  uint8_t displayType;
+  uint8_t outputMode; //output-mode
   uint16_t vBatt; //battery-voltage 1/1000V
   uint8_t BattPerc; //battery-percent
+  bool BattCharging;
   uint8_t GPS_Fix;
   double GPS_Lat;
   double GPS_Lon;
@@ -113,6 +116,7 @@ struct statusData{
   float pressure;
   float varioAlt;
   float varioTemp;
+  float varioHeading;
   uint8_t GPS_NumSat;
   float ClimbRate;
   uint16_t fanetTx;

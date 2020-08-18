@@ -45,6 +45,7 @@
 #define LifeCount 5000
 
 bool WebUpdateRunning = false;
+bool bPowerOff = false;
 
 struct SettingsData setting;
 struct statusData status;
@@ -120,12 +121,14 @@ TaskHandle_t xHandleStandard = NULL;
 TaskHandle_t xHandleBackground = NULL;
 TaskHandle_t xHandleBle = NULL;
 TaskHandle_t xHandleMemory = NULL;
+TaskHandle_t xHandleEInk = NULL;
 
 /********** function prototypes ******************/
 void setupAXP192();
 void taskBaro(void *pvParameters);
 void taskStandard(void *pvParameters);
 void taskBackGround(void *pvParameters);
+void taskEInk(void *pvParameters);
 void taskBle(void *pvParameters);
 void taskMemory(void *pvParameters);
 #ifdef OTAPROGRAMMING
@@ -394,7 +397,7 @@ void sendAWUdp(String msg){
 }
 
 void sendData2Client(String data){
-  if (setting.outputMode == OUTPUT_UDP){
+  if (status.outputMode == OUTPUT_UDP){
     //output via udp
     if ((WiFi.status() == WL_CONNECTED) || (WiFi.softAPgetStationNum() > 0)){ //connected to wifi or a client is connected to me
       //log_i("sending udp");
@@ -403,16 +406,16 @@ void sendData2Client(String data){
       udp.write((uint8_t *)data.c_str(),data.length());
       udp.endPacket();    
     }
-  }else if (setting.outputMode == OUTPUT_SERIAL){//output over serial-connection
+  }else if (status.outputMode == OUTPUT_SERIAL){//output over serial-connection
     Serial.print(data); 
-  }else if (setting.outputMode == OUTPUT_BLUETOOTH){//output over bluetooth serial
+  }else if (status.outputMode == OUTPUT_BLUETOOTH){//output over bluetooth serial
     if (btOk == 1){
       if (SerialBT.hasClient()){
         //log_i("sending to bt-device %s",data.c_str());
         SerialBT.print(data);
       }    
     }
-  }else if (setting.outputMode == OUTPUT_BLE){ //output over ble-connection
+  }else if (status.outputMode == OUTPUT_BLE){ //output over ble-connection
     if (xHandleBle){
       if ((ble_data.length() + data.length()) <512){
         while(ble_mutex){
@@ -624,8 +627,7 @@ void setupOTAProgramming(){
     ArduinoOTA
     .onStart([]() {
       String type;
-      log_i("stopping standard-task");
-      vTaskDelete(xHandleStandard); //delete standard-task
+      log_i("stop task");
       if (ArduinoOTA.getCommand() == U_FLASH)
         type = "sketch";
       else // U_SPIFFS
@@ -798,8 +800,10 @@ void setup() {
     setting.outputMode = OUTPUT_SERIAL;
     setting.bSwitchWifiOff3Min = false;
   }
+
+  status.outputMode = setting.outputMode;
   
-  if (setting.outputMode == OUTPUT_UDP){
+  if (status.outputMode == OUTPUT_UDP){
     setting.bSwitchWifiOff3Min = false;    
   }
   if (setting.bSwitchWifiOff3Min){
@@ -816,7 +820,7 @@ void setup() {
   printSettings();
 
 
-
+  status.displayType = setting.displayType; //we have to copy it, otherwise you can' switch it in setting without crash
 
   if (setting.boardType == BOARD_T_BEAM){    
     i2cOLED.begin(OLED_SDA, OLED_SCL);
@@ -838,19 +842,20 @@ void setup() {
     pinMode(ADCBOARDVOLTAGE_PIN, INPUT);
   }
 
-  if (setting.displayType == OLED0_96) startOLED();  
-  if (setting.displayType == EINK2_9) screen.begin();  
+  if (status.displayType == OLED0_96) startOLED();  
+  //if (setting.displayType == EINK2_9) screen.begin();  
   
   btOk = 0;
 
   xTaskCreatePinnedToCore(taskBaro, "taskBaro", 6500, NULL, 100, &xHandleBaro, ARDUINO_RUNNING_CORE1); //high priority task
   xTaskCreatePinnedToCore(taskStandard, "taskStandard", 6500, NULL, 10, &xHandleStandard, ARDUINO_RUNNING_CORE1); //standard task
+  xTaskCreatePinnedToCore(taskEInk, "taskEInk", 6500, NULL, 8, &xHandleEInk, ARDUINO_RUNNING_CORE1); //background EInk
   xTaskCreatePinnedToCore(taskBackGround, "taskBackGround", 6500, NULL, 5, &xHandleBackground, ARDUINO_RUNNING_CORE1); //background task
-  if (setting.outputMode == OUTPUT_BLE){
+  if (status.outputMode == OUTPUT_BLE){
     esp_bt_controller_enable(ESP_BT_MODE_BLE);
     esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT);
     xTaskCreatePinnedToCore(taskBle, "taskBle", 4096, NULL, 7, &xHandleBle, ARDUINO_RUNNING_CORE1);
-  }else if (setting.outputMode == OUTPUT_BLUETOOTH){
+  }else if (status.outputMode == OUTPUT_BLUETOOTH){
     esp_bt_controller_enable(ESP_BT_MODE_CLASSIC_BT);
     esp_bt_controller_mem_release(ESP_BT_MODE_BLE);
   }else{
@@ -897,22 +902,25 @@ void taskBaro(void *pvParameters){
       baro.run();
       if (baro.isNewVAlues()){
         baro.getValues(&status.pressure,&status.varioAlt,&status.ClimbRate,&status.varioTemp);
+        status.varioHeading = baro.getHeading();
         #ifdef USE_BEEPER
         Beeper.setVelocity(status.ClimbRate);
         #endif
       }
+      /*
       if (timeOver(tAct,tRefresh,200)){
         tRefresh = tAct;
         baro.getValues(&status.pressure,&status.varioAlt,&status.ClimbRate,&status.varioTemp);
-      }      
+      } 
+      */     
       #ifdef USE_BEEPER
         Beeper.update();
       #endif      
       delay(1);
-      if (WebUpdateRunning) break;
+      if ((WebUpdateRunning) || (bPowerOff)) break;
     }
   }
-  log_i("stopp baro-task");
+  log_i("stop task");
   vTaskDelete(xHandleBaro); //delete baro-task
 
 }
@@ -996,6 +1004,8 @@ void printBattVoltage(uint32_t tAct){
   if ((tAct - tBatt) >= 5000){
     tBatt = tAct;
     if (status.bHasAXP192){
+      status.BattCharging = axp.isChargeing();
+      //log_i("chargingstate=%d",status.BattCharging);
       if (axp.isBatteryConnect()) {
         status.vBatt = (uint16_t)axp.getBattVoltage();
       }else{
@@ -1496,7 +1506,7 @@ void taskStandard(void *pvParameters){
   if (!setting.GSMode){ // we are ground-station)
     flarm.begin();
   }
-  if (setting.outputMode == OUTPUT_BLUETOOTH){
+  if (status.outputMode == OUTPUT_BLUETOOTH){
     log_i("starting bluetooth_serial %s",host_name.c_str());
     SerialBT.begin(host_name); //Bluetooth device name
     SerialBT.print(APPNAME " Bluetooth Starting");
@@ -1514,7 +1524,7 @@ void taskStandard(void *pvParameters){
 
 
 
-  if (setting.displayType == OLED0_96){
+  if (status.displayType == OLED0_96){
     display.setTextColor(WHITE);
     display.setTextSize(1);
     display.setCursor(0,55);
@@ -1522,7 +1532,6 @@ void taskStandard(void *pvParameters){
     display.display();
     delay(3000);
   }
-
   //udp.begin(UDPPORT);
   tLoop = millis();
   while(1){    
@@ -1534,7 +1543,7 @@ void taskStandard(void *pvParameters){
     
 
     if (setting.OGNLiveTracking) ogn.run();
-    if (setting.outputMode == OUTPUT_BLUETOOTH){
+    if (status.outputMode == OUTPUT_BLUETOOTH){
       s = "";
       while(SerialBT.available()){
         s += SerialBT.read();
@@ -1542,9 +1551,7 @@ void taskStandard(void *pvParameters){
       if (s.length() > 0){
         log_i("%s",s.c_str());
       }
-    }
-
-    if (setting.displayType == EINK2_9) screen.run();  
+    }    
     /*
     if (timeOver(tAct,tTest,1000)){
       tTest = tAct;
@@ -1565,7 +1572,7 @@ void taskStandard(void *pvParameters){
     printBattVoltage(tAct);
     readGPS();
     sendFlarmData(tAct);
-    if (setting.displayType == OLED0_96){
+    if (status.displayType == OLED0_96){
       if (setting.GSMode){
         if (timeOver(tAct,tDisplay,DISPLAY_UPDATE_RATE_GS)){
           tDisplay = tAct;
@@ -1692,16 +1699,7 @@ void taskStandard(void *pvParameters){
         status.GPS_Lat = nmea.getLatitude() / 1000000.;
         status.GPS_Lon = nmea.getLongitude() / 1000000.;  
         status.GPS_alt = alt/1000.;
-        if (status.flying){
-          status.GPS_course = nmea.getCourse()/1000.;
-        }else{
-          if (status.bHasVario){
-            status.GPS_course = baro.getHeading(); //if we are not flying, copy heading
-          }else{
-            status.GPS_course = 0.0;
-          }
-        }
-        
+        status.GPS_course = nmea.getCourse()/1000.;
         status.GPS_NumSat = nmea.getNumSatellites();
         if (oldAlt == 0) oldAlt = status.GPS_alt;        
         if (!status.bHasVario) status.ClimbRate = (status.GPS_alt - oldAlt) / (float(status.tGPSCycle) / 1000.0);        
@@ -1711,10 +1709,14 @@ void taskStandard(void *pvParameters){
         MyFanetData.lon = status.GPS_Lon;
         MyFanetData.altitude = status.GPS_alt;
         MyFanetData.speed = status.GPS_speed; //speed in cm/s --> we need km/h
-        MyFanetData.heading = status.GPS_course;
+        if ((status.GPS_speed <= 5.0) && (status.bHasVario)){
+          MyFanetData.heading = status.varioHeading;
+        }else{
+          MyFanetData.heading = status.GPS_course;
+        }        
         if (setting.OGNLiveTracking){
-          ogn.setGPS(status.GPS_Lat,status.GPS_Lon,status.GPS_alt,status.GPS_speed,status.GPS_course);
-          ogn.sendTrackingData(status.GPS_Lat,status.GPS_Lon,status.GPS_alt,status.GPS_speed,status.GPS_course,status.ClimbRate,fanet.getMyDevId() ,(Ogn::aircraft_t)fanet.getAircraftType());
+          ogn.setGPS(status.GPS_Lat,status.GPS_Lon,status.GPS_alt,status.GPS_speed,MyFanetData.heading);
+          ogn.sendTrackingData(status.GPS_Lat,status.GPS_Lon,status.GPS_alt,status.GPS_speed,MyFanetData.heading,status.ClimbRate,fanet.getMyDevId() ,(Ogn::aircraft_t)fanet.getAircraftType());
         } 
 
         fanet.setMyTrackingData(&MyFanetData); //set Data on fanet
@@ -1728,7 +1730,7 @@ void taskStandard(void *pvParameters){
           msg += String(chs) + ",";
           sprintf(chs,"%02.6f",status.GPS_Lon);
           msg += String(chs) + ",0,0,";
-          sprintf(chs,"%0.2f",status.GPS_course);
+          sprintf(chs,"%0.2f",MyFanetData.heading);
           msg += String(chs) + ",";
           sprintf(chs,"%0.2f",status.GPS_speed * 0.53996);
           msg += String(chs) + ",";
@@ -1757,10 +1759,10 @@ void taskStandard(void *pvParameters){
     }
     sendAWGroundStationdata(tAct); //send ground-station-data    
     delay(1);
-    if (WebUpdateRunning) break;
+    if ((WebUpdateRunning) || (bPowerOff)) break;
   }
-  log_i("stopp standard-task");
-  if (setting.displayType == OLED0_96){
+  log_i("stop task");
+  if (status.displayType == OLED0_96){
     display.clearDisplay();
     display.setTextSize(2);
     display.setCursor(10,5);
@@ -1776,11 +1778,8 @@ void taskStandard(void *pvParameters){
 
 void powerOff(){
   axp.clearIRQ();
-  log_i("stopping standard-task");
-  //vTaskDelete(xHandleStandard); //delete standard-task
-  WebUpdateRunning = true;
+  bPowerOff = true;
   delay(100);
-  fanet.end();
 
 
   esp_wifi_set_mode(WIFI_MODE_NULL);
@@ -1796,7 +1795,7 @@ void powerOff(){
   display.print("OFF");
   display.display(); 
   */
-  if (setting.displayType == OLED0_96){
+  if (status.displayType == OLED0_96){
     display.setTextColor(WHITE);
     display.clearDisplay();
     display.drawXBitmap(0,2,G_Logo_bits,G_Logo_width,G_Logo_height,WHITE);
@@ -1821,12 +1820,24 @@ void powerOff(){
     display.clearDisplay();
     display.ssd1306_command(SSD1306_DISPLAYOFF);
   }
-  if (setting.displayType == EINK2_9) screen.end();
+  log_i("wait until all tasks are stopped");
+  while(1){
+    //wait until all tasks are stopped
+    if ((eTaskGetState(xHandleBaro) == eDeleted) && (eTaskGetState(xHandleEInk) == eDeleted) && (eTaskGetState(xHandleStandard) == eDeleted)) break; //now all tasks are stopped
+    delay(100);
+  }
+  log_i("switch power-supply off");
+  delay(100);
   // switch all off
   axp.setChgLEDMode(AXP20X_LED_OFF);
   axp.setPowerOutPut(AXP192_LDO2, AXP202_OFF); //LORA
   axp.setPowerOutPut(AXP192_LDO3, AXP202_OFF); //GPS
-  axp.setPowerOutPut(AXP192_DCDC1, AXP202_ON); //OLED-Display 3V3
+  if (status.displayType == OLED0_96){
+    axp.setPowerOutPut(AXP192_DCDC1, AXP202_ON); //OLED-Display 3V3
+  }else{
+    axp.setPowerOutPut(AXP192_DCDC1, AXP202_OFF); //OLED-Display 3V3
+  }
+  
   axp.setPowerOutPut(AXP192_DCDC2, AXP202_OFF); // NC
   axp.setPowerOutPut(AXP192_EXTEN, AXP202_OFF);
   delay(20);
@@ -1837,6 +1848,27 @@ void powerOff(){
 
 }
 
+void taskEInk(void *pvParameters){
+  if (status.displayType != EINK2_9){
+    log_i("stop task");
+    vTaskDelete(xHandleEInk);
+    return;
+  }
+  while(1){
+    if (setting.myDevId.length() > 0) break; //now we are ready
+    delay(100);
+  }
+  screen.begin();
+  while(1){
+    screen.run();
+    delay(10);
+    if ((WebUpdateRunning) || (bPowerOff)) break;
+  }
+  if (WebUpdateRunning) screen.webUpdate();
+  if (bPowerOff) screen.end();
+  log_i("stop task");
+  vTaskDelete(xHandleEInk);
+}
 
 void taskBackGround(void *pvParameters){
   static uint32_t tLife = millis();
@@ -1847,12 +1879,6 @@ void taskBackGround(void *pvParameters){
   delay(1500);
   
   setupWifi();
-  #ifdef OTAPROGRAMMING
-  //if ((setting.outputMode != OUTPUT_BLUETOOTH) && (setting.outputMode != OUTPUT_BLE)){
-    setupOTAProgramming();
-  //}
-  
-  #endif
   while (1){
     uint32_t tAct = millis();
     if ((setting.ssid.length() > 0) && (setting.password.length() > 0) && (setting.WifiConnect) && (WiFi.status() != WL_CONNECTED) && (status.WifiConnect)){
@@ -1884,11 +1910,6 @@ void taskBackGround(void *pvParameters){
 
     if  (status.WifiConnect){
       Web_loop();
-      #ifdef OTAPROGRAMMING
-      //if ((setting.outputMode != OUTPUT_BLUETOOTH) && (setting.outputMode != OUTPUT_BLE)){
-        ArduinoOTA.handle();
-      //}
-      #endif
     }
     if (( tAct > setting.wifiDownTime) && (setting.wifiDownTime!=0)){
       setting.wifiDownTime=0;
