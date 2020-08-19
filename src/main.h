@@ -5,7 +5,7 @@
 #ifndef __MAIN_H__
 #define __MAIN_H__
 
-#define VERSION "V1.3.0"
+#define VERSION "V1.3.1"
 #define APPNAME "GXAirCom"
 
 #define BLE_LOW_HEAP 10000
@@ -128,6 +128,7 @@ struct statusData{
   uint32_t tMaxLoop; //max Loop-time
   bool flying;
   bool WifiConnect;
+  uint32_t flightTime; //flight-time in sek.
 };
 
 #endif

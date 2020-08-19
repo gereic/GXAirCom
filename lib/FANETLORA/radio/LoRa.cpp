@@ -582,7 +582,12 @@ void LoRaClass::readFifo(uint8_t addr, uint8_t *data, int length){
 }
 
 int LoRaClass::getRssi(void){
-  return (readRegister(REG_PKT_RSSI_VALUE) - (_frequency < 868E6 ? 164 : 157));
+	const int pktsnr = (int8_t) readRegister(REG_PKT_SNR_VALUE);
+	int rssi = -139 + readRegister(REG_PKT_RSSI_VALUE);
+	if(pktsnr < 0)
+		rssi += ((pktsnr-2)/4);			//note: correct rounding for negative numbers
+  return rssi;
+  //return (readRegister(REG_PKT_RSSI_VALUE) - (_frequency < 868E6 ? 164 : 157));
 }
 
 

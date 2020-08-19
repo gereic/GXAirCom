@@ -333,7 +333,9 @@ String processor(const String& var){
         "<td>alt: " + String(fanet.neighbours[i].altitude,0) + "m</td>" +
         "<td>speed: " + String(fanet.neighbours[i].speed,0) + "km/h</td>" +
         "<td>climb: " + String(fanet.neighbours[i].climb,0) + "m/s</td>" +
-        "<td>heading: " + String(fanet.neighbours[i].heading,0) + "m/s</td>" +
+        "<td>heading: " + String(fanet.neighbours[i].heading,0) + "°</td>" +
+        "<td>rssi: " + String(fanet.neighbours[i].rssi) + "dB</td>" +
+        "<td>last seen: " + String((millis() - fanet.neighbours[i].tLastMsg) / 1000) + "seconds</td>" +
         "</th>" +
         "\r\n";
       }

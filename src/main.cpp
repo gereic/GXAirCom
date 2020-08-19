@@ -211,6 +211,7 @@ void sendFlarmData(uint32_t tAct){
 
 void checkFlyingState(uint32_t tAct){
   static uint32_t tOk = millis();
+  static uint32_t tFlightTime = millis();
   if (status.flying){
     //flying
     if ((!status.GPS_Fix) || (status.GPS_speed < MIN_FLIGHT_SPEED)){
@@ -219,11 +220,18 @@ void checkFlyingState(uint32_t tAct){
       }
     }else{
       tOk = tAct;
+      if (timeOver(tAct,tFlightTime,1000)){
+        //1 sec. over --> inc. flight-time
+        status.flightTime ++; //inc. flight-Time
+        tFlightTime += 1000;
+      }
     }
   }else{
     //on ground
     if ((status.GPS_Fix) && (status.GPS_speed > MIN_FLIGHT_SPEED)){
       if (timeOver(tAct,tOk,MIN_FLIGHT_TIME)){
+        tFlightTime = tAct;
+        status.flightTime = 0;
         status.flying = true;
       }
     }else{
@@ -888,12 +896,10 @@ void taskBaro(void *pvParameters){
   if (status.bHasVario){
     while (1){
       uint32_t tAct = millis();
-      /*
-      if (u8Volume != setting.vario.volume){
-        u8Volume = setting.vario.volume;
-        Beeper.setVolume(u8Volume);
-      }
-      */
+      //if (u8Volume != setting.vario.volume){
+      //  u8Volume = setting.vario.volume;
+      //  Beeper.setVolume(u8Volume);
+      //}
       if ((!status.flying) && (setting.vario.BeepOnlyWhenFlying)){
         Beeper.setVolume(0);
       }else{
@@ -907,12 +913,6 @@ void taskBaro(void *pvParameters){
         Beeper.setVelocity(status.ClimbRate);
         #endif
       }
-      /*
-      if (timeOver(tAct,tRefresh,200)){
-        tRefresh = tAct;
-        baro.getValues(&status.pressure,&status.varioAlt,&status.ClimbRate,&status.varioTemp);
-      } 
-      */     
       #ifdef USE_BEEPER
         Beeper.update();
       #endif      
@@ -922,7 +922,6 @@ void taskBaro(void *pvParameters){
   }
   log_i("stop task");
   vTaskDelete(xHandleBaro); //delete baro-task
-
 }
 
 void loop() {

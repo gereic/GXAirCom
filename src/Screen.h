@@ -31,7 +31,8 @@ extern struct statusData status;
 
 #define EINK_BUSY     33
 #define EINK_RST      4
-#define EINK_DC       23
+//#define EINK_DC       23
+#define EINK_DC       32
 #define EINK_CS       15
 #define EINK_CLK      25
 #define EINK_DIN      2
@@ -48,6 +49,7 @@ private:
   bool bInit;
   void doInitScreen(void);
   void drawMainScreen(void);
+  void drawFlightTime(int16_t x, int16_t y, int16_t width, int16_t height,uint32_t tTime);
   void drawValue(int16_t x, int16_t y, int16_t width, int16_t height,float value,uint8_t decimals);
   void drawCompass(int16_t x, int16_t y, int16_t width, int16_t height,float value);
   void drawBatt(int16_t x, int16_t y, int16_t width, int16_t height,uint8_t value);
@@ -62,6 +64,7 @@ private:
     float speed;
     float compass;
     uint8_t SatCount;
+    uint32_t flightTime;
   };
 
 };

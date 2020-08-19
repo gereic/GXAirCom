@@ -86,6 +86,7 @@
 
 /* Debug */
 #define MAC_debug_mode				0
+//#define MAC_debug_mode				100
 
 
 

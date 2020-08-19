@@ -140,6 +140,7 @@ void FanetMac::frameReceived(int length)
 {
 	/* quickly read registers */
 	num_received = LoRa.getFrame(rx_frame, sizeof(rx_frame));
+
 	int rssi = LoRa.getRssi();
 
 #if MAC_debug_mode > 0
