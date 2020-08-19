@@ -17,3 +17,6 @@ added support for 2.9' e-ink-display --> have to remove 2 resistors (R17,R20 nea
 V1.3.1
 added flight-time recorder to e-ink, some changes on e-ink display
 Bugfix in e-ink wiring.
+
+V1.3.2
+added Button 2 (GPIO-38) for switching off and on buzzer (long-click to adjust volume)

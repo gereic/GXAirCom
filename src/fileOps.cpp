@@ -91,3 +91,10 @@ void write_screenNumber(void){
     preferences.putUChar("SCREEN",setting.screenNumber);
     preferences.end();
 }
+
+void write_Volume(void){
+    //log_i("WRITE vario volume");
+    preferences.begin("settings", false);
+    preferences.putUChar("VarioVolume",setting.vario.volume);
+    preferences.end();
+}

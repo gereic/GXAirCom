@@ -339,7 +339,11 @@ window.addEventListener("load", init, false);
           </tr>
           <tr>
             <th>volume (0..255)</th>
-            <td><input type="number" id="vVol" name="vVol" min="0" max="255" step="1"></td>
+            <td><select name="vVol" id="vVol">
+              <option value="50">Low</option>
+              <option value="100">MID</option>
+              <option value="250">HIGH</option>
+            </select></td>
           </tr>
           <tr>
             <th>beep only when flying</th>

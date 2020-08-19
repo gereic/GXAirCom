@@ -163,6 +163,43 @@ void sendAWUdp(String msg);
 void checkFlyingState(uint32_t tAct);
 void DrawAngleLine(int16_t x,int16_t y,int16_t length,float deg);
 void sendFlarmData(uint32_t tAct);
+void handleButton(uint32_t tAct);
+
+void handleButton(uint32_t tAct){
+  static uint32_t buttonTimer = millis();
+  static uint32_t dblClkTimer = millis();
+  static bool dblClkActive = false;
+  static bool buttonActive = false;
+  static bool longPressActive = false;
+  if (digitalRead(BUTTON2) == LOW){
+    //Button pressed
+		if (buttonActive == false) {
+			buttonActive = true;
+			buttonTimer = millis();
+		}
+		if ((millis() - buttonTimer > LONGPRESSTIME) && (longPressActive == false)) {
+			longPressActive = true;
+      if (setting.vario.volume == LOWVOLUME){
+        setting.vario.volume = MIDVOLUME;  
+      }else if (setting.vario.volume == MIDVOLUME){
+        setting.vario.volume = HIGHVOLUME;  
+      }else if (setting.vario.volume == HIGHVOLUME){
+        setting.vario.volume = LOWVOLUME;  
+      }
+      write_Volume();
+      //log_i("volume=%d",setting.vario.volume);
+		}
+  }else{
+    //Button released
+		if (buttonActive == true) {
+			if (longPressActive == false) {
+				status.bMuting = !status.bMuting; //toggle muting
+      }
+		}    
+		buttonActive = false;
+		longPressActive = false;
+  }
+}
 
 
 void sendFlarmData(uint32_t tAct){
@@ -220,11 +257,11 @@ void checkFlyingState(uint32_t tAct){
       }
     }else{
       tOk = tAct;
-      if (timeOver(tAct,tFlightTime,1000)){
-        //1 sec. over --> inc. flight-time
-        status.flightTime ++; //inc. flight-Time
-        tFlightTime += 1000;
-      }
+    }
+    if (timeOver(tAct,tFlightTime,1000)){
+      //1 sec. over --> inc. flight-time
+      status.flightTime ++; //inc. flight-Time
+      tFlightTime += 1000;
     }
   }else{
     //on ground
@@ -900,7 +937,7 @@ void taskBaro(void *pvParameters){
       //  u8Volume = setting.vario.volume;
       //  Beeper.setVolume(u8Volume);
       //}
-      if ((!status.flying) && (setting.vario.BeepOnlyWhenFlying)){
+      if (((!status.flying) && (setting.vario.BeepOnlyWhenFlying)) || (status.bMuting)){
         Beeper.setVolume(0);
       }else{
         Beeper.setVolume(setting.vario.volume);
@@ -1540,6 +1577,7 @@ void taskStandard(void *pvParameters){
     tLoop = tAct;
     if (status.tMaxLoop < status.tLoop) status.tMaxLoop = status.tLoop;
     
+    handleButton(tAct);
 
     if (setting.OGNLiveTracking) ogn.run();
     if (status.outputMode == OUTPUT_BLUETOOTH){

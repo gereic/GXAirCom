@@ -5,7 +5,7 @@
 #ifndef __MAIN_H__
 #define __MAIN_H__
 
-#define VERSION "V1.3.1"
+#define VERSION "V1.3.2"
 #define APPNAME "GXAirCom"
 
 #define BLE_LOW_HEAP 10000
@@ -45,6 +45,11 @@
 #define WIFI_RECONNECT_TIME 10000
 
 #define BUTTON2 38
+#define LONGPRESSTIME 250
+
+#define LOWVOLUME 50
+#define MIDVOLUME 100
+#define HIGHVOLUME 250
 
 #define DISPLAY_UPDATE_RATE 500
 #define DISPLAY_UPDATE_RATE2 2000
@@ -129,6 +134,7 @@ struct statusData{
   bool flying;
   bool WifiConnect;
   uint32_t flightTime; //flight-time in sek.
+  bool bMuting; //muting beeper
 };
 
 #endif

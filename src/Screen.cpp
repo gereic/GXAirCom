@@ -303,6 +303,17 @@ void Screen::drawMainScreen(void){
     actData.battPercent = (status.BattCharging) ? 255 : status.BattPerc / 25;
     actData.SatCount = (status.GPS_Fix) ? status.GPS_NumSat : 0;
     actData.flightTime = status.flightTime;
+    if (status.bMuting){
+        actData.volume = 0;
+    }else{
+        if (setting.vario.volume == LOWVOLUME){
+            actData.volume = 1;
+        }else if (setting.vario.volume == MIDVOLUME){
+            actData.volume = 2;
+        }else{
+            actData.volume = 3;
+        }
+    }
     switch (stepCount)
     {
     case 0:
@@ -355,7 +366,7 @@ void Screen::drawMainScreen(void){
             e_ink.setCursor(posx,posy);
             e_ink.print(setting.PilotName);
             e_ink.setFont(&NotoSans6pt7b);
-            e_ink.setCursor(50,11);
+            e_ink.setCursor(40,30);
             e_ink.print(setting.myDevId);
             e_ink.setCursor(5,62);
             e_ink.print("Altitude");
@@ -404,20 +415,49 @@ void Screen::drawMainScreen(void){
             e_ink.setFont(&gnuvarioe23pt7b);
             drawValue(0,163,96,34,data.speed,0);
         }
-        if ((abs(data.flightTime - actData.flightTime) >= 1000) || (bForceUpdate)){
-            data.flightTime = actData.flightTime;
-            drawFlightTime(0,213,128,34,actData.flightTime);
+        if ((abs((int32_t)data.flightTime - (int32_t)actData.flightTime) >= 60) || (bForceUpdate)){
+            data.flightTime = (actData.flightTime / 60) * 60; //only fixed minutes
+            drawFlightTime(0,213,128,34,data.flightTime);
         }
         if ((abs(data.compass - actData.compass) >= 1.0) || (bForceUpdate)){
             data.compass = actData.compass;
             e_ink.setFont(&gnuvarioe18pt7b);
             drawCompass(0,261,128,31,data.compass);
         }
+        if ((data.volume != actData.volume) || (bForceUpdate)){
+            data.volume = actData.volume;
+            drawspeaker(50,0,16,16,data.volume);
+        }
         bForceUpdate = false;
 
     default:
         break;
     }
+}
+
+void Screen::drawspeaker(int16_t x, int16_t y, int16_t width, int16_t height,uint8_t volume){
+    e_ink.setPartialWindow(x,y,width,height);
+    do
+    {
+        e_ink.fillScreen(GxEPD_WHITE);
+        switch (volume)
+        {
+        case 1:
+            e_ink.drawXBitmap(x, y,speakerlow_bits,  16, 16, GxEPD_BLACK);
+            break;
+        case 2:
+            e_ink.drawXBitmap(x, y,speakermid_bits,  16, 16, GxEPD_BLACK);
+            break;
+        case 3:
+            e_ink.drawXBitmap(x, y,speakerhigh_bits,  16, 16, GxEPD_BLACK);
+            break;        
+        default:
+            e_ink.drawXBitmap(x, y,speakeroff_bits,  16, 16, GxEPD_BLACK);
+            break;
+        }
+    }
+    while (e_ink.nextPage());
+
 }
 
 void Screen::drawFlightTime(int16_t x, int16_t y, int16_t width, int16_t height,uint32_t tTime){
@@ -430,9 +470,9 @@ void Screen::drawFlightTime(int16_t x, int16_t y, int16_t width, int16_t height,
         e_ink.fillScreen(GxEPD_WHITE);
         e_ink.drawBitmap(x + (width / 2) - 8, y + (height / 2) - 8, hicons, 16, 16, GxEPD_BLACK);   //GxEPD_BLACK);    
         e_ink.setCursor(x + (width / 2) - 54,y + height -1);
-        e_ink.printf("%02d",min);
-        e_ink.setCursor(x + (width / 2) + 8,y + height -1);
         e_ink.printf("%02d",hours);
+        e_ink.setCursor(x + (width / 2) + 8,y + height -1);
+        e_ink.printf("%02d",min);
 
     }
     while (e_ink.nextPage());

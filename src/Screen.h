@@ -55,6 +55,7 @@ private:
   void drawBatt(int16_t x, int16_t y, int16_t width, int16_t height,uint8_t value);
   void drawSatCount(int16_t x, int16_t y, int16_t width, int16_t height,uint8_t value);
   void getTextPositions(int16_t *posx, int16_t *posy,int16_t x, int16_t y, int16_t width, int16_t height,String sText);
+  void drawspeaker(int16_t x, int16_t y, int16_t width, int16_t height,uint8_t volume);
   String getWDir(float dir);
   uint8_t stepCount;
   struct screenMainData{
@@ -65,6 +66,7 @@ private:
     float compass;
     uint8_t SatCount;
     uint32_t flightTime;
+    uint8_t volume; //muting beeper
   };
 
 };
