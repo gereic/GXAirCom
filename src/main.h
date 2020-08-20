@@ -5,7 +5,7 @@
 #ifndef __MAIN_H__
 #define __MAIN_H__
 
-#define VERSION "V1.3.2"
+#define VERSION "V1.3.3"
 #define APPNAME "GXAirCom"
 
 #define BLE_LOW_HEAP 10000
@@ -42,7 +42,7 @@
 #define MIN_FLIGHT_TIME 10000
 #define MIN_GROUND_TIME 60000
 
-#define WIFI_RECONNECT_TIME 10000
+#define WIFI_RECONNECT_TIME 60000
 
 #define BUTTON2 38
 #define LONGPRESSTIME 250
