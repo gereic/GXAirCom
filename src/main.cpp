@@ -628,7 +628,7 @@ void setupWifi(){
   //now configure access-point
   //so we have wifi connect and access-point at same time
   //we connecto to wifi
-  if ((setting.ssid.length() > 0) && (setting.password.length() > 0) && (setting.WifiConnect)){
+  if ((setting.ssid.length() > 0) && (setting.password.length() > 0)){
     //esp_wifi_set_auto_connect(true);
     log_i("Try to connect to WiFi ...");
     WiFi.status();
