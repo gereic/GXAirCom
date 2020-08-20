@@ -20,3 +20,6 @@ Bugfix in e-ink wiring.
 
 V1.3.2
 added Button 2 (GPIO-38) for switching off and on buzzer (long-click to adjust volume)
+
+V1.3.3
+wifi-timeout set 10sec. --> 60sec.
