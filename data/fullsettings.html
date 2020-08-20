@@ -56,6 +56,7 @@ function callMainPage(){
 function sendValues(){  
   var obj = {
   board : document.getElementById("board").value,
+  disp : document.getElementById("disp").value,
   band : document.getElementById("band").value,
   power : document.getElementById("power").value,
   type : document.getElementById("type").value,
@@ -83,6 +84,11 @@ function sendValues(){
   UDPServerIP : document.getElementById("UDPServerIP").value,
   UDPSendPort : document.getElementById("UDPSendPort").value,
   ognlive : Number(document.getElementById("ognlive").checked),
+
+  vSinkTh : parseFloat(document.getElementById("vSinkTh").value),
+  vClimbTh : parseFloat(document.getElementById("vClimbTh").value),
+  vVol : document.getElementById("vVol").value,
+  vBeepFly : Number(document.getElementById("vBeepFly").checked),
   
   save : 1 
 			};
@@ -153,6 +159,13 @@ window.addEventListener("load", init, false);
               <option value="0">TTGO T-Beam T22_V1.0</option>
               <option value="2">TTGO T-Beam T22_V07</option>
               <option value="1">HELTEC / TTGO LORA</option>
+            </select></td>
+          </tr>
+          <tr>
+            <th>Display Type</th>
+            <td><select name="disp" id="disp">
+              <option value="0">0.96' OLED</option>
+              <option value="1">2.9' E-Ink</option>
             </select></td>
           </tr>
           <tr>
@@ -301,6 +314,40 @@ window.addEventListener("load", init, false);
           <tr>
             <th>alt [m] (ground-station)</th>
             <td><input type="number" id="gsalt" name="gsalt"></td>
+          </tr>
+        </tbody>      
+      </table>
+    </fieldset>
+    <p></p>
+    <p></p>
+    <fieldset>
+      <legend><b>vario settings</b></legend>
+      <table style="width:100&#37;">
+        <tbody>
+          <tr>
+            <th>climbing threshold [m/s]</th>
+            <td><input type="number" id="vClimbTh" name="vClimbTh" step=".01"></td>
+          </tr>
+          <!--
+          <tr>
+            <th>near climbing sensitivity [m/s]</th>
+            <td><input type="number" id="vNClimbSens" name="vNClimbSens"></td>
+          </tr>-->
+          <tr>
+            <th>sinking threshold [m/s]</th>
+            <td><input type="number" id="vSinkTh" name="vSinkTh" step=".01"></td>
+          </tr>
+          <tr>
+            <th>volume (0..255)</th>
+            <td><select name="vVol" id="vVol">
+              <option value="50">Low</option>
+              <option value="100">MID</option>
+              <option value="250">HIGH</option>
+            </select></td>
+          </tr>
+          <tr>
+            <th>beep only when flying</th>
+            <td><input type="checkbox" id="vBeepFly" name="vBeepFly"></td>
           </tr>
         </tbody>      
       </table>

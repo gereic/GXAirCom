@@ -1,12 +1,11 @@
-#include <FanetLora.h>
 #include <string.h>
-#include <Ogn.h>
+#include <FanetLora.h>
 
 
 #ifndef __MAIN_H__
 #define __MAIN_H__
 
-#define VERSION "V1.2.7"
+#define VERSION "V1.3.2"
 #define APPNAME "GXAirCom"
 
 #define BLE_LOW_HEAP 10000
@@ -46,6 +45,11 @@
 #define WIFI_RECONNECT_TIME 10000
 
 #define BUTTON2 38
+#define LONGPRESSTIME 250
+
+#define LOWVOLUME 50
+#define MIDVOLUME 100
+#define HIGHVOLUME 250
 
 #define DISPLAY_UPDATE_RATE 500
 #define DISPLAY_UPDATE_RATE2 2000
@@ -54,9 +58,24 @@
 #define FLARM_UPDATE_RATE 1000
 #define FLARM_UPDATE_STATE 60000
 
+//defines for display
+#define OLED0_96 0
+#define EINK2_9  1
+
+struct VarioSettings{
+  float sinkingThreshold;
+  float climbingThreshold;
+  float nearClimbingSensitivity;
+  uint8_t volume;
+  bool BeepOnlyWhenFlying;
+};
+
+
+
 struct SettingsData{
   String appw; //access-point-Password
   uint8_t boardType;
+  uint8_t displayType;
   String myDevId; //my device-ID
   uint8_t band;
   uint8_t LoraPower; //output-Power 5-20db
@@ -83,28 +102,39 @@ struct SettingsData{
   String GSAWID; //Ground-Station ID
   uint8_t OGNLiveTracking; //OGN-Live-Tracking
   uint8_t screenNumber; //number of default-screen
+  VarioSettings vario; //variosettings
 };
 
 struct statusData{
   String myIP; //my IP-Adress
+  uint8_t displayType;
+  uint8_t outputMode; //output-mode
   uint16_t vBatt; //battery-voltage 1/1000V
   uint8_t BattPerc; //battery-percent
+  bool BattCharging;
   uint8_t GPS_Fix;
   double GPS_Lat;
   double GPS_Lon;
   float GPS_alt;
   float GPS_speed;
   float GPS_course;
+  float pressure;
+  float varioAlt;
+  float varioTemp;
+  float varioHeading;
   uint8_t GPS_NumSat;
   float ClimbRate;
   uint16_t fanetTx;
   uint16_t fanetRx;
   bool bHasAXP192;
+  bool bHasVario;
   uint32_t tGPSCycle;
   uint32_t tLoop; //current Loop-time
   uint32_t tMaxLoop; //max Loop-time
   bool flying;
   bool WifiConnect;
+  uint32_t flightTime; //flight-time in sek.
+  bool bMuting; //muting beeper
 };
 
 #endif

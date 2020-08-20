@@ -20,6 +20,7 @@
 #define LORA_DEFAULT_RESET_PIN     -1
 #define LORA_DEFAULT_DIO0_PIN      LORA_IRQ
 #else
+//#define LORA_DEFAULT_SPI           SPI
 #define LORA_DEFAULT_SPI           SPI
 #define LORA_DEFAULT_SPI_FREQUENCY 8E6 
 #define LORA_DEFAULT_SS_PIN        10

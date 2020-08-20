@@ -31,6 +31,17 @@ void load_configFile(void){
     setting.GSAWID = preferences.getString("GSAWID","");
     setting.OGNLiveTracking = preferences.getUChar("OGN_LIVE",0);
     setting.screenNumber = preferences.getUChar("SCREEN",0);
+    setting.displayType = preferences.getUChar("Display",0);
+
+
+    //vario
+    setting.vario.sinkingThreshold = preferences.getFloat("vSinkTh",-2.0);
+    setting.vario.climbingThreshold = preferences.getFloat("vClimbTh",0.2);
+    setting.vario.nearClimbingSensitivity = preferences.getFloat("vNClimbSens",0.5);
+    setting.vario.volume = preferences.getUChar("VarioVolume",10);
+    setting.vario.BeepOnlyWhenFlying = preferences.getUChar("VBeepFlying",1);
+
+
     preferences.end(); 
 }
 
@@ -62,6 +73,15 @@ void write_configFile(void){
     preferences.putFloat("GSALT",setting.GSAlt);
     preferences.putString("GSAWID",setting.GSAWID);
     preferences.putUChar("OGN_LIVE",setting.OGNLiveTracking);
+    preferences.putUChar("Display",setting.displayType);
+
+    //vario
+    preferences.putFloat("vSinkTh",setting.vario.sinkingThreshold);
+    preferences.putFloat("vClimbTh",setting.vario.climbingThreshold);
+    preferences.putFloat("vNClimbSens",setting.vario.nearClimbingSensitivity);
+    preferences.putUChar("VarioVolume",setting.vario.volume);
+    preferences.putUChar("VBeepFlying",setting.vario.BeepOnlyWhenFlying);
+
     ESP.restart();
 }
 
@@ -69,5 +89,12 @@ void write_screenNumber(void){
     log_i("WRITE CONFIG FILE");
     preferences.begin("settings", false);
     preferences.putUChar("SCREEN",setting.screenNumber);
+    preferences.end();
+}
+
+void write_Volume(void){
+    //log_i("WRITE vario volume");
+    preferences.begin("settings", false);
+    preferences.putUChar("VarioVolume",setting.vario.volume);
     preferences.end();
 }

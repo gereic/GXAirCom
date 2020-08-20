@@ -140,6 +140,7 @@ void FanetMac::frameReceived(int length)
 {
 	/* quickly read registers */
 	num_received = LoRa.getFrame(rx_frame, sizeof(rx_frame));
+
 	int rssi = LoRa.getRssi();
 
 #if MAC_debug_mode > 0
@@ -184,6 +185,7 @@ bool FanetMac::begin(Fapp &app,long frequency,uint8_t level)
 	/* configure phy radio */
 	//SPI LoRa pins
 	SPI.begin(SCK, MISO, MOSI, SS);
+	
 	//setup LoRa transceiver module
 	LoRa.setPins(SS, RST, DIO0);
 	//long frequency = FREQUENCY868;

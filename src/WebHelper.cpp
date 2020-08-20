@@ -83,6 +83,7 @@ void onWebSocketEvent(uint8_t client_num,
         }else if (clientPages[client_num] == 10){ //full settings
           doc.clear();
           doc["board"] = setting.boardType;
+          doc["disp"] = setting.displayType;
           doc["band"] = setting.band;
           doc["power"] = setting.LoraPower;
           doc["type"] = (uint8_t)setting.AircraftType;
@@ -119,6 +120,12 @@ void onWebSocketEvent(uint8_t client_num,
           doc["gsalt"] = setting.GSAlt;
           doc["gsmode"] = setting.GSMode;
           doc["ognlive"] = setting.OGNLiveTracking;
+
+          doc["vSinkTh"] = serialized(String(setting.vario.sinkingThreshold,2));
+          doc["vClimbTh"] = serialized(String(setting.vario.climbingThreshold,2));
+          doc["vVol"] = setting.vario.volume;
+          doc["vBeepFly"] = setting.vario.BeepOnlyWhenFlying;
+
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
         }else if (clientPages[client_num] == 11){ //settings general
@@ -194,6 +201,7 @@ void onWebSocketEvent(uint8_t client_num,
           //general settings-page          
           if (root.containsKey("appw")) setting.appw = doc["appw"].as<String>();          
           if (root.containsKey("board")) setting.boardType = doc["board"].as<uint8_t>();          
+          if (root.containsKey("disp")) setting.displayType = doc["disp"].as<uint8_t>();          
           if (root.containsKey("power")) setting.LoraPower = constrain(doc["power"].as<uint8_t>(),0,20);          
           if (root.containsKey("band")) setting.band = doc["band"].as<uint8_t>();          
           if (root.containsKey("wificonnect")) setting.WifiConnect = (bool)doc["wificonnect"].as<uint8_t>();
@@ -217,6 +225,12 @@ void onWebSocketEvent(uint8_t client_num,
           if (root.containsKey("gsalt")) setting.GSAlt = doc["gsalt"].as<float>();
           if (root.containsKey("gsmode")) setting.GSMode = doc["gsmode"].as<uint8_t>();
           if (root.containsKey("ognlive")) setting.OGNLiveTracking = doc["ognlive"].as<uint8_t>();
+          //vario
+          if (root.containsKey("vSinkTh")) setting.vario.sinkingThreshold = doc["vSinkTh"].as<float>();
+          if (root.containsKey("vClimbTh")) setting.vario.climbingThreshold = doc["vClimbTh"].as<float>();
+          if (root.containsKey("vNClimbSens")) setting.vario.nearClimbingSensitivity = doc["vNClimbSens"].as<float>();
+          if (root.containsKey("vVol")) setting.vario.volume = doc["vVol"].as<uint8_t>();
+          if (root.containsKey("vBeepFly")) setting.vario.BeepOnlyWhenFlying = doc["vBeepFly"].as<uint8_t>();
           log_i("write config-to file --> rebooting");
           delay(500);
           write_configFile();
@@ -313,10 +327,15 @@ String processor(const String& var){
     sRet = "";
     for (int i = 0; i < MAXNEIGHBOURS; i++){
       if (fanet.neighbours[i].devId){
-        sRet += "<tr><th><a href=\"https://www.google.com/maps/search/?api=1&query=" + String(fanet.neighbours[i].lat,6) + "," + String(fanet.neighbours[i].lon,6)+ "\"  target=\"_blank\">" + fanet.neighbours[i].name + "<br> [" + fanet.getDevId(fanet.neighbours[i].devId) + "]</a></th>" + 
-        "<td>lat: " + String(fanet.neighbours[i].lat,6) + " <br> lon: " + String(fanet.neighbours[i].lon,6) + "</td>" + 
-        "<td>alt: " + String(fanet.neighbours[i].altitude,0) + "m <br>speed: " + String(fanet.neighbours[i].speed,0) + "km/h </td>" +
-        "<td>climb: " + String(fanet.neighbours[i].climb,0) + "m/s <br>heading: " + String(fanet.neighbours[i].heading,0) + "° </td>" +
+        sRet += "<tr><th><a href=\"https://www.google.com/maps/search/?api=1&query=" + String(fanet.neighbours[i].lat,6) + "," + String(fanet.neighbours[i].lon,6)+ "\"  target=\"_blank\">" + fanet.neighbours[i].name + " [" + fanet.getDevId(fanet.neighbours[i].devId) + "]</a></th>" + 
+        "<td>lat: " + String(fanet.neighbours[i].lat,6) + "</td>" + 
+        "<td>lon: " + String(fanet.neighbours[i].lon,6) + "</td>" + 
+        "<td>alt: " + String(fanet.neighbours[i].altitude,0) + "m</td>" +
+        "<td>speed: " + String(fanet.neighbours[i].speed,0) + "km/h</td>" +
+        "<td>climb: " + String(fanet.neighbours[i].climb,0) + "m/s</td>" +
+        "<td>heading: " + String(fanet.neighbours[i].heading,0) + "°</td>" +
+        "<td>rssi: " + String(fanet.neighbours[i].rssi) + "dB</td>" +
+        "<td>last seen: " + String((millis() - fanet.neighbours[i].tLastMsg) / 1000) + "seconds</td>" +
         "</th>" +
         "\r\n";
       }
@@ -441,10 +460,6 @@ void Web_setup(void){
   server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, request->url(), "text/css");
   });
-  server.on("/communicator.html", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(SPIFFS, request->url(), "text/html",false,processor);
-  });
-
 
   server.on("/communicator.html", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, request->url(), "text/html",false,processor);

@@ -10,9 +10,13 @@ limited the text message to 66 characters max.
 V1.2.5
 added support for OGN-Live-Tracking
 
-V1.2.6
-Deleted some unused html pages on webserver and added communicator.html as a simpler web interface to be shown on Android Communicator App Version 1.1
+V1.3.0
+added support for GY-86-module (MS5611 baro, HMC5883L compass ,MPU6050 6-axis acc/gyro ) on Pin 13 SDA and ping 14 SCL (second i2c)
+added support for 2.9' e-ink-display --> have to remove 2 resistors (R17,R20 near Lora-Chip left bottom side)
 
-V1.2.7 
-Commented out "Bluetooth Serial" option from Fullsettings.html config as it´s not implemented and crashes the module if selected.
-Edited neighbours.html and webhelper.cpp for better fit on android
+V1.3.1
+added flight-time recorder to e-ink, some changes on e-ink display
+Bugfix in e-ink wiring.
+
+V1.3.2
+added Button 2 (GPIO-38) for switching off and on buzzer (long-click to adjust volume)

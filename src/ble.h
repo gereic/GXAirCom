@@ -53,15 +53,18 @@ class MyCallbacks : public BLECharacteristicCallbacks {
 
 		if (rxValue.length() > 0) {
 
+			log_i("received:%s",rxValue.c_str());
+			/*
 			String msg = "********* Received Value: "
 			
-			log_d("*********");
+			log_i("*********");
 
-			log_d("Received Value: ");
+			log_i("Received Value: ");
 
 			for (int i = 0; i < rxValue.length(); i++)
 				msg += rxValue[i];
 			msg += "*********";
+			*/
 		}
 
 	}
@@ -118,13 +121,15 @@ void start_ble (String bleId)
 	//pCharacteristic->addDescriptor(new BLEDescriptor(CHARACTERISTIC_UUID_RXTX_DESCRIPTOR));
 	pCharacteristic->addDescriptor(new BLE2902());
 
-   	BLECharacteristic *pCharacteristic = pService->createCharacteristic(
+   	/*
+	BLECharacteristic *pCharacteristic = pService->createCharacteristic(
 	CHARACTERISTIC_UUID_DEVICENAME,
 	BLECharacteristic::PROPERTY_READ
 	);
+	*/
 
-	pCharacteristic->setValue("esp32ble-hm10");
 	pCharacteristic->setCallbacks(new MyCallbacks());
+	pCharacteristic->setValue("esp32ble-hm10");
 	log_i("Starting BLE");
 	// Start the service
 	pService->start();
