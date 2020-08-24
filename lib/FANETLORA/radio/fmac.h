@@ -178,7 +178,7 @@ public:
 	FanetMac() : myTimer(MAC_SLOT_MS, stateWrapper), myAddr(_myAddr) { }
 	~FanetMac() { }
 
-	bool begin(Fapp &app,long frequency,uint8_t level);
+	bool begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset, int dio0,Fapp &app,long frequency,uint8_t level);
 	void end();
 	void handle() { myTimer.Update(); }
 

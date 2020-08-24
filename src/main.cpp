@@ -818,6 +818,8 @@ void setup() {
   ledcSetup(channel, freq, resolution);
   ledcAttachPin(PINBUZZER, channel);  
 
+  log_e("error");
+  
   log_i("SDK-Version=%s",ESP.getSdkVersion());
   log_i("CPU-Speed=%d",ESP.getCpuFreqMHz());
   log_i("Total heap: %d", ESP.getHeapSize());
@@ -908,7 +910,6 @@ void setup() {
     esp_bt_controller_mem_release(ESP_BT_MODE_BTDM);
   }
   xTaskCreatePinnedToCore(taskMemory, "taskMemory", 4096, NULL, 1, &xHandleMemory, ARDUINO_RUNNING_CORE1);
-  
 
 }
 
@@ -916,6 +917,12 @@ void taskBaro(void *pvParameters){
   static uint32_t tRefresh = millis();
   uint8_t u8Volume = setting.vario.volume;
   log_i("starting baro-task ");  
+  if (setting.GSMode){
+    status.bHasVario = false;    
+    log_i("GS-Mode --> stop task");
+    vTaskDelete(xHandleBaro);
+    return;    
+  }
   TwoWire i2cBaro = TwoWire(0);
   Wire.begin(SDA2,SCL2,400000);
   i2cBaro.begin(SDA2,SCL2,400000); //init i2cBaro for Baro
@@ -925,7 +932,6 @@ void taskBaro(void *pvParameters){
     Beeper.setVolume(u8Volume);
     //Beeper.setGlidingBeepState(true);
     //Beeper.setGlidingAlarmState(true);
-
   }else{
     log_i("no baro found --> end baro-task ");  
     status.bHasVario = false;    
@@ -1529,7 +1535,12 @@ void taskStandard(void *pvParameters){
   // create a binary semaphore for task synchronization
   long frequency = FREQUENCY868;
   if (setting.band == BAND915)frequency = FREQUENCY915; 
-  fanet.begin(SCK, MISO, MOSI, SS,RST, DIO0,frequency,setting.LoraPower);
+  if (setting.boardType == BOARD_HELTEC_LORA){
+    fanet.begin(5, 19, 27, 18,14, 26,frequency,setting.LoraPower);
+
+  }else{
+    fanet.begin(SCK, MISO, MOSI, SS,RST, DIO0,frequency,setting.LoraPower);
+  }
   fanet.setPilotname(setting.PilotName);
   fanet.setAircraftType(setting.AircraftType);
   if ((setting.testMode == 0) && (!setting.GSMode)){ //not in testmode and not ground-station

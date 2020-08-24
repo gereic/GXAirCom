@@ -7,6 +7,8 @@
 #include <Arduino.h>
 #include <SPI.h>
 
+//#define SX1276_debug_mode 100
+
 #if defined(ARDUINO_SAMD_MKRWAN1300)
 #define LORA_DEFAULT_SPI           SPI1
 #define LORA_DEFAULT_SPI_FREQUENCY 200000

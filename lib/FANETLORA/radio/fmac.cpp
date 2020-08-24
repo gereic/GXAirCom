@@ -178,16 +178,18 @@ void FanetMac::end()
 }
 
 
-bool FanetMac::begin(Fapp &app,long frequency,uint8_t level)
+bool FanetMac::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset, int dio0,Fapp &app,long frequency,uint8_t level)
 {
 	myApp = &app;
 
 	/* configure phy radio */
 	//SPI LoRa pins
-	SPI.begin(SCK, MISO, MOSI, SS);
+	log_i("sck=%d,miso=%d,mosi=%d,ss=%d,reset=%d,dio0=%d",sck,miso,mosi,ss,reset,dio0);
+	SPI.begin(sck, miso, mosi, ss);
 	
 	//setup LoRa transceiver module
-	LoRa.setPins(SS, RST, DIO0);
+	LoRa.setPins(ss, reset, dio0);
+	//LoRa.setPins(18, 14, 26);
 	//long frequency = FREQUENCY868;
 	//if (setting.band == BAND915)frequency = FREQUENCY915; 
 	log_i("Start Lora Frequency=%d",frequency);
@@ -207,10 +209,11 @@ bool FanetMac::begin(Fapp &app,long frequency,uint8_t level)
 	LoRa.enableCrc();
 	//LoRa.setTxPower(10); //10dbm + 4dbm antenna --> max 14dbm
 	//LoRa.setTxPower(10); //+4dB antenna gain (skytraxx/lynx) -> max allowed output (14dBm) (20 //full Power)
-	log_i("set tx Power");
+	//level = 20;
+	log_i("set tx Power=%d",level);
 	LoRa.setTxPower(level); //+4dB antenna gain (skytraxx/lynx) -> max allowed output (14dBm) (20 //full Power)
+	//LoRa.setTxPower(20); //+4dB antenna gain (skytraxx/lynx) -> max allowed output (14dBm) (20 //full Power)
 	//LoRa.onReceive(frameRxWrapper);
-	//LoRa.sleep(); //enter sleep mode
 	//LoRa.receive();
 	LoRa.setArmed(true,frameRxWrapper); //set receiver armed
 	log_i("LoRa Initialization OK!");
@@ -488,7 +491,7 @@ void FanetMac::handleTx()
 		if(i<blength-1)
 			Serial.printf(":");
 	}
-	Serial.printf(" ");
+	Serial.printf("\n");
 #endif
 
 	/* channel free and transmit? */

@@ -116,7 +116,7 @@ int LoRaClass::begin(long frequency)
   }
 
   // start SPI
-  //_spi->begin();
+  _spi->begin();
 
   // check version
   uint8_t version = readRegister(REG_VERSION);
@@ -304,26 +304,26 @@ int LoRaClass::parsePacket(int size)
 
 bool LoRaClass::setOpMode(uint8_t mode)
 {
-#if (SX1272_debug_mode > 0)
+#if (SX1276_debug_mode > 0)
 	switch (mode)
 	{
 	case LORA_RXCONT_MODE:
-		printf("## SX1272 opmode: rx continous\n");
+		Serial.print("## SX1276 opmode: rx continous\n");
 	break;
 	case LORA_TX_MODE:
-		printf("## SX1272 opmode: tx\n");
+		Serial.print("## SX1276 opmode: tx\n");
 	break;
 	case LORA_SLEEP_MODE:
-		printf("## SX1272 opmode: sleep\n");
+		Serial.print("## SX1276 opmode: sleep\n");
 	break;
 	case LORA_STANDBY_MODE:
-		printf("## SX1272 opmode: standby\n");
+		Serial.print("## SX1276 opmode: standby\n");
 	break;
 	case LORA_CAD_MODE:
-		printf("## SX1272 opmode: cad\n");
+		Serial.print("## SX1276 opmode: cad\n");
 	break;
 	default:
-		printf("## SX1272 opmode: unknown\n");
+		Serial.print("## SX1276 opmode: unknown\n");
 	}
 #endif
 
@@ -338,9 +338,32 @@ bool LoRaClass::setOpMode(uint8_t mode)
 		opmode = readRegister(REG_OP_MODE);
 	}
 
-#if (SX1272_debug_mode > 1)
-	printf("## SX1272 opmode: %02X\n", opmode);
+//#if (SX1276_debug_mode > 1)
+//	Serial.printf("## SX1276 opmode: %02X\n", opmode);
+//#endif
+#if (SX1276_debug_mode > 0)
+	switch (mode)
+	{
+	case LORA_RXCONT_MODE:
+		Serial.print("## SX1276 opmode: rx continous\n");
+	break;
+	case LORA_TX_MODE:
+		Serial.print("## SX1276 opmode: tx\n");
+	break;
+	case LORA_SLEEP_MODE:
+		Serial.print("## SX1276 opmode: sleep\n");
+	break;
+	case LORA_STANDBY_MODE:
+		Serial.print("## SX1276 opmode: standby\n");
+	break;
+	case LORA_CAD_MODE:
+		Serial.print("## SX1276 opmode: cad\n");
+	break;
+	default:
+		Serial.print("## SX1276 opmode: unknown\n");
+	}
 #endif
+
 
 	return mode == opmode;
 }
@@ -409,8 +432,8 @@ int LoRaClass::writeRegister_burst(uint8_t address, uint8_t *data, int length){
 
 bool LoRaClass::setCodingRate(uint8_t cr)
 {
-#if (SX1272_debug_mode > 0)
-	printf("## SX1272 CR:%02X\n", cr);
+#if (SX1276_debug_mode > 0)
+	Serial.printf("## SX1276 CR:%02X\n", cr);
 #endif
 
 	/* store state */
@@ -482,8 +505,8 @@ int LoRaClass::writeFifo(uint8_t addr, uint8_t *data, int length)
 }
 
 int LoRaClass::sendFrame(uint8_t *data, int length, uint8_t cr){
-#if (SX1272_debug_mode > 0)
-	printf("## SX1272 send frame...");
+#if (SX1276_debug_mode > 0)
+	Serial.printf("## SX1276 send frame...\n");
 #endif
 
 	/* channel accessible? */
@@ -525,8 +548,8 @@ int LoRaClass::sendFrame(uint8_t *data, int length, uint8_t cr){
 	/* bypass waiting */
 	if(_onReceive)
 	{
-#if (SX1272_debug_mode > 1)
-		printf("INT\n");
+#if (SX1276_debug_mode > 1)
+		Serial.printf("INT\n");
 #endif
 		writeRegister(REG_OP_MODE, MODE_LONG_RANGE_MODE | MODE_RX_CONTINUOUS);
     return TX_OK;
@@ -534,13 +557,13 @@ int LoRaClass::sendFrame(uint8_t *data, int length, uint8_t cr){
 
 	for(int i=0; i<100 && getOpMode() == LORA_TX_MODE; i++)
 	{
-#if (SX1272_debug_mode > 0)
-		printf(".");
+#if (SX1276_debug_mode > 0)
+		Serial.printf(".");
 #endif
 		delay(5);
 	}
-#if (SX1272_debug_mode > 0)
-	printf("done\n");
+#if (SX1276_debug_mode > 0)
+	Serial.printf("done\n");
 #endif
 	return TX_OK;
 
@@ -565,8 +588,8 @@ void LoRaClass::readFifo(uint8_t addr, uint8_t *data, int length){
 		data[i] = _spi->transfer(0);
 	unselect();
 
-#if (SX1272_debug_mode > 1)
-	Serial.print(F("## SX1272 read fifo, length="));
+#if (SX1276_debug_mode > 1)
+	Serial.print(F("## SX1276 read fifo, length="));
 	Serial.print(length, DEC);
 
 	Serial.print(" [");
@@ -582,12 +605,14 @@ void LoRaClass::readFifo(uint8_t addr, uint8_t *data, int length){
 }
 
 int LoRaClass::getRssi(void){
-	const int pktsnr = (int8_t) readRegister(REG_PKT_SNR_VALUE);
+  /*
+  const int pktsnr = (int8_t) readRegister(REG_PKT_SNR_VALUE);
 	int rssi = -139 + readRegister(REG_PKT_RSSI_VALUE);
 	if(pktsnr < 0)
 		rssi += ((pktsnr-2)/4);			//note: correct rounding for negative numbers
   return rssi;
-  //return (readRegister(REG_PKT_RSSI_VALUE) - (_frequency < 868E6 ? 164 : 157));
+  */
+  return (readRegister(REG_PKT_RSSI_VALUE) - (_frequency < 868E6 ? 164 : 157));
 }
 
 

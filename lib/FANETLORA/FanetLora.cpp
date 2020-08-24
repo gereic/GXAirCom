@@ -39,7 +39,7 @@ bool FanetLora::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset,
   _myData.lat = 0.0;
   _myData.lon = 0.0;
   Fapp * fa = this;
-  while(fmac.begin(*fa,frequency,outputPower) == false)
+  while(fmac.begin(sck, miso, mosi, ss, reset, dio0,*fa,frequency,outputPower) == false)
 	{
 		log_e("radio failed");
 		delay(500);
@@ -327,7 +327,8 @@ bool FanetLora::frm2txBuffer(Frame *frm){
 		log_e("TX-buffer full");
     return false;
   }
-
+  //log_i("ready");
+  txCount++;
 }
 
 void FanetLora::sendMSG(String msg){
@@ -337,7 +338,6 @@ void FanetLora::sendMSG(String msg){
         frm->payload_length = serialize_msg(msg,frm->payload);
         //log_i("sending fanet-msg:%s length=%d",msg.c_str(),frm->payload_length);
         frm2txBuffer(frm);
-        txCount++;
     }
 }
 
@@ -348,7 +348,6 @@ void FanetLora::sendName(String name){
         frm->type = FRM_TYPE_NAME;
         frm->payload_length = serialize_name(name,frm->payload);
         frm2txBuffer(frm);
-        txCount++;
     }
 }
 
@@ -359,6 +358,12 @@ void FanetLora::sendPilotName(uint32_t tAct){
     //log_i("tAct=%lu;tSend=%lu",tAct,tSend);
     sendName(_PilotName);   
   }
+}
+
+void FanetLora::broadcast_successful(int type){ 
+  last_tx = millis(); 
+  //log_i("ready");
+  txCount++; 
 }
 
 String FanetLora::getAircraftType(aircraft_t type){
@@ -505,18 +510,14 @@ void FanetLora::sendTracking(trackingData *tData){
   frm->type = FRM_TYPE_TRACKING;
   frm->payload_length = serialize_tracking(tData,frm->payload);
   frm2txBuffer(frm);
-  //log_i("%s",CreateFNFMSG(frm));
-  txCount++;
 }
 
 void FanetLora::writeMsgType1(trackingData *tData){
   sendTracking(tData);
-  txCount++;
 }
 
 void FanetLora::writeMsgType2(String name){
     sendName(name);
-    txCount++;  
 }
 
 
@@ -529,9 +530,7 @@ void FanetLora::writeMsgType3(uint32_t devId,String msg){
         frm->payload_length = serialize_msg(msg,frm->payload);
         //log_i("sending fanet-msg:%s length=%d",msg.c_str(),frm->payload_length);
         frm2txBuffer(frm);
-        txCount++;
     }
-    txCount++;
 }
 
 
@@ -635,8 +634,6 @@ void FanetLora::writeMsgType4(weatherData *wData){
   frm->forward = true;
   frm->payload_length = serialize_service(wData,frm->payload);
   frm2txBuffer(frm);
-  txCount++;
-    txCount++; 
 }
 
 void FanetLora::setMyTrackingData(trackingData *tData){

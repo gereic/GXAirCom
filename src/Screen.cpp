@@ -72,7 +72,6 @@ void Screen::doInitScreen(void){
     case 1:
         if (timeOver(tAct,tTimeStamp,500)){
             e_ink.setPartialWindow(0,0,e_ink.width(),e_ink.height());
-            //e_ink.firstPage();
             do
             {
                 e_ink.fillScreen(GxEPD_WHITE);
@@ -177,105 +176,66 @@ String Screen::getWDir(float dir){
 void Screen::drawCompass(int16_t x, int16_t y, int16_t width, int16_t height,float value){
     String sText = String(value,0);
     String sDir = getWDir(value);
-    //log_i("%.2f = %s",value,sText.c_str());
     int16_t tbx, tby, posx, posy; uint16_t tbw, tbh;
-    e_ink.setPartialWindow(x,y,width,height);
     e_ink.getTextBounds(sText.c_str(), 0, height, &tbx, &tby, &tbw, &tbh);
     posx = x+width-tbw-tbx;
     posy = y+height-1;
-    //log_i("%d %d %d %d %d %d",tbx, tby, tbw, tbh,posx,posy);
-    do
-    {
-        e_ink.fillScreen(GxEPD_WHITE);
-        e_ink.setCursor(x,posy);
-        e_ink.print(sDir.c_str());
-        e_ink.setCursor(posx,posy);
-        e_ink.print(sText.c_str());
-    }
-    while (e_ink.nextPage());
-
+    e_ink.setCursor(x,posy);
+    e_ink.print(sDir.c_str());
+    e_ink.setCursor(posx,posy);
+    e_ink.print(sText.c_str());
 }
 
 void Screen::drawValue(int16_t x, int16_t y, int16_t width, int16_t height,float value,uint8_t decimals){
     String sText = String(value,decimals);
     //log_i("%.2f = %s",value,sText.c_str());
     int16_t tbx, tby, posx, posy; uint16_t tbw, tbh;
-    e_ink.setPartialWindow(x,y,width,height);
     e_ink.getTextBounds(sText.c_str(), 0, height, &tbx, &tby, &tbw, &tbh);
     posx = x+width-tbw-tbx;
     posy = y+height-1;
     //log_i("%d %d %d %d %d %d",tbx, tby, tbw, tbh,posx,posy);
-    do
-    {
-        e_ink.fillScreen(GxEPD_WHITE);
-        e_ink.setCursor(posx,posy);
-        e_ink.print(sText.c_str());
-    }
-    while (e_ink.nextPage());
+    e_ink.setCursor(posx,posy);
+    e_ink.print(sText.c_str());
 }
 void Screen::drawBatt(int16_t x, int16_t y, int16_t width, int16_t height,uint8_t value){
-    static uint32_t tCharging = millis();
     static uint8_t DrawValue = 0;
-    uint32_t tAct = millis();
-    uint16_t posx,posy;
-    
+    uint16_t posx,posy;    
     posx = 104;
     posy = 4;
     //log_i("%d",value);
     if (value == 255){
-        if (timeOver(tAct,tCharging,1000)){
-            tCharging = tAct;
-            DrawValue = (DrawValue + 1) %5; 
-            //log_i("charging");
-        }else{
-            return;
-        }
+        DrawValue = (DrawValue + 1) %5; 
     }else{
         DrawValue = value;
     }
-    //log_i("%d",DrawValue);
-    e_ink.setPartialWindow(x,y,width,height);
-    do
+    switch (DrawValue)
     {
-        e_ink.fillScreen(GxEPD_WHITE);
-        switch (DrawValue)
-        {
-        case 1:
-            e_ink.drawInvertedBitmap(posx, posy, bat1icons, 17, 8, GxEPD_BLACK);   //GxEPD_BLACK);    
-            break;
-        case 2:
-            e_ink.drawInvertedBitmap(posx, posy, bat2icons, 17, 8, GxEPD_BLACK);   //GxEPD_BLACK);    
-            break;
-        case 3:
-            e_ink.drawInvertedBitmap(posx, posy, bat3icons, 17, 8, GxEPD_BLACK);   //GxEPD_BLACK);    
-            break;
-        case 4:
-            e_ink.drawInvertedBitmap(posx, posy, bat4icons, 17, 8, GxEPD_BLACK);   //GxEPD_BLACK);    
-            break;
-        default:
-            e_ink.drawInvertedBitmap(posx, posy, bat0icons, 17, 8, GxEPD_BLACK);   //GxEPD_BLACK);    
-            break;
-        }
-        
+    case 1:
+        e_ink.drawInvertedBitmap(posx, posy, bat1icons, 17, 8, GxEPD_BLACK);   //GxEPD_BLACK);    
+        break;
+    case 2:
+        e_ink.drawInvertedBitmap(posx, posy, bat2icons, 17, 8, GxEPD_BLACK);   //GxEPD_BLACK);    
+        break;
+    case 3:
+        e_ink.drawInvertedBitmap(posx, posy, bat3icons, 17, 8, GxEPD_BLACK);   //GxEPD_BLACK);    
+        break;
+    case 4:
+        e_ink.drawInvertedBitmap(posx, posy, bat4icons, 17, 8, GxEPD_BLACK);   //GxEPD_BLACK);    
+        break;
+    default:
+        e_ink.drawInvertedBitmap(posx, posy, bat0icons, 17, 8, GxEPD_BLACK);   //GxEPD_BLACK);    
+        break;
     }
-    while (e_ink.nextPage());
-
 }
 void Screen::drawSatCount(int16_t x, int16_t y, int16_t width, int16_t height,uint8_t value){
     e_ink.setFont(&FreeSansBold9pt7b);
-    e_ink.setPartialWindow(x,y,width,height);
-    do
-    {
-        e_ink.fillScreen(GxEPD_WHITE);
-        if (value == 0){
-            e_ink.drawXBitmap(x, y,gpsoff_bits,  16, 16, GxEPD_BLACK);
-        }else{
-            e_ink.drawXBitmap(x, y,gpsOn_bits,  16, 16, GxEPD_BLACK);
-            e_ink.setCursor(x+17,y+height-2);
-            e_ink.print(String(value));
-        }
+    if (value == 0){
+        e_ink.drawXBitmap(x, y,gpsoff_bits,  16, 16, GxEPD_BLACK);
+    }else{
+        e_ink.drawXBitmap(x, y,gpsOn_bits,  16, 16, GxEPD_BLACK);
+        e_ink.setCursor(x+17,y+height-2);
+        e_ink.print(String(value));
     }
-    while (e_ink.nextPage());
 }
 
 void Screen::getTextPositions(int16_t *posx, int16_t *posy,int16_t x, int16_t y, int16_t width, int16_t height,String sText){
@@ -290,19 +250,28 @@ void Screen::getTextPositions(int16_t *posx, int16_t *posy,int16_t x, int16_t y,
 }
 
 void Screen::drawMainScreen(void){
+    uint32_t tAct = millis();
+    static uint32_t tOldUpate = millis();
     int16_t posx = 0;
     int16_t posy = 0;
     static screenMainData data;
     screenMainData actData;
     static bool bForceUpdate = false;
+    bool UpdateScreen = false;
+    static bool bFullUpdate = false;
+    static uint32_t tCharging = millis();
+
     //copy values
     actData.alt = (status.GPS_Fix) ? status.GPS_alt : status.varioAlt;
     actData.vario = status.ClimbRate;
     actData.speed = status.GPS_speed;
-    actData.compass = (status.GPS_speed <= 5.0) ? status.varioHeading : status.GPS_course ;
+    //actData.compass = (status.GPS_speed <= 5.0) ? status.varioHeading : status.GPS_course ;
+    actData.compass = status.GPS_course ;
     actData.battPercent = (status.BattCharging) ? 255 : status.BattPerc / 25;
     actData.SatCount = (status.GPS_Fix) ? status.GPS_NumSat : 0;
+    if (actData.SatCount > 9) actData.SatCount = 9;
     actData.flightTime = status.flightTime;
+    actData.flying = status.flying;
     if (status.bMuting){
         actData.volume = 0;
     }else{
@@ -317,17 +286,86 @@ void Screen::drawMainScreen(void){
     switch (stepCount)
     {
     case 0:
-        //if (status.GPS_fix)
+        //bForceUpdate = true;
+        bFullUpdate = true;
+        stepCount++;
+        break;
+    case 1:
+        if ((abs(data.SatCount - actData.SatCount) >= 1) || (bForceUpdate)){
+            data.SatCount = actData.SatCount;
+            //log_i("update SatCount");
+            UpdateScreen = true;
+        }
+        if ((abs(data.battPercent - actData.battPercent) >= 1) || (bForceUpdate)){
+            data.battPercent = actData.battPercent;
+            //log_i("update Batt");
+            UpdateScreen = true;
+        }else if (data.battPercent == 255){
+            if (timeOver(tAct,tCharging,1000)){
+                tCharging = tAct;
+                //log_i("update Charging");
+                UpdateScreen = true;
+            }
+        }
+        if ((abs(data.alt - actData.alt) >= 1.0) || (bForceUpdate)){
+            data.alt = actData.alt;
+            UpdateScreen = true;
+        }
+        if ((abs(data.vario - actData.vario) >= 0.1) || (bForceUpdate)){
+            data.vario = actData.vario;
+            //log_i("update Vario");
+            UpdateScreen = true;
+        }
+        if ((abs(data.speed - actData.speed) >= 1.0) || (bForceUpdate)){
+            data.speed = actData.speed;
+            //log_i("update Speed");
+            UpdateScreen = true;
+        }
+        if ((abs((int32_t)data.flightTime - (int32_t)actData.flightTime) >= 60) || (bForceUpdate)){
+            data.flightTime = (actData.flightTime / 60) * 60; //only fixed minutes
+            //log_i("update flightTime");
+            UpdateScreen = true;
+        }
+        if ((abs(data.compass - actData.compass) >= 1.0) || (bForceUpdate)){
+            data.compass = actData.compass;
+            log_i("update Compass");
+            UpdateScreen = true;
+        }
+        if ((data.volume != actData.volume) || (bForceUpdate)){
+            data.volume = actData.volume;
+            log_i("update Volume");
+            UpdateScreen = true;
+        }
+        if ((data.flying != actData.flying) || (bForceUpdate)){
+            data.flying = actData.flying;  
+            log_i("update status flying");          
+            UpdateScreen = true;
+        }
+        
+        if ((!bFullUpdate) && (!UpdateScreen)){
+            break;
+        }
+        //log_i("fullUpdate=%d UpdateScreen=%d time=%d",bFullUpdate,UpdateScreen,millis()-tOldUpate);
+        tOldUpate = millis();
+        tAct = millis();
         e_ink.setTextColor(GxEPD_BLACK);
         e_ink.setRotation(0); 
         e_ink.setTextSize(1);       
-        e_ink.setFullWindow();
-        e_ink.firstPage();
+        
+        if (bFullUpdate){
+            e_ink.setFullWindow();
+            e_ink.firstPage();
+        }else{
+            e_ink.setPartialWindow(0,0,e_ink.width(),e_ink.height());
+        }
         e_ink.setFont(&NotoSansBold6pt7b);
         getTextPositions(&posx,&posy,0,35,128,10,setting.PilotName);        
         do
         {
-
+            e_ink.fillScreen(GxEPD_WHITE);
+            drawspeaker(55,0,16,16,data.volume);
+            drawflying(80,0,16,16,data.flying);
+            drawBatt(104,0,24,16,data.battPercent);
            switch (setting.AircraftType)
            {
            case FanetLora::paraglider :
@@ -356,12 +394,22 @@ void Screen::drawMainScreen(void){
                e_ink.drawXBitmap(0, 0, UFO16_bits, 16, 16, GxEPD_BLACK);   //GxEPD_BLACK);
                break;
            }
+            drawSatCount(18,0,26,16,data.SatCount);
             e_ink.drawFastHLine(0,52,e_ink.width(),GxEPD_BLACK);
+            e_ink.setFont(&gnuvarioe23pt7b);
+            drawValue(0,65,96,34,data.alt,0);
             e_ink.drawFastHLine(0,101,e_ink.width(),GxEPD_BLACK);
+            e_ink.setFont(&gnuvarioe23pt7b);
+            drawValue(0,114,96,34,data.vario,1);
             e_ink.drawFastHLine(0,150,e_ink.width(),GxEPD_BLACK);
+            e_ink.setFont(&gnuvarioe23pt7b);
+            drawValue(0,163,96,34,data.speed,0);
             e_ink.drawFastHLine(0,198,e_ink.width(),GxEPD_BLACK);
+            drawFlightTime(0,213,128,34,data.flightTime);
             e_ink.drawFastHLine(0,248,e_ink.width(),GxEPD_BLACK);
-            e_ink.setFont(&FreeSansBold9pt7b);            
+            e_ink.setFont(&gnuvarioe18pt7b);
+            drawCompass(0,261,128,31,data.compass);
+            //e_ink.setFont(&FreeSansBold9pt7b);            
             e_ink.setFont(&NotoSansBold6pt7b);
             e_ink.setCursor(posx,posy);
             e_ink.print(setting.PilotName);
@@ -385,97 +433,50 @@ void Screen::drawMainScreen(void){
 
         }
         while (e_ink.nextPage());
-        data.SatCount = 0;
-        bForceUpdate = true;
-        e_ink.setFont(&gnuvarioe23pt7b);
-        e_ink.setTextColor(GxEPD_BLACK);
-        stepCount++;
+        //log_i("update e-ink %dms",millis() - tAct);
+        bFullUpdate = false;
+        UpdateScreen = false;
         break;
-    case 1:        
-        if ((abs(data.SatCount - actData.SatCount) >= 1) || (bForceUpdate)){
-            data.SatCount = actData.SatCount;
-            drawSatCount(18,0,32,16,data.SatCount);
-        }
-        if ((abs(data.battPercent - actData.battPercent) >= 1) || (bForceUpdate) || (actData.battPercent == 255)){
-            data.battPercent = actData.battPercent;
-            drawBatt(104,0,24,16,data.battPercent);
-        }
-        if ((abs(data.alt - actData.alt) >= 1.0) || (bForceUpdate)){
-            data.alt = actData.alt;
-            e_ink.setFont(&gnuvarioe23pt7b);
-            drawValue(0,65,96,34,data.alt,0);
-        }
-        if ((abs(data.vario - actData.vario) >= 0.1) || (bForceUpdate)){
-            data.vario = actData.vario;
-            e_ink.setFont(&gnuvarioe23pt7b);
-            drawValue(0,114,96,34,data.vario,1);
-        }
-        if ((abs(data.speed - actData.speed) >= 1.0) || (bForceUpdate)){
-            data.speed = actData.speed;
-            e_ink.setFont(&gnuvarioe23pt7b);
-            drawValue(0,163,96,34,data.speed,0);
-        }
-        if ((abs((int32_t)data.flightTime - (int32_t)actData.flightTime) >= 60) || (bForceUpdate)){
-            data.flightTime = (actData.flightTime / 60) * 60; //only fixed minutes
-            drawFlightTime(0,213,128,34,data.flightTime);
-        }
-        if ((abs(data.compass - actData.compass) >= 1.0) || (bForceUpdate)){
-            data.compass = actData.compass;
-            e_ink.setFont(&gnuvarioe18pt7b);
-            drawCompass(0,261,128,31,data.compass);
-        }
-        if ((data.volume != actData.volume) || (bForceUpdate)){
-            data.volume = actData.volume;
-            drawspeaker(50,0,16,16,data.volume);
-        }
-        bForceUpdate = false;
-
     default:
         break;
     }
 }
 
-void Screen::drawspeaker(int16_t x, int16_t y, int16_t width, int16_t height,uint8_t volume){
-    e_ink.setPartialWindow(x,y,width,height);
-    do
-    {
-        e_ink.fillScreen(GxEPD_WHITE);
-        switch (volume)
-        {
-        case 1:
-            e_ink.drawXBitmap(x, y,speakerlow_bits,  16, 16, GxEPD_BLACK);
-            break;
-        case 2:
-            e_ink.drawXBitmap(x, y,speakermid_bits,  16, 16, GxEPD_BLACK);
-            break;
-        case 3:
-            e_ink.drawXBitmap(x, y,speakerhigh_bits,  16, 16, GxEPD_BLACK);
-            break;        
-        default:
-            e_ink.drawXBitmap(x, y,speakeroff_bits,  16, 16, GxEPD_BLACK);
-            break;
-        }
+void Screen::drawflying(int16_t x, int16_t y, int16_t width, int16_t height,bool flying){
+    if (flying){
+        e_ink.drawXBitmap(x, y,flying_bits,  16, 16, GxEPD_BLACK);
+    }else{
+        e_ink.drawXBitmap(x, y,not_flying_bits,  16, 16, GxEPD_BLACK);
     }
-    while (e_ink.nextPage());
+}
 
+void Screen::drawspeaker(int16_t x, int16_t y, int16_t width, int16_t height,uint8_t volume){
+    switch (volume)
+    {
+    case 1:
+        e_ink.drawXBitmap(x, y,speakerlow_bits,  16, 16, GxEPD_BLACK);
+        break;
+    case 2:
+        e_ink.drawXBitmap(x, y,speakermid_bits,  16, 16, GxEPD_BLACK);
+        break;
+    case 3:
+        e_ink.drawXBitmap(x, y,speakerhigh_bits,  16, 16, GxEPD_BLACK);
+        break;        
+    default:
+        e_ink.drawXBitmap(x, y,speakeroff_bits,  16, 16, GxEPD_BLACK);
+        break;
+    }
 }
 
 void Screen::drawFlightTime(int16_t x, int16_t y, int16_t width, int16_t height,uint32_t tTime){
-    e_ink.setFont(&gnuvarioe23pt7b);
-    e_ink.setPartialWindow(x,y,width,height);
     uint8_t min = (tTime / 60) % 60;
     uint8_t hours =  tTime / 3600;
-    do
-    {
-        e_ink.fillScreen(GxEPD_WHITE);
-        e_ink.drawBitmap(x + (width / 2) - 8, y + (height / 2) - 8, hicons, 16, 16, GxEPD_BLACK);   //GxEPD_BLACK);    
-        e_ink.setCursor(x + (width / 2) - 54,y + height -1);
-        e_ink.printf("%02d",hours);
-        e_ink.setCursor(x + (width / 2) + 8,y + height -1);
-        e_ink.printf("%02d",min);
-
-    }
-    while (e_ink.nextPage());
+    e_ink.setFont(&gnuvarioe23pt7b);
+    e_ink.drawBitmap(x + (width / 2) - 8, y + (height / 2) - 8, hicons, 16, 16, GxEPD_BLACK);   //GxEPD_BLACK);    
+    e_ink.setCursor(x + (width / 2) - 54,y + height -1);
+    e_ink.printf("%02d",hours);
+    e_ink.setCursor(x + (width / 2) + 8,y + height -1);
+    e_ink.printf("%02d",min);
 }
 
 void Screen::webUpdate(void){

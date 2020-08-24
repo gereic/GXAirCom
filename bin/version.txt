@@ -23,3 +23,11 @@ added Button 2 (GPIO-38) for switching off and on buzzer (long-click to adjust v
 
 V1.3.3
 wifi-timeout set 10sec. --> 60sec.
+
+V1.3.4
+added icon for flying and not flying in e-ink.
+removed max-Option for Fanet
+Bugfix tx-count of Fanet
+Bugfix in GS-Mode
+
+
