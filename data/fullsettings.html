@@ -53,6 +53,36 @@ function callMainPage(){
   window.location="/index.html"
 }
 
+//this function sets visible depending on actual option
+function setVis(){
+  //console.log("visible=" + document.getElementById("mode").style.display)
+  if (document.getElementById("mode").value == 1){
+    document.getElementById("VisAirCraftType").style.display='none';
+    document.getElementById("VisPilot").style.display='none';
+    document.getElementById("VisGS").style.display=''; //set GS visible
+
+  }else{
+    document.getElementById("VisAirCraftType").style.display='';
+    document.getElementById("VisPilot").style.display='';
+    document.getElementById("VisGS").style.display='none'; //set GS invisible
+  }
+  if (document.getElementById("output").value == 1){
+    document.getElementById("VisUdpIp").style.display='';
+    document.getElementById("VisUdpPort").style.display='';
+  }else{
+    document.getElementById("VisUdpIp").style.display='none';
+    document.getElementById("VisUdpPort").style.display='none';
+  }
+  if (document.getElementById("wificonnect").value == 0){
+    document.getElementById("VisWifiSsid").style.display='none';
+    document.getElementById("VisWifiPwd").style.display='none';
+  }else{
+    document.getElementById("VisWifiSsid").style.display='';
+    document.getElementById("VisWifiPwd").style.display='';
+  }
+}
+
+//this function sends all values
 function sendValues(){  
   var obj = {
   board : document.getElementById("board").value,
@@ -60,17 +90,16 @@ function sendValues(){
   band : document.getElementById("band").value,
   power : document.getElementById("power").value,
   type : document.getElementById("type").value,
+  mode : document.getElementById("mode").value,
   PilotName : document.getElementById("PilotName").value,
-  testmode : Number(document.getElementById("testmode").checked),
   
   gsawid : document.getElementById("gsawid").value,
   gslat : document.getElementById("gslat").value,
   gslon : document.getElementById("gslon").value,
   gsalt : document.getElementById("gsalt").value,
-  gsmode : Number(document.getElementById("gsmode").checked),
   
   appw : document.getElementById("appw").value,
-  wificonnect : Number(document.getElementById("wificonnect").checked),
+  wificonnect : document.getElementById("wificonnect").value,
   ssid : document.getElementById("ssid").value,
   password : document.getElementById("password").value,
   wifioff : Number(document.getElementById("wifioff").checked),
@@ -108,6 +137,12 @@ function onMessage(evt) {
     var myObj = JSON.parse(evt.data);
     for (var key of Object.keys(myObj)) {
         console.log(key + " -> " + myObj[key])
+        if (key == "bHasVario"){
+          if (myObj[key] == 0){
+            document.getElementById("VisVario").style.display='none';
+          }
+          continue;
+        }
         var e = document.getElementById(key);
         if (e instanceof HTMLSelectElement) {     // <select>
           document.getElementById(key).value = myObj[key];
@@ -123,6 +158,7 @@ function onMessage(evt) {
           document.getElementById(key).value = myObj[key];
         }
     }
+    setVis(); //now set visibility
 }
  
 // Called when a WebSocket error occurs
@@ -185,6 +221,14 @@ window.addEventListener("load", init, false);
             </select></td>
           </tr>
           <tr>
+            <th>operating-mode</th>
+            <td><select onchange="setVis()" name="mode" id="mode">
+              <option value="0">AIR-Module</option>
+              <option value="1">Ground-Station</option>
+              <option value="100">Developer-mode</option>
+            </select></td>
+          </tr>
+          <tr id="VisAirCraftType">
             <th>Aircraft Type</th>
             <td><select name="type" id="type">
               <option value="0">Unknown</option>
@@ -197,7 +241,7 @@ window.addEventListener("load", init, false);
               <option value="7">UAV</option>
             </select></td>
           </tr>
-          <tr>
+          <tr id="VisPilot">
             <th>PilotName</th>
             <td><input type="text" id="PilotName" name="PilotName"></td>
           </tr>
@@ -208,10 +252,6 @@ window.addEventListener("load", init, false);
           <tr>
             <th>OGN live-tracking</th>
             <td><input type="checkbox" id="ognlive" name="ognlive"></td>
-          </tr>
-          <tr>
-            <th>developer-mode</th>
-            <td><input type="checkbox" id="testmode" name="testmode"></td>
           </tr>
         </tbody>      
       </table>
@@ -224,7 +264,7 @@ window.addEventListener("load", init, false);
         <tbody>
           <tr>
             <th>output</th>
-            <td><select name="output" id="output">
+            <td><select onchange="setVis()" name="output" id="output">
               <option value="0">serial</option>
               <option value="1">udp</option>
               <option value="2">bluetooth serial</option>
@@ -247,11 +287,11 @@ window.addEventListener("load", init, false);
             <th>output LK8EX1</th>
             <td><input type="checkbox" id="oLK8EX1" name="oLK8EX1"></td>
           </tr>
-          <tr>
+          <tr id="VisUdpIp">
             <th>UDP-IP</th>
             <td><input type="text" id="UDPServerIP" name="UDPServerIP"></td>
           </tr>
-          <tr>
+          <tr id="VisUdpPort">
             <th>UDP-Port</th>
             <td><input type="number" id="UDPSendPort" name="UDPSendPort"></td>
           </tr>
@@ -271,14 +311,18 @@ window.addEventListener("load", init, false);
           <p></p>
           <p></p>      
           <tr>
-            <th>Wifi connect (try to reconnect, if no connection)</th>
-            <td><input type="checkbox" id="wificonnect" name="wificonnect"></td>
+            <th>connect to wifi:</th>
+            <td><select onchange="setVis()" name="wificonnect" id="wificonnect">
+              <option value="0">don't connect</option>
+              <option value="1">connect (try only once)</option>
+              <option value="2">connect (always try to reconnect)</option>
+            </select></td>
           </tr>
-          <tr>
+          <tr id="VisWifiSsid">
             <th>WIFI SSID</th>
             <td><input type="text" id="ssid" name="ssid"></td>
           </tr>
-          <tr>
+          <tr id="VisWifiPwd">
             <th>WIFI Password</th>
             <td><input type="text" id="password" name="password"></td>
           </tr>
@@ -291,14 +335,10 @@ window.addEventListener("load", init, false);
     </fieldset>
     <p></p>
     <p></p>
-    <fieldset>
+    <fieldset id="VisGS">
       <legend><b>ground station settings</b></legend>
       <table style="width:100&#37;">
         <tbody>
-          <tr>
-            <th>Ground-Station mode</th>
-            <td><input type="checkbox" id="gsmode" name="gsmode"></td>
-          </tr>
           <tr>
             <th>Airwhere ID</th>
             <td><input type="text" id="gsawid" name="gsawid"></td>
@@ -320,7 +360,7 @@ window.addEventListener("load", init, false);
     </fieldset>
     <p></p>
     <p></p>
-    <fieldset>
+    <fieldset id="VisVario">
       <legend><b>vario settings</b></legend>
       <table style="width:100&#37;">
         <tbody>

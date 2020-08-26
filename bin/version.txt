@@ -30,4 +30,7 @@ removed max-Option for Fanet
 Bugfix tx-count of Fanet
 Bugfix in GS-Mode
 
+V1.3.5
+cleanup fullsettings.html
+cleanup some code
 

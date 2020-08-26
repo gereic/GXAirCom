@@ -96,8 +96,11 @@ String airwhere_web_ip = "37.128.187.9";
 BluetoothSerial SerialBT;
 uint8_t btOk;
 
+//TTGO T-Beam V07
 const byte ADCBOARDVOLTAGE_PIN = 35; // Prefer Use of ADC1 (8 channels, attached to GPIOs 32 - 39) . ADC2 (10 channels, attached to GPIOs 0, 2, 4, 12 - 15 and 25 - 27)
 const byte ADC_BITS = 10; // 10 - 12 bits
+
+#define HELTEC_BAT_PIN 34
 
 TwoWire i2cOLED = TwoWire(1);
 
@@ -384,30 +387,30 @@ void printGSData(uint32_t tAct){
 
 void sendAWGroundStationdata(uint32_t tAct){
   static uint32_t tSend = millis() - 290000; //10sec. delay, to get wifi working
-  if (!setting.GSMode) return;
+  if (setting.Mode != MODE_GROUND_STATION) return;
 
   if ((tAct - tSend) < 300000) return; //every 5min.
 
   tSend = tAct;
   char chs[20];
   String msg = ">GS Location,"
-            + setting.GSAWID + ",";
-  sprintf(chs,"%02.6f",setting.GSLAT);
+            + setting.gs.AWID + ",";
+  sprintf(chs,"%02.6f",setting.gs.lat);
   msg += String(chs) + ",";
-  sprintf(chs,"%02.6f",setting.GSLON);
+  sprintf(chs,"%02.6f",setting.gs.lon);
   msg += String(chs) + ",";
-  sprintf(chs,"%d",uint16_t(setting.GSAlt));
+  sprintf(chs,"%d",uint16_t(setting.gs.alt));
   msg += String(chs);
   //log_i("%s",msg.c_str());
   sendAWUdp(msg);
 }
 
 void sendAWTrackingdata(FanetLora::trackingData *FanetData){
-  if ((!setting.awLiveTracking) && (!setting.GSMode )) return;
+  if ((!setting.awLiveTracking) && (setting.Mode != MODE_GROUND_STATION)) return;
 
   char chs[20];
   String msg;
-  if (setting.GSMode){
+  if (setting.Mode == MODE_GROUND_STATION){
     msg = "000000,";
   }else{
     msg = nmea.getFixTime() + ",";
@@ -609,7 +612,7 @@ void setupWifi(){
   WiFi.onEvent(WiFiEvent);
   log_i("Setting soft-AP ... ");
   //if (WiFi.softAP(host_name.c_str(), setting.appw.c_str(),rand() % 12 + 1,0,2)){
-    if (WiFi.softAP(host_name.c_str(), setting.appw.c_str())){
+  if (WiFi.softAP(host_name.c_str(), setting.wifi.appw.c_str())){
     log_i("Ready");
   }else{
     log_i("Failed!");
@@ -628,15 +631,15 @@ void setupWifi(){
   //now configure access-point
   //so we have wifi connect and access-point at same time
   //we connecto to wifi
-  if ((setting.ssid.length() > 0) && (setting.password.length() > 0)){
+  if (setting.wifi.connect != WIFI_CONNECT_NONE){
     //esp_wifi_set_auto_connect(true);
     log_i("Try to connect to WiFi ...");
     WiFi.status();
     WiFi.mode(WIFI_MODE_APSTA);
     //WiFi.mode(WIFI_STA);
-    if ((WiFi.SSID() != setting.ssid || WiFi.psk() != setting.password)){
+    if ((WiFi.SSID() != setting.wifi.ssid || WiFi.psk() != setting.wifi.password)){
       // ... Try to connect to WiFi station.
-      WiFi.begin(setting.ssid.c_str(), setting.password.c_str());
+      WiFi.begin(setting.wifi.ssid.c_str(), setting.wifi.password.c_str());
       delay(2000);
     } else {
       // ... Begin with sdk config.
@@ -736,7 +739,7 @@ void startOLED(){
 
 void printSettings(){
   log_i("**** SETTINGS ****");
-  log_i("Access-point password=%s",setting.appw.c_str());
+  log_i("Access-point password=%s",setting.wifi.appw.c_str());
   log_i("Board-Type=%d",setting.boardType);
   log_i("Display-Type=%d",setting.displayType);
   log_i("AXP192=%d",uint8_t(status.bHasAXP192));
@@ -747,13 +750,14 @@ void printSettings(){
   }
   log_i("BAND=%d",setting.band);
   log_i("LORA_POWER=%d",setting.LoraPower);
+  log_i("Mode=%d",setting.Mode);
   log_i("OUTPUT LK8EX1=%d",setting.outputLK8EX1);
   log_i("OUTPUT FLARM=%d",setting.outputFLARM);
   log_i("OUTPUT GPS=%d",setting.outputGPS);
   log_i("OUTPUT FANET=%d",setting.outputFANET);
-  log_i("WIFI connect=%d",setting.WifiConnect);
-  log_i("WIFI SSID=%s",setting.ssid.c_str());
-  log_i("WIFI PW=%s",setting.password.c_str());
+  log_i("WIFI connect=%d",setting.wifi.connect);
+  log_i("WIFI SSID=%s",setting.wifi.ssid.c_str());
+  log_i("WIFI PW=%s",setting.wifi.password.c_str());
   log_i("Aircraft=%s",fanet.getAircraftType(setting.AircraftType).c_str());
   log_i("Pilotname=%s",setting.PilotName.c_str());
   log_i("Switch WIFI OFF after 3 min=%d",setting.bSwitchWifiOff3Min);
@@ -761,14 +765,13 @@ void printSettings(){
   log_i("Output-Mode=%d",setting.outputMode);
   log_i("UDP_SERVER=%s",setting.UDPServerIP.c_str());
   log_i("UDP_PORT=%d",setting.UDPSendPort);
-  log_i("TESTMODE=%d",setting.testMode);
   log_i("UDP_SERVER=%s",setting.UDPServerIP.c_str());
   log_i("UDP_PORT=%d",setting.UDPSendPort);
-  log_i("GS Mode=%d",setting.GSMode);
-  log_i("GS LAT=%02.6f",setting.GSLAT);
-  log_i("GS LON=%02.6f",setting.GSLON);
-  log_i("GS LON=%0.2f",setting.GSAlt);
-  log_i("GS AWID=%s",setting.GSAWID);
+  log_i("Mode=%d",setting.Mode);
+  log_i("GS LAT=%02.6f",setting.gs.lat);
+  log_i("GS LON=%02.6f",setting.gs.lon);
+  log_i("GS LON=%0.2f",setting.gs.alt);
+  log_i("GS AWID=%s",setting.gs.AWID);
   log_i("OGN-Livetracking=%d",setting.OGNLiveTracking);
   //vario
   log_i("VarioSinkingThreshold=%0.2f",setting.vario.sinkingThreshold);
@@ -839,11 +842,14 @@ void setup() {
 
   //listSpiffsFiles();
   load_configFile(); //load configuration
+  if ((setting.wifi.ssid.length() <= 0) || (setting.wifi.password.length() <= 0)){
+    setting.wifi.connect = WIFI_CONNECT_NONE; //if no pw or ssid given --> don't connecto to wifi
+  }
 
 
   pinMode(BUTTON2, INPUT_PULLUP);
 
-  if (setting.GSMode){ // we are ground-station
+  if (setting.Mode == MODE_GROUND_STATION){ // we are ground-station
     setting.outputMode = OUTPUT_SERIAL;
     setting.bSwitchWifiOff3Min = false;
   }
@@ -875,18 +881,17 @@ void setup() {
   }else if (setting.boardType == BOARD_T_BEAM_V07){
     i2cOLED.begin(OLED_SDA, OLED_SCL);
     status.bHasAXP192 = false;
-  }else if (setting.boardType == BOARD_HELTEC_LORA){    
-    i2cOLED.begin(4, 15);
-    status.bHasAXP192 = false;
-  }else{
-    log_e("wrong-board-definition --> please correct");
-    //wrong board-definition !!
-  }
-
-  if (!status.bHasAXP192){
     analogReadResolution(ADC_BITS); // Default of 12 is not very linear. Recommended to use 10 or 11 depending on needed resolution.
     //analogSetAttenuation(ADC_11db); // Default is 11db which is very noisy. Recommended to use 2.5 or 6. Options ADC_0db (1.1V), ADC_2_5db (1.5V), ADC_6db (2.2V), ADC_11db (3.9V but max VDD=3.3V)
     pinMode(ADCBOARDVOLTAGE_PIN, INPUT);
+  }else if (setting.boardType == BOARD_HELTEC_LORA){    
+    i2cOLED.begin(4, 15);
+    status.bHasAXP192 = false;
+    analogReadResolution(12); //12 Bit resolution
+    pinMode(HELTEC_BAT_PIN, INPUT); //input-Voltage on GPIO34
+  }else{
+    log_e("wrong-board-definition --> please correct");
+    //wrong board-definition !!
   }
 
   if (status.displayType == OLED0_96) startOLED();  
@@ -917,7 +922,7 @@ void taskBaro(void *pvParameters){
   static uint32_t tRefresh = millis();
   uint8_t u8Volume = setting.vario.volume;
   log_i("starting baro-task ");  
-  if (setting.GSMode){
+  if (setting.Mode == MODE_GROUND_STATION){
     status.bHasVario = false;    
     log_i("GS-Mode --> stop task");
     vTaskDelete(xHandleBaro);
@@ -1027,18 +1032,34 @@ String setStringSize(String s,uint8_t sLen){
 }
 
 float readBattvoltage(){
-// multisample ADC
-const byte NO_OF_SAMPLES = 5;
-uint32_t adc_reading = 0;
-analogRead(ADCBOARDVOLTAGE_PIN); // First measurement has the biggest difference on my board, this line just skips the first measurement
-for (int i = 0; i < NO_OF_SAMPLES; i++) {
-uint16_t thisReading = analogRead(ADCBOARDVOLTAGE_PIN);
-adc_reading += thisReading;
-}
-adc_reading /= NO_OF_SAMPLES;
-// Convert ADC reading to voltage in deciVolt, 1024/2048/4096 not hardcoded but calculated depending on the set ADC_BITS
-byte voltage = adc_reading * 39 * 2 / (1 << ADC_BITS); // 3.9V because of 11dB, 100K/100K Voltage Divider, maxResolution (1024/2048/4096) 
-return (float)voltage / 10.0; 
+  // multisample ADC
+  const byte NO_OF_SAMPLES = 5;
+  uint32_t adc_reading = 0;
+  float vBatt = 0.0;
+  if (setting.boardType == BOARD_HELTEC_LORA){
+    analogRead(HELTEC_BAT_PIN); // First measurement has the biggest difference on my board, this line just skips the first measurement
+    for (int i = 0; i < NO_OF_SAMPLES; i++) {
+      uint16_t thisReading = analogRead(HELTEC_BAT_PIN);
+      adc_reading += thisReading;
+    }
+    adc_reading /= NO_OF_SAMPLES;
+    // voltage-divier 27kOhm and 100kOhm
+    // vIn = (R1+R2)/R2 * VOut
+    vBatt = (100000.0f + 27000.0f) / 100000.0f * (float(adc_reading) / 4095.0f *3.3) ;
+    //log_i("adc=%d, vBatt=%.3f",adc_reading,vBatt);
+    return vBatt;
+    //return (27f/100.0f) * 3.30f * float(analogRead(34)) / 4096.0f;  // LiPo battery
+  }else{
+    analogRead(ADCBOARDVOLTAGE_PIN); // First measurement has the biggest difference on my board, this line just skips the first measurement
+    for (int i = 0; i < NO_OF_SAMPLES; i++) {
+      uint16_t thisReading = analogRead(ADCBOARDVOLTAGE_PIN);
+      adc_reading += thisReading;
+    }
+    adc_reading /= NO_OF_SAMPLES;
+    // Convert ADC reading to voltage in deciVolt, 1024/2048/4096 not hardcoded but calculated depending on the set ADC_BITS
+    byte voltage = adc_reading * 39 * 2 / (1 << ADC_BITS); // 3.9V because of 11dB, 100K/100K Voltage Divider, maxResolution (1024/2048/4096) 
+    return (float)voltage / 10.0; 
+  }
 }
 
 void printBattVoltage(uint32_t tAct){
@@ -1508,7 +1529,7 @@ void taskStandard(void *pvParameters){
   tFanetData.rssi = 0;
 
 
-  if (!setting.GSMode){ // we are ground-station)
+  if (setting.Mode != MODE_GROUND_STATION){ // we are ground-station)
     if (!status.bHasAXP192){
       NMeaSerial.begin(GPSBAUDRATE,SERIAL_8N1,12,15,false);
     }else{
@@ -1543,14 +1564,14 @@ void taskStandard(void *pvParameters){
   }
   fanet.setPilotname(setting.PilotName);
   fanet.setAircraftType(setting.AircraftType);
-  if ((setting.testMode == 0) && (!setting.GSMode)){ //not in testmode and not ground-station
+  if (setting.Mode == MODE_AIR_MODULE){ //autobroadcast only on air-module
     fanet.autobroadcast = true;
   }else{
     fanet.autobroadcast = false;
   }
   setting.myDevId = fanet.getMyDevId();
   host_name += setting.myDevId; //String((ESP32_getChipId() & 0xFFFFFF), HEX);
-  if (!setting.GSMode){ // we are ground-station)
+  if (setting.Mode != MODE_GROUND_STATION){ // we are ground-station)
     flarm.begin();
   }
   if (status.outputMode == OUTPUT_BLUETOOTH){
@@ -1563,8 +1584,8 @@ void taskStandard(void *pvParameters){
 
   if (setting.OGNLiveTracking){
     ogn.begin(setting.myDevId,APPNAME " " VERSION);
-    if (setting.GSMode){
-      ogn.setGPS(setting.GSLAT,setting.GSLON,setting.GSAlt,0.0,0.0);
+    if (setting.Mode == MODE_GROUND_STATION){
+      ogn.setGPS(setting.gs.lat,setting.gs.lon,setting.gs.alt,0.0,0.0);
     }
     //ogn.setGPS(status.GPS_Lat,status.GPS_Lon,status.GPS_alt,status.GPS_speed,status.GPS_course);
   } 
@@ -1621,7 +1642,7 @@ void taskStandard(void *pvParameters){
     readGPS();
     sendFlarmData(tAct);
     if (status.displayType == OLED0_96){
-      if (setting.GSMode){
+      if (setting.Mode == MODE_GROUND_STATION){
         if (timeOver(tAct,tDisplay,DISPLAY_UPDATE_RATE_GS)){
           tDisplay = tAct;
           //log_i("neghbours=%u",fanet.getNeighboursCount());
@@ -1876,19 +1897,21 @@ void powerOff(){
   }
   log_i("switch power-supply off");
   delay(100);
-  // switch all off
-  axp.setChgLEDMode(AXP20X_LED_OFF);
-  axp.setPowerOutPut(AXP192_LDO2, AXP202_OFF); //LORA
-  axp.setPowerOutPut(AXP192_LDO3, AXP202_OFF); //GPS
-  if (status.displayType == OLED0_96){
-    axp.setPowerOutPut(AXP192_DCDC1, AXP202_ON); //OLED-Display 3V3
-  }else{
-    axp.setPowerOutPut(AXP192_DCDC1, AXP202_OFF); //OLED-Display 3V3
+    if (status.bHasAXP192){
+    // switch all off
+    axp.setChgLEDMode(AXP20X_LED_OFF);
+    axp.setPowerOutPut(AXP192_LDO2, AXP202_OFF); //LORA
+    axp.setPowerOutPut(AXP192_LDO3, AXP202_OFF); //GPS
+    if (status.displayType == OLED0_96){
+      axp.setPowerOutPut(AXP192_DCDC1, AXP202_ON); //OLED-Display 3V3
+    }else{
+      axp.setPowerOutPut(AXP192_DCDC1, AXP202_OFF); //OLED-Display 3V3
+    }
+    
+    axp.setPowerOutPut(AXP192_DCDC2, AXP202_OFF); // NC
+    axp.setPowerOutPut(AXP192_EXTEN, AXP202_OFF);
+    delay(20);
   }
-  
-  axp.setPowerOutPut(AXP192_DCDC2, AXP202_OFF); // NC
-  axp.setPowerOutPut(AXP192_EXTEN, AXP202_OFF);
-  delay(20);
 
   esp_sleep_enable_ext0_wakeup((gpio_num_t) AXP_IRQ, 0); // 1 = High, 0 = Low
 
@@ -1929,7 +1952,7 @@ void taskBackGround(void *pvParameters){
   setupWifi();
   while (1){
     uint32_t tAct = millis();
-    if ((setting.ssid.length() > 0) && (setting.password.length() > 0) && (setting.WifiConnect) && (WiFi.status() != WL_CONNECTED) && (status.WifiConnect)){
+    if ((setting.wifi.connect == 2) && (WiFi.status() != WL_CONNECTED) && (status.WifiConnect)){
       if (timeOver(tAct,tWifiCheck,WIFI_RECONNECT_TIME)){
         tWifiCheck = tAct;
         log_i("WiFi not connected. Try to reconnect");
@@ -1937,7 +1960,7 @@ void taskBackGround(void *pvParameters){
         WiFi.mode(WIFI_OFF);
         WiFi.persistent(false);
         WiFi.mode(WIFI_MODE_APSTA);
-        WiFi.begin(setting.ssid.c_str(), setting.password.c_str());        
+        WiFi.begin(setting.wifi.ssid.c_str(), setting.wifi.password.c_str());        
       }
     }
     if (xPortGetMinimumEverFreeHeapSize()<100000)

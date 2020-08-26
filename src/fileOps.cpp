@@ -5,7 +5,7 @@ Preferences preferences;
 void load_configFile(void){
     log_i("LOAD CONFIG FILE");
     preferences.begin("settings", false);                         //Ordner settings anlegen/verwenden
-    setting.appw = preferences.getString("APPW","12345678");
+    setting.wifi.appw = preferences.getString("APPW","12345678");
     setting.boardType = preferences.getUChar("BOARDTYPE",BOARD_T_BEAM); //
     setting.band = preferences.getUChar("BAND",BAND868); //
     setting.LoraPower = preferences.getUChar("LORA_POWER",10);//
@@ -15,20 +15,19 @@ void load_configFile(void){
     setting.outputGPS = preferences.getUChar("OGPS",1); //
     setting.outputFANET = preferences.getUChar("OFANET",1); //
     setting.PilotName = preferences.getString("PILOTNAME","");
-    setting.WifiConnect = preferences.getUChar("WIFI_CONNECT",0); //
-    setting.ssid = preferences.getString("WIFI_SSID","");
-    setting.password = preferences.getString("WIFI_PW","");
+    setting.wifi.connect = preferences.getUChar("WIFI_CONNECT",0); //
+    setting.wifi.ssid = preferences.getString("WIFI_SSID","");
+    setting.wifi.password = preferences.getString("WIFI_PW","");
     setting.AircraftType = (FanetLora::aircraft_t)preferences.getUChar("AIRCRAFTTYPE",1);
     setting.bSwitchWifiOff3Min = preferences.getBool("SWOFF3MIN",false);
     setting.UDPServerIP = preferences.getString("UDP_SERVER","192.168.4.2"); //UDP-IP-Adress to match connected device
     setting.UDPSendPort = preferences.getUInt("UDP_PORT",10110); //Port of udp-server
     setting.outputMode = preferences.getUChar("OutputMode",OUTPUT_SERIAL); //output-mode
-    setting.testMode = preferences.getUChar("TESTMODE",0); //testmode
-    setting.GSMode = preferences.getUChar("GSMode",0);
-    setting.GSLAT = preferences.getFloat("GSLAT",0.0);
-    setting.GSLON = preferences.getFloat("GSLON",0.0);
-    setting.GSAlt = preferences.getFloat("GSALT",0.0);
-    setting.GSAWID = preferences.getString("GSAWID","");
+    setting.Mode = preferences.getUChar("Mode",0);
+    setting.gs.lat = preferences.getFloat("GSLAT",0.0);
+    setting.gs.lon = preferences.getFloat("GSLON",0.0);
+    setting.gs.alt = preferences.getFloat("GSALT",0.0);
+    setting.gs.AWID = preferences.getString("GSAWID","");
     setting.OGNLiveTracking = preferences.getUChar("OGN_LIVE",0);
     setting.screenNumber = preferences.getUChar("SCREEN",0);
     setting.displayType = preferences.getUChar("Display",0);
@@ -48,7 +47,7 @@ void load_configFile(void){
 void write_configFile(void){
     log_i("WRITE CONFIG FILE");
     preferences.begin("settings", false);                         //Ordner settings anlegen/verwenden
-    preferences.putString("APPW",setting.appw);
+    preferences.putString("APPW",setting.wifi.appw);
     preferences.putUChar("BOARDTYPE",setting.boardType); //
     preferences.putUChar("BAND",setting.band); //
     preferences.putUChar("LORA_POWER",setting.LoraPower);//
@@ -58,20 +57,19 @@ void write_configFile(void){
     preferences.putUChar("OGPS",setting.outputGPS); //
     preferences.putUChar("OFANET",setting.outputFANET); //
     preferences.putString("PILOTNAME",setting.PilotName);
-    preferences.putUChar("WIFI_CONNECT",setting.WifiConnect); //
-    preferences.putString("WIFI_SSID",setting.ssid);
-    preferences.putString("WIFI_PW",setting.password);
+    preferences.putUChar("WIFI_CONNECT",setting.wifi.connect); //
+    preferences.putString("WIFI_SSID",setting.wifi.ssid);
+    preferences.putString("WIFI_PW",setting.wifi.password);
     preferences.putUChar("AIRCRAFTTYPE",uint8_t(setting.AircraftType));
     preferences.putBool("SWOFF3MIN",setting.bSwitchWifiOff3Min);    
     preferences.putString("UDP_SERVER",setting.UDPServerIP); //UDP-IP-Adress for sending Pakets
     preferences.putUInt("UDP_PORT",setting.UDPSendPort); //Port of udp-server
     preferences.putUChar("OutputMode",setting.outputMode);
-    preferences.putUChar("TESTMODE",setting.testMode);
-    preferences.putUChar("GSMode",setting.GSMode);
-    preferences.putFloat("GSLAT",setting.GSLAT);
-    preferences.putFloat("GSLON",setting.GSLON);
-    preferences.putFloat("GSALT",setting.GSAlt);
-    preferences.putString("GSAWID",setting.GSAWID);
+    preferences.putUChar("Mode",setting.Mode);
+    preferences.putFloat("GSLAT",setting.gs.lat);
+    preferences.putFloat("GSLON",setting.gs.lon);
+    preferences.putFloat("GSALT",setting.gs.alt);
+    preferences.putString("GSAWID",setting.gs.AWID);
     preferences.putUChar("OGN_LIVE",setting.OGNLiveTracking);
     preferences.putUChar("Display",setting.displayType);
 

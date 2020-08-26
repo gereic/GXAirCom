@@ -58,24 +58,11 @@ void onWebSocketEvent(uint8_t client_num,
         if (client_num < MAXCLIENTS) clientPages[client_num] = value;
         log_i("page=%d",value);
         doc.clear();
-        if (clientPages[client_num] == 1){
-          doc["board"] = setting.boardType;
+        if (clientPages[client_num] == 1){ //info
           doc["myDevId"] = setting.myDevId;
-          doc["band"] = setting.band;
-          doc["ssid"] = setting.ssid;
-          doc["password"] = setting.password;
-          doc["type"] = (uint8_t)setting.AircraftType;
-          doc["PilotName"] = setting.PilotName;
-          doc["output"] = setting.outputMode;
-          doc["oGPS"] = setting.outputGPS;
-          doc["oFlarm"] = setting.outputFLARM;
-          doc["oFanet"] = setting.outputFANET;
-          doc["oLK8EX1"] = setting.outputLK8EX1;
-          doc["awlive"] = setting.awLiveTracking;
-          doc["wifioff"] = (uint8_t)setting.bSwitchWifiOff3Min;
-          doc["UDPServerIP"] = setting.UDPServerIP;
-          doc["UDPSendPort"] = setting.UDPSendPort;
           doc["compiledate"] = String(compile_date);
+          doc["bHasVario"] = (uint8_t)status.bHasVario;
+          doc["mode"] = setting.Mode;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
         }else if (clientPages[client_num] == 2){ //sendmessage
@@ -86,9 +73,10 @@ void onWebSocketEvent(uint8_t client_num,
           doc["disp"] = setting.displayType;
           doc["band"] = setting.band;
           doc["power"] = setting.LoraPower;
+          doc["mode"] = setting.Mode;
           doc["type"] = (uint8_t)setting.AircraftType;
           doc["PilotName"] = setting.PilotName;
-          doc["testmode"] = setting.testMode;
+          doc["ognlive"] = setting.OGNLiveTracking;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
 
@@ -105,22 +93,21 @@ void onWebSocketEvent(uint8_t client_num,
           webSocket.sendTXT(client_num, msg_buf);
 
           doc.clear();
-          doc["appw"] = setting.appw;
-          doc["wificonnect"] = (uint8_t)setting.WifiConnect;
-          doc["ssid"] = setting.ssid;
-          doc["password"] = setting.password;
+          doc["appw"] = setting.wifi.appw;
+          doc["wificonnect"] = (uint8_t)setting.wifi.connect;
+          doc["ssid"] = setting.wifi.ssid;
+          doc["password"] = setting.wifi.password;
           doc["wifioff"] = (uint8_t)setting.bSwitchWifiOff3Min;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
 
           doc.clear();
-          doc["gsawid"] = setting.GSAWID;
-          doc["gslat"] = setting.GSLAT;
-          doc["gslon"] = setting.GSLON;
-          doc["gsalt"] = setting.GSAlt;
-          doc["gsmode"] = setting.GSMode;
-          doc["ognlive"] = setting.OGNLiveTracking;
+          doc["gsawid"] = setting.gs.AWID;
+          doc["gslat"] = setting.gs.lat;
+          doc["gslon"] = setting.gs.lon;
+          doc["gsalt"] = setting.gs.alt;
 
+          doc["bHasVario"] = (uint8_t)status.bHasVario;
           doc["vSinkTh"] = serialized(String(setting.vario.sinkingThreshold,2));
           doc["vClimbTh"] = serialized(String(setting.vario.climbingThreshold,2));
           doc["vVol"] = setting.vario.volume;
@@ -134,7 +121,6 @@ void onWebSocketEvent(uint8_t client_num,
           doc["power"] = setting.LoraPower;
           doc["type"] = (uint8_t)setting.AircraftType;
           doc["PilotName"] = setting.PilotName;
-          doc["testmode"] = setting.testMode;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
         }else if (clientPages[client_num] == 12){ //settings output
@@ -149,18 +135,18 @@ void onWebSocketEvent(uint8_t client_num,
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
         }else if (clientPages[client_num] == 13){ //settings wifi
-          doc["appw"] = setting.appw;
-          doc["ssid"] = setting.ssid;
-          doc["password"] = setting.password;
+          doc["appw"] = setting.wifi.appw;
+          doc["ssid"] = setting.wifi.ssid;
+          doc["password"] = setting.wifi.password;
           doc["wifioff"] = (uint8_t)setting.bSwitchWifiOff3Min;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
         }else if (clientPages[client_num] == 14){ //settings ground station
-          doc["gsawid"] = setting.GSAWID;
-          doc["gslat"] = setting.GSLAT;
-          doc["gslon"] = setting.GSLON;
-          doc["gsalt"] = setting.GSAlt;
-          doc["gsmode"] = setting.GSMode;
+          doc["gsawid"] = setting.gs.AWID;
+          doc["gslat"] = setting.gs.lat;
+          doc["gslon"] = setting.gs.lon;
+          doc["gsalt"] = setting.gs.alt;
+          doc["mode"] = setting.Mode;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
         }else if (clientPages[client_num] == 101){ //msg-type 1 test
@@ -199,14 +185,14 @@ void onWebSocketEvent(uint8_t client_num,
         value = doc["save"];
         if (value == 1){
           //general settings-page          
-          if (root.containsKey("appw")) setting.appw = doc["appw"].as<String>();          
+          if (root.containsKey("appw")) setting.wifi.appw = doc["appw"].as<String>();          
+          if (root.containsKey("wificonnect")) setting.wifi.connect = (bool)doc["wificonnect"].as<uint8_t>();
+          if (root.containsKey("ssid")) setting.wifi.ssid = doc["ssid"].as<String>();
+          if (root.containsKey("password")) setting.wifi.password = doc["password"].as<String>();
           if (root.containsKey("board")) setting.boardType = doc["board"].as<uint8_t>();          
           if (root.containsKey("disp")) setting.displayType = doc["disp"].as<uint8_t>();          
           if (root.containsKey("power")) setting.LoraPower = constrain(doc["power"].as<uint8_t>(),0,20);          
           if (root.containsKey("band")) setting.band = doc["band"].as<uint8_t>();          
-          if (root.containsKey("wificonnect")) setting.WifiConnect = (bool)doc["wificonnect"].as<uint8_t>();
-          if (root.containsKey("ssid")) setting.ssid = doc["ssid"].as<String>();
-          if (root.containsKey("password")) setting.password = doc["password"].as<String>();
           if (root.containsKey("type")) setting.AircraftType = (FanetLora::aircraft_t)doc["type"].as<uint8_t>();
           if (root.containsKey("PilotName")) setting.PilotName = doc["PilotName"].as<String>();
           if (root.containsKey("output")) setting.outputMode = doc["output"].as<uint8_t>();
@@ -218,12 +204,11 @@ void onWebSocketEvent(uint8_t client_num,
           if (root.containsKey("wifioff")) setting.bSwitchWifiOff3Min = (bool)doc["wifioff"].as<uint8_t>();
           if (root.containsKey("UDPServerIP")) setting.UDPServerIP = doc["UDPServerIP"].as<String>();
           if (root.containsKey("UDPSendPort")) setting.UDPSendPort = doc["UDPSendPort"].as<uint16_t>();
-          if (root.containsKey("testmode")) setting.testMode = doc["testmode"].as<uint8_t>();
-          if (root.containsKey("gsawid")) setting.GSAWID = doc["gsawid"].as<String>();
-          if (root.containsKey("gslat")) setting.GSLAT = doc["gslat"].as<float>();
-          if (root.containsKey("gslon")) setting.GSLON = doc["gslon"].as<float>();
-          if (root.containsKey("gsalt")) setting.GSAlt = doc["gsalt"].as<float>();
-          if (root.containsKey("gsmode")) setting.GSMode = doc["gsmode"].as<uint8_t>();
+          if (root.containsKey("gsawid")) setting.gs.AWID = doc["gsawid"].as<String>();
+          if (root.containsKey("gslat")) setting.gs.lat = doc["gslat"].as<float>();
+          if (root.containsKey("gslon")) setting.gs.lon = doc["gslon"].as<float>();
+          if (root.containsKey("gsalt")) setting.gs.alt = doc["gsalt"].as<float>();
+          if (root.containsKey("mode")) setting.Mode = doc["mode"].as<uint8_t>();
           if (root.containsKey("ognlive")) setting.OGNLiveTracking = doc["ognlive"].as<uint8_t>();
           //vario
           if (root.containsKey("vSinkTh")) setting.vario.sinkingThreshold = doc["vSinkTh"].as<float>();
@@ -310,7 +295,7 @@ String processor(const String& var){
   }else if (var == "BUILD"){
     return String(compile_date);
   }else if (var == "DEVELOPER"){
-    if (setting.testMode){
+    if (setting.Mode == MODE_DEVELOPER){
       return DevelopMenue;
     }else{
       return "";

@@ -5,7 +5,7 @@
 #ifndef __MAIN_H__
 #define __MAIN_H__
 
-#define VERSION "V1.3.4"
+#define VERSION "V1.3.5"
 #define APPNAME "GXAirCom"
 
 #define BLE_LOW_HEAP 10000
@@ -62,6 +62,17 @@
 #define OLED0_96 0
 #define EINK2_9  1
 
+//defines for Mode
+#define MODE_AIR_MODULE 0
+#define MODE_GROUND_STATION 1
+#define MODE_FANET_INTERFACE 2
+#define MODE_DEVELOPER 100
+
+//defines for wifi connect
+#define WIFI_CONNECT_NONE 0
+#define WIFI_CONNECT_ONCE 1
+#define WIFI_CONNECT_ALWAYS 2
+
 struct VarioSettings{
   float sinkingThreshold;
   float climbingThreshold;
@@ -70,11 +81,25 @@ struct VarioSettings{
   bool BeepOnlyWhenFlying;
 };
 
+struct GSSettings{
+  float lat; //Ground-Station Latitude
+  float lon; //Ground-Station Longitude
+  float alt; //Ground-Station altitude
+  String AWID; //Ground-Station ID
+};
+
+struct WifiSettings{
+  String appw; //access-point-Password
+  String ssid; //WIFI SSID
+  String password; //WIFI PASSWORD
+  uint8_t connect; //1 connect to wifi, 2 connect to wifi and try to stay connected
+};
+
 
 
 struct SettingsData{
-  String appw; //access-point-Password
   uint8_t boardType;
+  uint8_t Mode; //Air-Module, GS-Station,
   uint8_t displayType;
   String myDevId; //my device-ID
   uint8_t band;
@@ -84,9 +109,7 @@ struct SettingsData{
   uint8_t outputGPS;
   uint8_t outputFANET;
   uint8_t awLiveTracking; //airwhere live-tracking
-  bool WifiConnect; //connect to wifi and keep connected
-  String ssid; //WIFI SSID
-  String password; //WIFI PASSWORD
+  WifiSettings wifi;
   String PilotName; //Pilotname
   FanetLora::aircraft_t AircraftType; //Aircrafttype
   bool bSwitchWifiOff3Min; //switch off wifi after 3min.
@@ -94,15 +117,10 @@ struct SettingsData{
   String UDPServerIP; //UDP-IP-Adress for sending Pakets
   uint16_t UDPSendPort; //Port of udp-server
   uint8_t outputMode; //output-mode
-  uint8_t testMode;
-  uint8_t GSMode; //ground-station-mode
-  float GSLAT; //Ground-Station Latitude
-  float GSLON; //Ground-Station Longitude
-  float GSAlt; //Ground-Station altitude
-  String GSAWID; //Ground-Station ID
+  GSSettings gs;
+  VarioSettings vario; //variosettings
   uint8_t OGNLiveTracking; //OGN-Live-Tracking
   uint8_t screenNumber; //number of default-screen
-  VarioSettings vario; //variosettings
 };
 
 struct statusData{
