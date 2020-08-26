@@ -1643,12 +1643,14 @@ void taskStandard(void *pvParameters){
     sendFlarmData(tAct);
     if (status.displayType == OLED0_96){
       if (setting.Mode == MODE_GROUND_STATION){
-        if (timeOver(tAct,tDisplay,DISPLAY_UPDATE_RATE_GS)){
-          tDisplay = tAct;
-          //log_i("neghbours=%u",fanet.getNeighboursCount());
-          if (fanet.getNeighboursCount() == 0){
+        if (fanet.getNeighboursCount() == 0){
+          if (timeOver(tAct,tDisplay,500)){
+            tDisplay = tAct;
             printScanning(tAct);
-          }else{
+          }
+        }else{
+          if (timeOver(tAct,tDisplay,DISPLAY_UPDATE_RATE_GS)){
+            tDisplay = tAct;
             printGSData(tAct);
           }
         }
