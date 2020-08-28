@@ -29,6 +29,7 @@
 #define	FANET_LORA_TYPE1OR7_MINTAU_MS			250
 #define	FANET_LORA_TYPE1OR7_TAU_MS			5000
 
+#define SEPARATOR			','
 
 #define FANET_LORA_VALID_STATE_MS 10000 //10 seconds positions valid
 
@@ -199,6 +200,7 @@ public:
 	void handle_acked(bool ack, MacAddr &addr);
 	void handle_frame(Frame *frm);
   Frame *get_frame();
+  void fanet_cmd_transmit(char *ch_str);
 
 protected:
 private:  

@@ -59,6 +59,7 @@ bool FanetLora::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset,
   return true;
 }
 
+
 String FanetLora::getNeighbourName(uint32_t devId){
   for (int i = 0; i < MAXNEIGHBOURS; i++){
     if (neighbours[i].devId == devId){
@@ -67,6 +68,128 @@ String FanetLora::getNeighbourName(uint32_t devId){
   }
   return "";
 }
+
+/* Transmit: #FNT type,dest_manufacturer,dest_id,forward,ack_required,length,length*2hex[,signature] */
+//note: all in HEX
+void FanetLora::fanet_cmd_transmit(char *ch_str)
+{
+#if SERIAL_debug_mode > 0
+  log_i("### Packet %s", ch_str);
+#endif
+
+	/* remove \r\n and any spaces */
+	char *ptr = strchr(ch_str, '\r');
+	if(ptr == nullptr)
+		ptr = strchr(ch_str, '\n');
+	if(ptr != nullptr)
+		*ptr = '\0';
+	while(*ch_str == ' ')
+		ch_str++;
+
+	/* integrity check */
+	for(char *ptr = ch_str; *ptr != '\0'; ptr++)
+	{
+		if(*ptr >= '0' && *ptr <= '9')
+			continue;
+		if(*ptr >= 'A' && *ptr <= 'F')
+			continue;
+		if(*ptr >= 'a' && *ptr <= 'f')
+			continue;
+		if(*ptr == ',')
+			continue;
+
+		/* not allowed char */
+		log_e("frm broken");
+		return;
+	}
+
+	/* w/o an address we can not tx */
+	if(fmac.myAddr == MacAddr())
+	{
+		log_e("no source address");
+		return;
+	}
+
+	/* no need to generate a package. tx queue is full */
+	if(!fmac.txQueueHasFreeSlots())
+	{
+		log_e("tx buffer full");
+		return;
+	}
+
+  Frame *frm = new Frame(fmac.myAddr);
+
+	/* header */
+	char *p = (char *)ch_str;
+	frm->type = strtol(p, NULL, 16);
+	p = strchr(p, SEPARATOR)+1;
+	frm->dest.manufacturer = strtol(p, NULL, 16);
+	p = strchr(p, SEPARATOR)+1;
+	frm->dest.id = strtol(p, NULL, 16);
+	p = strchr(p, SEPARATOR)+1;
+	frm->forward = !!strtol(p, NULL, 16);
+	p = strchr(p, SEPARATOR)+1;
+	/* ACK required */
+	if(strtol(p, NULL, 16))
+	{
+		frm->ack_requested = frm->forward?FRM_ACK_TWOHOP:FRM_ACK_SINGLEHOP;
+		frm->num_tx = MAC_TX_RETRANSMISSION_RETRYS;
+	}
+	else
+	{
+		frm->ack_requested = FRM_NOACK;
+		frm->num_tx = 0;
+	}
+
+	/* payload */
+	p = strchr(p, SEPARATOR)+1;
+	frm->payload_length = strtol(p, NULL, 16);
+	if(frm->payload_length >= 128)
+	{
+		delete frm;
+		log_e("frm too long");
+		return;
+	}
+	frm->payload = new uint8_t[frm->payload_length];
+
+	p = strchr(p, SEPARATOR)+1;
+	for(int i=0; i<frm->payload_length; i++)
+	{
+		char sstr[3] = {p[i*2], p[i*2+1], '\0'};
+		if(strlen(sstr) != 2)
+		{
+			log_e("too short");
+			delete frm;
+			return;
+		}
+		frm->payload[i] = strtol(sstr,  NULL,  16);
+	}
+
+	/* signature */
+	if((p = strchr(p, SEPARATOR)) != NULL)
+		frm->signature = ((uint32_t)strtoll(++p, NULL, 16));
+
+	/* pass to mac */
+  if (frm2txBuffer(frm)) log_i("#FNR OK");
+	/*
+  if(fmac.transmit(frm) == 0)
+	{
+		//if(!Lora.isArmed())
+		//	log_e("power down");
+		//else
+		log_i("#FNR OK");
+#ifdef FANET_NAME_AUTOBRDCAST
+		if(frm->type == FRM_TYPE_NAME)
+			app.allow_brdcast_name(false);
+#endif
+	}
+	else
+	{
+		delete frm;
+		log_e("tx buffer full");
+	}*/
+}
+
 
 int16_t FanetLora::getneighbourIndex(uint32_t devId,bool getEmptyEntry){
   int16_t iRet = -1;
@@ -321,6 +444,7 @@ bool FanetLora::frm2txBuffer(Frame *frm){
   /* pass to mac */
   if(fmac.transmit(frm) == 0){
 		if(!LoRa.isArmed()) log_e("power down");
+    txCount++;
     return true;
   }else{
 		delete frm;
@@ -328,7 +452,6 @@ bool FanetLora::frm2txBuffer(Frame *frm){
     return false;
   }
   //log_i("ready");
-  txCount++;
 }
 
 void FanetLora::sendMSG(String msg){

@@ -5,7 +5,7 @@
 #ifndef __MAIN_H__
 #define __MAIN_H__
 
-#define VERSION "V1.3.5"
+#define VERSION "V1.4.0"
 #define APPNAME "GXAirCom"
 
 #define BLE_LOW_HEAP 10000
@@ -75,6 +75,10 @@
 #define WIFI_CONNECT_NONE 0
 #define WIFI_CONNECT_ONCE 1
 #define WIFI_CONNECT_ALWAYS 2
+
+#define FANET_CMD_START			"#FN"
+#define FANET_CMD_TRANSMIT	"#FNT"
+
 
 struct VarioSettings{
   float sinkingThreshold;

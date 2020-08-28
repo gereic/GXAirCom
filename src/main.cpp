@@ -35,13 +35,6 @@
 
 #define USE_BEEPER
 
-
-//define programming OTA
-//#define OTAPROGRAMMING
-#ifdef OTAPROGRAMMING
-  #include <ArduinoOTA.h>
-#endif
-
 #define LifeCount 5000
 
 bool WebUpdateRunning = false;
@@ -134,9 +127,6 @@ void taskBackGround(void *pvParameters);
 void taskEInk(void *pvParameters);
 void taskBle(void *pvParameters);
 void taskMemory(void *pvParameters);
-#ifdef OTAPROGRAMMING
-void setupOTAProgramming();
-#endif
 void setupWifi();
 void IRAM_ATTR ppsHandler(void);
 void startOLED();
@@ -172,6 +162,9 @@ void drawflying(int16_t x, int16_t y, bool flying);
 void drawAircraftType(int16_t x, int16_t y, FanetLora::aircraft_t AircraftType);
 void drawSatCount(int16_t x, int16_t y,uint8_t value);
 void drawspeaker(int16_t x, int16_t y);
+char* readSerial();
+char* readBtSerial();
+void checkReceivedLine(char *ch_str);
 
 void handleButton(uint32_t tAct){
   static uint32_t buttonTimer = millis();
@@ -746,40 +739,6 @@ void setupWifi(){
   Web_setup();
 }
 
-#ifdef OTAPROGRAMMING
-void setupOTAProgramming(){
-    ArduinoOTA
-    .onStart([]() {
-      String type;
-      log_i("stop task");
-      if (ArduinoOTA.getCommand() == U_FLASH)
-        type = "sketch";
-      else // U_SPIFFS
-        type = "filesystem";
-        SPIFFS.end();
-
-      // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
-      setting.wifiDownTime = 0; //don't switch off Wifi during upload
-      log_i("Start updating %s",type);
-    })
-    .onEnd([]() {
-      log_i("\nEnd");
-    })
-    .onProgress([](unsigned int progress, unsigned int total) {
-      log_v("Progress: %u%%\r", (progress / (total / 100)));
-    })
-    .onError([](ota_error_t error) {
-      log_e("Error[%u]: ", error);
-      if (error == OTA_AUTH_ERROR) log_e("Auth Failed");
-      else if (error == OTA_BEGIN_ERROR) log_e("Begin Failed");
-      else if (error == OTA_CONNECT_ERROR) log_e("Connect Failed");
-      else if (error == OTA_RECEIVE_ERROR) log_e("Receive Failed");
-      else if (error == OTA_END_ERROR) log_e("End Failed");
-    });
-
-  ArduinoOTA.begin();  
-}
-#endif
 
 //Initialize OLED display
 void startOLED(){
@@ -903,9 +862,11 @@ void setup() {
   log_i("CPU-Speed=%d",ESP.getCpuFreqMHz());
   log_i("Total heap: %d", ESP.getHeapSize());
   log_i("Free heap: %d", ESP.getFreeHeap());
-  log_i("Total PSRAM: %d", ESP.getPsramSize());
+  uint32_t psRamSize = ESP.getPsramSize();
+  log_i("Total PSRAM: %d", psRamSize);
   log_i("Free PSRAM: %d", ESP.getFreePsram());
   log_i("compiled at %s",compile_date);
+  log_i("current free heap: %d, minimum ever free heap: %d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
 
   //esp_sleep_wakeup_cause_t reason = print_wakeup_reason(); //print reason for wakeup
   print_wakeup_reason(); //print reason for wakeup
@@ -930,8 +891,15 @@ void setup() {
     setting.bSwitchWifiOff3Min = false;
   }
 
+  if ((psRamSize == 0) && 
+     ((setting.outputMode == OUTPUT_BLUETOOTH) || (setting.outputMode == OUTPUT_BLE))){
+    setting.outputMode = OUTPUT_SERIAL; //not allowed bluetooth-output without psram cause of low memory
+    log_i("no ps-ram --> no Bluetooth");
+    delay(500);
+    write_configFile();
+  }
   status.outputMode = setting.outputMode;
-  
+
   if (status.outputMode == OUTPUT_UDP){
     setting.bSwitchWifiOff3Min = false;    
   }
@@ -975,22 +943,33 @@ void setup() {
   
   btOk = 0;
 
-  xTaskCreatePinnedToCore(taskBaro, "taskBaro", 6500, NULL, 100, &xHandleBaro, ARDUINO_RUNNING_CORE1); //high priority task
+  //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
+  //xTaskCreatePinnedToCore(taskBaro, "taskBaro", 6500, NULL, 100, &xHandleBaro, ARDUINO_RUNNING_CORE1); //high priority task
+  //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
   xTaskCreatePinnedToCore(taskStandard, "taskStandard", 6500, NULL, 10, &xHandleStandard, ARDUINO_RUNNING_CORE1); //standard task
+  //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
   xTaskCreatePinnedToCore(taskEInk, "taskEInk", 6500, NULL, 8, &xHandleEInk, ARDUINO_RUNNING_CORE1); //background EInk
+  //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
   xTaskCreatePinnedToCore(taskBackGround, "taskBackGround", 6500, NULL, 5, &xHandleBackground, ARDUINO_RUNNING_CORE1); //background task
+  //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
   if (status.outputMode == OUTPUT_BLE){
-    esp_bt_controller_enable(ESP_BT_MODE_BLE);
     esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT);
+    esp_bt_controller_enable(ESP_BT_MODE_BLE);
     xTaskCreatePinnedToCore(taskBle, "taskBle", 4096, NULL, 7, &xHandleBle, ARDUINO_RUNNING_CORE1);
+    //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
   }else if (status.outputMode == OUTPUT_BLUETOOTH){
+    //esp_bt_controller_config_t cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
+    //esp_bt_controller_init(&cfg);
     esp_bt_controller_enable(ESP_BT_MODE_CLASSIC_BT);
     esp_bt_controller_mem_release(ESP_BT_MODE_BLE);
+    //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
   }else{
     esp_bt_controller_disable();
     esp_bt_controller_mem_release(ESP_BT_MODE_BTDM);
+    //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
   }
   xTaskCreatePinnedToCore(taskMemory, "taskMemory", 4096, NULL, 1, &xHandleMemory, ARDUINO_RUNNING_CORE1);
+  //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
 
 }
 
@@ -1553,6 +1532,52 @@ void printGPSData(uint32_t tAct){
   //}
 }
 
+void checkReceivedLine(char *ch_str){
+  //log_i("new serial msg=%s",ch_str);
+  if(!strncmp(ch_str, FANET_CMD_TRANSMIT, 4)) fanet.fanet_cmd_transmit(ch_str+4);
+}
+
+char* readBtSerial(){
+  static char lineBuffer[512];
+  static uint16_t recBufferIndex = 0;
+  if (SerialBT.hasClient()){
+    while(SerialBT.available()){
+      if (recBufferIndex >= (512-1)) recBufferIndex = 0; //Buffer overrun
+      lineBuffer[recBufferIndex] = SerialBT.read();
+      if (lineBuffer[recBufferIndex] == '\n'){
+        recBufferIndex++;
+        lineBuffer[recBufferIndex] = 0; //zero-termination
+        recBufferIndex = 0;
+        return &lineBuffer[0];
+      }else{
+        recBufferIndex++;
+      }  
+    }
+  }else{
+    recBufferIndex = 0;
+  }
+  return NULL;
+}
+
+char* readSerial(){
+  static char lineBuffer[512];
+  static uint16_t recBufferIndex = 0;
+  
+  while(Serial.available()){
+    if (recBufferIndex >= (512-1)) recBufferIndex = 0; //Buffer overrun
+    lineBuffer[recBufferIndex] = Serial.read();
+    if (lineBuffer[recBufferIndex] == '\n'){
+      recBufferIndex++;
+      lineBuffer[recBufferIndex] = 0; //zero-termination
+      recBufferIndex = 0;
+      return &lineBuffer[0];
+    }else{
+      recBufferIndex++;
+    }  
+  }
+  return NULL;
+}
+
 void readGPS(){
   static char lineBuffer[255];
   static uint16_t recBufferIndex = 0;
@@ -1653,6 +1678,8 @@ void taskStandard(void *pvParameters){
   static uint32_t tOldPPS = millis();
   static uint32_t tDisplay = millis();
   static uint32_t tTest = millis();
+  char * pSerialLine = NULL;
+  String sSerial = "";
   String s = "";
   FanetLora::trackingData myFanetData;  
   FanetLora::trackingData tFanetData;  
@@ -1706,9 +1733,12 @@ void taskStandard(void *pvParameters){
     flarm.begin();
   }
   if (status.outputMode == OUTPUT_BLUETOOTH){
+    //String sBl = "BLGX" + setting.myDevId;    
     log_i("starting bluetooth_serial %s",host_name.c_str());
-    SerialBT.begin(host_name); //Bluetooth device name
-    SerialBT.print(APPNAME " Bluetooth Starting");
+    log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
+    SerialBT.begin(host_name.c_str()); //Bluetooth device name
+    log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
+    //SerialBT.print(APPNAME " Bluetooth Starting");
     btOk = 1;
   }
 
@@ -1743,15 +1773,6 @@ void taskStandard(void *pvParameters){
     handleButton(tAct);
 
     if (setting.OGNLiveTracking) ogn.run();
-    if (status.outputMode == OUTPUT_BLUETOOTH){
-      s = "";
-      while(SerialBT.available()){
-        s += SerialBT.read();
-      }
-      if (s.length() > 0){
-        log_i("%s",s.c_str());
-      }
-    }    
     /*
     if (timeOver(tAct,tTest,1000)){
       tTest = tAct;
@@ -1861,6 +1882,16 @@ void taskStandard(void *pvParameters){
       fanet.writeMsgType4(&testWeatherData);
       sendTestData = 0;
     }
+    pSerialLine = readSerial();
+    if (pSerialLine != NULL){
+      checkReceivedLine(pSerialLine);
+    }
+    if (status.outputMode == OUTPUT_BLUETOOTH){
+      pSerialLine = readBtSerial();
+      if (pSerialLine != NULL){
+        checkReceivedLine(pSerialLine);
+      }
+    }    
     fanet.run();
     status.fanetRx = fanet.rxCount;
     status.fanetTx = fanet.txCount;
@@ -1881,7 +1912,7 @@ void taskStandard(void *pvParameters){
         //Serial.printf("LON=%.6f\n",tFanetData.lon);
 
       }
-    }
+    }    
     flarm.run();
     sendLK8EX(tAct);
     if (!status.bHasAXP192){
@@ -2080,6 +2111,13 @@ void taskBackGround(void *pvParameters){
   static uint32_t tWifiCheck = millis();
   static uint8_t counter = 0;
   static uint32_t warning_time=0;
+
+
+  /*
+  log_i("stop task");
+  vTaskDelete(xHandleBackground);
+  return;
+  */
 
   delay(1500);
   
