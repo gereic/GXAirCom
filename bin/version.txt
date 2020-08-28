@@ -34,3 +34,10 @@ V1.3.5
 cleanup fullsettings.html
 cleanup some code
 
+V1.4.0
+Serial-interface
+Bluetooth-Serial-interface
+
+added support for sending FANET-MSG via serial and bluetooth-serial interface.
+Transmit: #FNT type,dest_manufacturer,dest_id,forward,ack_required,length,length*2hex[,signature]
+https://github.com/3s1d/fanet-stm32/blob/master/Src/fanet/radio/protocol.txt
