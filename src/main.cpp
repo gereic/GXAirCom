@@ -42,7 +42,8 @@ bool bPowerOff = false;
 
 struct SettingsData setting;
 struct statusData status;
-String host_name = APPNAME "-";
+String host_name = "";
+String bleMsg = "";
 
 const char compile_date[] = __DATE__ " " __TIME__;
 
@@ -87,7 +88,6 @@ bool newStationConnected = false;
 String airwhere_web_ip = "37.128.187.9";
 
 BluetoothSerial SerialBT;
-uint8_t btOk;
 
 //TTGO T-Beam V07
 const byte ADCBOARDVOLTAGE_PIN = 35; // Prefer Use of ADC1 (8 channels, attached to GPIOs 32 - 39) . ADC2 (10 channels, attached to GPIOs 0, 2, 4, 12 - 15 and 25 - 27)
@@ -101,7 +101,6 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &i2cOLED);
 Screen screen;
 
  unsigned long ble_low_heap_timer=0;
- bool deviceConnected = false;
  String ble_data="";
  bool ble_mutex=false;
 
@@ -111,6 +110,9 @@ beeper Beeper(BEEP_VELOCITY_DEFAULT_SINKING_THRESHOLD,BEEP_VELOCITY_DEFAULT_CLIM
 int freq = 2000;
 int channel = 0;
 int resolution = 8;
+
+static RTC_NOINIT_ATTR uint8_t startOption;
+uint32_t psRamSize = 0;
 
 TaskHandle_t xHandleBaro = NULL;
 TaskHandle_t xHandleStandard = NULL;
@@ -165,6 +167,8 @@ void drawspeaker(int16_t x, int16_t y);
 char* readSerial();
 char* readBtSerial();
 void checkReceivedLine(char *ch_str);
+void startBluetooth(void);
+void drawBluetoothstat(int16_t x, int16_t y);
 
 void handleButton(uint32_t tAct){
   static uint32_t buttonTimer = millis();
@@ -348,6 +352,14 @@ void drawBatt(int16_t x, int16_t y,uint8_t value){
     }
 }
 
+void drawBluetoothstat(int16_t x, int16_t y){
+    if (status.bluetoothStat == 1){
+     display.drawXBitmap(x,y,BT_bits,8,10,WHITE);
+    }else if (status.bluetoothStat == 2){
+      display.fillRect(x,y,8,10,WHITE);
+      display.drawXBitmap(x,y,BT_bits,8,10,BLACK);
+    }
+}
 
 void printGSData(uint32_t tAct){
   static uint32_t tRefresh = millis();
@@ -357,17 +369,16 @@ void printGSData(uint32_t tAct){
     char buf[10];
     display.clearDisplay();
 
-    if (WiFi.status() == WL_CONNECTED){
-      display.drawXBitmap(114,0,WIFI_bits,WIFI_width,WIFI_height,WHITE);
-    }
+    if (status.wifiStat) display.drawXBitmap(85,0,WIFI_bits,WIFI_width,WIFI_height,WHITE);
+    drawBluetoothstat(101,0);
+    drawBatt(111, 0,status.BattPerc / 25);
 
-    //log_i("%d",status.BattPerc);
-    drawBatt(95, 0,status.BattPerc / 25);
+
     //show rx-count
     display.setTextSize(1);
 
-    display.setCursor(75,0);
-    sprintf(buf, "%3d", uint8_t(status.fanetRx));
+    display.setCursor(78,0);
+    sprintf(buf, "%d", uint8_t(status.fanetRx) % 10);
     display.print(buf);
 
 
@@ -514,7 +525,7 @@ void sendAWUdp(String msg){
 }
 
 void sendData2Client(String data){
-  if (status.outputMode == OUTPUT_UDP){
+  if (setting.outputMode == OUTPUT_UDP){
     //output via udp
     if ((WiFi.status() == WL_CONNECTED) || (WiFi.softAPgetStationNum() > 0)){ //connected to wifi or a client is connected to me
       //log_i("sending udp");
@@ -523,16 +534,16 @@ void sendData2Client(String data){
       udp.write((uint8_t *)data.c_str(),data.length());
       udp.endPacket();    
     }
-  }else if (status.outputMode == OUTPUT_SERIAL){//output over serial-connection
+  }else if (setting.outputMode == OUTPUT_SERIAL){//output over serial-connection
     Serial.print(data); 
-  }else if (status.outputMode == OUTPUT_BLUETOOTH){//output over bluetooth serial
-    if (btOk == 1){
+  }else if (setting.outputMode == OUTPUT_BLUETOOTH){//output over bluetooth serial
+    if (status.bluetoothStat){
       if (SerialBT.hasClient()){
         //log_i("sending to bt-device %s",data.c_str());
         SerialBT.print(data);
       }    
     }
-  }else if (status.outputMode == OUTPUT_BLE){ //output over ble-connection
+  }else if (setting.outputMode == OUTPUT_BLE){ //output over ble-connection
     if (xHandleBle){
       if ((ble_data.length() + data.length()) <512){
         while(ble_mutex){
@@ -622,9 +633,9 @@ void listConnectedStations(){
   esp_wifi_ap_get_sta_list(&wifi_sta_list);
   tcpip_adapter_get_sta_list(&wifi_sta_list, &adapter_sta_list);
   if (adapter_sta_list.num > 0){
-    status.WifiConnect = 2;
+    status.wifiStat = 2;
   }else{
-    status.WifiConnect = 1;
+    status.wifiStat = 1;
   }
   for (int i = 0; i < adapter_sta_list.num; i++) {
  
@@ -674,7 +685,10 @@ void WiFiEvent(WiFiEvent_t event){
 
 
 void setupWifi(){
-  status.WifiConnect = 0;
+  while(host_name.length() == 0){
+    delay(100); //wait until we have the devid
+  }
+  status.wifiStat = 0;
   WiFi.mode(WIFI_OFF);
   //delay(500);
   WiFi.persistent(false);
@@ -733,10 +747,12 @@ void setupWifi(){
   //  WiFi.status();
   //  WiFi.mode(WIFI_AP);
   //}
-  status.WifiConnect = 1;
+  status.wifiStat = 1;
   //status.myIP = WiFi.softAPIP().toString();
   log_i("my APIP=%s",local_IP.toString().c_str());
+  //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
   Web_setup();
+  //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
 }
 
 
@@ -757,19 +773,31 @@ void startOLED(){
     log_e("SSD1306 allocation failed");
     for(;;); // Don't proceed, loop forever
   }
-  display.setTextColor(WHITE);
-  display.clearDisplay();
-  display.drawXBitmap(0,2,G_Logo_bits,G_Logo_width,G_Logo_height,WHITE);
-  display.display();
-  delay(1000);
-  display.drawXBitmap(30,2,X_Logo_bits,X_Logo_width,X_Logo_height,WHITE);
-  display.display();
-  delay(1000);
-  display.drawXBitmap(69,2,AirCom_Logo_bits,AirCom_Logo_width,AirCom_Logo_height,WHITE);
-  display.setTextSize(1);
-  display.setCursor(85,55);
-  display.print(VERSION);
-  display.display();
+  if (startOption == 0){
+    display.setTextColor(WHITE);
+    display.clearDisplay();
+    display.drawXBitmap(0,2,G_Logo_bits,G_Logo_width,G_Logo_height,WHITE);
+    display.display();
+    delay(1000);
+    display.drawXBitmap(30,2,X_Logo_bits,X_Logo_width,X_Logo_height,WHITE);
+    display.display();
+    delay(1000);
+    display.drawXBitmap(69,2,AirCom_Logo_bits,AirCom_Logo_width,AirCom_Logo_height,WHITE);
+    display.setTextSize(1);
+    display.setCursor(85,55);
+    display.print(VERSION);
+    display.display();
+  }else{
+    display.clearDisplay();
+    display.setTextColor(WHITE);
+    display.setTextSize(2);
+    display.setCursor(10,5);
+    display.print("Switch to");
+    display.setCursor(10,30);
+    display.print("Bluetooth");
+    display.display();
+
+  }
 }
 
 void printSettings(){
@@ -795,8 +823,7 @@ void printSettings(){
   log_i("WIFI PW=%s",setting.wifi.password.c_str());
   log_i("Aircraft=%s",fanet.getAircraftType(setting.AircraftType).c_str());
   log_i("Pilotname=%s",setting.PilotName.c_str());
-  log_i("Switch WIFI OFF after 3 min=%d",setting.bSwitchWifiOff3Min);
-  log_i("Wifi-down-time=%d",setting.wifiDownTime/1000.);
+  log_i("Wifi-down-time=%d",setting.wifi.tWifiStop);
   log_i("Output-Mode=%d",setting.outputMode);
   log_i("UDP_SERVER=%s",setting.UDPServerIP.c_str());
   log_i("UDP_PORT=%d",setting.UDPSendPort);
@@ -847,6 +874,24 @@ esp_sleep_wakeup_cause_t print_wakeup_reason(){
   return wakeup_reason;
 }
 
+void startBluetooth(void){
+  if (setting.outputMode == OUTPUT_BLE){
+    esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT);
+    esp_bt_controller_enable(ESP_BT_MODE_BLE);    
+    xTaskCreatePinnedToCore(taskBle, "taskBle", 4096, NULL, 7, &xHandleBle, ARDUINO_RUNNING_CORE1);
+    //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
+  }else if (setting.outputMode == OUTPUT_BLUETOOTH){
+    //esp_bt_controller_config_t cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
+    //esp_bt_controller_init(&cfg);
+    esp_bt_controller_enable(ESP_BT_MODE_CLASSIC_BT);
+    esp_bt_controller_mem_release(ESP_BT_MODE_BLE);
+    log_i("starting bluetooth_serial %s",host_name.c_str());
+    SerialBT.begin(host_name.c_str()); //Bluetooth device name
+    log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
+    status.bluetoothStat = 1;
+  }
+}
+
 void setup() {
   
   
@@ -862,7 +907,7 @@ void setup() {
   log_i("CPU-Speed=%d",ESP.getCpuFreqMHz());
   log_i("Total heap: %d", ESP.getHeapSize());
   log_i("Free heap: %d", ESP.getFreeHeap());
-  uint32_t psRamSize = ESP.getPsramSize();
+  psRamSize = ESP.getPsramSize();
   log_i("Total PSRAM: %d", psRamSize);
   log_i("Free PSRAM: %d", ESP.getFreePsram());
   log_i("compiled at %s",compile_date);
@@ -870,6 +915,11 @@ void setup() {
 
   //esp_sleep_wakeup_cause_t reason = print_wakeup_reason(); //print reason for wakeup
   print_wakeup_reason(); //print reason for wakeup
+  esp_reset_reason_t reason = esp_reset_reason();
+  if (reason != ESP_RST_SW) {
+    startOption = 0;
+  }
+  log_i("startOption=%d",startOption);
 
     // Make sure we can read the file system
   if( !SPIFFS.begin(true)){
@@ -878,7 +928,7 @@ void setup() {
   }
 
   //listSpiffsFiles();
-  load_configFile(); //load configuration
+  load_configFile(&setting); //load configuration
   if ((setting.wifi.ssid.length() <= 0) || (setting.wifi.password.length() <= 0)){
     setting.wifi.connect = WIFI_CONNECT_NONE; //if no pw or ssid given --> don't connecto to wifi
   }
@@ -886,38 +936,38 @@ void setup() {
 
   pinMode(BUTTON2, INPUT_PULLUP);
 
-  if (setting.Mode == MODE_GROUND_STATION){ // we are ground-station
-    setting.outputMode = OUTPUT_SERIAL;
-    setting.bSwitchWifiOff3Min = false;
-  }
+  //if (setting.Mode == MODE_GROUND_STATION){ // we are ground-station
+  //  setting.outputMode = OUTPUT_SERIAL;
+    //setting.bSwitchWifiOff3Min = false;
+  //}
 
+  
+  /*
   if ((psRamSize == 0) && 
      ((setting.outputMode == OUTPUT_BLUETOOTH) || (setting.outputMode == OUTPUT_BLE))){
     setting.outputMode = OUTPUT_SERIAL; //not allowed bluetooth-output without psram cause of low memory
     log_i("no ps-ram --> no Bluetooth");
     delay(500);
-    write_configFile();
+    write_configFile(&setting);
   }
-  status.outputMode = setting.outputMode;
+  */
 
-  if (status.outputMode == OUTPUT_UDP){
-    setting.bSwitchWifiOff3Min = false;    
+  /*
+  if (setting.outputMode == OUTPUT_UDP){
+    setting.wifi.tWifiStop = 0;    
   }
-  if (setting.bSwitchWifiOff3Min){
-    setting.wifiDownTime = 180000; //switch off after 3 min.
-  }else{
-    setting.wifiDownTime = 0;
-  }
+  */
 
   //setting.ssid = "WLAN_EICHLER";
   //setting.password = "magest172";
   //setting.bSwitchWifiOff3Min = false;
   //setting.wifiDownTime = 0;
 
+  //setting.wifi.tWifiStop = 10;
+
+
   printSettings();
 
-
-  status.displayType = setting.displayType; //we have to copy it, otherwise you can' switch it in setting without crash
 
   if (setting.boardType == BOARD_T_BEAM){    
     i2cOLED.begin(OLED_SDA, OLED_SCL);
@@ -938,13 +988,13 @@ void setup() {
     //wrong board-definition !!
   }
 
-  if (status.displayType == OLED0_96) startOLED();  
+  if (setting.displayType == OLED0_96) startOLED();  
   //if (setting.displayType == EINK2_9) screen.begin();  
   
-  btOk = 0;
+  setting.myDevId = "";
 
   //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
-  //xTaskCreatePinnedToCore(taskBaro, "taskBaro", 6500, NULL, 100, &xHandleBaro, ARDUINO_RUNNING_CORE1); //high priority task
+  xTaskCreatePinnedToCore(taskBaro, "taskBaro", 6500, NULL, 100, &xHandleBaro, ARDUINO_RUNNING_CORE1); //high priority task
   //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
   xTaskCreatePinnedToCore(taskStandard, "taskStandard", 6500, NULL, 10, &xHandleStandard, ARDUINO_RUNNING_CORE1); //standard task
   //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
@@ -952,25 +1002,18 @@ void setup() {
   //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
   xTaskCreatePinnedToCore(taskBackGround, "taskBackGround", 6500, NULL, 5, &xHandleBackground, ARDUINO_RUNNING_CORE1); //background task
   //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
-  if (status.outputMode == OUTPUT_BLE){
-    esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT);
-    esp_bt_controller_enable(ESP_BT_MODE_BLE);
-    xTaskCreatePinnedToCore(taskBle, "taskBle", 4096, NULL, 7, &xHandleBle, ARDUINO_RUNNING_CORE1);
-    //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
-  }else if (status.outputMode == OUTPUT_BLUETOOTH){
-    //esp_bt_controller_config_t cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
-    //esp_bt_controller_init(&cfg);
-    esp_bt_controller_enable(ESP_BT_MODE_CLASSIC_BT);
-    esp_bt_controller_mem_release(ESP_BT_MODE_BLE);
-    //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
+  //xTaskCreatePinnedToCore(taskMemory, "taskMemory", 4096, NULL, 1, &xHandleMemory, ARDUINO_RUNNING_CORE1);
+  //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
+  if ((setting.outputMode == OUTPUT_BLE) || (setting.outputMode == OUTPUT_BLUETOOTH)){
+    if ((psRamSize > 0) || (startOption == 1)){
+      startBluetooth(); //start bluetooth
+    }
   }else{
+    //stop bluetooth-controller --> save some memory
     esp_bt_controller_disable();
     esp_bt_controller_mem_release(ESP_BT_MODE_BTDM);
     //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
   }
-  xTaskCreatePinnedToCore(taskMemory, "taskMemory", 4096, NULL, 1, &xHandleMemory, ARDUINO_RUNNING_CORE1);
-  //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
-
 }
 
 void taskBaro(void *pvParameters){
@@ -1036,7 +1079,7 @@ void taskMemory(void *pvParameters) {
 
 	 while (1)
 	 {
-     log_d("current free heap: %d, minimum ever free heap: %d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
+     log_i("current free heap: %d, minimum ever free heap: %d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
      vTaskDelay(1000 / portTICK_PERIOD_MS);
    }
 }
@@ -1046,6 +1089,7 @@ void taskBle(void *pvParameters) {
 	// BLEServer *pServer;
 
 	 delay(2000);
+   status.bluetoothStat = 1;
 	 start_ble(host_name);
 	 delay(1000);
 	 while (1)
@@ -1145,10 +1189,9 @@ void printScanning(uint32_t tAct){
   //if ((tAct - tPrint) >= 300){
     tPrint = tAct;
     display.clearDisplay();
-    if (WiFi.status() == WL_CONNECTED){
-      display.drawXBitmap(114,0,WIFI_bits,WIFI_width,WIFI_height,WHITE);
-    }
-    drawBatt(95, 0,status.BattPerc / 25);
+    if (status.wifiStat) display.drawXBitmap(85,0,WIFI_bits,WIFI_width,WIFI_height,WHITE);
+    drawBluetoothstat(101,0);
+    drawBatt(111, 0,status.BattPerc / 25);
     switch (icon)
     {
     case 0: 
@@ -1325,13 +1368,7 @@ void DrawAngleLine(int16_t x,int16_t y,int16_t length,float deg){
   xEnd=(int)roundf(((sin(rads) * length/2) * -1) + x);
   yEnd=(int)roundf(((cos(rads) * length/2) * 1) + y);  
   display.drawLine(xStart,yStart,xEnd,yEnd,WHITE);
-  /*
-  log_i("deg=%0.1f",deg);
-  log_i("X-Start=%i",xStart);
-  log_i("Y-Start=%i",yStart);
-  log_i("X-End=%i",xEnd);
-  log_i("Y-End=%i",yEnd);    
-  */
+  //log_i("x=%i,y=%i,deg=%0.1f,X-Start=%i,Y-Start=%i,X-End=%i,Y-End=%i",x,y,deg,xStart,yStart,xEnd,yEnd);
 }
 
 void DrawRadarScreen(uint32_t tAct,uint8_t mode){
@@ -1348,41 +1385,18 @@ void DrawRadarScreen(uint32_t tAct,uint8_t mode){
     tPrint = tAct;
     display.clearDisplay();
     drawAircraftType(0,0,setting.AircraftType);
-    drawSatCount(18,0,(status.GPS_Fix) ? status.GPS_NumSat : 0);
-    drawBatt(95, 0,status.BattPerc / 25);
-    if (WiFi.status() == WL_CONNECTED){
-      display.drawXBitmap(114,0,WIFI_bits,WIFI_width,WIFI_height,WHITE);
-    }
+    drawSatCount(18,0,(status.GPS_NumSat > 9) ? 9 : status.GPS_NumSat);
+    //drawSatCount(18,0,9);
+    if (status.wifiStat) display.drawXBitmap(85,0,WIFI_bits,WIFI_width,WIFI_height,WHITE);
+    drawBluetoothstat(101,0);
+    drawBatt(111, 0,status.BattPerc / 25);
+
     
     display.setTextSize(1);
-    /*
-    display.setCursor(0,0);
-    display.printf("%d%%",status.BattPerc);
-    */
-    /*
-    display.setCursor(0,56);
-    if (status.flying){
-      display.print("F");
-    }else{
-      display.print("G");
-    }
-    */
     display.drawCircle(RADAR_SCREEN_CENTER_X,RADAR_SCREEN_CENTER_Y,24,WHITE);
-    //display.drawCircle(RADAR_SCREEN_CENTER_X,RADAR_SCREEN_CENTER_Y,1,WHITE);
 
-    /*
-    if (digitalRead(BUTTON2)){
-      fanet._myData.heading = 0.0;
-    }else{
-      fanet._myData.heading = 45.0;
-    }
-    */
-
-    //fanet._myData.heading = angle;
-    //angle += 15.0;
-    //if (angle >= 360.0) angle = 0;
     DrawAngleLine(RADAR_SCREEN_CENTER_X,RADAR_SCREEN_CENTER_Y,30,fanet._myData.heading * -1);
-    DrawAngleLine(RADAR_SCREEN_CENTER_X,RADAR_SCREEN_CENTER_Y,5,(fanet._myData.heading + 90) * -1);
+    DrawAngleLine(RADAR_SCREEN_CENTER_X,RADAR_SCREEN_CENTER_Y,6,(fanet._myData.heading + 90) * -1);
     rads = deg2rad(fanet._myData.heading * -1);
     xStart=(int)(((sin(rads) * 19) * 1) + RADAR_SCREEN_CENTER_X);
     yStart=(int)(((cos(rads) * 19) * -1) + RADAR_SCREEN_CENTER_Y);
@@ -1392,7 +1406,7 @@ void DrawRadarScreen(uint32_t tAct,uint8_t mode){
     //display.drawFastHLine(0,RADAR_SCREEN_CENTER_X,64,WHITE);
     //display.drawFastVLine(RADAR_SCREEN_CENTER_X,8,56,WHITE);
     display.setTextSize(1);
-    display.setCursor(50,0);
+    display.setCursor(42,0);
     switch (mode)
     {
     case RADAR_CLOSEST:
@@ -1493,14 +1507,14 @@ void printGPSData(uint32_t tAct){
     display.setCursor(0,0);
     //display.print(setStringSize(String(status.BattPerc) + "% ",4));
     drawAircraftType(0,0,setting.AircraftType);
-    drawSatCount(18,0,(status.GPS_Fix) ? status.GPS_NumSat : 0);
-    //drawSatCount(18,0,20);
-    drawspeaker(55,0);
-    drawflying(78,0,status.flying);
-    drawBatt(95, 0,status.BattPerc / 25);
-    if (WiFi.status() == WL_CONNECTED){
-      display.drawXBitmap(114,0,WIFI_bits,WIFI_width,WIFI_height,WHITE);
-    }
+    
+    drawSatCount(18,0,(status.GPS_NumSat > 9) ? 9 : status.GPS_NumSat);
+    drawspeaker(47,0);
+    drawflying(67,0,status.flying);
+    if (status.wifiStat) display.drawXBitmap(85,4,WIFI_bits,WIFI_width,WIFI_height,WHITE);
+    drawBluetoothstat(101,0);
+    drawBatt(111, 4,status.BattPerc / 25);
+
 
 
     display.setTextSize(2);
@@ -1540,7 +1554,11 @@ void checkReceivedLine(char *ch_str){
 char* readBtSerial(){
   static char lineBuffer[512];
   static uint16_t recBufferIndex = 0;
+  if (status.bluetoothStat == 0){
+    return NULL; //bluetooth not started yet.
+  }
   if (SerialBT.hasClient()){
+    status.bluetoothStat = 2; //client connected
     while(SerialBT.available()){
       if (recBufferIndex >= (512-1)) recBufferIndex = 0; //Buffer overrun
       lineBuffer[recBufferIndex] = SerialBT.read();
@@ -1554,6 +1572,7 @@ char* readBtSerial(){
       }  
     }
   }else{
+    status.bluetoothStat = 1;
     recBufferIndex = 0;
   }
   return NULL;
@@ -1728,21 +1747,10 @@ void taskStandard(void *pvParameters){
     fanet.autobroadcast = false;
   }
   setting.myDevId = fanet.getMyDevId();
-  host_name += setting.myDevId; //String((ESP32_getChipId() & 0xFFFFFF), HEX);
+  host_name = APPNAME "-" + setting.myDevId; //String((ESP32_getChipId() & 0xFFFFFF), HEX);
   if (setting.Mode != MODE_GROUND_STATION){ // we are ground-station)
     flarm.begin();
   }
-  if (status.outputMode == OUTPUT_BLUETOOTH){
-    //String sBl = "BLGX" + setting.myDevId;    
-    log_i("starting bluetooth_serial %s",host_name.c_str());
-    log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
-    SerialBT.begin(host_name.c_str()); //Bluetooth device name
-    log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
-    //SerialBT.print(APPNAME " Bluetooth Starting");
-    btOk = 1;
-  }
-
-
   if (setting.OGNLiveTracking){
     ogn.begin(setting.myDevId,APPNAME " " VERSION);
     if (setting.Mode == MODE_GROUND_STATION){
@@ -1753,7 +1761,7 @@ void taskStandard(void *pvParameters){
 
 
 
-  if (status.displayType == OLED0_96){
+  if (setting.displayType == OLED0_96){
     display.setTextColor(WHITE);
     display.setTextSize(1);
     display.setCursor(0,55);
@@ -1793,7 +1801,7 @@ void taskStandard(void *pvParameters){
     printBattVoltage(tAct);
     readGPS();
     sendFlarmData(tAct);
-    if (status.displayType == OLED0_96){
+    if (setting.displayType == OLED0_96){
       //setting.screenNumber = 1;
       if (setting.Mode == MODE_GROUND_STATION){
         if (fanet.getNeighboursCount() == 0){
@@ -1808,6 +1816,7 @@ void taskStandard(void *pvParameters){
           }
         }
       }else{
+          //setting.screenNumber = 2;
           switch (setting.screenNumber)
           {
           case 0: //main-Display
@@ -1886,7 +1895,7 @@ void taskStandard(void *pvParameters){
     if (pSerialLine != NULL){
       checkReceivedLine(pSerialLine);
     }
-    if (status.outputMode == OUTPUT_BLUETOOTH){
+    if (setting.outputMode == OUTPUT_BLUETOOTH){
       pSerialLine = readBtSerial();
       if (pSerialLine != NULL){
         checkReceivedLine(pSerialLine);
@@ -1996,7 +2005,7 @@ void taskStandard(void *pvParameters){
     if ((WebUpdateRunning) || (bPowerOff)) break;
   }
   log_i("stop task");
-  if (status.displayType == OLED0_96){
+  if (setting.displayType == OLED0_96){
     display.clearDisplay();
     display.setTextSize(2);
     display.setCursor(10,5);
@@ -2029,7 +2038,7 @@ void powerOff(){
   display.print("OFF");
   display.display(); 
   */
-  if (status.displayType == OLED0_96){
+  if (setting.displayType == OLED0_96){
     display.setTextColor(WHITE);
     display.clearDisplay();
     display.drawXBitmap(0,2,G_Logo_bits,G_Logo_width,G_Logo_height,WHITE);
@@ -2067,7 +2076,7 @@ void powerOff(){
     axp.setChgLEDMode(AXP20X_LED_OFF);
     axp.setPowerOutPut(AXP192_LDO2, AXP202_OFF); //LORA
     axp.setPowerOutPut(AXP192_LDO3, AXP202_OFF); //GPS
-    if (status.displayType == OLED0_96){
+    if (setting.displayType == OLED0_96){
       axp.setPowerOutPut(AXP192_DCDC1, AXP202_ON); //OLED-Display 3V3
     }else{
       axp.setPowerOutPut(AXP192_DCDC1, AXP202_OFF); //OLED-Display 3V3
@@ -2085,7 +2094,7 @@ void powerOff(){
 }
 
 void taskEInk(void *pvParameters){
-  if (status.displayType != EINK2_9){
+  if (setting.displayType != EINK2_9){
     log_i("stop task");
     vTaskDelete(xHandleEInk);
     return;
@@ -2113,18 +2122,16 @@ void taskBackGround(void *pvParameters){
   static uint32_t warning_time=0;
 
 
-  /*
-  log_i("stop task");
-  vTaskDelete(xHandleBackground);
-  return;
-  */
+  if (startOption != 0){ //we start wifi
+    log_i("stop task");
+    vTaskDelete(xHandleBackground);
+    return;
+  }
 
-  delay(1500);
-  
   setupWifi();
   while (1){
     uint32_t tAct = millis();
-    if ((setting.wifi.connect == 2) && (WiFi.status() != WL_CONNECTED) && (status.WifiConnect)){
+    if ((setting.wifi.connect == 2) && (WiFi.status() != WL_CONNECTED) && (status.wifiStat)){
       if (timeOver(tAct,tWifiCheck,WIFI_RECONNECT_TIME)){
         tWifiCheck = tAct;
         log_i("WiFi not connected. Try to reconnect");
@@ -2151,15 +2158,28 @@ void taskBackGround(void *pvParameters){
 		esp_restart();
 	}
 
-    if  (status.WifiConnect){
+    if  (status.wifiStat){
       Web_loop();
     }
-    if (( tAct > setting.wifiDownTime) && (setting.wifiDownTime!=0)){
-      setting.wifiDownTime=0;
-      status.WifiConnect=0;
+    if (( tAct > (setting.wifi.tWifiStop * 1000)) && (setting.wifi.tWifiStop!=0)){
+      log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
+      Web_stop();
+      WiFi.softAPdisconnect(true);
+      WiFi.disconnect();
+      WiFi.mode(WIFI_MODE_NULL);
+      //WiFi.forceSleepBegin(); //This also works
+      setting.wifi.tWifiStop=0;
+      status.wifiStat=0;
       esp_wifi_set_mode(WIFI_MODE_NULL);
       esp_wifi_stop();
       log_i("******************WEBCONFIG Setting - WIFI STOPPING*************************");
+      log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
+      if ((setting.outputMode == OUTPUT_BLE) || (setting.outputMode == OUTPUT_BLUETOOTH)){
+        if (psRamSize == 0){
+          startOption = 1; //start without wifi, but with bluetooth enabled
+          ESP.restart(); //we restart without wifi
+        }
+      }
     }
     if ((tAct - tLife) >= LifeCount){
       tLife = tAct;

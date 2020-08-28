@@ -97,7 +97,7 @@ void onWebSocketEvent(uint8_t client_num,
           doc["wificonnect"] = (uint8_t)setting.wifi.connect;
           doc["ssid"] = setting.wifi.ssid;
           doc["password"] = setting.wifi.password;
-          doc["wifioff"] = (uint8_t)setting.bSwitchWifiOff3Min;
+          doc["wifioff"] = setting.wifi.tWifiStop;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
 
@@ -138,7 +138,7 @@ void onWebSocketEvent(uint8_t client_num,
           doc["appw"] = setting.wifi.appw;
           doc["ssid"] = setting.wifi.ssid;
           doc["password"] = setting.wifi.password;
-          doc["wifioff"] = (uint8_t)setting.bSwitchWifiOff3Min;
+          doc["wifioff"] = setting.wifi.tWifiStop;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
         }else if (clientPages[client_num] == 14){ //settings ground station
@@ -185,40 +185,41 @@ void onWebSocketEvent(uint8_t client_num,
         value = doc["save"];
         if (value == 1){
           //general settings-page          
-          if (root.containsKey("appw")) setting.wifi.appw = doc["appw"].as<String>();          
-          if (root.containsKey("wificonnect")) setting.wifi.connect = (bool)doc["wificonnect"].as<uint8_t>();
-          if (root.containsKey("ssid")) setting.wifi.ssid = doc["ssid"].as<String>();
-          if (root.containsKey("password")) setting.wifi.password = doc["password"].as<String>();
-          if (root.containsKey("board")) setting.boardType = doc["board"].as<uint8_t>();          
-          if (root.containsKey("disp")) setting.displayType = doc["disp"].as<uint8_t>();          
-          if (root.containsKey("power")) setting.LoraPower = constrain(doc["power"].as<uint8_t>(),0,20);          
-          if (root.containsKey("band")) setting.band = doc["band"].as<uint8_t>();          
-          if (root.containsKey("type")) setting.AircraftType = (FanetLora::aircraft_t)doc["type"].as<uint8_t>();
-          if (root.containsKey("PilotName")) setting.PilotName = doc["PilotName"].as<String>();
-          if (root.containsKey("output")) setting.outputMode = doc["output"].as<uint8_t>();
-          if (root.containsKey("oGPS")) setting.outputGPS = doc["oGPS"].as<uint8_t>();
-          if (root.containsKey("oFlarm")) setting.outputFLARM = doc["oFlarm"].as<uint8_t>();
-          if (root.containsKey("oFanet")) setting.outputFANET = doc["oFanet"].as<uint8_t>();
-          if (root.containsKey("oLK8EX1")) setting.outputLK8EX1 = doc["oLK8EX1"].as<uint8_t>();
-          if (root.containsKey("awlive")) setting.awLiveTracking = doc["awlive"].as<uint8_t>();
-          if (root.containsKey("wifioff")) setting.bSwitchWifiOff3Min = (bool)doc["wifioff"].as<uint8_t>();
-          if (root.containsKey("UDPServerIP")) setting.UDPServerIP = doc["UDPServerIP"].as<String>();
-          if (root.containsKey("UDPSendPort")) setting.UDPSendPort = doc["UDPSendPort"].as<uint16_t>();
-          if (root.containsKey("gsawid")) setting.gs.AWID = doc["gsawid"].as<String>();
-          if (root.containsKey("gslat")) setting.gs.lat = doc["gslat"].as<float>();
-          if (root.containsKey("gslon")) setting.gs.lon = doc["gslon"].as<float>();
-          if (root.containsKey("gsalt")) setting.gs.alt = doc["gsalt"].as<float>();
-          if (root.containsKey("mode")) setting.Mode = doc["mode"].as<uint8_t>();
-          if (root.containsKey("ognlive")) setting.OGNLiveTracking = doc["ognlive"].as<uint8_t>();
+          SettingsData newSetting = setting;
+          if (root.containsKey("appw")) newSetting.wifi.appw = doc["appw"].as<String>();          
+          if (root.containsKey("wificonnect")) newSetting.wifi.connect = (bool)doc["wificonnect"].as<uint8_t>();
+          if (root.containsKey("ssid")) newSetting.wifi.ssid = doc["ssid"].as<String>();
+          if (root.containsKey("password")) newSetting.wifi.password = doc["password"].as<String>();
+          if (root.containsKey("board")) newSetting.boardType = doc["board"].as<uint8_t>();          
+          if (root.containsKey("disp")) newSetting.displayType = doc["disp"].as<uint8_t>();          
+          if (root.containsKey("power")) newSetting.LoraPower = constrain(doc["power"].as<uint8_t>(),0,20);          
+          if (root.containsKey("band")) newSetting.band = doc["band"].as<uint8_t>();          
+          if (root.containsKey("type")) newSetting.AircraftType = (FanetLora::aircraft_t)doc["type"].as<uint8_t>();
+          if (root.containsKey("PilotName")) newSetting.PilotName = doc["PilotName"].as<String>();
+          if (root.containsKey("output")) newSetting.outputMode = doc["output"].as<uint8_t>();
+          if (root.containsKey("oGPS")) newSetting.outputGPS = doc["oGPS"].as<uint8_t>();
+          if (root.containsKey("oFlarm")) newSetting.outputFLARM = doc["oFlarm"].as<uint8_t>();
+          if (root.containsKey("oFanet")) newSetting.outputFANET = doc["oFanet"].as<uint8_t>();
+          if (root.containsKey("oLK8EX1")) newSetting.outputLK8EX1 = doc["oLK8EX1"].as<uint8_t>();
+          if (root.containsKey("awlive")) newSetting.awLiveTracking = doc["awlive"].as<uint8_t>();
+          if (root.containsKey("wifioff")) newSetting.wifi.tWifiStop = doc["wifioff"].as<uint32_t>();
+          if (root.containsKey("UDPServerIP")) newSetting.UDPServerIP = doc["UDPServerIP"].as<String>();
+          if (root.containsKey("UDPSendPort")) newSetting.UDPSendPort = doc["UDPSendPort"].as<uint16_t>();
+          if (root.containsKey("gsawid")) newSetting.gs.AWID = doc["gsawid"].as<String>();
+          if (root.containsKey("gslat")) newSetting.gs.lat = doc["gslat"].as<float>();
+          if (root.containsKey("gslon")) newSetting.gs.lon = doc["gslon"].as<float>();
+          if (root.containsKey("gsalt")) newSetting.gs.alt = doc["gsalt"].as<float>();
+          if (root.containsKey("mode")) newSetting.Mode = doc["mode"].as<uint8_t>();
+          if (root.containsKey("ognlive")) newSetting.OGNLiveTracking = doc["ognlive"].as<uint8_t>();
           //vario
-          if (root.containsKey("vSinkTh")) setting.vario.sinkingThreshold = doc["vSinkTh"].as<float>();
-          if (root.containsKey("vClimbTh")) setting.vario.climbingThreshold = doc["vClimbTh"].as<float>();
-          if (root.containsKey("vNClimbSens")) setting.vario.nearClimbingSensitivity = doc["vNClimbSens"].as<float>();
-          if (root.containsKey("vVol")) setting.vario.volume = doc["vVol"].as<uint8_t>();
-          if (root.containsKey("vBeepFly")) setting.vario.BeepOnlyWhenFlying = doc["vBeepFly"].as<uint8_t>();
+          if (root.containsKey("vSinkTh")) newSetting.vario.sinkingThreshold = doc["vSinkTh"].as<float>();
+          if (root.containsKey("vClimbTh")) newSetting.vario.climbingThreshold = doc["vClimbTh"].as<float>();
+          if (root.containsKey("vNClimbSens")) newSetting.vario.nearClimbingSensitivity = doc["vNClimbSens"].as<float>();
+          if (root.containsKey("vVol")) newSetting.vario.volume = doc["vVol"].as<uint8_t>();
+          if (root.containsKey("vBeepFly")) newSetting.vario.BeepOnlyWhenFlying = doc["vBeepFly"].as<uint8_t>();
           log_i("write config-to file --> rebooting");
           delay(500);
-          write_configFile();
+          write_configFile(&newSetting);
 
         }
       }else if (root.containsKey("rLoopTime")){
@@ -462,6 +463,11 @@ void Web_setup(void){
   // Start WebSocket server and assign callback
   webSocket.begin();
   webSocket.onEvent(onWebSocketEvent);
+}
+
+void Web_stop(void){
+  webSocket.close();
+  server.end();
 }
 
 void Web_loop(void){

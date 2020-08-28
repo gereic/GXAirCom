@@ -69,6 +69,8 @@ private:
     uint32_t flightTime;
     uint8_t volume; //muting beeper
     bool flying;
+    bool wifi;
+    uint8_t bluetooth;
   };
 
 };

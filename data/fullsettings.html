@@ -102,7 +102,7 @@ function sendValues(){
   wificonnect : document.getElementById("wificonnect").value,
   ssid : document.getElementById("ssid").value,
   password : document.getElementById("password").value,
-  wifioff : Number(document.getElementById("wifioff").checked),
+  wifioff : document.getElementById("wifioff").value,
   
   output : document.getElementById("output").value,
   oGPS : Number(document.getElementById("oGPS").checked),
@@ -327,8 +327,15 @@ window.addEventListener("load", init, false);
             <td><input type="text" id="password" name="password"></td>
           </tr>
           <tr>
-            <th>Wifi off after 3min</th>
-            <td><input type="checkbox" id="wifioff" name="wifioff"></td>
+            <th>Wifi off</th>
+            <td><select name="wifioff" id="wifioff">
+              <option value="0">always on</option>
+              <option value="60">1min.</option>
+              <option value="120">2min.</option>
+              <option value="180">3min.</option>
+              <option value="300">5min.</option>
+              <option value="600">10min.</option>
+            </select></td>
           </tr>
         </tbody>      
       </table>
@@ -378,7 +385,7 @@ window.addEventListener("load", init, false);
             <td><input type="number" id="vSinkTh" name="vSinkTh" step=".01"></td>
           </tr>
           <tr>
-            <th>volume (0..255)</th>
+            <th>volume</th>
             <td><select name="vVol" id="vVol">
               <option value="50">Low</option>
               <option value="100">MID</option>

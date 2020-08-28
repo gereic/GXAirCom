@@ -18,26 +18,32 @@
 
 //#include <sstream>             // Part of C++ Standard library
 
-extern bool deviceConnected;
+extern struct statusData status;
+extern void checkReceivedLine(char *ch_str);
 
 BLECharacteristic *pCharacteristic;
 
+/*
 const char *CHARACTERISTIC_UUID_DEVICENAME = "00002A00-0000-1000-8000-00805F9B34FB";
 const char *CHARACTERISTIC_UUID_RXTX = "0000FFE1-0000-1000-8000-00805F9B34FB";
 const char *CHARACTERISTIC_UUID_RXTX_DESCRIPTOR = "00002902-0000-1000-8000-00805F9B34FB";
 const char *SERVICE_UUID = "0000FFE0-0000-1000-8000-00805F9B34FB";
+*/
+#define SERVICE_UUID           "6E400001-B5A3-F393-E0A9-E50E24DCCA9E" 
+#define CHARACTERISTIC_UUID_RX "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
+#define CHARACTERISTIC_UUID_TX "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
 
 class MyServerCallbacks : public BLEServerCallbacks {
 
 	void onConnect(BLEServer* pServer) {
-  		log_d("***************************** BLE CONNECTED *****************");
-		deviceConnected = true;
+  		//log_d("***************************** BLE CONNECTED *****************");
+		status.bluetoothStat = 2; //we have a connected client
 	};
 
 	void onDisconnect(BLEServer* pServer) {
-		log_d("***************************** BLE DISCONNECTED *****************");
-		deviceConnected = false;
-		delay(1000);
+		//log_d("***************************** BLE DISCONNECTED *****************");
+		status.bluetoothStat = 1; //client disconnected
+		//delay(1000);
 	//	pServer->
 	}
 
@@ -52,19 +58,12 @@ class MyCallbacks : public BLECharacteristicCallbacks {
 		std::string rxValue = pCharacteristic->getValue();
 
 		if (rxValue.length() > 0) {
-
-			log_i("received:%s",rxValue.c_str());
-			/*
-			String msg = "********* Received Value: "
-			
-			log_i("*********");
-
-			log_i("Received Value: ");
-
-			for (int i = 0; i < rxValue.length(); i++)
-				msg += rxValue[i];
-			msg += "*********";
-			*/
+			int valueLength = strlen(&rxValue[0]);
+			char cstr[valueLength+1]; //+1 for 0-termination
+			memcpy(cstr, rxValue.data(), valueLength);
+			cstr[valueLength] = 0; //zero-termination !!
+			//log_i("received:%s,%d",cstr,valueLength);
+			checkReceivedLine(&cstr[0]);
 		}
 
 	}
@@ -74,7 +73,7 @@ class MyCallbacks : public BLECharacteristicCallbacks {
 void BLESendChunks(String str)
 {
 	String substr;
-	if (deviceConnected) {
+	if (status.bluetoothStat == 2) {
 		for (int k = 0; k < str.length(); k += _min(str.length(), 20)) {
 			substr = str.substring(k, k + _min(str.length() - k, 20));
 			pCharacteristic->setValue(substr.c_str());
@@ -112,22 +111,32 @@ void start_ble (String bleId)
     BLEDevice::init(bleId.c_str());
 	BLEServer *pServer = BLEDevice::createServer();
 	pServer->setCallbacks(new MyServerCallbacks());
+
+	BLEService *pService = pServer->createService(SERVICE_UUID);
+
+	pCharacteristic = pService->createCharacteristic(
+                      CHARACTERISTIC_UUID_TX,
+                      BLECharacteristic::PROPERTY_NOTIFY
+                    );
+                      
+  	pCharacteristic->addDescriptor(new BLE2902());
+ 
+  	BLECharacteristic *pCharacteristic = pService->createCharacteristic(
+    	                                     CHARACTERISTIC_UUID_RX,
+        	                                 BLECharacteristic::PROPERTY_WRITE
+            	                           );
+ 
+  	pCharacteristic->setCallbacks(new MyCallbacks());
+	pService->start();
+	pServer->getAdvertising()->start();
+
+	/*
 	BLEService *pService = pServer->createService(BLEUUID((uint16_t)0xFFE0));
 	// Create a BLE Characteristic
 	pCharacteristic = pService->createCharacteristic(BLEUUID((uint16_t)0xFFE1),
 		BLECharacteristic::PROPERTY_NOTIFY| BLECharacteristic::PROPERTY_WRITE| BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE_NR
 	);
-
-	//pCharacteristic->addDescriptor(new BLEDescriptor(CHARACTERISTIC_UUID_RXTX_DESCRIPTOR));
 	pCharacteristic->addDescriptor(new BLE2902());
-
-   	/*
-	BLECharacteristic *pCharacteristic = pService->createCharacteristic(
-	CHARACTERISTIC_UUID_DEVICENAME,
-	BLECharacteristic::PROPERTY_READ
-	);
-	*/
-
 	pCharacteristic->setCallbacks(new MyCallbacks());
 	pCharacteristic->setValue("esp32ble-hm10");
 	log_i("Starting BLE");
@@ -137,6 +146,7 @@ void start_ble (String bleId)
 	// Start advertising
 	pServer->getAdvertising()->start();
 	log_i("Waiting a client connection to notify...");
+	*/
 }
 
 #endif /* MAIN_AIRWHERE_BLE_H_ */

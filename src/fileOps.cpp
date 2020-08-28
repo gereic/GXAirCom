@@ -2,83 +2,83 @@
 
 Preferences preferences;  
 
-void load_configFile(void){
+void load_configFile(SettingsData* pSetting){
     log_i("LOAD CONFIG FILE");
     preferences.begin("settings", false);                         //Ordner settings anlegen/verwenden
-    setting.wifi.appw = preferences.getString("APPW","12345678");
-    setting.boardType = preferences.getUChar("BOARDTYPE",BOARD_T_BEAM); //
-    setting.band = preferences.getUChar("BAND",BAND868); //
-    setting.LoraPower = preferences.getUChar("LORA_POWER",10);//
-    setting.awLiveTracking = preferences.getUChar("AWLIVE",0); //
-    setting.outputLK8EX1 = preferences.getUChar("OLK8EX1",1); //
-    setting.outputFLARM = preferences.getUChar("OFLARM",1); //
-    setting.outputGPS = preferences.getUChar("OGPS",1); //
-    setting.outputFANET = preferences.getUChar("OFANET",1); //
-    setting.PilotName = preferences.getString("PILOTNAME","");
-    setting.wifi.connect = preferences.getUChar("WIFI_CONNECT",0); //
-    setting.wifi.ssid = preferences.getString("WIFI_SSID","");
-    setting.wifi.password = preferences.getString("WIFI_PW","");
-    setting.AircraftType = (FanetLora::aircraft_t)preferences.getUChar("AIRCRAFTTYPE",1);
-    setting.bSwitchWifiOff3Min = preferences.getBool("SWOFF3MIN",false);
-    setting.UDPServerIP = preferences.getString("UDP_SERVER","192.168.4.2"); //UDP-IP-Adress to match connected device
-    setting.UDPSendPort = preferences.getUInt("UDP_PORT",10110); //Port of udp-server
-    setting.outputMode = preferences.getUChar("OutputMode",OUTPUT_SERIAL); //output-mode
-    setting.Mode = preferences.getUChar("Mode",0);
-    setting.gs.lat = preferences.getFloat("GSLAT",0.0);
-    setting.gs.lon = preferences.getFloat("GSLON",0.0);
-    setting.gs.alt = preferences.getFloat("GSALT",0.0);
-    setting.gs.AWID = preferences.getString("GSAWID","");
-    setting.OGNLiveTracking = preferences.getUChar("OGN_LIVE",0);
-    setting.screenNumber = preferences.getUChar("SCREEN",0);
-    setting.displayType = preferences.getUChar("Display",0);
+    pSetting->wifi.appw = preferences.getString("APPW","12345678");
+    pSetting->boardType = preferences.getUChar("BOARDTYPE",BOARD_T_BEAM); //
+    pSetting->band = preferences.getUChar("BAND",BAND868); //
+    pSetting->LoraPower = preferences.getUChar("LORA_POWER",10);//
+    pSetting->awLiveTracking = preferences.getUChar("AWLIVE",0); //
+    pSetting->outputLK8EX1 = preferences.getUChar("OLK8EX1",1); //
+    pSetting->outputFLARM = preferences.getUChar("OFLARM",1); //
+    pSetting->outputGPS = preferences.getUChar("OGPS",1); //
+    pSetting->outputFANET = preferences.getUChar("OFANET",1); //
+    pSetting->PilotName = preferences.getString("PILOTNAME","");
+    pSetting->wifi.connect = preferences.getUChar("WIFI_CONNECT",0); //
+    pSetting->wifi.ssid = preferences.getString("WIFI_SSID","");
+    pSetting->wifi.password = preferences.getString("WIFI_PW","");
+    pSetting->wifi.tWifiStop = preferences.getUInt("Time_WIFI_Stop",0);
+    pSetting->AircraftType = (FanetLora::aircraft_t)preferences.getUChar("AIRCRAFTTYPE",1);
+    pSetting->UDPServerIP = preferences.getString("UDP_SERVER","192.168.4.2"); //UDP-IP-Adress to match connected device
+    pSetting->UDPSendPort = preferences.getUInt("UDP_PORT",10110); //Port of udp-server
+    pSetting->outputMode = preferences.getUChar("OutputMode",OUTPUT_SERIAL); //output-mode
+    pSetting->Mode = preferences.getUChar("Mode",0);
+    pSetting->gs.lat = preferences.getFloat("GSLAT",0.0);
+    pSetting->gs.lon = preferences.getFloat("GSLON",0.0);
+    pSetting->gs.alt = preferences.getFloat("GSALT",0.0);
+    pSetting->gs.AWID = preferences.getString("GSAWID","");
+    pSetting->OGNLiveTracking = preferences.getUChar("OGN_LIVE",0);
+    pSetting->screenNumber = preferences.getUChar("SCREEN",0);
+    pSetting->displayType = preferences.getUChar("Display",0);
 
 
     //vario
-    setting.vario.sinkingThreshold = preferences.getFloat("vSinkTh",-2.0);
-    setting.vario.climbingThreshold = preferences.getFloat("vClimbTh",0.2);
-    setting.vario.nearClimbingSensitivity = preferences.getFloat("vNClimbSens",0.5);
-    setting.vario.volume = preferences.getUChar("VarioVolume",10);
-    setting.vario.BeepOnlyWhenFlying = preferences.getUChar("VBeepFlying",1);
+    pSetting->vario.sinkingThreshold = preferences.getFloat("vSinkTh",-2.0);
+    pSetting->vario.climbingThreshold = preferences.getFloat("vClimbTh",0.2);
+    pSetting->vario.nearClimbingSensitivity = preferences.getFloat("vNClimbSens",0.5);
+    pSetting->vario.volume = preferences.getUChar("VarioVolume",10);
+    pSetting->vario.BeepOnlyWhenFlying = preferences.getUChar("VBeepFlying",1);
 
 
     preferences.end(); 
 }
 
-void write_configFile(void){
+void write_configFile(SettingsData* pSetting){
     log_i("WRITE CONFIG FILE");
     preferences.begin("settings", false);                         //Ordner settings anlegen/verwenden
-    preferences.putString("APPW",setting.wifi.appw);
-    preferences.putUChar("BOARDTYPE",setting.boardType); //
-    preferences.putUChar("BAND",setting.band); //
-    preferences.putUChar("LORA_POWER",setting.LoraPower);//
-    preferences.putUChar("AWLIVE",setting.awLiveTracking); //
-    preferences.putUChar("OLK8EX1",setting.outputLK8EX1); //
-    preferences.putUChar("OFLARM",setting.outputFLARM); //
-    preferences.putUChar("OGPS",setting.outputGPS); //
-    preferences.putUChar("OFANET",setting.outputFANET); //
-    preferences.putString("PILOTNAME",setting.PilotName);
-    preferences.putUChar("WIFI_CONNECT",setting.wifi.connect); //
-    preferences.putString("WIFI_SSID",setting.wifi.ssid);
-    preferences.putString("WIFI_PW",setting.wifi.password);
-    preferences.putUChar("AIRCRAFTTYPE",uint8_t(setting.AircraftType));
-    preferences.putBool("SWOFF3MIN",setting.bSwitchWifiOff3Min);    
-    preferences.putString("UDP_SERVER",setting.UDPServerIP); //UDP-IP-Adress for sending Pakets
-    preferences.putUInt("UDP_PORT",setting.UDPSendPort); //Port of udp-server
-    preferences.putUChar("OutputMode",setting.outputMode);
-    preferences.putUChar("Mode",setting.Mode);
-    preferences.putFloat("GSLAT",setting.gs.lat);
-    preferences.putFloat("GSLON",setting.gs.lon);
-    preferences.putFloat("GSALT",setting.gs.alt);
-    preferences.putString("GSAWID",setting.gs.AWID);
-    preferences.putUChar("OGN_LIVE",setting.OGNLiveTracking);
-    preferences.putUChar("Display",setting.displayType);
+    preferences.putString("APPW",pSetting->wifi.appw);
+    preferences.putUChar("BOARDTYPE",pSetting->boardType); //
+    preferences.putUChar("BAND",pSetting->band); //
+    preferences.putUChar("LORA_POWER",pSetting->LoraPower);//
+    preferences.putUChar("AWLIVE",pSetting->awLiveTracking); //
+    preferences.putUChar("OLK8EX1",pSetting->outputLK8EX1); //
+    preferences.putUChar("OFLARM",pSetting->outputFLARM); //
+    preferences.putUChar("OGPS",pSetting->outputGPS); //
+    preferences.putUChar("OFANET",pSetting->outputFANET); //
+    preferences.putString("PILOTNAME",pSetting->PilotName);
+    preferences.putUChar("WIFI_CONNECT",pSetting->wifi.connect); //
+    preferences.putString("WIFI_SSID",pSetting->wifi.ssid);
+    preferences.putString("WIFI_PW",pSetting->wifi.password);
+    preferences.putUChar("AIRCRAFTTYPE",uint8_t(pSetting->AircraftType));
+    preferences.putUInt("Time_WIFI_Stop",pSetting->wifi.tWifiStop);    
+    preferences.putString("UDP_SERVER",pSetting->UDPServerIP); //UDP-IP-Adress for sending Pakets
+    preferences.putUInt("UDP_PORT",pSetting->UDPSendPort); //Port of udp-server
+    preferences.putUChar("OutputMode",pSetting->outputMode);
+    preferences.putUChar("Mode",pSetting->Mode);
+    preferences.putFloat("GSLAT",pSetting->gs.lat);
+    preferences.putFloat("GSLON",pSetting->gs.lon);
+    preferences.putFloat("GSALT",pSetting->gs.alt);
+    preferences.putString("GSAWID",pSetting->gs.AWID);
+    preferences.putUChar("OGN_LIVE",pSetting->OGNLiveTracking);
+    preferences.putUChar("Display",pSetting->displayType);
 
     //vario
-    preferences.putFloat("vSinkTh",setting.vario.sinkingThreshold);
-    preferences.putFloat("vClimbTh",setting.vario.climbingThreshold);
-    preferences.putFloat("vNClimbSens",setting.vario.nearClimbingSensitivity);
-    preferences.putUChar("VarioVolume",setting.vario.volume);
-    preferences.putUChar("VBeepFlying",setting.vario.BeepOnlyWhenFlying);
+    preferences.putFloat("vSinkTh",pSetting->vario.sinkingThreshold);
+    preferences.putFloat("vClimbTh",pSetting->vario.climbingThreshold);
+    preferences.putFloat("vNClimbSens",pSetting->vario.nearClimbingSensitivity);
+    preferences.putUChar("VarioVolume",pSetting->vario.volume);
+    preferences.putUChar("VBeepFlying",pSetting->vario.BeepOnlyWhenFlying);
 
     ESP.restart();
 }

@@ -87,9 +87,11 @@ void FanetLora::fanet_cmd_transmit(char *ch_str)
 		ch_str++;
 
 	/* integrity check */
+  char lastChar;
 	for(char *ptr = ch_str; *ptr != '\0'; ptr++)
 	{
-		if(*ptr >= '0' && *ptr <= '9')
+		lastChar = *ptr;
+    if(*ptr >= '0' && *ptr <= '9')
 			continue;
 		if(*ptr >= 'A' && *ptr <= 'F')
 			continue;
@@ -102,6 +104,10 @@ void FanetLora::fanet_cmd_transmit(char *ch_str)
 		log_e("frm broken");
 		return;
 	}
+  if (lastChar == ','){
+		log_e("frm broken");
+		return;
+  }
 
 	/* w/o an address we can not tx */
 	if(fmac.myAddr == MacAddr())

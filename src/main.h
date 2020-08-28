@@ -5,7 +5,7 @@
 #ifndef __MAIN_H__
 #define __MAIN_H__
 
-#define VERSION "V1.4.0"
+#define VERSION "V1.4.1"
 #define APPNAME "GXAirCom"
 
 #define BLE_LOW_HEAP 10000
@@ -79,6 +79,10 @@
 #define FANET_CMD_START			"#FN"
 #define FANET_CMD_TRANSMIT	"#FNT"
 
+#define WIFI_DISABLED 0
+#define WIFI_STA 1
+#define WIFI_CONNECTED 2
+
 
 struct VarioSettings{
   float sinkingThreshold;
@@ -100,6 +104,7 @@ struct WifiSettings{
   String ssid; //WIFI SSID
   String password; //WIFI PASSWORD
   uint8_t connect; //1 connect to wifi, 2 connect to wifi and try to stay connected
+  uint32_t tWifiStop; //time after wifi will be stopped to save energy 0 --> never
 };
 
 
@@ -119,8 +124,6 @@ struct SettingsData{
   WifiSettings wifi;
   String PilotName; //Pilotname
   FanetLora::aircraft_t AircraftType; //Aircrafttype
-  bool bSwitchWifiOff3Min; //switch off wifi after 3min.
-  uint32_t wifiDownTime;
   String UDPServerIP; //UDP-IP-Adress for sending Pakets
   uint16_t UDPSendPort; //Port of udp-server
   uint8_t outputMode; //output-mode
@@ -132,8 +135,6 @@ struct SettingsData{
 
 struct statusData{
   String myIP; //my IP-Adress
-  uint8_t displayType;
-  uint8_t outputMode; //output-mode
   uint16_t vBatt; //battery-voltage 1/1000V
   uint8_t BattPerc; //battery-percent
   bool BattCharging;
@@ -157,7 +158,8 @@ struct statusData{
   uint32_t tLoop; //current Loop-time
   uint32_t tMaxLoop; //max Loop-time
   bool flying;
-  bool WifiConnect;
+  uint8_t wifiStat;
+  uint8_t bluetoothStat;
   uint32_t flightTime; //flight-time in sek.
   bool bMuting; //muting beeper
 };

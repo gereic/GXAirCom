@@ -35,9 +35,13 @@ cleanup fullsettings.html
 cleanup some code
 
 V1.4.0
-Serial-interface
-Bluetooth-Serial-interface
 
-added support for sending FANET-MSG via serial and bluetooth-serial interface.
+added support for sending FANET-MSG via serial,bluetooth-serial and ble interface.
 Transmit: #FNT type,dest_manufacturer,dest_id,forward,ack_required,length,length*2hex[,signature]
 https://github.com/3s1d/fanet-stm32/blob/master/Src/fanet/radio/protocol.txt
+
+V1.4.1
+improved screens with bluetooth-symbols
+on Boards without ps-ram, only wifi or bluetooth is avaiable not both at same time --> 
+specify wifi-off-time and after this time wifi will be switched off an bluetooth will be switched on.
+updated settings.html to choose off-time for wifi.

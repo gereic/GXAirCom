@@ -199,9 +199,6 @@ void Screen::drawValue(int16_t x, int16_t y, int16_t width, int16_t height,float
 }
 void Screen::drawBatt(int16_t x, int16_t y, int16_t width, int16_t height,uint8_t value){
     static uint8_t DrawValue = 0;
-    uint16_t posx,posy;    
-    posx = 104;
-    posy = 4;
     //log_i("%d",value);
     if (value == 255){
         DrawValue = (DrawValue + 1) %5; 
@@ -211,19 +208,19 @@ void Screen::drawBatt(int16_t x, int16_t y, int16_t width, int16_t height,uint8_
     switch (DrawValue)
     {
     case 1:
-        e_ink.drawInvertedBitmap(posx, posy, bat1icons, 17, 8, GxEPD_BLACK);   //GxEPD_BLACK);    
+        e_ink.drawInvertedBitmap(x, y, bat1icons, width, height, GxEPD_BLACK);   //GxEPD_BLACK);    
         break;
     case 2:
-        e_ink.drawInvertedBitmap(posx, posy, bat2icons, 17, 8, GxEPD_BLACK);   //GxEPD_BLACK);    
+        e_ink.drawInvertedBitmap(x, y, bat2icons, width, height, GxEPD_BLACK);   //GxEPD_BLACK);    
         break;
     case 3:
-        e_ink.drawInvertedBitmap(posx, posy, bat3icons, 17, 8, GxEPD_BLACK);   //GxEPD_BLACK);    
+        e_ink.drawInvertedBitmap(x, y, bat3icons, width, height, GxEPD_BLACK);   //GxEPD_BLACK);    
         break;
     case 4:
-        e_ink.drawInvertedBitmap(posx, posy, bat4icons, 17, 8, GxEPD_BLACK);   //GxEPD_BLACK);    
+        e_ink.drawInvertedBitmap(x, y, bat4icons, width, height, GxEPD_BLACK);   //GxEPD_BLACK);    
         break;
     default:
-        e_ink.drawInvertedBitmap(posx, posy, bat0icons, 17, 8, GxEPD_BLACK);   //GxEPD_BLACK);    
+        e_ink.drawInvertedBitmap(x, y, bat0icons, width, height, GxEPD_BLACK);   //GxEPD_BLACK);    
         break;
     }
 }
@@ -270,8 +267,11 @@ void Screen::drawMainScreen(void){
     actData.battPercent = (status.BattCharging) ? 255 : status.BattPerc / 25;
     actData.SatCount = (status.GPS_Fix) ? status.GPS_NumSat : 0;
     if (actData.SatCount > 9) actData.SatCount = 9;
+    //actData.SatCount = 9;
     actData.flightTime = status.flightTime;
     actData.flying = status.flying;
+    actData.wifi = (status.wifiStat) ? true : false;
+    actData.bluetooth = status.bluetoothStat;
     if (status.bMuting){
         actData.volume = 0;
     }else{
@@ -341,7 +341,16 @@ void Screen::drawMainScreen(void){
             log_i("update status flying");          
             UpdateScreen = true;
         }
-        
+        if ((data.wifi != actData.wifi) || (bForceUpdate)){
+            data.wifi = actData.wifi;  
+            log_i("update wifi status");          
+            UpdateScreen = true;
+        }
+        if ((data.bluetooth != actData.bluetooth) || (bForceUpdate)){
+            data.bluetooth = actData.bluetooth;  
+            log_i("update bluetooth status");          
+            UpdateScreen = true;
+        }
         if ((!bFullUpdate) && (!UpdateScreen)){
             break;
         }
@@ -363,10 +372,17 @@ void Screen::drawMainScreen(void){
         do
         {
             e_ink.fillScreen(GxEPD_WHITE);
-            drawspeaker(55,0,16,16,data.volume);
-            drawflying(80,0,16,16,data.flying);
-            drawBatt(104,0,24,16,data.battPercent);
-           switch (setting.AircraftType)
+            drawspeaker(49,0,16,16,data.volume);
+            drawflying(67,0,16,16,data.flying);
+            if (data.wifi) e_ink.drawXBitmap(85, 4,WIFI_bits,  14, 8, GxEPD_BLACK);
+            if (data.bluetooth == 1){
+                e_ink.drawXBitmap(101, 3,BT_bits,  8, 10, GxEPD_BLACK);
+            }else if (data.bluetooth == 2){
+                e_ink.fillRect(101, 3, 8, 10, GxEPD_BLACK);
+                e_ink.drawXBitmap(101, 3,BT_bits,  8, 10, GxEPD_WHITE);
+            }  
+            drawBatt(111,4,17,8,data.battPercent);
+            switch (setting.AircraftType)
            {
            case FanetLora::paraglider :
                e_ink.drawXBitmap(0, 0, Paraglider16_bits, 16, 16, GxEPD_BLACK);   //GxEPD_BLACK);
@@ -444,9 +460,9 @@ void Screen::drawMainScreen(void){
 
 void Screen::drawflying(int16_t x, int16_t y, int16_t width, int16_t height,bool flying){
     if (flying){
-        e_ink.drawXBitmap(x, y,flying_bits,  16, 16, GxEPD_BLACK);
+        e_ink.drawXBitmap(x, y,flying_bits,  width, height, GxEPD_BLACK);
     }else{
-        e_ink.drawXBitmap(x, y,not_flying_bits,  16, 16, GxEPD_BLACK);
+        e_ink.drawXBitmap(x, y,not_flying_bits,  width, height, GxEPD_BLACK);
     }
 }
 
