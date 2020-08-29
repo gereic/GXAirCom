@@ -1696,6 +1696,7 @@ void taskStandard(void *pvParameters){
   static uint32_t tFlarmState = millis();
   static float oldAlt = 0.0;
   static uint32_t tOldPPS = millis();
+  static uint32_t tLastPPS = millis();
   static uint32_t tDisplay = millis();
   static uint32_t tTest = millis();
   char * pSerialLine = NULL;
@@ -1932,19 +1933,25 @@ void taskStandard(void *pvParameters){
     }
     if (ppsTriggered){
       ppsTriggered = false;
+      tLastPPS = tAct;
       log_v("PPS-Triggered t=%d",status.tGPSCycle);
       //log_e("GPS-FixTime=%s",nmea.getFixTime().c_str());
       status.tGPSCycle = tAct - tOldPPS;
       if (nmea.isValid()){
         long alt = 0;
         nmea.getAltitude(alt);
+        status.GPS_NumSat = nmea.getNumSatellites();
         status.GPS_Fix = 1;
-        status.GPS_speed = nmea.getSpeed()*1.852/1000.; //speed in cm/s --> we need km/h
+        if (status.GPS_NumSat < 4){ //we need at least 4 satellites to get accurate position !!
+          status.GPS_speed = 0;
+          status.GPS_course = 0;
+        }else{
+          status.GPS_speed = nmea.getSpeed()*1.852/1000.; //speed in cm/s --> we need km/h
+          status.GPS_course = nmea.getCourse()/1000.;
+        }
         status.GPS_Lat = nmea.getLatitude() / 1000000.;
         status.GPS_Lon = nmea.getLongitude() / 1000000.;  
         status.GPS_alt = alt/1000.;
-        status.GPS_course = nmea.getCourse()/1000.;
-        status.GPS_NumSat = nmea.getNumSatellites();
         if (oldAlt == 0) oldAlt = status.GPS_alt;        
         if (!status.bHasVario) status.ClimbRate = (status.GPS_alt - oldAlt) / (float(status.tGPSCycle) / 1000.0);        
         oldAlt = status.GPS_alt;
@@ -1996,6 +2003,17 @@ void taskStandard(void *pvParameters){
       }
       tOldPPS = tAct;
     }
+    if ((tAct - tLastPPS) >= 10000){
+      //no pps for more then 10sec. --> clear GPS-state
+      status.GPS_Fix = 0;
+      status.GPS_speed = 0.0;
+      status.GPS_Lat = 0.0;
+      status.GPS_Lon = 0.0;
+      status.GPS_alt = 0.0;
+      status.GPS_course = 0.0;
+      status.GPS_NumSat = 0;
+    }
+
 
     if ((tAct - tLife) >= LifeCount){
       tLife = tAct;
