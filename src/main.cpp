@@ -1517,9 +1517,9 @@ void printGPSData(uint32_t tAct){
 
 
 
+    /*
     display.setTextSize(2);
     display.setCursor(55,0);
-    //display.print(F("alt:"));
     s = "";
     if (status.GPS_Fix == 1){
       s = setStringSize(String(round(MyFanetData.altitude),0) + "m",6);
@@ -1527,6 +1527,7 @@ void printGPSData(uint32_t tAct){
       s = setStringSize(String(round(status.varioAlt),0) + "m",6);
     }
     display.print(s);
+    */
 
     display.setTextSize(3);
 

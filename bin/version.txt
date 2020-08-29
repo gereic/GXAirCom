@@ -45,3 +45,6 @@ improved screens with bluetooth-symbols
 on Boards without ps-ram, only wifi or bluetooth is avaiable not both at same time --> 
 specify wifi-off-time and after this time wifi will be switched off an bluetooth will be switched on.
 updated settings.html to choose off-time for wifi.
+
+V1.4.2
+fixed overlap-value in main-screen of oled
