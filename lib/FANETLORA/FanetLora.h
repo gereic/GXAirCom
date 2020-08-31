@@ -201,7 +201,7 @@ public:
 	void handle_frame(Frame *frm);
   Frame *get_frame();
   void fanet_cmd_transmit(char *ch_str);
-  void fanet_sendMsg(char *ch_str);
+  //void fanet_sendMsg(char *ch_str);
 
 protected:
 private:  

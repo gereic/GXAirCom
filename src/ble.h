@@ -135,14 +135,14 @@ void start_ble (String bleId)
 	BLEService *pService = pServer->createService(BLEUUID((uint16_t)0xFFE0));
 	// Create a BLE Characteristic
 	pCharacteristic = pService->createCharacteristic(BLEUUID((uint16_t)0xFFE1),
-		BLECharacteristic::PROPERTY_NOTIFY| BLECharacteristic::PROPERTY_READ
+		BLECharacteristic::PROPERTY_NOTIFY| BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_WRITE_NR
 	);
 	pCharacteristic->addDescriptor(new BLE2902());
 
-	BLECharacteristic *pCharacteristic = pService->createCharacteristic(
-	CHARACTERISTIC_UUID_DEVICENAME,
-	BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_WRITE_NR
-	);
+	//BLECharacteristic *pCharacteristic = pService->createCharacteristic(
+	//CHARACTERISTIC_UUID_DEVICENAME,
+	//BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_WRITE_NR
+	//);
 	pCharacteristic->setCallbacks(new MyCallbacks());
 	pCharacteristic->setValue("esp32ble-hm10");
 	log_i("Starting BLE");

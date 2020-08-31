@@ -169,6 +169,17 @@ char* readBtSerial();
 void checkReceivedLine(char *ch_str);
 //void startBluetooth(void);
 void drawBluetoothstat(int16_t x, int16_t y);
+void serialBtCallBack(esp_spp_cb_event_t event, esp_spp_cb_param_t *param);
+
+
+void serialBtCallBack(esp_spp_cb_event_t event, esp_spp_cb_param_t *param){
+  if (event == ESP_SPP_SRV_OPEN_EVT){
+    status.bluetoothStat = 2; //client connected
+  }else if (event == ESP_SPP_CLOSE_EVT){
+    status.bluetoothStat = 1; //client disconnected
+  }
+  //log_i("Event=%d",event);
+}
 
 void handleButton(uint32_t tAct){
   static uint32_t buttonTimer = millis();
@@ -1143,14 +1154,18 @@ void taskBluetooth(void *pvParameters) {
     esp_bt_controller_mem_release(ESP_BT_MODE_BLE);
     log_i("starting bluetooth_serial %s",host_name.c_str());
     SerialBT.begin(host_name.c_str()); //Bluetooth device name
+    SerialBT.register_callback(&serialBtCallBack);
     log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
+    status.bluetoothStat = 1; //client disconnected
     while (1)
     {
+      /*
       if (SerialBT.hasClient()){
         status.bluetoothStat = 2; //client connected
       }else{
         status.bluetoothStat = 1; //no client connected
       }
+      */
       delay(1);
     }
   }
@@ -1590,7 +1605,19 @@ void checkReceivedLine(char *ch_str){
   if(!strncmp(ch_str, FANET_CMD_TRANSMIT, 4)){
     fanet.fanet_cmd_transmit(ch_str+4);
   }else if(!strncmp(ch_str, "@", 1)){
-    fanet.fanet_sendMsg(ch_str+1);
+    char *ptr = strchr(ch_str, '\r');
+    if(ptr == nullptr)
+      ptr = strchr(ch_str, '\n');
+    if(ptr != nullptr)
+      *ptr = '\0';
+
+    char *p = (char *)ch_str + 1;
+    uint32_t devId = strtol(p, NULL, 16);
+    p = strchr(p, SEPARATOR)+1;
+    String msg = p;
+    //log_i("msg=%s",msg.c_str());
+    fanet.writeMsgType3(devId,msg);
+    //fanet.fanet_sendMsg(ch_str+1);
   }else{
     log_i("unknown message %s",ch_str);
   }

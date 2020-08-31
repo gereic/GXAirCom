@@ -70,6 +70,7 @@ String FanetLora::getNeighbourName(uint32_t devId){
 }
 
 /* send msg: @typedest_manufacturer,msg */
+/*
 void FanetLora::fanet_sendMsg(char *ch_str){
 	char *ptr = strchr(ch_str, '\r');
 	if(ptr == nullptr)
@@ -89,6 +90,7 @@ void FanetLora::fanet_sendMsg(char *ch_str){
   log_i("sending fanet-msg:%s length=%d",msg.c_str(),frm->payload_length);
   if (frm2txBuffer(frm)) log_i("#FNR OK");
 }
+*/
 
 /* Transmit: #FNT type,dest_manufacturer,dest_id,forward,ack_required,length,length*2hex[,signature] */
 //note: all in HEX
@@ -108,7 +110,7 @@ void FanetLora::fanet_cmd_transmit(char *ch_str)
 		ch_str++;
 
 	/* integrity check */
-  char lastChar = '';
+  char lastChar = ' ';
 	for(char *ptr = ch_str; *ptr != '\0'; ptr++)
 	{
 		lastChar = *ptr;
