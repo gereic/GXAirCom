@@ -48,3 +48,6 @@ updated settings.html to choose off-time for wifi.
 
 V1.4.2
 fixed overlap-value in main-screen of oled
+
+V1.4.3
+Fix bug in connection of bluetooth-serial and bluetooth-ble
