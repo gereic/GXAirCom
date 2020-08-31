@@ -51,3 +51,4 @@ fixed overlap-value in main-screen of oled
 
 V1.4.3
 Fix bug in connection of bluetooth-serial and bluetooth-ble
+alternate msg-format for sending textmsg @000000,testmsg @id,msg

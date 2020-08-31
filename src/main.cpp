@@ -1019,8 +1019,13 @@ void taskBaro(void *pvParameters){
     return;    
   }
   TwoWire i2cBaro = TwoWire(0);
-  Wire.begin(SDA2,SCL2,400000);
-  i2cBaro.begin(SDA2,SCL2,400000); //init i2cBaro for Baro
+  if (setting.boardType == BOARD_HELTEC_LORA){
+    Wire.begin(13,23,400000);
+    i2cBaro.begin(13,23,400000); //init i2cBaro for Baro
+  }else{
+    Wire.begin(13,14,400000);
+    i2cBaro.begin(13,14,400000); //init i2cBaro for Baro
+  }
   if (baro.begin(&i2cBaro)){
     status.bHasVario = true;
     Beeper.setThresholds(setting.vario.sinkingThreshold,setting.vario.climbingThreshold,setting.vario.nearClimbingSensitivity);
@@ -1582,7 +1587,13 @@ void printGPSData(uint32_t tAct){
 
 void checkReceivedLine(char *ch_str){
   //log_i("new serial msg=%s",ch_str);
-  if(!strncmp(ch_str, FANET_CMD_TRANSMIT, 4)) fanet.fanet_cmd_transmit(ch_str+4);
+  if(!strncmp(ch_str, FANET_CMD_TRANSMIT, 4)){
+    fanet.fanet_cmd_transmit(ch_str+4);
+  }else if(!strncmp(ch_str, "@", 1)){
+    fanet.fanet_sendMsg(ch_str+1);
+  }else{
+    log_i("unknown message %s",ch_str);
+  }
 }
 
 char* readBtSerial(){
@@ -1743,10 +1754,10 @@ void taskStandard(void *pvParameters){
 
 
   if (setting.Mode != MODE_GROUND_STATION){ // we are ground-station)
-    if (!status.bHasAXP192){
-      NMeaSerial.begin(GPSBAUDRATE,SERIAL_8N1,12,15,false);
-    }else{
+    if (status.bHasAXP192){
       NMeaSerial.begin(GPSBAUDRATE,SERIAL_8N1,34,12,false);
+    }else{
+      NMeaSerial.begin(GPSBAUDRATE,SERIAL_8N1,12,15,false);
     }
     // Change the echoing messages to the ones recognized by the MicroNMEA library
     MicroNMEA::sendSentence(NMeaSerial, "$PSTMSETPAR,1201,0x00000042");
