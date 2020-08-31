@@ -13,6 +13,11 @@
 #include <math.h>
 #include <Arduino.h>
 
+/* Debug */
+#define MAC_debug_mode				0
+//#define MAC_debug_mode				100
+
+
 //define the pins used by the LoRa transceiver module
 #define SCK 5
 #define MISO 19
@@ -84,9 +89,6 @@
 #define MAC_FRAME_LENGTH			254
 
 
-/* Debug */
-#define MAC_debug_mode				0
-//#define MAC_debug_mode				100
 
 
 

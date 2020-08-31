@@ -20,7 +20,6 @@ extern FanetLora::weatherData testWeatherData;
 extern String testString;
 extern uint32_t fanetReceiver;
 extern uint8_t sendTestData;
-extern TaskHandle_t xHandleBle;
 extern const char compile_date[];
 
 extern TaskHandle_t xHandleStandard;

@@ -276,13 +276,6 @@ void onWebSocketEvent(uint8_t client_num,
 }
 
 String processor(const String& var){
-  if (xHandleBle){
-    //delect ble-task to free some memory
-    vTaskDelete(xHandleBle); //delete standard-task
-    delay(100);
-    xHandleBle = NULL;
-  }
-  
   String sRet = "";
   //log_i("%s",var.c_str());
   if(var == "SOCKETIP"){

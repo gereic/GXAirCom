@@ -117,7 +117,7 @@ uint32_t psRamSize = 0;
 TaskHandle_t xHandleBaro = NULL;
 TaskHandle_t xHandleStandard = NULL;
 TaskHandle_t xHandleBackground = NULL;
-TaskHandle_t xHandleBle = NULL;
+TaskHandle_t xHandleBluetooth = NULL;
 TaskHandle_t xHandleMemory = NULL;
 TaskHandle_t xHandleEInk = NULL;
 
@@ -127,7 +127,7 @@ void taskBaro(void *pvParameters);
 void taskStandard(void *pvParameters);
 void taskBackGround(void *pvParameters);
 void taskEInk(void *pvParameters);
-void taskBle(void *pvParameters);
+void taskBluetooth(void *pvParameters);
 void taskMemory(void *pvParameters);
 void setupWifi();
 void IRAM_ATTR ppsHandler(void);
@@ -167,7 +167,7 @@ void drawspeaker(int16_t x, int16_t y);
 char* readSerial();
 char* readBtSerial();
 void checkReceivedLine(char *ch_str);
-void startBluetooth(void);
+//void startBluetooth(void);
 void drawBluetoothstat(int16_t x, int16_t y);
 
 void handleButton(uint32_t tAct){
@@ -537,14 +537,14 @@ void sendData2Client(String data){
   }else if (setting.outputMode == OUTPUT_SERIAL){//output over serial-connection
     Serial.print(data); 
   }else if (setting.outputMode == OUTPUT_BLUETOOTH){//output over bluetooth serial
-    if (status.bluetoothStat){
-      if (SerialBT.hasClient()){
+    if (status.bluetoothStat == 2){
+      //if (SerialBT.hasClient()){
         //log_i("sending to bt-device %s",data.c_str());
-        SerialBT.print(data);
-      }    
+      SerialBT.print(data);
+      //}    
     }
   }else if (setting.outputMode == OUTPUT_BLE){ //output over ble-connection
-    if (xHandleBle){
+    if (xHandleBluetooth){
       if ((ble_data.length() + data.length()) <512){
         while(ble_mutex){
           delay(100);
@@ -874,11 +874,11 @@ esp_sleep_wakeup_cause_t print_wakeup_reason(){
   return wakeup_reason;
 }
 
+/*
 void startBluetooth(void){
   if (setting.outputMode == OUTPUT_BLE){
     esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT);
     esp_bt_controller_enable(ESP_BT_MODE_BLE);    
-    xTaskCreatePinnedToCore(taskBle, "taskBle", 4096, NULL, 7, &xHandleBle, ARDUINO_RUNNING_CORE1);
     //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
   }else if (setting.outputMode == OUTPUT_BLUETOOTH){
     //esp_bt_controller_config_t cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
@@ -891,6 +891,7 @@ void startBluetooth(void){
     status.bluetoothStat = 1;
   }
 }
+*/
 
 void setup() {
   
@@ -1004,16 +1005,7 @@ void setup() {
   //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
   //xTaskCreatePinnedToCore(taskMemory, "taskMemory", 4096, NULL, 1, &xHandleMemory, ARDUINO_RUNNING_CORE1);
   //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
-  if ((setting.outputMode == OUTPUT_BLE) || (setting.outputMode == OUTPUT_BLUETOOTH)){
-    if ((psRamSize > 0) || (startOption == 1)){
-      startBluetooth(); //start bluetooth
-    }
-  }else{
-    //stop bluetooth-controller --> save some memory
-    esp_bt_controller_disable();
-    esp_bt_controller_mem_release(ESP_BT_MODE_BTDM);
-    //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
-  }
+  xTaskCreatePinnedToCore(taskBluetooth, "taskBluetooth", 4096, NULL, 7, &xHandleBluetooth, ARDUINO_RUNNING_CORE1);
 }
 
 void taskBaro(void *pvParameters){
@@ -1084,14 +1076,37 @@ void taskMemory(void *pvParameters) {
    }
 }
 
-void taskBle(void *pvParameters) {
+void taskBluetooth(void *pvParameters) {
 
 	// BLEServer *pServer;
 
-	 delay(2000);
-   status.bluetoothStat = 1;
-	 start_ble(host_name);
-	 delay(1000);
+  while(host_name.length() == 0){
+    delay(100); //wait until we have the devid
+  }
+  if ((setting.outputMode == OUTPUT_BLE) || (setting.outputMode == OUTPUT_BLUETOOTH)){
+    if ((psRamSize > 0) || (startOption == 1)){
+      //startBluetooth(); //start bluetooth
+    }else{
+      log_i("stop task");
+      vTaskDelete(xHandleBluetooth);
+      return;    
+    }
+  }else{
+    //stop bluetooth-controller --> save some memory
+    esp_bt_controller_disable();
+    esp_bt_controller_mem_release(ESP_BT_MODE_BTDM);
+    //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
+    log_i("stop task");
+    vTaskDelete(xHandleBluetooth);
+    return;    
+  }
+
+  if (setting.outputMode == OUTPUT_BLE){
+    esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT);
+    esp_bt_controller_enable(ESP_BT_MODE_BLE);    
+    //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());    
+    start_ble(host_name);
+    status.bluetoothStat = 1;
 	 while (1)
 	 {
 	   // only send if we have more than 31k free heap space.
@@ -1114,11 +1129,28 @@ void taskBle(void *pvParameters) {
 		   ble_data="";
 		   ble_mutex=false;
 	   }
-
-
 	   vTaskDelay(100);
 	 }
+  }else if (setting.outputMode == OUTPUT_BLUETOOTH){
+    //esp_bt_controller_config_t cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
+    //esp_bt_controller_init(&cfg);
+    esp_bt_controller_enable(ESP_BT_MODE_CLASSIC_BT);
+    esp_bt_controller_mem_release(ESP_BT_MODE_BLE);
+    log_i("starting bluetooth_serial %s",host_name.c_str());
+    SerialBT.begin(host_name.c_str()); //Bluetooth device name
+    log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
+    while (1)
+    {
+      if (SerialBT.hasClient()){
+        status.bluetoothStat = 2; //client connected
+      }else{
+        status.bluetoothStat = 1; //no client connected
+      }
+      delay(1);
+    }
   }
+
+}
 
 String setStringSize(String s,uint8_t sLen){
   uint8_t actLen = (uint8_t)s.length();
@@ -1297,8 +1329,9 @@ void DrawRadarPilot(uint8_t neighborIndex){
   int relNorth;
   int relEast;
 
-  display.setCursor(95,0);
-  display.printf("%4d", fanet.neighbours[neighborIndex].rssi);
+  
+  //display.setCursor(95,0);
+  //display.printf("%4d", fanet.neighbours[neighborIndex].rssi);
   display.setCursor(68,16);
   if (fanet.neighbours[neighborIndex].name.length() > 0){
     display.print(fanet.neighbours[neighborIndex].name.substring(0,10)); //max. 10 signs
@@ -1558,8 +1591,9 @@ char* readBtSerial(){
   if (status.bluetoothStat == 0){
     return NULL; //bluetooth not started yet.
   }
-  if (SerialBT.hasClient()){
-    status.bluetoothStat = 2; //client connected
+  if (status.bluetoothStat == 2){
+  //if (SerialBT.hasClient()){
+    //status.bluetoothStat = 2; //client connected
     while(SerialBT.available()){
       if (recBufferIndex >= (512-1)) recBufferIndex = 0; //Buffer overrun
       lineBuffer[recBufferIndex] = SerialBT.read();
@@ -1573,7 +1607,7 @@ char* readBtSerial(){
       }  
     }
   }else{
-    status.bluetoothStat = 1;
+    //status.bluetoothStat = 1;
     recBufferIndex = 0;
   }
   return NULL;

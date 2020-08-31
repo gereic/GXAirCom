@@ -23,12 +23,12 @@ extern void checkReceivedLine(char *ch_str);
 
 BLECharacteristic *pCharacteristic;
 
-/*
+
 const char *CHARACTERISTIC_UUID_DEVICENAME = "00002A00-0000-1000-8000-00805F9B34FB";
 const char *CHARACTERISTIC_UUID_RXTX = "0000FFE1-0000-1000-8000-00805F9B34FB";
 const char *CHARACTERISTIC_UUID_RXTX_DESCRIPTOR = "00002902-0000-1000-8000-00805F9B34FB";
 const char *SERVICE_UUID = "0000FFE0-0000-1000-8000-00805F9B34FB";
-*/
+
 #define SERVICE_UUID           "6E400001-B5A3-F393-E0A9-E50E24DCCA9E" 
 #define CHARACTERISTIC_UUID_RX "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
 #define CHARACTERISTIC_UUID_TX "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
@@ -112,6 +112,7 @@ void start_ble (String bleId)
 	BLEServer *pServer = BLEDevice::createServer();
 	pServer->setCallbacks(new MyServerCallbacks());
 
+	/*
 	BLEService *pService = pServer->createService(SERVICE_UUID);
 
 	pCharacteristic = pService->createCharacteristic(
@@ -129,14 +130,19 @@ void start_ble (String bleId)
   	pCharacteristic->setCallbacks(new MyCallbacks());
 	pService->start();
 	pServer->getAdvertising()->start();
+	*/
 
-	/*
 	BLEService *pService = pServer->createService(BLEUUID((uint16_t)0xFFE0));
 	// Create a BLE Characteristic
 	pCharacteristic = pService->createCharacteristic(BLEUUID((uint16_t)0xFFE1),
-		BLECharacteristic::PROPERTY_NOTIFY| BLECharacteristic::PROPERTY_WRITE| BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE_NR
+		BLECharacteristic::PROPERTY_NOTIFY| BLECharacteristic::PROPERTY_READ
 	);
 	pCharacteristic->addDescriptor(new BLE2902());
+
+	BLECharacteristic *pCharacteristic = pService->createCharacteristic(
+	CHARACTERISTIC_UUID_DEVICENAME,
+	BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_WRITE_NR
+	);
 	pCharacteristic->setCallbacks(new MyCallbacks());
 	pCharacteristic->setValue("esp32ble-hm10");
 	log_i("Starting BLE");
@@ -145,8 +151,9 @@ void start_ble (String bleId)
 	pServer->getAdvertising()->addServiceUUID(BLEUUID((uint16_t)0xFFE0));
 	// Start advertising
 	pServer->getAdvertising()->start();
+
 	log_i("Waiting a client connection to notify...");
-	*/
+
 }
 
 #endif /* MAIN_AIRWHERE_BLE_H_ */

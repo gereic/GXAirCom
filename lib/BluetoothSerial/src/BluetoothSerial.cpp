@@ -40,7 +40,7 @@
 
 const char * _spp_server_name = "ESP32SPP";
 
-#define RX_QUEUE_SIZE 16
+#define RX_QUEUE_SIZE 512
 #define TX_QUEUE_SIZE 32
 static uint32_t _spp_client = 0;
 static xQueueHandle _spp_rx_queue = NULL;
