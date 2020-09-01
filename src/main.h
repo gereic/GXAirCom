@@ -93,7 +93,7 @@ RXD 15
 #ifndef __MAIN_H__
 #define __MAIN_H__
 
-#define VERSION "V1.4.3"
+#define VERSION "V1.4.4"
 #define APPNAME "GXAirCom"
 
 #define BLE_LOW_HEAP 10000

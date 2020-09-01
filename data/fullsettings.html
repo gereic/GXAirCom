@@ -58,12 +58,12 @@ function setVis(){
   //console.log("visible=" + document.getElementById("mode").style.display)
   if (document.getElementById("mode").value == 1){
     document.getElementById("VisAirCraftType").style.display='none';
-    document.getElementById("VisPilot").style.display='none';
+    document.getElementById("tName").innerHTML='Ground Station name';
     document.getElementById("VisGS").style.display=''; //set GS visible
 
   }else{
     document.getElementById("VisAirCraftType").style.display='';
-    document.getElementById("VisPilot").style.display='';
+    document.getElementById("tName").innerHTML='Pilot name';
     document.getElementById("VisGS").style.display='none'; //set GS invisible
   }
   if (document.getElementById("output").value == 1){
@@ -228,6 +228,10 @@ window.addEventListener("load", init, false);
               <option value="100">Developer-mode</option>
             </select></td>
           </tr>
+          <tr>
+            <th id="tName">PilotName</th>
+            <td><input type="text" id="PilotName" name="PilotName"></td>
+          </tr>
           <tr id="VisAirCraftType">
             <th>Aircraft Type</th>
             <td><select name="type" id="type">
@@ -240,10 +244,6 @@ window.addEventListener("load", init, false);
               <option value="6">Helicopter</option>
               <option value="7">UAV</option>
             </select></td>
-          </tr>
-          <tr id="VisPilot">
-            <th>PilotName</th>
-            <td><input type="text" id="PilotName" name="PilotName"></td>
           </tr>
           <tr>
             <th>airwhere live-tracking</th>

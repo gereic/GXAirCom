@@ -1619,7 +1619,9 @@ void checkReceivedLine(char *ch_str){
     fanet.writeMsgType3(devId,msg);
     //fanet.fanet_sendMsg(ch_str+1);
   }else{
-    log_i("unknown message %s",ch_str);
+    log_i("broadcast-msg %s",ch_str);
+    String msg = ch_str;
+    fanet.writeMsgType3(0,msg);
   }
 }
 
@@ -1815,7 +1817,7 @@ void taskStandard(void *pvParameters){
   }
   fanet.setPilotname(setting.PilotName);
   fanet.setAircraftType(setting.AircraftType);
-  if (setting.Mode == MODE_AIR_MODULE){ //autobroadcast only on air-module
+  if (setting.Mode != MODE_DEVELOPER){ //
     fanet.autobroadcast = true;
   }else{
     fanet.autobroadcast = false;
@@ -2252,7 +2254,7 @@ void taskBackGround(void *pvParameters){
     if  (status.wifiStat){
       Web_loop();
     }
-    if (( tAct > (setting.wifi.tWifiStop * 1000)) && (setting.wifi.tWifiStop!=0)){
+    if (( tAct > (setting.wifi.tWifiStop * 1000)) && (setting.wifi.tWifiStop!=0) && (!WebUpdateRunning)){
       log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
       Web_stop();
       WiFi.softAPdisconnect(true);
