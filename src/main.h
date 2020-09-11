@@ -35,6 +35,9 @@ SCL 14
 TXD 34 
 RXD 12
 
+******** BUZZER *******
+BUZZER 0
+
 
 ************* Pins for TTGO-TBeam V07 ***************
 ******* LORA ********
@@ -61,6 +64,8 @@ DIN      2
 SDA 13
 SCL 14 
 
+******** BUZZER *******
+BUZZER 0
 
 
 ************* Pins for TTGO Lora32 ***************
@@ -84,6 +89,9 @@ SCL 23
 ******** GPS *********
 TXD 12 
 RXD 15
+
+******** BUZZER *******
+BUZZER 0
 
 
 
