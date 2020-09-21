@@ -87,3 +87,28 @@ RXD 15
 
 ******** BUZZER *******
 BUZZER 0
+
+************* Pins for TTGO Lora32 V2.1 1.6 ***************
+******* LORA ********
+SCK 5
+MISO 19
+MOSI 27
+SS 18
+RST 23
+DIO0 26
+
+******* OLED ********
+SDA 21
+SCL 22 
+
+******** BARO *********
+SDA 13
+SCL 14 
+
+******** GPS *********
+TXD 34 
+RXD 12
+
+******** BUZZER *******
+BUZZER 0
+

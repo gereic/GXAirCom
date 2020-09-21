@@ -55,3 +55,7 @@ alternate msg-format for sending textmsg @000000,testmsg @id,msg
 
 V1.4.4
 added broatcast-msg for fanet (just type msg and press send.)
+
+V1.4.5
+Bugfix with PS-ram
+added support for TTGO ESP32-Paxcounter TTGO T3_V1.6

@@ -919,9 +919,14 @@ void setup() {
   log_i("CPU-Speed=%d",ESP.getCpuFreqMHz());
   log_i("Total heap: %d", ESP.getHeapSize());
   log_i("Free heap: %d", ESP.getFreeHeap());
-  psRamSize = ESP.getPsramSize();
-  log_i("Total PSRAM: %d", psRamSize);
-  log_i("Free PSRAM: %d", ESP.getFreePsram());
+  if (psramFound()){
+    psRamSize = ESP.getPsramSize();
+    log_i("Total PSRAM: %d", psRamSize);
+    log_i("Free PSRAM: %d", ESP.getFreePsram());
+  }else{
+    psRamSize = 0;
+    log_i("No PSRAM found");
+  }
   log_i("compiled at %s",compile_date);
   log_i("current free heap: %d, minimum ever free heap: %d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
 
