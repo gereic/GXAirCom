@@ -1000,6 +1000,11 @@ void setup() {
     status.bHasAXP192 = false;
     analogReadResolution(12); //12 Bit resolution
     pinMode(HELTEC_BAT_PIN, INPUT); //input-Voltage on GPIO34
+  }else if (setting.boardType == BOARD_TTGO_T3_V1_6){
+    i2cOLED.begin(OLED_SDA, OLED_SCL);
+    status.bHasAXP192 = false;
+    analogReadResolution(12); //12 Bit resolution
+    pinMode(HELTEC_BAT_PIN, INPUT); //input-Voltage on GPIO34
   }else{
     log_e("wrong-board-definition --> please correct");
     //wrong board-definition !!
@@ -1192,7 +1197,7 @@ float readBattvoltage(){
   const byte NO_OF_SAMPLES = 5;
   uint32_t adc_reading = 0;
   float vBatt = 0.0;
-  if (setting.boardType == BOARD_HELTEC_LORA){
+  if ((setting.boardType == BOARD_HELTEC_LORA) || (setting.boardType == BOARD_TTGO_T3_V1_6)){
     analogRead(HELTEC_BAT_PIN); // First measurement has the biggest difference on my board, this line just skips the first measurement
     for (int i = 0; i < NO_OF_SAMPLES; i++) {
       uint16_t thisReading = analogRead(HELTEC_BAT_PIN);

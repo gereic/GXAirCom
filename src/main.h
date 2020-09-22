@@ -146,6 +146,7 @@ BUZZER 0
 #define BOARD_T_BEAM 0
 #define BOARD_HELTEC_LORA 1
 #define BOARD_T_BEAM_V07 2
+#define BOARD_TTGO_T3_V1_6 3
 
 #define BAND868 0
 #define BAND915 1
