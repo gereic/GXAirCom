@@ -59,3 +59,6 @@ added broatcast-msg for fanet (just type msg and press send.)
 V1.4.5
 Bugfix with PS-ram
 added support for TTGO ESP32-Paxcounter TTGO T3_V1.6
+
+V1.4.6
+set IO4 to output and High, so that red-led on T-Beam V1.1 is off.

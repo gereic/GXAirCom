@@ -125,7 +125,7 @@ BUZZER 0
 #ifndef __MAIN_H__
 #define __MAIN_H__
 
-#define VERSION "V1.4.5"
+#define VERSION "V1.4.6"
 #define APPNAME "GXAirCom"
 
 #define BLE_LOW_HEAP 10000

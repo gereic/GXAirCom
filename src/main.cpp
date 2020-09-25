@@ -912,6 +912,10 @@ void setup() {
 
   ledcSetup(channel, freq, resolution);
   ledcAttachPin(PINBUZZER, channel);  
+  
+  //for new T-Beam output 4 is red led
+  pinMode(4, OUTPUT);
+  digitalWrite(4,HIGH); 
 
   log_e("error");
   
