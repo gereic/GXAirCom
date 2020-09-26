@@ -1703,8 +1703,10 @@ void readGPS(){
   static uint16_t recBufferIndex = 0;
   
   while(NMeaSerial.available()){
+    
     if (recBufferIndex >= 255) recBufferIndex = 0; //Buffer overrun
     lineBuffer[recBufferIndex] = NMeaSerial.read();
+    //log_i("GPS %c",lineBuffer[recBufferIndex]);
     nmea.process(lineBuffer[recBufferIndex]);
     if (lineBuffer[recBufferIndex] == '\n'){
       lineBuffer[recBufferIndex] = '\r';
@@ -1811,8 +1813,10 @@ void taskStandard(void *pvParameters){
   if (setting.Mode != MODE_GROUND_STATION){ // we are ground-station)
     if (status.bHasAXP192){
       NMeaSerial.begin(GPSBAUDRATE,SERIAL_8N1,34,12,false);
+      log_i("GPS Baud=9600,8N1,RX=34,TX=12");
     }else{
       NMeaSerial.begin(GPSBAUDRATE,SERIAL_8N1,12,15,false);
+      log_i("GPS Baud=9600,8N1,RX=12,TX=15");
     }
     // Change the echoing messages to the ones recognized by the MicroNMEA library
     MicroNMEA::sendSentence(NMeaSerial, "$PSTMSETPAR,1201,0x00000042");
@@ -1854,9 +1858,16 @@ void taskStandard(void *pvParameters){
     flarm.begin();
   }
   if (setting.OGNLiveTracking){
-    ogn.begin(setting.myDevId,APPNAME " " VERSION);
     if (setting.Mode == MODE_GROUND_STATION){
+      //ogn.begin(setting.pi,APPNAME " " VERSION);
+      if (setting.PilotName.length() > 0){
+        ogn.begin(setting.PilotName,VERSION "." APPNAME);
+      }else{
+        ogn.begin("FNB" + setting.myDevId,VERSION "." APPNAME);
+      }      
       ogn.setGPS(setting.gs.lat,setting.gs.lon,setting.gs.alt,0.0,0.0);
+    }else{
+      ogn.begin("FNB" + setting.myDevId,VERSION "." APPNAME);
     }
     //ogn.setGPS(status.GPS_Lat,status.GPS_Lon,status.GPS_alt,status.GPS_speed,status.GPS_course);
   } 

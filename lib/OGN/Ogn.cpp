@@ -12,7 +12,8 @@ Ogn::Ogn(){
 
 bool Ogn::begin(String user,String version){
     _version = version;
-    _user = "FNB" + user; //base-station
+    //_user = "FNB" + user; //base-station
+    _user = user; //base-station
     connected = false;
     GPSOK = 0;
     return true;
@@ -25,7 +26,7 @@ void Ogn::end(void){
 void Ogn::sendLoginMsg(void){
     //String login ="user " + _user + " pass " + calcPass(_user) + " vers " + _version + " filter m/10\r\n";
     String login ="user " + _user + " pass " + calcPass(_user) + " vers " + _version + "\r\n";
-    //log_i("%s",login.c_str());
+    log_i("%s",login.c_str());
     client.print(login);
 }
 
@@ -72,7 +73,7 @@ void Ogn::connect2Server(void){
 void Ogn::checkLine(String line){
     String s = "";
     int32_t pos = 0;
-    //log_i("line=%s",line.c_str());
+    log_i("line=%s",line.c_str());
     if (initOk == 0){
         pos = getStringValue(line,"server ","\r\n",0,&s);
         if (pos > 0){
@@ -153,9 +154,9 @@ void Ogn::sendTrackingData(float lat,float lon,float alt,float speed,float headi
 }
 
 void Ogn::sendReceiverStatus(String sTime){
-    String sStatus = _user + ">APRS,TCPIP*,qAC," + _servername + ":>" + sTime + "h h00 v1.0.0.GX\r\n";
+    String sStatus = _user + ">APRS,TCPIP*,qAC," + _servername + ":>" + sTime + "h h00 " + _version + "\r\n";
     client.print(sStatus);
-    //log_i("%s",sStatus.c_str());
+    log_i("%s",sStatus.c_str());
 }
 
 void Ogn::sendReceiverBeacon(String sTime){
@@ -171,7 +172,7 @@ void Ogn::sendReceiverBeacon(String sTime){
                 ,_user.c_str(),_servername.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,(_lat < 0)?'S':'N',lonDeg,lonMin/1000,lonMin/10 %100,(_lon < 0)?'W':'E',int(_heading),int(_speed * 0.53996),int(_alt * 3.28084),int(latMin %10),int(latMin %10));
     client.print(buff); 
     initOk = 10; //now we can send, because we have sent GPS-Position               
-    //log_i("%s",buff);
+    log_i("%s",buff);
 }
 
 String Ogn::getActTimeString(){
