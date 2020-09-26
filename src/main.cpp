@@ -18,6 +18,9 @@
 #include <icons.h>
 #include <Screen.h>
 #include <Ogn.h>
+#include "esp_system.h"
+#include "esp_spi_flash.h"
+
 
 
 //#include <U8g2lib.h>
@@ -170,6 +173,19 @@ void checkReceivedLine(char *ch_str);
 //void startBluetooth(void);
 void drawBluetoothstat(int16_t x, int16_t y);
 void serialBtCallBack(esp_spp_cb_event_t event, esp_spp_cb_param_t *param);
+void printChipInfo(void);
+
+void printChipInfo(void){
+  esp_chip_info_t chip_info;
+  esp_chip_info(&chip_info);
+  log_i("This is ESP32 chip with %d CPU cores, WiFi%s%s, ",
+          chip_info.cores,
+          (chip_info.features & CHIP_FEATURE_BT) ? "/BT" : "",
+          (chip_info.features & CHIP_FEATURE_BLE) ? "/BLE" : "");
+  log_i("silicon revision %d, ", chip_info.revision);
+  log_i("%dMB %s flash", spi_flash_get_chip_size() / (1024 * 1024),
+          (chip_info.features & CHIP_FEATURE_EMB_FLASH) ? "embedded" : "external");
+}
 
 
 void serialBtCallBack(esp_spp_cb_event_t event, esp_spp_cb_param_t *param){
@@ -816,7 +832,7 @@ void printSettings(){
   log_i("Access-point password=%s",setting.wifi.appw.c_str());
   log_i("Board-Type=%d",setting.boardType);
   log_i("Display-Type=%d",setting.displayType);
-  log_i("AXP192=%d",uint8_t(status.bHasAXP192));
+  //log_i("AXP192=%d",uint8_t(status.bHasAXP192));
   if (setting.band == 0){
     log_i("BAND=868mhz");
   }else{
@@ -931,6 +947,7 @@ void setup() {
     psRamSize = 0;
     log_i("No PSRAM found");
   }
+  printChipInfo();
   log_i("compiled at %s",compile_date);
   log_i("current free heap: %d, minimum ever free heap: %d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
 
@@ -993,7 +1010,7 @@ void setup() {
   if (setting.boardType == BOARD_T_BEAM){    
     i2cOLED.begin(OLED_SDA, OLED_SCL);
     setupAXP192();
-  }else if (setting.boardType == BOARD_T_BEAM_V07){
+  }else if ((setting.boardType == BOARD_T_BEAM_V07) || (setting.boardType == BOARD_TTGO_T3_V1_6)){
     i2cOLED.begin(OLED_SDA, OLED_SCL);
     status.bHasAXP192 = false;
     analogReadResolution(ADC_BITS); // Default of 12 is not very linear. Recommended to use 10 or 11 depending on needed resolution.
@@ -1001,11 +1018,6 @@ void setup() {
     pinMode(ADCBOARDVOLTAGE_PIN, INPUT);
   }else if (setting.boardType == BOARD_HELTEC_LORA){    
     i2cOLED.begin(4, 15);
-    status.bHasAXP192 = false;
-    analogReadResolution(12); //12 Bit resolution
-    pinMode(HELTEC_BAT_PIN, INPUT); //input-Voltage on GPIO34
-  }else if (setting.boardType == BOARD_TTGO_T3_V1_6){
-    i2cOLED.begin(OLED_SDA, OLED_SCL);
     status.bHasAXP192 = false;
     analogReadResolution(12); //12 Bit resolution
     pinMode(HELTEC_BAT_PIN, INPUT); //input-Voltage on GPIO34
@@ -1201,7 +1213,7 @@ float readBattvoltage(){
   const byte NO_OF_SAMPLES = 5;
   uint32_t adc_reading = 0;
   float vBatt = 0.0;
-  if ((setting.boardType == BOARD_HELTEC_LORA) || (setting.boardType == BOARD_TTGO_T3_V1_6)){
+  if (setting.boardType == BOARD_HELTEC_LORA){
     analogRead(HELTEC_BAT_PIN); // First measurement has the biggest difference on my board, this line just skips the first measurement
     for (int i = 0; i < NO_OF_SAMPLES; i++) {
       uint16_t thisReading = analogRead(HELTEC_BAT_PIN);
