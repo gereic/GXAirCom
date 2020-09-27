@@ -5,7 +5,11 @@ def copy_file(*args, **kwargs):
     print("Copying file output to project directory...")
     target = str(kwargs['target'][0])
     savename = target.split('\\')[-1]   # name of environment
-    savefile = 'bin/{}'.format(savename)
+    platform = target.split('\\')[-2]
+    print(target.split('\\')[-1])    
+    print(target.split('\\')[-2])    
+    print(target.split('\\')[-3])    
+    savefile = 'bin/firmware_{}.bin'.format(platform)
     #print(savename)
     print(savefile)
     copyfile(target, savefile)

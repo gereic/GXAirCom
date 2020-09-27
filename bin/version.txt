@@ -65,3 +65,7 @@ set IO4 to output and High, so that red-led on T-Beam V1.1 is off.
 
 V1.5.0
 added support vor T-Beam V1.1 (Bugfix on GPS M6N)
+2 different firmware
+    one for devices wiwithoutth psram (Heltec / TTGO-Lora)
+    one for devices with psram (TTGO T-Beam V07 V1.0 V1.1)
+when loading wrong version device may hang in a infinite loop

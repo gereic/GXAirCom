@@ -3,7 +3,7 @@
 
 
 /*
-************* Pins for TTGO-TBeam V1.0 ***************
+************* Pins for TTGO-TBeam V1.0 / V1.1 ***************
 ******* LORA ********
 SCK 5
 MISO 19
