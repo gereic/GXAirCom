@@ -62,3 +62,6 @@ added support for TTGO ESP32-Paxcounter TTGO T3_V1.6
 
 V1.4.6
 set IO4 to output and High, so that red-led on T-Beam V1.1 is off.
+
+V1.5.0
+added support vor T-Beam V1.1 (Bugfix on GPS M6N)

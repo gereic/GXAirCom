@@ -20,6 +20,7 @@
 #include <Ogn.h>
 #include "esp_system.h"
 #include "esp_spi_flash.h"
+#include "SparkFun_Ublox_Arduino_Library.h"
 
 
 
@@ -614,31 +615,36 @@ static void IRAM_ATTR AXP192_Interrupt_handler() {
 void setupAXP192(){
   i2cOLED.beginTransmission(AXP192_SLAVE_ADDRESS);
   if (i2cOLED.endTransmission() == 0) {
-    log_v("init AXP192 -->");
-    axp.begin(i2cOLED, AXP192_SLAVE_ADDRESS);
+    if (!axp.begin(i2cOLED, AXP192_SLAVE_ADDRESS)){
+      axp.setChgLEDMode(AXP20X_LED_LOW_LEVEL);
 
-    axp.setChgLEDMode(AXP20X_LED_LOW_LEVEL);
+      axp.setPowerOutPut(AXP192_LDO3, AXP202_OFF); // GPS main power
+      delay(500);
+      axp.setPowerOutPut(AXP192_LDO2, AXP202_ON);
+      axp.setPowerOutPut(AXP192_LDO3, AXP202_ON);
+      axp.setPowerOutPut(AXP192_DCDC1, AXP202_ON);
+      axp.setPowerOutPut(AXP192_DCDC2, AXP202_ON); // NC
+      axp.setPowerOutPut(AXP192_EXTEN, AXP202_ON);
 
-    axp.setPowerOutPut(AXP192_LDO2, AXP202_ON);
-    axp.setPowerOutPut(AXP192_LDO3, AXP202_ON);
-    axp.setPowerOutPut(AXP192_DCDC1, AXP202_ON);
-    axp.setPowerOutPut(AXP192_DCDC2, AXP202_ON); // NC
-    axp.setPowerOutPut(AXP192_EXTEN, AXP202_ON);
+      axp.setDCDC1Voltage(3300); //       AXP192 power-on value: 3300
+      axp.setLDO2Voltage (3300); // LoRa, AXP192 power-on value: 3300
+      axp.setLDO3Voltage (3000); // GPS,  AXP192 power-on value: 2800
 
-    axp.setDCDC1Voltage(3300); //       AXP192 power-on value: 3300
-    axp.setLDO2Voltage (3300); // LoRa, AXP192 power-on value: 3300
-    axp.setLDO3Voltage (3000); // GPS,  AXP192 power-on value: 2800
+      pinMode(AXP_IRQ, INPUT_PULLUP);
 
-    pinMode(AXP_IRQ, INPUT_PULLUP);
+      attachInterrupt(digitalPinToInterrupt(AXP_IRQ),
+                      AXP192_Interrupt_handler, FALLING);
 
-    attachInterrupt(digitalPinToInterrupt(AXP_IRQ),
-                    AXP192_Interrupt_handler, FALLING);
+      axp.enableIRQ(AXP202_PEK_LONGPRESS_IRQ | AXP202_PEK_SHORTPRESS_IRQ, true);
+      axp.clearIRQ();
+      //axp.setChgLEDMode(AXP20X_LED_BLINK_1HZ);
+      log_i("init AXP192 --> ready");
+      status.bHasAXP192 = true;
+    }else{
+      log_e("AXP192 error begin");
+      status.bHasAXP192 = false;
+    }
 
-    axp.enableIRQ(AXP202_PEK_LONGPRESS_IRQ | AXP202_PEK_SHORTPRESS_IRQ, true);
-    axp.clearIRQ();
-    //axp.setChgLEDMode(AXP20X_LED_BLINK_1HZ);
-    log_v("ready");
-    status.bHasAXP192 = true;
   }else{
     log_e("AXP192 not found");
     status.bHasAXP192 = false;
@@ -1818,6 +1824,21 @@ void taskStandard(void *pvParameters){
       NMeaSerial.begin(GPSBAUDRATE,SERIAL_8N1,12,15,false);
       log_i("GPS Baud=9600,8N1,RX=12,TX=15");
     }
+    SFE_UBLOX_GPS ublox;
+    bool isConnected = false;
+    for (int i = 0; i < 3; i++){
+      if (ublox.begin(NMeaSerial)){
+        isConnected = true;
+        break;
+      }
+      delay(500);
+    }
+    if (isConnected){
+      log_i("Connected to UBLOX GPS successfully\n");
+      ublox.setUART1Output(COM_TYPE_NMEA, 1000);
+    }else{
+      log_i("UBLOX GPS not connected\n");
+    }
     // Change the echoing messages to the ones recognized by the MicroNMEA library
     MicroNMEA::sendSentence(NMeaSerial, "$PSTMSETPAR,1201,0x00000042");
     MicroNMEA::sendSentence(NMeaSerial, "$PSTMSAVEPAR");
@@ -1861,6 +1882,7 @@ void taskStandard(void *pvParameters){
     if (setting.Mode == MODE_GROUND_STATION){
       //ogn.begin(setting.pi,APPNAME " " VERSION);
       if (setting.PilotName.length() > 0){
+        //ogn.begin(setting.PilotName,VERSION "." APPNAME);
         ogn.begin(setting.PilotName,VERSION "." APPNAME);
       }else{
         ogn.begin("FNB" + setting.myDevId,VERSION "." APPNAME);
