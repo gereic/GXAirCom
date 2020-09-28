@@ -69,3 +69,6 @@ added support vor T-Beam V1.1 (Bugfix on GPS M6N)
     one for devices wiwithoutth psram (Heltec / TTGO-Lora)
     one for devices with psram (TTGO T-Beam V07 V1.0 V1.1)
 when loading wrong version device may hang in a infinite loop
+
+V1.5.1
+Bugfix on Wifi-Connect setting
