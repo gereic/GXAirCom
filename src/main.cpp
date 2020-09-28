@@ -356,7 +356,7 @@ void drawBatt(int16_t x, int16_t y,uint8_t value){
     if (value == 255){
         DrawValue = (DrawValue + 1) %5; 
     }else{
-        DrawValue = value;
+        DrawValue = value / 25;
     }
     //log_i("%d",DrawValue);
     display.fillRect(x,y,17,8,WHITE);
@@ -399,7 +399,7 @@ void printGSData(uint32_t tAct){
 
     if (status.wifiStat) display.drawXBitmap(85,0,WIFI_bits,WIFI_width,WIFI_height,WHITE);
     drawBluetoothstat(101,0);
-    drawBatt(111, 0,status.BattPerc / 25);
+    drawBatt(111, 0,(status.BattCharging) ? 255 : status.BattPerc);
 
 
     //show rx-count
@@ -1275,7 +1275,7 @@ void printScanning(uint32_t tAct){
     display.clearDisplay();
     if (status.wifiStat) display.drawXBitmap(85,0,WIFI_bits,WIFI_width,WIFI_height,WHITE);
     drawBluetoothstat(101,0);
-    drawBatt(111, 0,status.BattPerc / 25);
+    drawBatt(111, 0,(status.BattCharging) ? 255 : status.BattPerc);
     switch (icon)
     {
     case 0: 
@@ -1474,7 +1474,7 @@ void DrawRadarScreen(uint32_t tAct,uint8_t mode){
     //drawSatCount(18,0,9);
     if (status.wifiStat) display.drawXBitmap(85,0,WIFI_bits,WIFI_width,WIFI_height,WHITE);
     drawBluetoothstat(101,0);
-    drawBatt(111, 0,status.BattPerc / 25);
+    drawBatt(111, 0,(status.BattCharging) ? 255 : status.BattPerc);
 
     
     display.setTextSize(1);
@@ -1598,7 +1598,7 @@ void printGPSData(uint32_t tAct){
     drawflying(67,0,status.flying);
     if (status.wifiStat) display.drawXBitmap(85,4,WIFI_bits,WIFI_width,WIFI_height,WHITE);
     drawBluetoothstat(101,0);
-    drawBatt(111, 4,status.BattPerc / 25);
+    drawBatt(111, 4,(status.BattCharging) ? 255 : status.BattPerc);
 
 
 
@@ -2283,7 +2283,7 @@ void taskBackGround(void *pvParameters){
   setupWifi();
   while (1){
     uint32_t tAct = millis();
-    if ((setting.wifi.connect == 2) && (WiFi.status() != WL_CONNECTED) && (status.wifiStat)){
+    if ((setting.wifi.connect == WIFI_CONNECT_ALWAYS) && (WiFi.status() != WL_CONNECTED) && (status.wifiStat)){
       if (timeOver(tAct,tWifiCheck,WIFI_RECONNECT_TIME)){
         tWifiCheck = tAct;
         log_i("WiFi not connected. Try to reconnect");

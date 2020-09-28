@@ -187,7 +187,7 @@ void onWebSocketEvent(uint8_t client_num,
           //general settings-page          
           SettingsData newSetting = setting;
           if (root.containsKey("appw")) newSetting.wifi.appw = doc["appw"].as<String>();          
-          if (root.containsKey("wificonnect")) newSetting.wifi.connect = (bool)doc["wificonnect"].as<uint8_t>();
+          if (root.containsKey("wificonnect")) newSetting.wifi.connect = doc["wificonnect"].as<uint8_t>();
           if (root.containsKey("ssid")) newSetting.wifi.ssid = doc["ssid"].as<String>();
           if (root.containsKey("password")) newSetting.wifi.password = doc["password"].as<String>();
           if (root.containsKey("board")) newSetting.boardType = doc["board"].as<uint8_t>();          
