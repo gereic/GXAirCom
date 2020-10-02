@@ -1,6 +1,11 @@
 #include <string.h>
 #include <FanetLora.h>
 
+#ifndef __MAIN_H__
+#define __MAIN_H__
+
+#define VERSION "v1.5.2"
+
 
 /*
 ************* Pins for TTGO-TBeam V1.0 / V1.1 ***************
@@ -122,10 +127,6 @@ BUZZER 0
 
 */
 
-#ifndef __MAIN_H__
-#define __MAIN_H__
-
-#define VERSION "v1.5.1"
 #define APPNAME "GXAirCom"
 
 #define BLE_LOW_HEAP 10000
@@ -283,6 +284,7 @@ struct statusData{
   uint8_t bluetoothStat;
   uint32_t flightTime; //flight-time in sek.
   bool bMuting; //muting beeper
+  bool bPowerOff;
 };
 
 #endif

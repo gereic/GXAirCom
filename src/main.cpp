@@ -932,6 +932,8 @@ void setup() {
   // put your setup code here, to run once:  
   Serial.begin(115200);
 
+  status.bPowerOff = false;
+
   ledcSetup(channel, freq, resolution);
   ledcAttachPin(PINBUZZER, channel);  
   
@@ -1063,10 +1065,12 @@ void taskBaro(void *pvParameters){
   }
   TwoWire i2cBaro = TwoWire(0);
   if (setting.boardType == BOARD_HELTEC_LORA){
-    Wire.begin(13,23,400000);
+    //Wire.begin(13,23,400000);
+    Wire.begin(13,23,100000);
     i2cBaro.begin(13,23,400000); //init i2cBaro for Baro
   }else{
-    Wire.begin(13,14,400000);
+    //Wire.begin(13,14,400000);
+    Wire.begin(13,23,100000);
     i2cBaro.begin(13,14,400000); //init i2cBaro for Baro
   }
   if (baro.begin(&i2cBaro)){
@@ -1596,9 +1600,9 @@ void printGPSData(uint32_t tAct){
     drawSatCount(18,0,(status.GPS_NumSat > 9) ? 9 : status.GPS_NumSat);
     drawspeaker(47,0);
     drawflying(67,0,status.flying);
-    if (status.wifiStat) display.drawXBitmap(85,4,WIFI_bits,WIFI_width,WIFI_height,WHITE);
+    if (status.wifiStat) display.drawXBitmap(85,0,WIFI_bits,WIFI_width,WIFI_height,WHITE);
     drawBluetoothstat(101,0);
-    drawBatt(111, 4,(status.BattCharging) ? 255 : status.BattPerc);
+    drawBatt(111, 0,(status.BattCharging) ? 255 : status.BattPerc);
 
 
 
@@ -2153,6 +2157,25 @@ void taskStandard(void *pvParameters){
       counter++;
     }
     sendAWGroundStationdata(tAct); //send ground-station-data    
+
+    if (AXP192_Irq){
+      if (axp.readIRQ() == AXP_PASS) {
+        if (axp.isPEKLongtPressIRQ()) {
+          log_v("Long Press IRQ");
+          status.bPowerOff = true;
+        }
+        if (axp.isPEKShortPressIRQ()) {
+          log_v("Short Press IRQ");
+          setting.screenNumber ++;
+          if (setting.screenNumber > MAXSCREENS) setting.screenNumber = 0;
+          write_screenNumber(); //save screennumber in File
+          tDisplay = tAct - DISPLAY_UPDATE_RATE;
+        }
+        axp.clearIRQ();
+      }
+      AXP192_Irq = false;
+    }
+
     delay(1);
     if ((WebUpdateRunning) || (bPowerOff)) break;
   }
@@ -2190,6 +2213,14 @@ void powerOff(){
   display.print("OFF");
   display.display(); 
   */
+
+  log_i("wait until all tasks are stopped");
+  while(1){
+    //wait until all tasks are stopped
+    if ((eTaskGetState(xHandleBaro) == eDeleted) && (eTaskGetState(xHandleEInk) == eDeleted) && (eTaskGetState(xHandleStandard) == eDeleted)) break; //now all tasks are stopped
+    delay(100);
+  }
+
   if (setting.displayType == OLED0_96){
     display.setTextColor(WHITE);
     display.clearDisplay();
@@ -2214,12 +2245,6 @@ void powerOff(){
     delay(1000);
     display.clearDisplay();
     display.ssd1306_command(SSD1306_DISPLAYOFF);
-  }
-  log_i("wait until all tasks are stopped");
-  while(1){
-    //wait until all tasks are stopped
-    if ((eTaskGetState(xHandleBaro) == eDeleted) && (eTaskGetState(xHandleEInk) == eDeleted) && (eTaskGetState(xHandleStandard) == eDeleted)) break; //now all tasks are stopped
-    delay(100);
   }
   log_i("switch power-supply off");
   delay(100);
@@ -2339,24 +2364,11 @@ void taskBackGround(void *pvParameters){
 
     }
     //yield();
-    if ((status.vBatt < BATTEMPTY) && (status.vBatt > 0)) {
+    if (status.bPowerOff){
       powerOff(); //power off, when battery is empty !!
     }
-    if (AXP192_Irq){
-      if (axp.readIRQ() == AXP_PASS) {
-        if (axp.isPEKLongtPressIRQ()) {
-          log_v("Long Press IRQ");
-          powerOff();
-        }
-        if (axp.isPEKShortPressIRQ()) {
-          log_v("Short Press IRQ");
-          setting.screenNumber ++;
-          if (setting.screenNumber > MAXSCREENS) setting.screenNumber = 0;
-          write_screenNumber(); //save screennumber in File
-        }
-        axp.clearIRQ();
-      }
-      AXP192_Irq = false;
+    if ((status.vBatt < BATTEMPTY) && (status.vBatt > 0)) {
+      powerOff(); //power off, when battery is empty !!
     }
     if (newStationConnected){
       //listConnectedStations();

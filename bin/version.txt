@@ -72,3 +72,6 @@ when loading wrong version device may hang in a infinite loop
 
 V1.5.1
 Bugfix on Wifi-Connect setting
+
+V1.5.2
+Bugfix random Crash caused by i2c
