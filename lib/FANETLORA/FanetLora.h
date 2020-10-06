@@ -112,6 +112,7 @@ public:
     float climb; //m/s
     float heading; //deg
     int rssi; //rssi
+    int snr; //signal to noise ratio
   } trackingData;
 
   typedef struct {

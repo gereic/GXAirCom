@@ -75,3 +75,8 @@ Bugfix on Wifi-Connect setting
 
 V1.5.2
 Bugfix random Crash caused by i2c
+
+V1.5.3
+Fixed issue with ogn (gliderradar.com)
+added db to send-values for OGN-received aircrafts
+set wifi-reconnect-timeout 60sec. --> 10min. --> so it should be possible to connect via hotspot and change settings.

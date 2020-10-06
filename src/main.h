@@ -4,7 +4,7 @@
 #ifndef __MAIN_H__
 #define __MAIN_H__
 
-#define VERSION "v1.5.2"
+#define VERSION "v1.5.3"
 
 
 /*
@@ -167,7 +167,7 @@ BUZZER 0
 #define MIN_FLIGHT_TIME 10000
 #define MIN_GROUND_TIME 60000
 
-#define WIFI_RECONNECT_TIME 60000
+#define WIFI_RECONNECT_TIME 600000
 
 #define BUTTON2 38
 #define LONGPRESSTIME 250

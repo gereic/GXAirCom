@@ -71,6 +71,7 @@ public:
 
 	/* Received stuff */
 	int rssi = 0;
+	int snr = 0;
 
 	int serialize(uint8_t*& buffer);
 

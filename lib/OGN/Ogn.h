@@ -33,7 +33,7 @@ public:
   void end(void);
   void run(void); //has to be called cyclic
   void setGPS(float lat,float lon,float alt,float speed,float heading);
-  void sendTrackingData(float lat,float lon,float alt,float speed,float heading,float climb,String devId,aircraft_t aircraftType);
+  void sendTrackingData(float lat,float lon,float alt,float speed,float heading,float climb,String devId,aircraft_t aircraftType,float snr);
 
 private:
     void connect2Server(void);
