@@ -4,7 +4,7 @@
 #ifndef __MAIN_H__
 #define __MAIN_H__
 
-#define VERSION "v1.5.3"
+#define VERSION "v1.5.4"
 
 
 /*

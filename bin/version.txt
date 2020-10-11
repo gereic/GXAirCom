@@ -80,3 +80,7 @@ V1.5.3
 Fixed issue with ogn (gliderradar.com)
 added db to send-values for OGN-received aircrafts
 set wifi-reconnect-timeout 60sec. --> 10min. --> so it should be possible to connect via hotspot and change settings.
+
+V1.5.4
+new calculation of snr- for ogn.
+As Lora, the snr-value goes from -10dB to 20dB we send the inverted rssi-signal, where 120 ist best and 0 is worst signal strength.
