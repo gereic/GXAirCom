@@ -566,7 +566,7 @@ void sendAWTrackingdata(FanetLora::trackingData *FanetData){
 
   char chs[20];
   String msg;
-  if (setting.Mode == MODE_GROUND_STATION){
+  if ((setting.Mode == MODE_GROUND_STATION) || (nmea.getFixTime().length() == 0)){
     msg = "000000,";
   }else{
     msg = nmea.getFixTime() + ",";
@@ -584,7 +584,7 @@ void sendAWTrackingdata(FanetLora::trackingData *FanetData){
   msg += String(chs) + ",";
   sprintf(chs,"%0.2f",FanetData->altitude);
   msg += String(chs) + "," + String(FanetData->rssi);
-  //log_e("%s",msg.c_str());
+  //log_i("%s",msg.c_str());
   sendAWUdp(msg);
 }
 
@@ -702,35 +702,6 @@ void setupAXP192(){
 void IRAM_ATTR ppsHandler(void){
   ppsTriggered = true;
 }
-
-/*
-void listConnectedStations(){
-  wifi_sta_list_t wifi_sta_list;
-  tcpip_adapter_sta_list_t adapter_sta_list;
- 
-  memset(&wifi_sta_list, 0, sizeof(wifi_sta_list));
-  memset(&adapter_sta_list, 0, sizeof(adapter_sta_list));
- 
-  esp_wifi_ap_get_sta_list(&wifi_sta_list);
-  tcpip_adapter_get_sta_list(&wifi_sta_list, &adapter_sta_list);
-  if (adapter_sta_list.num > 0){
-    status.wifiStat = 2;
-  }else{
-    status.wifiStat = 1;
-  }
-  for (int i = 0; i < adapter_sta_list.num; i++) {
- 
- 
-    tcpip_adapter_sta_info_t station = adapter_sta_list.sta[i];
-    log_v("station nr %d",i);
-    log_v("MAC: ");
- 
-    log_v("%02X:%02X:%02X:%02X:%02X:%02X", station.mac[0], station.mac[1], station.mac[2], station.mac[3], station.mac[4], station.mac[5]);  
-    String sIP = ip4addr_ntoa(&(station.ip));
-    log_v("IP: %s",sIP);    
-  }
-}
-*/
 
 void WiFiEvent(WiFiEvent_t event){
   switch(event){
@@ -1223,13 +1194,6 @@ void taskBluetooth(void *pvParameters) {
     status.bluetoothStat = 1; //client disconnected
     while (1)
     {
-      /*
-      if (SerialBT.hasClient()){
-        status.bluetoothStat = 2; //client connected
-      }else{
-        status.bluetoothStat = 1; //no client connected
-      }
-      */
       delay(1);
     }
   }
@@ -1699,8 +1663,6 @@ char* readBtSerial(){
     return NULL; //bluetooth not started yet.
   }
   if (status.bluetoothStat == 2){
-  //if (SerialBT.hasClient()){
-    //status.bluetoothStat = 2; //client connected
     while(SerialBT.available()){
       if (recBufferIndex >= (512-1)) recBufferIndex = 0; //Buffer overrun
       lineBuffer[recBufferIndex] = SerialBT.read();
@@ -1973,7 +1935,6 @@ void taskStandard(void *pvParameters){
           }
         }
       }else{
-          //setting.screenNumber = 2;
           switch (setting.screenNumber)
           {
           case 0: //main-Display
@@ -2010,6 +1971,7 @@ void taskStandard(void *pvParameters){
       log_i("sending msgtype 1");
       testTrackingData.devId = fanet._myData.devId;
       fanet.writeMsgType1(&testTrackingData);
+      sendAWTrackingdata(&testTrackingData);
       sendTraccarTrackingdata(&testTrackingData);
       sendTestData = 0;
     }else if (sendTestData == 2){
