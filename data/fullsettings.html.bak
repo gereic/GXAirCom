@@ -54,22 +54,14 @@ function callMainPage(){
 }
 
 //this function sets visible depending on actual option
-function setFts(){
-      document.getElementById("traccarsrv").value="http://tracking.fivl.it:5055/";
-}
-
-//this function sets visible depending on actual option
 function setVis(){
   //console.log("visible=" + document.getElementById("mode").style.display)
   if (document.getElementById("mode").value == 1){
     document.getElementById("VisAirCraftType").style.display='none';
-    document.getElementById("VisLegacy").style.display='none';
-    document.getElementById("legacytx").checked=false;
     document.getElementById("tName").innerHTML='Ground Station name';
     document.getElementById("VisGS").style.display=''; //set GS visible
 
   }else{
-    document.getElementById("VisLegacy").style.display='';
     document.getElementById("VisAirCraftType").style.display='';
     document.getElementById("tName").innerHTML='Pilot name';
     document.getElementById("VisGS").style.display='none'; //set GS invisible
@@ -100,7 +92,7 @@ function sendValues(){
   type : document.getElementById("type").value,
   mode : document.getElementById("mode").value,
   PilotName : document.getElementById("PilotName").value,
-
+  
   gsawid : document.getElementById("gsawid").value,
   gslat : document.getElementById("gslat").value,
   gslon : document.getElementById("gslon").value,
@@ -121,9 +113,6 @@ function sendValues(){
   UDPServerIP : document.getElementById("UDPServerIP").value,
   UDPSendPort : document.getElementById("UDPSendPort").value,
   ognlive : Number(document.getElementById("ognlive").checked),
-  traccar_live : Number(document.getElementById("traccar_live").checked),
-  traccarsrv : document.getElementById("traccarsrv").value,
-  legacytx : Number(document.getElementById("legacytx").checked),
 
   vSinkTh : parseFloat(document.getElementById("vSinkTh").value),
   vClimbTh : parseFloat(document.getElementById("vClimbTh").value),
@@ -197,7 +186,7 @@ window.addEventListener("load", init, false);
       <h3>%PILOT%</h3>      
     </div>
     <fieldset>
-      <legend><b>General settings</b></legend>
+      <legend><b>general settings</b></legend>
       <table style="width:100&#37;">
         <tbody>
           <tr>
@@ -256,47 +245,22 @@ window.addEventListener("load", init, false);
               <option value="6">Helicopter</option>
               <option value="7">UAV</option>
             </select></td>
-          </tr>	
-          <tr id="VisLegacy">
-            <th>Legacy Protocol TX</th>
-            <td><input type="checkbox" id="legacytx" name="legacytx"></td>
-          </tr>	
-        </tbody>      
-      </table>
-    </fieldset>
-    <p></p>
-    <p></p>
-    <fieldset>
-      <legend><b>Live tracking settings</b></legend>
-      <table style="width:100&#37;">
-        <tbody>
+          </tr>
           <tr>
             <th>airwhere live-tracking</th>
             <td><input type="checkbox" id="awlive" name="awlive"></td>
-            <td></td>
           </tr>
           <tr>
             <th>OGN live-tracking</th>
             <td><input type="checkbox" id="ognlive" name="ognlive"></td>
           </tr>
-          <td></td>	  
-          <tr>
-            <th>Traccar Server</th>
-            <td><input type="checkbox" id="traccar_live" name="traccar_live"></td>
-            <td>
-              <input type="text" id="traccarsrv" name="traccarsrv" style="width: 98%;" maxlength="50">
-            </td>
-            <td>   
-              <button type="button"  onclick="setFts()" class="button byel" style="line-height: 1.7rem;">FTS</button>
-            </td>
-          </tr>
         </tbody>      
       </table>
     </fieldset>
     <p></p>
     <p></p>
     <fieldset>
-      <legend><b>Output settings</b></legend>
+      <legend><b>output settings</b></legend>
       <table style="width:100&#37;">
         <tbody>
           <tr>
@@ -380,7 +344,7 @@ window.addEventListener("load", init, false);
     <p></p>
     <p></p>
     <fieldset id="VisGS">
-      <legend><b>Ground station settings</b></legend>
+      <legend><b>ground station settings</b></legend>
       <table style="width:100&#37;">
         <tbody>
           <tr>
@@ -405,7 +369,7 @@ window.addEventListener("load", init, false);
     <p></p>
     <p></p>
     <fieldset id="VisVario">
-      <legend><b>Vario settings</b></legend>
+      <legend><b>vario settings</b></legend>
       <table style="width:100&#37;">
         <tbody>
           <tr>

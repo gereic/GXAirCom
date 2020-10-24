@@ -4,7 +4,7 @@
 #ifndef __MAIN_H__
 #define __MAIN_H__
 
-#define VERSION "v1.6.0"
+#define VERSION "v1.5.4"
 
 
 /*
@@ -253,9 +253,6 @@ struct SettingsData{
   VarioSettings vario; //variosettings
   uint8_t OGNLiveTracking; //OGN-Live-Tracking
   uint8_t screenNumber; //number of default-screen
-  uint8_t LegacyTxEnable; //OGN-Live-Tracking
-  uint8_t traccarLiveTracking; //Traccar live-tracking
-  String TraccarSrv; //OGN-Live-Tracking
 };
 
 struct statusData{

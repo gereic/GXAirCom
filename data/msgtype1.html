@@ -50,6 +50,12 @@ function onClose(evt) {
 }
 
 function sendValues(){  
+  document.getElementById("lat").value = 48.072943;
+  document.getElementById("lon").value = 14.734774;
+  //document.getElementById("alt").value = 323;
+  //document.getElementById("speed").value = 5.23;
+  //document.getElementById("climb").value = 1.2;
+  //document.getElementById("heading").value = 123.23;
   var obj = {lat : document.getElementById("lat").value,
             lon : document.getElementById("lon").value,
             type : document.getElementById("type").value,

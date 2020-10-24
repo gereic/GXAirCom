@@ -21,8 +21,7 @@
 #include "esp_system.h"
 #include "esp_spi_flash.h"
 #include "SparkFun_Ublox_Arduino_Library.h"
-#include <TimeLib.h>
-#include <HTTPClient.h>
+
 
 
 //#include <U8g2lib.h>
@@ -158,7 +157,6 @@ void WiFiEvent(WiFiEvent_t event);
 //void listConnectedStations();
 float readBattvoltage();
 void sendAWTrackingdata(FanetLora::trackingData *FanetData);
-void sendTraccarTrackingdata(FanetLora::trackingData *FanetData);
 void sendAWGroundStationdata(uint32_t tAct);
 void sendAWUdp(String msg);
 void checkFlyingState(uint32_t tAct);
@@ -190,17 +188,6 @@ void printChipInfo(void){
           (chip_info.features & CHIP_FEATURE_EMB_FLASH) ? "embedded" : "external");
 }
 
-
-bool printLocalTime()
-{
-  struct tm timeinfo;
-  if(!getLocalTime(&timeinfo)){
-    Serial.println("Failed to obtain time");
-    return false;
-  }
-  Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");
-  return true;
-}
 
 void serialBtCallBack(esp_spp_cb_event_t event, esp_spp_cb_param_t *param){
   if (event == ESP_SPP_SRV_OPEN_EVT){
@@ -410,8 +397,7 @@ void printGSData(uint32_t tAct){
     char buf[10];
     display.clearDisplay();
 
-    if (status.wifiStat==1) display.drawXBitmap(85,0,WIFI_AP_bits,WIFI_width,WIFI_height,WHITE);
-    if (status.wifiStat==2) display.drawXBitmap(85,0,WIFI_Sta_bits,WIFI_width,WIFI_height,WHITE);
+    if (status.wifiStat) display.drawXBitmap(85,0,WIFI_bits,WIFI_width,WIFI_height,WHITE);
     drawBluetoothstat(101,0);
     drawBatt(111, 0,(status.BattCharging) ? 255 : status.BattPerc);
 
@@ -527,42 +513,8 @@ void sendAWGroundStationdata(uint32_t tAct){
   sendAWUdp(msg);
 }
 
-void sendTraccarTrackingdata(FanetLora::trackingData *FanetData){
-
-  if ((!setting.traccarLiveTracking) || (!setting.TraccarSrv.startsWith("http://")) || (WiFi.status() != WL_CONNECTED)) return;
-
-  HTTPClient http;
-  time_t now;
-  time(&now);
-  char chs[120];
-  String msg="?id=FANET_";
-  msg +=fanet.getDevId(FanetData->devId) + "&lat=";
-
-  sprintf(chs,"%02.6f",FanetData->lat);
-  msg += String(chs) + "&lon="; //
-  sprintf(chs,"%02.6f",FanetData->lon);
-  msg += String(chs) + "&timestamp="; //unix-timestamp
-  sprintf(chs,"%0d",now);
-  msg += String(chs) + "&altitude="; //alt in m
-  sprintf(chs,"%0.2f",FanetData->altitude);
-  msg += String(chs) + "&speed=";
-  sprintf(chs,"%0.2f",FanetData->speed / 1.852); //speed in knots
-  msg += String(chs) + "&heading=";
-  sprintf(chs,"%0.2f",FanetData->heading); //heading in degrees
-  msg += String(chs);
-  msg = setting.TraccarSrv + msg;
-  
-  //log_i("%s",msg.c_str());
-  http.begin(msg.c_str());
-  int httpResponseCode = http.GET();
-  if (httpResponseCode != 200){
-    log_e("resp=%d %s",httpResponseCode,http.getString().c_str());
-  }
-  //
-}
-
 void sendAWTrackingdata(FanetLora::trackingData *FanetData){
-  if (!setting.awLiveTracking) return;
+  if ((!setting.awLiveTracking) && (setting.Mode != MODE_GROUND_STATION)) return;
 
   char chs[20];
   String msg;
@@ -751,7 +703,6 @@ void WiFiEvent(WiFiEvent_t event){
       //log_i("SYSTEM_EVENT_STA_GOT_IP!!!!!!!!!!!!");
       status.myIP = WiFi.localIP().toString();
       log_i("my IP=%s",status.myIP.c_str());
-      status.wifiStat=2;
       break;
     case SYSTEM_EVENT_AP_STAIPASSIGNED:
       newStationConnected = true;
@@ -799,20 +750,42 @@ void setupWifi(){
   if (setting.wifi.connect != WIFI_CONNECT_NONE){
     //esp_wifi_set_auto_connect(true);
     log_i("Try to connect to WiFi ...");
-    status.wifiStat = 1;
     WiFi.status();
     WiFi.mode(WIFI_MODE_APSTA);
     //WiFi.mode(WIFI_STA);
     if ((WiFi.SSID() != setting.wifi.ssid || WiFi.psk() != setting.wifi.password)){
       // ... Try to connect to WiFi station.
       WiFi.begin(setting.wifi.ssid.c_str(), setting.wifi.password.c_str());
+      delay(2000);
     } else {
       // ... Begin with sdk config.
       WiFi.begin();
+      delay(2000);
     }
+    log_i("Wait for WiFi connection.");
+    uint32_t wifiTimeout = millis();
+    while (WiFi.status() != WL_CONNECTED && millis() - wifiTimeout < 10000) {
+      delay(500);
+      //log_i(".");
+    }
+    
   }
+  //if(WiFi.status() == WL_CONNECTED){
+    // ... print IP Address
+    //status.myIP = WiFi.localIP().toString();
+    //log_i("my IP=%s",status.myIP.c_str());
+  //} else{
+  //  log_i("Can not connect to WiFi station. Go into AP mode.");
+  //  // Go into software AP mode.
+  //  WiFi.status();
+  //  WiFi.mode(WIFI_AP);
+  //}
+  status.wifiStat = 1;
+  //status.myIP = WiFi.softAPIP().toString();
   log_i("my APIP=%s",local_IP.toString().c_str());
+  //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
   Web_setup();
+  //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
 }
 
 
@@ -892,12 +865,9 @@ void printSettings(){
   log_i("Mode=%d",setting.Mode);
   log_i("GS LAT=%02.6f",setting.gs.lat);
   log_i("GS LON=%02.6f",setting.gs.lon);
-  log_i("GS ALT=%0.2f",setting.gs.alt);
+  log_i("GS LON=%0.2f",setting.gs.alt);
   log_i("GS AWID=%s",setting.gs.AWID);
   log_i("OGN-Livetracking=%d",setting.OGNLiveTracking);
-  log_i("Traccar-Livetracking=%d",setting.traccarLiveTracking);
-  log_i("Traccar-Address=%s",setting.TraccarSrv.c_str());
-  log_i("Legacy-TX=%d",setting.LegacyTxEnable);
   //vario
   log_i("VarioSinkingThreshold=%0.2f",setting.vario.sinkingThreshold);
   log_i("VarioClimbingThreshold=%0.2f",setting.vario.climbingThreshold);
@@ -1305,8 +1275,7 @@ void printScanning(uint32_t tAct){
   //if ((tAct - tPrint) >= 300){
     tPrint = tAct;
     display.clearDisplay();
-    if (status.wifiStat==1) display.drawXBitmap(85,0,WIFI_AP_bits,WIFI_width,WIFI_height,WHITE);
-    if (status.wifiStat==2) display.drawXBitmap(85,0,WIFI_Sta_bits,WIFI_width,WIFI_height,WHITE);
+    if (status.wifiStat) display.drawXBitmap(85,0,WIFI_bits,WIFI_width,WIFI_height,WHITE);
     drawBluetoothstat(101,0);
     drawBatt(111, 0,(status.BattCharging) ? 255 : status.BattPerc);
     switch (icon)
@@ -1505,8 +1474,7 @@ void DrawRadarScreen(uint32_t tAct,uint8_t mode){
     drawAircraftType(0,0,setting.AircraftType);
     drawSatCount(18,0,(status.GPS_NumSat > 9) ? 9 : status.GPS_NumSat);
     //drawSatCount(18,0,9);
-    if (status.wifiStat==1) display.drawXBitmap(85,0,WIFI_AP_bits,WIFI_width,WIFI_height,WHITE);
-    if (status.wifiStat==2) display.drawXBitmap(85,0,WIFI_Sta_bits,WIFI_width,WIFI_height,WHITE);
+    if (status.wifiStat) display.drawXBitmap(85,0,WIFI_bits,WIFI_width,WIFI_height,WHITE);
     drawBluetoothstat(101,0);
     drawBatt(111, 0,(status.BattCharging) ? 255 : status.BattPerc);
 
@@ -1630,8 +1598,7 @@ void printGPSData(uint32_t tAct){
     drawSatCount(18,0,(status.GPS_NumSat > 9) ? 9 : status.GPS_NumSat);
     drawspeaker(47,0);
     drawflying(67,0,status.flying);
-    if (status.wifiStat==1) display.drawXBitmap(85,0,WIFI_AP_bits,WIFI_width,WIFI_height,WHITE);
-    if (status.wifiStat==2) display.drawXBitmap(85,0,WIFI_Sta_bits,WIFI_width,WIFI_height,WHITE);
+    if (status.wifiStat) display.drawXBitmap(85,0,WIFI_bits,WIFI_width,WIFI_height,WHITE);
     drawBluetoothstat(101,0);
     drawBatt(111, 0,(status.BattCharging) ? 255 : status.BattPerc);
 
@@ -1849,7 +1816,6 @@ void taskStandard(void *pvParameters){
   FanetLora::trackingData tFanetData;  
   
   tFanetData.rssi = 0;
-  MyFanetData.rssi = 0;
 
 
   if (setting.Mode != MODE_GROUND_STATION){ // we are ground-station)
@@ -1896,14 +1862,12 @@ void taskStandard(void *pvParameters){
   // create a binary semaphore for task synchronization
   long frequency = FREQUENCY868;
   if (setting.band == BAND915)frequency = FREQUENCY915; 
-  fanet.setLegacy(setting.LegacyTxEnable);
   if (setting.boardType == BOARD_HELTEC_LORA){
     fanet.begin(5, 19, 27, 18,14, 26,frequency,setting.LoraPower);
 
   }else{
     fanet.begin(SCK, MISO, MOSI, SS,RST, DIO0,frequency,setting.LoraPower);
   }
- 
   fanet.setPilotname(setting.PilotName);
   fanet.setAircraftType(setting.AircraftType);
   if (setting.Mode != MODE_DEVELOPER){ //
@@ -1954,6 +1918,22 @@ void taskStandard(void *pvParameters){
     handleButton(tAct);
 
     if (setting.OGNLiveTracking) ogn.run();
+    /*
+    if (timeOver(tAct,tTest,1000)){
+      tTest = tAct;
+      ogn.setGPS(setting.GSLAT,setting.GSLON,setting.GSAlt,0.0,0.0);
+      ogn.sendTrackingData(setting.GSLAT + 0.1,setting.GSLON + 0.1,setting.GSAlt,0,123,0,fanet.getMyDevId() ,(Ogn::aircraft_t)fanet.getAircraftType());
+    }
+    */
+    /*
+    if (digitalRead(BUTTON2)){
+      status.GPS_Fix = 1;
+      status.GPS_speed = 0.0;
+    }else{
+      status.GPS_Fix = 1;
+      status.GPS_speed = 22.0;
+    }
+    */
     checkFlyingState(tAct);
     printBattVoltage(tAct);
     readGPS();
@@ -2006,11 +1986,34 @@ void taskStandard(void *pvParameters){
 
       }
     }
+
+    /*
+    if (((timeOver(tAct,tDisplay,DISPLAY_UPDATE_RATE) && (setting.screenNumber != 1))) ||
+       ((timeOver(tAct,tDisplay,2000) && (setting.screenNumber == 1)))) {
+      tDisplay = tAct;
+      if (setting.GSMode){
+        //log_i("neghbours=%u",fanet.getNeighboursCount());
+        if (fanet.getNeighboursCount() == 0){
+          printScanning(tAct);
+        }else{
+          printGSData(tAct);
+        }
+      }else{
+      }
+    }
+    */
+    /*
+    if ((setting.testMode == 0) && (!setting.GSMode)){ //not in testmode and not ground-station
+      //writeTrackingData(tAct);
+      if ((tAct - tFlarmState) >= 1000){
+          tFlarmState = tAct;
+          if (setting.outputFLARM) sendData2Client(flarm.writeDataPort());
+      }
+    }
+    */
     if (sendTestData == 1){
       log_i("sending msgtype 1");
-      testTrackingData.devId = fanet._myData.devId;
       fanet.writeMsgType1(&testTrackingData);
-      sendTraccarTrackingdata(&testTrackingData);
       sendTestData = 0;
     }else if (sendTestData == 2){
       log_i("sending msgtype 2 %s",testString.c_str());
@@ -2049,9 +2052,6 @@ void taskStandard(void *pvParameters){
           ogn.sendTrackingData(tFanetData.lat ,tFanetData.lon,tFanetData.altitude,tFanetData.speed,tFanetData.heading,tFanetData.climb,fanet.getDevId(tFanetData.devId) ,(Ogn::aircraft_t)tFanetData.aircraftType,(float)tFanetData.snr / 10.0);
         } 
         sendAWTrackingdata(&tFanetData);
-        sendTraccarTrackingdata(&tFanetData);
-        
-       
         if (nmea.isValid()){
         fanet.getMyTrackingData(&myFanetData);
         //Serial.printf("LAT=%.6f\n",tFanetData.lat);
@@ -2087,7 +2087,6 @@ void taskStandard(void *pvParameters){
         status.GPS_Lat = nmea.getLatitude() / 1000000.;
         status.GPS_Lon = nmea.getLongitude() / 1000000.;  
         status.GPS_alt = alt/1000.;
-        setTime(nmea.getHour(), nmea.getMinute(), nmea.getSecond(), nmea.getDay(), nmea.getMonth(), nmea.getYear());
         if (oldAlt == 0) oldAlt = status.GPS_alt;        
         if (!status.bHasVario) status.ClimbRate = (status.GPS_alt - oldAlt) / (float(status.tGPSCycle) / 1000.0);        
         oldAlt = status.GPS_alt;
@@ -2107,8 +2106,25 @@ void taskStandard(void *pvParameters){
         } 
 
         fanet.setMyTrackingData(&MyFanetData); //set Data on fanet
-        sendAWTrackingdata(&MyFanetData);
-        sendTraccarTrackingdata(&MyFanetData);
+        if (setting.awLiveTracking){
+          char chs[20];
+          String msg = nmea.getFixTime() + ","
+                    + setting.myDevId + ","
+                    + setting.myDevId + ","
+                    + String((uint8_t)fanet.getAircraftType()) + ",";
+          sprintf(chs,"%02.6f",status.GPS_Lat);
+          msg += String(chs) + ",";
+          sprintf(chs,"%02.6f",status.GPS_Lon);
+          msg += String(chs) + ",0,0,";
+          sprintf(chs,"%0.2f",MyFanetData.heading);
+          msg += String(chs) + ",";
+          sprintf(chs,"%0.2f",status.GPS_speed * 0.53996);
+          msg += String(chs) + ",";
+          sprintf(chs,"%0.2f",status.GPS_alt);
+          msg += String(chs) + ",0";
+          //log_e("%s",msg.c_str());
+          sendAWUdp(msg);
+        }
       }else{
         status.GPS_Fix = 0;
         status.GPS_speed = 0.0;
@@ -2279,8 +2295,6 @@ void taskBackGround(void *pvParameters){
   static uint32_t tWifiCheck = millis();
   static uint8_t counter = 0;
   static uint32_t warning_time=0;
-  static uint8_t ntpOk = 0;
-  static uint32_t tGetTime = millis();
 
 
   if (startOption != 0){ //we start wifi
@@ -2292,17 +2306,6 @@ void taskBackGround(void *pvParameters){
   setupWifi();
   while (1){
     uint32_t tAct = millis();
-    if (WiFi.status() == WL_CONNECTED){
-      if ((!ntpOk) && (timeOver(tAct,tGetTime,5000))){
-        log_i("get ntp-time");
-        configTime(0, 0, "pool.ntp.org");
-        tGetTime = tAct;
-        if (printLocalTime() == true) ntpOk = 1;
-      }
-    }else{
-      ntpOk = 0;
-      tGetTime = tAct;
-    }
     if ((setting.wifi.connect == WIFI_CONNECT_ALWAYS) && (WiFi.status() != WL_CONNECTED) && (status.wifiStat)){
       if (timeOver(tAct,tWifiCheck,WIFI_RECONNECT_TIME)){
         tWifiCheck = tAct;

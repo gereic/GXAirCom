@@ -137,13 +137,14 @@
 
 
 //LORA MODES:
-#define	LORA_SLEEP_MODE					0x80
-#define LORA_STANDBY_MODE				0x81
-#define LORA_TX_MODE					0x83
-#define LORA_RXCONT_MODE				0x85
-#define LORA_RXSINGLE_MODE				0x86
-#define LORA_CAD_MODE					0x87
-#define LORA_MODE_MASK					0x87
+#define MODE_LONG_RANGE_MODE_BIT     0x00//0x80
+#define	LORA_SLEEP_MODE					MODE_LONG_RANGE_MODE_BIT|0x00
+#define LORA_STANDBY_MODE				MODE_LONG_RANGE_MODE_BIT|0x01
+#define LORA_TX_MODE					  MODE_LONG_RANGE_MODE_BIT|0x03
+#define LORA_RXCONT_MODE				MODE_LONG_RANGE_MODE_BIT|0x05
+#define LORA_RXSINGLE_MODE			MODE_LONG_RANGE_MODE_BIT|0x06
+#define LORA_CAD_MODE					  MODE_LONG_RANGE_MODE_BIT|0x07
+#define LORA_MODE_MASK					MODE_LONG_RANGE_MODE_BIT|0x07
 #define LORA_STANDBY_FSK_REGS_MODE			0xC1
 
 // SEND FRAME RETURN VALUES
@@ -230,8 +231,38 @@ public:
   void setSPIFrequency(uint32_t frequency);
 
   void dumpRegisters(Stream& out);
+  
+  //FSK Stuff  
 
 
+#define SX127X_SYNC_ON                                0b00010000 
+#define SX127X_CRYSTAL_FREQ                           32.0
+#define SX127X_CRC_OFF                                0b00000000  //  4     4     CRC disabled
+#define SX127X_CRC_ON                                 0b00010000  //  4     4     CRC enabled (default)
+#define SX127X_DC_FREE_NONE                           0b00000000  //  6     5     DC-free encoding: disabled (default)
+#define SX127X_DC_FREE_WHITENING                      0b01000000 
+#define SX127X_DC_FREE_MANCHESTER                     0b00100000  //  6     5                       Manchester
+#define RADIOLIB_ENCODING_NRZ                         0x00
+#define RADIOLIB_ENCODING_MANCHESTER                  0x01
+#define RADIOLIB_ENCODING_WHITENING                   0x02
+#define SX127X_PREAMBLE_POLARITY_AA                   0b00000000  //  5     5     preamble polarity: 0xAA = 0b10101010 (default)
+#define SX127X_PREAMBLE_POLARITY_55                   0b00100000  //  5     5                        0x55 = 0b01010101
+  
+  bool setFSK();
+  bool setLoRa();
+  void setTXFSK();
+  void setRXFSK();
+  void setSyncWordFSK(uint8_t * sw, int len);
+  void setFrequencyDeviation(float freqDev);
+  void setBitRate(float br);
+  void setPacketMode(uint8_t mode, uint8_t len);
+  void setPreamblePolarity(bool preamble_polarity);
+  void setEncoding(uint8_t encoding);
+  void setRxBandwidth(float rxBw);
+  void setforceFSK();
+  void irqEnable(bool enable);
+  void pushRegs();
+  void popRegs();
 private:
 
   void explicitHeaderMode();
@@ -253,6 +284,7 @@ private:
   void writeRegister(uint8_t address, uint8_t value);
   int writeRegister_burst(uint8_t address, uint8_t *data, int length);
   uint8_t singleTransfer(uint8_t address, uint8_t value);
+  void SPIsetRegValue(uint8_t reg, uint8_t value, uint8_t msb, uint8_t lsb);
   float expectedAirTime_ms(void);
 
   static void onDio0Rise();

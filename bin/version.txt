@@ -84,3 +84,7 @@ set wifi-reconnect-timeout 60sec. --> 10min. --> so it should be possible to con
 V1.5.4
 new calculation of snr- for ogn.
 As Lora, the snr-value goes from -10dB to 20dB we send the inverted rssi-signal, where 120 ist best and 0 is worst signal strength.
+
+V1.6.0
+Added legacy-Mode
+added Traccar tracking

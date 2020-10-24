@@ -11,6 +11,9 @@
 #include "lib/random.h"
 #include "LoRa.h"
 #include "fmac.h"
+#include <TimeLib.h>
+#include "Legacy\Legacy.h"
+#include "CRC\lib_crc.h"
 
 
 /* get next frame which can be sent out */
@@ -142,10 +145,6 @@ void FanetMac::frameReceived(int length)
 	num_received = LoRa.getFrame(rx_frame, sizeof(rx_frame));
 
 	int rssi = LoRa.getRssi();
-	//int snr = int(LoRa.packetSnr() * 10.0);
-	int snr = (120 + rssi) * 10; //we use the rssi as snr-value cause snr is normally -10 to 20db on Lora. so we use rssi which is 0 - -120 in invert it to 0 - 120
-	if (snr < 0) snr = 0;
-	//log_i("snr=%d",snr);
 
 #if MAC_debug_mode > 0
 	Serial.printf("### Mac Rx:%d @ %d ", num_received, rssi);
@@ -162,8 +161,6 @@ void FanetMac::frameReceived(int length)
 	/* build frame from stream */
 	Frame *frm = new Frame(num_received, rx_frame);
 	frm->rssi = rssi;
-	//log_i("snr=%d",snr);
-	frm->snr = snr;
 
 	/* add to fifo */
 	if (rx_fifo.add(frm) < 0)
@@ -401,6 +398,117 @@ void FanetMac::handleRx()
 	delete frm;
 }
 
+
+
+void invertba(byte* ba, int len)
+{
+  for (int i =0;i<len;i++)
+    ba[i] =~ba[i];
+} 
+
+void dumpBuffer(uint8_t * data, int len,Stream& out)
+{
+  
+   int regnum=0;
+   do {
+     for (int i = 0; i < 16; i++) {
+        
+        uint8_t reg = data[regnum++];
+        if (reg < 16) {out.print("0");}
+        out.print(reg,HEX);
+        out.print(" ");
+     }
+    out.println();
+   } while (regnum <len);
+}
+
+unsigned short getLegacyCkSum(byte* ba, int len)
+{
+  unsigned short crc16 = 0xffff;  /* seed value */
+  crc16 = update_crc_ccitt(crc16, 0x31);
+  crc16 = update_crc_ccitt(crc16, 0xFA);
+  crc16 = update_crc_ccitt(crc16, 0xB6);
+    
+  for (int i =0;i<len;i++)
+    crc16 = update_crc_ccitt(crc16, (uint8_t)(ba[i]));
+
+ return crc16;    
+} 
+
+
+void FanetMac::setLegacy(uint8_t enableTx){
+    _enableLegacyTx = enableTx;
+}
+
+void FanetMac::handleTxFlarm()
+{
+    //Serial.println("FLARM PKT start");
+	time_t ts=now();
+	//dumpBuffer(Legacy_Buffer,24,Serial);
+	encrypt_legacy(Legacy_Buffer,ts);
+	Serial.println(now());
+//	dumpBuffer(Legacy_Buffer,24,Serial);
+	
+//	Serial.println("FLARM PKT end ");
+//	LoRa.dumpRegisters(Serial);
+//	Serial.println("FLARM Set Radio start ");
+	uint8_t syncWord[] = {0x99, 0xA5, 0xA9, 0x55, 0x66, 0x65, 0x96};
+	
+	//LoRa.dumpRegisters(Serial);
+
+    //LoRa.pushRegs();
+	//LoRa.irqEnable(false);
+	if (!LoRa.setFSK())
+		Serial.println("FSK Set Error");
+
+	delay(100);
+	LoRa.setSyncWordFSK(syncWord,sizeof(syncWord));
+	LoRa.setFrequencyDeviation(50.0);
+	LoRa.setBitRate(100.0);
+	LoRa.setPacketMode(0,26);
+	LoRa.setEncoding(1);
+	
+//	Serial.println("FLARM Set Radio end ");
+	delay(100);
+	//LoRa.dumpRegisters(Serial);
+
+	uint16_t crc16 =  getLegacyCkSum(Legacy_Buffer,24);
+
+	byte byteArr[26];
+	for (int i=0;i<24;i++)
+		byteArr[i]=Legacy_Buffer[i];
+	
+	byteArr[24]=(crc16 >>8);
+  	byteArr[25]=crc16;
+	
+	invertba(byteArr,26);
+	
+	LoRa.setTXFSK();
+	LoRa.write(byteArr,26);
+	
+	delay(10);
+	
+	if(!LoRa.setLoRa())
+		Serial.println("LoRA Set Error");
+
+	delay(10);
+	//LoRa.popRegs();
+
+	
+	LoRa.setSignalBandwidth(250E3); //set Bandwidth to 250kHz
+	LoRa.setSpreadingFactor(7); //set spreading-factor to 7
+	LoRa.setCodingRate4(8);
+	LoRa.setSyncWord(MAC_SYNCWORD);
+	LoRa.enableCrc();
+	//LoRa.dumpRegisters(Serial);
+	//LoRa.irqEnable(true);
+	
+//	Serial.println("Lora Set Radio End ");
+}
+
+
+
+
 /*
  * get a from from tx_fifo (or the app layer) and transmit it
  */
@@ -507,6 +615,11 @@ void FanetMac::handleTx()
 
 	if (tx_ret == TX_OK)
 	{
+		if(_enableLegacyTx>0)
+			if ((buffer[0]&0x1f)==1)  //only my traking data
+				handleTxFlarm();
+		
+
 #if MAC_debug_mode > 0
 		Serial.printf("done.\n");
 #endif

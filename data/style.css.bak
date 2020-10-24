@@ -14,8 +14,6 @@ button:hover{background:#0e70a4;}
 .bred:hover{background:#931f1f;}
 .bgrn{background:#47c266;}
 .bgrn:hover{background:#5aaf6f;}
-.byel{background:#b8b50b;}
-.byel:hover{background:#ddda09;}
 a{color:#1fa3ec;text-decoration:none;}
 .p{float:left;text-align:left;}
 .q{float:right;text-align:right;}

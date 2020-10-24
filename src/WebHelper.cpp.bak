@@ -19,7 +19,7 @@ void onWebSocketEvent(uint8_t client_num,
                       WStype_t type,
                       uint8_t * payload,
                       size_t length) {
-  StaticJsonDocument<650> doc;                      //Memory pool
+  StaticJsonDocument<500> doc;                      //Memory pool
   JsonObject root = doc.to<JsonObject>();
   DeserializationError error;
   uint8_t value = 0;
@@ -77,9 +77,6 @@ void onWebSocketEvent(uint8_t client_num,
           doc["type"] = (uint8_t)setting.AircraftType;
           doc["PilotName"] = setting.PilotName;
           doc["ognlive"] = setting.OGNLiveTracking;
-          doc["traccar_live"] = setting.traccarLiveTracking;
-          doc["traccarsrv"]= setting.TraccarSrv;
-          doc["legacytx"] = setting.LegacyTxEnable;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
 
@@ -214,9 +211,6 @@ void onWebSocketEvent(uint8_t client_num,
           if (root.containsKey("gsalt")) newSetting.gs.alt = doc["gsalt"].as<float>();
           if (root.containsKey("mode")) newSetting.Mode = doc["mode"].as<uint8_t>();
           if (root.containsKey("ognlive")) newSetting.OGNLiveTracking = doc["ognlive"].as<uint8_t>();
-          if (root.containsKey("traccar_live")) newSetting.traccarLiveTracking = doc["traccar_live"].as<uint8_t>();
-          if (root.containsKey("traccarsrv")) newSetting.TraccarSrv = doc["traccarsrv"].as<String>();
-          if (root.containsKey("legacytx")) newSetting.LegacyTxEnable = doc["legacytx"].as<uint8_t>();
           //vario
           if (root.containsKey("vSinkTh")) newSetting.vario.sinkingThreshold = doc["vSinkTh"].as<float>();
           if (root.containsKey("vClimbTh")) newSetting.vario.climbingThreshold = doc["vClimbTh"].as<float>();

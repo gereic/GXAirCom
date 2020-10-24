@@ -173,6 +173,7 @@ private:
 	void handleRx();
 
 	bool isNeighbor(MacAddr addr);
+	uint8_t _enableLegacyTx;
 
 public:
 	bool doForward = true;
@@ -190,12 +191,14 @@ public:
 
 	uint16_t numNeighbors(void) { return neighbors.size(); }
 	uint16_t numTrackingNeighbors(void);
-
+	void setLegacy(uint8_t enableTx);
 	/* Addr */
 	const MacAddr &myAddr;
 	bool setAddr(MacAddr addr);
 	bool eraseAddr(void);
 	MacAddr readAddr();
+	void handleTxFlarm();
+
 };
 
 extern FanetMac fmac;
