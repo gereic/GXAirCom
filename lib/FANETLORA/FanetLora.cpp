@@ -414,7 +414,6 @@ void FanetLora::handle_frame(Frame *frm){
       actTrackingData.devId = ((uint32_t)frm->src.manufacturer << 16) + (uint32_t)frm->src.id;
       actTrackingData.rssi = frm->rssi;
       actTrackingData.snr = frm->snr;
-      //log_i("snr=%f",actTrackingData.snr);
       getTrackingInfo(payload,frm->payload_length);
       insertDataToNeighbour(actTrackingData.devId,&actTrackingData);
   }else if (frm->type == 2){      

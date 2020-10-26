@@ -37,25 +37,17 @@ String Ogn::calcPass(String user){
     uint8_t buffer[length];
     String myString = user.substring(0,10);
     myString.toUpperCase();
-    //log_i("user=%s",myString.c_str());
     memcpy(buffer, myString.c_str(), length);
     uint16_t hash = 0x73e2;
     int i = 0;
-    //log_i("i=%d hash=%02X",i,hash);
     while (i < length){
         hash ^= buffer[i] << 8;
-        //log_i("i=%d hash=%02X",i,hash);
         if ((i+1) < length){
             hash ^= buffer[i+1];
-            //log_i("i=%d hash=%02X",i,hash);
-        }else{
-
         }
         i += 2;
     }
     hash &= 0x7fff;
-    //log_i("hash=%02X",i,hash);
-    //log_i("hash=%d",i,hash);
     return String(hash);
 }
 
@@ -83,10 +75,7 @@ void Ogn::checkLine(String line){
             tRecBaecon = millis() - OGNSTATUSINTERVALL;
             _servername = s;
             initOk = 1;
-            //log_i("servername=%s",_servername.c_str());
         }
-        //_servername = s;
-        
     }
 }
 
@@ -200,7 +189,6 @@ void Ogn::sendStatus(uint32_t tAct){
                 tRecBaecon = tAct;
                 tStatus = tAct;
                 String sTime = getActTimeString();
-                //log_i("_lat=%f",_lat);
                 if (sTime.length() > 0){
                     sendReceiverBeacon(sTime);
                     //sendReceiverStatus(sTime);

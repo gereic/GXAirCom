@@ -24,7 +24,7 @@ def copy_file(*args, **kwargs):
         savefile = 'bin/firmware_{}_{}.bin'.format(version,platform)
     else:
         savefile = 'bin/{}'.format(filename)
-    print(savefile)
+    print("********  copy file " + target + " to " + savefile + " *******")
     copyfile(target, savefile)
     print("Done.")
 
