@@ -770,7 +770,6 @@ void setupWifi(){
   if (setting.wifi.connect != WIFI_CONNECT_NONE){
     //esp_wifi_set_auto_connect(true);
     log_i("Try to connect to WiFi ...");
-    status.wifiStat = 1;
     WiFi.status();
     WiFi.mode(WIFI_MODE_APSTA);
     //WiFi.mode(WIFI_STA);
@@ -783,6 +782,7 @@ void setupWifi(){
     }
   }
   log_i("my APIP=%s",local_IP.toString().c_str());
+  status.wifiStat = 1;
   Web_setup();
 }
 
