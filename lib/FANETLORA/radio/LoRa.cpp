@@ -1153,12 +1153,11 @@ bool LoRaClass::setFSK() {
    _FskMode=true;
    uint8_t reg = readRegister(REG_OPMODE);
  
-  
   writeRegister(REG_OPMODE,  0x80);
-  delay(50);
+  delay(40); // neet to wait till it shut downs.. 
   writeRegister(REG_OPMODE,  0x00);
-  delay(50);
   writeRegister(REG_OPMODE,  0x01);
+
 
   reg= readRegister(REG_OPMODE);
   //Serial.println( reg,HEX);
@@ -1168,8 +1167,6 @@ bool LoRaClass::setFSK() {
     return false; 
 
 }
-
-
 
 bool LoRaClass::setLoRa() {
   _FskMode=false;
@@ -1182,9 +1179,9 @@ bool LoRaClass::setLoRa() {
   */
 
   writeRegister(REG_OPMODE,  0x00);
-  delay(10);
+  //delay(10);
   writeRegister(REG_OPMODE,  0x00);
-  delay(10);
+  //delay(10);
   writeRegister(REG_OPMODE,  0x80);
   writeRegister(REG_OPMODE,  0x80);
   writeRegister(REG_OPMODE,  0x81);
@@ -1198,10 +1195,38 @@ bool LoRaClass::setLoRa() {
     return false; 
 }
 
+void LoRaClass::WaitTxDone()
+{
+  u_short exitcnt=0;
+  while((readRegister(REG_IRQFLAGS2)&0x08)!=0x08)
+  {
+    delay(1);
+    exitcnt++;
+    //if more than 1 second exit..
+    if (exitcnt>1000)
+      break;
+  }
+}
+
+void LoRaClass::ClearIRQ()
+{
+  writeRegister(REG_IRQFLAGS1,0xFF);
+  writeRegister(REG_IRQFLAGS2,0xFF);
+}
+
+void LoRaClass::SetTxIRQ()
+{
+  writeRegister(REG_DIOMAPPING1,0x34);
+}
+
+void LoRaClass::SetFifoTresh()
+{
+  writeRegister(REG_FIFOTHRESH,0x80);
+}
 
 void LoRaClass::setTXFSK() {
    SPIsetRegValue(REG_OPMODE, 0, 7, 7);
-   writeRegister(REG_OPMODE,  MODE_TX); 
+   writeRegister(REG_OPMODE, 0x08| MODE_TX); 
 }
 
 void LoRaClass::setRXFSK() {
@@ -1219,17 +1244,13 @@ void LoRaClass::SPIsetRegValue(uint8_t reg, uint8_t value, uint8_t msb, uint8_t 
   uint8_t mask = ~((0b11111111 << (msb + 1)) | (0b11111111 >> (8 - lsb)));
   uint8_t newValue = (currentValue & ~mask) | (value & mask);
   writeRegister(reg, newValue);
-
 }
 
 
-void LoRaClass::setFrequencyDeviation(float freqDev) {
-  
+void LoRaClass::setFrequencyDeviation(float freqDev) { 
   // set mode to STANDBY
-
   writeRegister(REG_OPMODE,  MODE_STDBY);
  
-
   // set allowed frequency deviation
   uint32_t base = 1;
   uint32_t FDEV = (freqDev * (base << 19)) / 32000;
@@ -1249,12 +1270,9 @@ void LoRaClass::setBitRate(float br) {
 
 void LoRaClass::setSyncWordFSK(uint8_t * sw, int len)
 {
-
    // enable sync word recognition
   SPIsetRegValue(REG_SYNCCONFIG, SX127X_SYNC_ON, 4, 4);
   SPIsetRegValue(REG_SYNCCONFIG, len - 1, 2, 0);
-  
- 
   
   int i=0;
     for (i=0; i < len; i++) {
@@ -1266,10 +1284,8 @@ void  LoRaClass::setPacketMode(uint8_t mode, uint8_t len) {
  
   // set to fixed packet length
   SPIsetRegValue(REG_PACKETCONFIG1, mode, 7, 7);
-  
   // set length to register
   writeRegister(REG_PAYLOADLENGTH, len);
-
 }
 
 
@@ -1318,6 +1334,7 @@ void LoRaClass::setRxBandwidth(float rxBw) {
   }
   return;
 }
+
 void LoRaClass::irqEnable(bool enable)
 {
   if (enable)
@@ -1327,41 +1344,11 @@ void LoRaClass::irqEnable(bool enable)
     detachInterrupt(digitalPinToInterrupt(_dio0));
   }
 }
-void LoRaClass::setforceFSK()
-{
-/*
-  writeRegister(0x1,  0x0);
-  writeRegister(0x1,  0x0);
-*/
-  writeRegister(0x1, 0x0B);
-  //writeRegister(0x0e, 0x02);
-  //writeRegister(0x0f, 0x0A);
-  //writeRegister(0x08, 0xCD);
-  //writeRegister(0x09, 0xF8);
-  
-  //writeRegister(0x0b, 0x23);
-  //writeRegister(0x0c, 0x20);
-  //writeRegister(0x1f, 0xaa);
-  
-  //writeRegister(0x35, 0x8f);
-  //writeRegister(0x3b, 0x82);
-  //writeRegister(0x3c, 0xd7);
-  //writeRegister(0x44, 0xad);
-  //writeRegister(0x5b, 0xda);
-}
-uint8_t regs[128]={0};
-void LoRaClass::pushRegs()
-{
-    for (int i =1;i<127;i++)
-      regs[i]= readRegister(i);
-    
-}
 
-void LoRaClass::popRegs()
+void LoRaClass::setPaRamp(uint8_t ramp)
 {
-    for (int i =1;i<127;i++)
-      writeRegister(i, regs[i]);
-    
+  uint8_t value = 0b00010000| (ramp &0x0F);
+  writeRegister(REG_PARAMP, value); // unused=000, LowPnTxPllOff=1, PaRamp=1000
 }
 
 LoRaClass LoRa;

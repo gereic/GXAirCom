@@ -158,7 +158,8 @@ private:
 
 	unsigned long csma_next_tx = 0;
 	int csma_backoff_exp = MAC_TX_BACKOFF_EXP_MIN;
-
+	long setup_frequency;
+	
 	/* used for interrupt handler */
 	uint8_t rx_frame[MAC_FRAME_LENGTH];
 	int num_received = 0;
@@ -197,7 +198,7 @@ public:
 	bool setAddr(MacAddr addr);
 	bool eraseAddr(void);
 	MacAddr readAddr();
-	void handleTxFlarm();
+	void handleTxLegacy();
 
 };
 

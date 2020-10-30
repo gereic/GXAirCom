@@ -261,8 +261,11 @@ public:
   void setRxBandwidth(float rxBw);
   void setforceFSK();
   void irqEnable(bool enable);
-  void pushRegs();
-  void popRegs();
+  void setPaRamp(uint8_t ramp);
+  void ClearIRQ();
+  void WaitTxDone();
+  void SetTxIRQ();
+  void SetFifoTresh();
 private:
 
   void explicitHeaderMode();

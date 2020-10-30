@@ -61,18 +61,19 @@ function setFts(){
 //this function sets visible depending on actual option
 function setVis(){
   //console.log("visible=" + document.getElementById("mode").style.display)
-  if (document.getElementById("mode").value == 1){
+  if (document.getElementById("mode").value == 1){ //mode ground-station
     document.getElementById("VisAirCraftType").style.display='none';
     document.getElementById("VisLegacy").style.display='none';
     document.getElementById("legacytx").checked=false;
     document.getElementById("tName").innerHTML='Ground Station name';
     document.getElementById("VisGS").style.display=''; //set GS visible
-
+    document.getElementById("VisWD").style.display=''; //set weather-data visible
   }else{
     document.getElementById("VisLegacy").style.display='';
     document.getElementById("VisAirCraftType").style.display='';
     document.getElementById("tName").innerHTML='Pilot name';
     document.getElementById("VisGS").style.display='none'; //set GS invisible
+    document.getElementById("VisWD").style.display='none'; //set weather-data visible
   }
   if (document.getElementById("output").value == 1){
     document.getElementById("VisUdpIp").style.display='';
@@ -129,6 +130,8 @@ function sendValues(){
   vClimbTh : parseFloat(document.getElementById("vClimbTh").value),
   vVol : document.getElementById("vVol").value,
   vBeepFly : Number(document.getElementById("vBeepFly").checked),
+
+  sFWD : Number(document.getElementById("sFWD").checked),
   
   save : 1 
 			};
@@ -398,6 +401,19 @@ window.addEventListener("load", init, false);
           <tr>
             <th>alt [m] (ground-station)</th>
             <td><input type="number" id="gsalt" name="gsalt"></td>
+          </tr>
+        </tbody>      
+      </table>
+    </fieldset>
+    <p></p>
+    <p></p>
+    <fieldset id="VisWD">
+      <legend><b>Weather-data settings</b></legend>
+      <table style="width:100&#37;">
+        <tbody>
+          <tr>
+            <th>send weather-data over FANET</th>
+            <td><input type="checkbox" id="sFWD" name="sFWD"></td>
           </tr>
         </tbody>      
       </table>

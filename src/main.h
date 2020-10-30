@@ -4,9 +4,6 @@
 #ifndef __MAIN_H__
 #define __MAIN_H__
 
-//#define VERSION "v1.6.0"
-
-
 /*
 ************* Pins for TTGO-TBeam V1.0 / V1.1 ***************
 ******* LORA ********
@@ -74,6 +71,10 @@ BUZZER 0
 
 
 ************* Pins for TTGO Lora32 ***************
+******* LED *********
+LED_PIN 2
+
+
 ******* LORA ********
 SCK 5
 MISO 19
@@ -83,8 +84,8 @@ RST 14
 DIO0 26
 
 ******* OLED ********
-SDA 21
-SCL 22 
+SDA 4
+SCL 15
 RST 16
 
 ******** BARO *********
@@ -154,6 +155,7 @@ BUZZER 0
 
 #define BATTFULL 4050
 #define BATTEMPTY 3400
+#define BATTPINOK 1000 //1 Volt for Batt-pinOK
 
 #define MAXSCREENS 2
 
@@ -205,6 +207,8 @@ BUZZER 0
 #define WIFI_STA 1
 #define WIFI_CONNECTED 2
 
+#define WEATHER_UPDATE_RATE 40000 //update every 40 seconds weatherdata
+
 
 struct VarioSettings{
   float sinkingThreshold;
@@ -219,6 +223,10 @@ struct GSSettings{
   float lon; //Ground-Station Longitude
   float alt; //Ground-Station altitude
   String AWID; //Ground-Station ID
+};
+
+struct WeatherSettings{
+  uint8_t sendFanet;  
 };
 
 struct WifiSettings{
@@ -255,7 +263,8 @@ struct SettingsData{
   uint8_t screenNumber; //number of default-screen
   uint8_t LegacyTxEnable; //OGN-Live-Tracking
   uint8_t traccarLiveTracking; //Traccar live-tracking
-  String TraccarSrv; //OGN-Live-Tracking
+  String TraccarSrv; //OGN-Live-Tracking  
+  WeatherSettings wd;
 };
 
 struct statusData{
@@ -279,6 +288,7 @@ struct statusData{
   uint16_t fanetRx;
   bool bHasAXP192;
   bool bHasVario;
+  bool bHasBME;
   uint32_t tGPSCycle;
   uint32_t tLoop; //current Loop-time
   uint32_t tMaxLoop; //max Loop-time

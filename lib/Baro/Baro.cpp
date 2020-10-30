@@ -4,15 +4,55 @@ Baro::Baro(){
   //FilterAlt(1.0f, 1.0f, 0.01f);
 }
 
-bool Baro::begin(TwoWire *pi2c){
+bool Baro::initBME280(void){
+  uint8_t error;
+  sensorAdr = 0x76;
+  bool ret = false;
+  for (sensorAdr = 0x76; sensorAdr <= 0x77; sensorAdr++)
+  {
+    //log_i("check device at address 0x%X !",sensorAdr);
+    pI2c->beginTransmission(sensorAdr);
+    error = pI2c->endTransmission();
+    if (error == 0){
+      //log_i("I2C device found at address 0x%X !",sensorAdr);
+      ret = bme.begin(sensorAdr,pI2c);
+      //log_i("check sensor on adr 0x%X ret=%d",sensorAdr,ret);
+      if (ret){
+        //log_i("found sensor BME280 on adr 0x%X",sensorAdr);
+        break;
+      }
+      
+    }
+  }
+  
+  if (!ret) return false;
+  log_i("found sensor BME280 on adr 0x%X",sensorAdr);
+  sensorType = SENSORTYPE_BME280; //init to no sensor connected
+  //sensor found --> set sampling
+  bme.setSampling(Adafruit_BME280::MODE_NORMAL, // mode
+                  Adafruit_BME280::SAMPLING_X1, // temperature
+                  Adafruit_BME280::SAMPLING_X4, // pressure
+                  Adafruit_BME280::SAMPLING_NONE, // humidity
+                  Adafruit_BME280::FILTER_X16,  //filter
+                  Adafruit_BME280::STANDBY_MS_0_5);  //duration
+  return true;
+}
+
+bool Baro::initMS5611(void){
   // Initialize MS5611 sensor
   // Ultra high resolution: MS5611_ULTRA_HIGH_RES
   // (default) High resolution: MS5611_HIGH_RES
   // Standard: MS5611_STANDARD
   // Low power: MS5611_LOW_POWER
   // Ultra low power: MS5611_ULTRA_LOW_POWER
-  uint8_t initCount = 0;
-  while(!ms5611.begin(pi2c,MS5611_ULTRA_HIGH_RES))
+  //uint8_t initCount = 0;
+  //log_i("init ms5611");
+  if (!ms5611.begin(pI2c,MS5611_ULTRA_HIGH_RES)){
+    return false; //no baro found
+  }
+  log_i("found sensor MS5611");
+  /*
+  while(!ms5611.begin(pI2c,MS5611_ULTRA_HIGH_RES))
   {
     log_i("no sensor found");
     initCount++;
@@ -21,12 +61,11 @@ bool Baro::begin(TwoWire *pi2c){
     }
     delay(500);
   }  
+  */
+  sensorType = SENSORTYPE_MS5611; //init to no sensor connected
   //ms5611.doConversion();
   //accelgyro.initialize();
-  xMutex = xSemaphoreCreateMutex();
-  
   // initialize device
-  log_i("Initializing I2C devices...");
   accelgyro.initialize();
   // reset offsets  
   accelgyro.setXAccelOffset(-1617);
@@ -45,6 +84,18 @@ bool Baro::begin(TwoWire *pi2c){
   // verify connection
   //Serial.println("Testing device connections...");
   //Serial.println(accelgyro.testConnection() ? "MPU6050 connection successful" : "MPU6050 connection failed"); 
+  return true;
+}
+
+bool Baro::begin(TwoWire *pi2c){
+  pI2c = pi2c;
+  sensorType = SENSORTYPE_NONE; //init to no sensor connected
+  if (!initBME280()){
+    if (!initMS5611()){
+      return false;
+    }
+  }
+  xMutex = xSemaphoreCreateMutex();
   //Serial.print("size of data:"); Serial.println(sizeof(logData));  
   memset(&logData,0,sizeof(logData));
   countReadings = 0;
@@ -115,10 +166,8 @@ void Baro::getValues(float *pressure,float *alt,float *climb,float *temp){
 
 }
 
-void Baro::run(void){
-  static uint32_t tOld;  
-  uint32_t tAct = millis();
-  
+void Baro::runMS5611(uint32_t tAct){
+  static uint32_t tOld;
   ms5611.run();
   if (ms5611.convFinished()){
     mag.getHeading(&logData.mx, &logData.my, &logData.mz);
@@ -139,6 +188,8 @@ void Baro::run(void){
 
       logData.temp = ms5611.readTemperature(true);
       logData.pressure = ms5611.readPressure(true);
+      //log_i("temp=%f pressure=%f",logData.temp,logData.pressure);
+
       logData.altitude = ms5611.getAltitude(logData.pressure);
       //logData.altitude = alt;
       //float altNew = FilterAlt.updateEstimate(alt);
@@ -164,6 +215,48 @@ void Baro::run(void){
       //Serial.println(logData.temp,2);
     }    
   }
+
+}
+
+void Baro::runBME280(uint32_t tAct){
+  static uint32_t tOld = millis();
+  if ((tAct - tOld) >= 10){
+    bme.readADCValues();
+    if (countReadings < 10){
+      countReadings++;
+    }else{
+      if (countReadings == 10){
+        logData.newData = 0x80;
+        countReadings++;
+      }
+      logData.temp = bme.getTemp()/100;
+      logData.pressure = bme.getPressure();
+      //log_i("temp=%f pressure=%f",logData.temp,logData.pressure);
+      logData.altitude = ms5611.getAltitude(logData.pressure);
+      logData.loopTime = tAct - tOld;
+      calcClimbing();
+      if (logData.newData == 0x80){
+        logData.newData = 0;
+        bNewValues = false;
+      }else{
+        copyValues();        
+        logData.newData = 1;
+        bNewValues = true;
+      }
+    }
+  }
+}
+
+void Baro::run(void){
+  static uint32_t tOld;  
+  uint32_t tAct = millis();
+
+  if (sensorType == SENSORTYPE_MS5611){
+    runMS5611(tAct);
+  }else if (sensorType == SENSORTYPE_BME280){
+    runBME280(tAct);
+  }
+
   #ifdef BARO_DEBUG
   if ((WiFi.status() == WL_CONNECTED) && (logData.newData)){
     udp.beginPacket(BARO_DEBUG_IP,BARO_DEBUG_PORT);

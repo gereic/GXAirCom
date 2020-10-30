@@ -134,10 +134,19 @@ bool Adafruit_BME280::init() {
     }
   }
 
+  
   // check if sensor, i.e. the chip ID is correct
   _sensorID = read8(BME280_REGISTER_CHIPID);
-  if (_sensorID != 0x60)
+  //log_i("sensorId=0x%X",_sensorID);
+  if (_sensorID == BME280CHIP_ID){
+    isBME280 = true;
+  }else{
+    isBME280 = false;
+  }
+  if ((_sensorID != BME280CHIP_ID) && (_sensorID != BMP280CHIP_ID)){
+    //log_e("unknown-chip-id 0x%X",_sensorID);
     return false;
+  }
 
   // reset the device using soft-reset
   // this makes sure the IIR is off, etc.
@@ -587,9 +596,11 @@ uint8_t Adafruit_BME280::readADCValues(void){
     adc_T <<= 8;
     adc_T |= _wire->read();
     adc_T >>= 4;
-    adc_H = _wire->read();
-    adc_H <<= 8;
-    adc_H |= _wire->read();  
+    if (isBME280){
+      adc_H = _wire->read();
+      adc_H <<= 8;
+      adc_H |= _wire->read();  
+    }
   } else {
     if (_sck == -1)
       _spi->beginTransaction(SPISettings(500000, MSBFIRST, SPI_MODE0));
@@ -608,10 +619,11 @@ uint8_t Adafruit_BME280::readADCValues(void){
     adc_T <<= 8;
     adc_T |= spixfer(0);
     adc_T >>= 4;
-    adc_H = spixfer(0);
-    adc_H <<= 8;
-    adc_H |= spixfer(0);  
-
+    if (isBME280){
+      adc_H = spixfer(0);
+      adc_H <<= 8;
+      adc_H |= spixfer(0);  
+    }
     digitalWrite(_cs, HIGH);
     if (_sck == -1)
       _spi->endTransaction(); // release the SPI bus
@@ -627,7 +639,11 @@ uint8_t Adafruit_BME280::readADCValues(void){
     //Serial.print(F("7"));
 	  uiPressure = calcPressure();
     //Serial.print(F("8"));
-	  uiHumidity = calcHumidity();
+	  if (isBME280){
+      uiHumidity = calcHumidity();
+    }else{
+      uiHumidity = 0;
+    }
     //Serial.print(F("11"));
   	return 0;
   }

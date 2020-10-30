@@ -762,12 +762,12 @@ int FanetLora::serialize_service(weatherData *wData,uint8_t*& buffer){
   buffer = new uint8_t[msgSize];
   fanet_packet_t4 *pkt = (fanet_packet_t4 *)&buffer[0];
   pkt->bExt_header2 = false;
-  pkt->bStateOfCharge = true;
+  pkt->bStateOfCharge = wData->bStateOfCharge;
   pkt->bRemoteConfig = false;
-  pkt->bBaro = true;
-  pkt->bHumidity = true;
-  pkt->bWind = true;
-  pkt->bTemp = true;
+  pkt->bBaro = wData->bBaro;
+  pkt->bHumidity = wData->bHumidity;
+  pkt->bWind = wData->bWind;
+  pkt->bTemp = wData->bTemp;
   pkt->bInternetGateway = false;
   coord2payload_absolut(wData->lat,wData->lon, &buffer[1]);
   int iTemp = (int)(round(wData->temp * 2)); //Temperature (+1byte in 0.5 degree, 2-Complement)

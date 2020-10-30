@@ -21,6 +21,7 @@
 #include <MS5611.h>
 #include <math.h>
 #include <kalmanvert.h>
+#include <Adafruit_BME280.h>
 
 //#define BARO_DEBUG
 #define BARO_DEBUG_IP "192.168.0.110"
@@ -33,6 +34,9 @@
 #define ACCELERATION_MEASURE_STANDARD_DEVIATION 0.6
 #endif //HAVE_ACCELEROMETER 
 
+#define SENSORTYPE_NONE 0
+#define SENSORTYPE_MS5611 1
+#define SENSORTYPE_BME280 2
 
 class Baro {
     struct udpData{
@@ -66,9 +70,17 @@ public:
 
 protected:
 private:
+    TwoWire *pI2c;
     void calcClimbing(void);
     void copyValues(void);
+    bool initMS5611(void);
+    bool initBME280(void);
+    void runMS5611(uint32_t tAct);
+    void runBME280(uint32_t tAct);
+    uint8_t sensorType;
+    uint8_t sensorAdr;
     bool bNewValues;
+    Adafruit_BME280 bme;
     MS5611 ms5611;
     MPU6050 accelgyro;
     HMC5883L mag;

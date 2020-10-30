@@ -36,6 +36,9 @@
                                          */
 #define BME280_ADDRESS_ALTERNATE (0x76) // Alternate Address
 
+#define BME280CHIP_ID 0x60
+#define BMP280CHIP_ID 0x58
+
 #define BME280_S32_t int32_t
 #define BME280_U32_t uint32_t
 
@@ -250,6 +253,8 @@ protected:
   int8_t _mosi; //!< for the SPI interface
   int8_t _miso; //!< for the SPI interface
   int8_t _sck;  //!< for the SPI interface
+
+  bool isBME280;
 
   bme280_calib_data _bme280_calib; //!< here calibration data is stored
 

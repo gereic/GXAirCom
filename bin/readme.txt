@@ -64,6 +64,10 @@ BUZZER 0
 
 
 ************* Pins for TTGO Lora32 ***************
+******* LED *********
+LED_PIN 2
+
+
 ******* LORA ********
 SCK 5
 MISO 19
@@ -73,9 +77,9 @@ RST 14
 DIO0 26
 
 ******* OLED ********
-SDA 21
-SCL 22 
-RST 16
+SDA 4
+SCL 15
+RST 16 
 
 ******** BARO *********
 SDA 13

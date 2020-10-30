@@ -109,6 +109,7 @@ void onWebSocketEvent(uint8_t client_num,
           doc["gslat"] = setting.gs.lat;
           doc["gslon"] = setting.gs.lon;
           doc["gsalt"] = setting.gs.alt;
+          doc["sFWD"] = setting.wd.sendFanet;
 
           doc["bHasVario"] = (uint8_t)status.bHasVario;
           doc["vSinkTh"] = serialized(String(setting.vario.sinkingThreshold,2));
@@ -217,6 +218,7 @@ void onWebSocketEvent(uint8_t client_num,
           if (root.containsKey("traccar_live")) newSetting.traccarLiveTracking = doc["traccar_live"].as<uint8_t>();
           if (root.containsKey("traccarsrv")) newSetting.TraccarSrv = doc["traccarsrv"].as<String>();
           if (root.containsKey("legacytx")) newSetting.LegacyTxEnable = doc["legacytx"].as<uint8_t>();
+          if (root.containsKey("sFWD")) newSetting.wd.sendFanet = doc["sFWD"].as<uint8_t>();
           //vario
           if (root.containsKey("vSinkTh")) newSetting.vario.sinkingThreshold = doc["vSinkTh"].as<float>();
           if (root.containsKey("vClimbTh")) newSetting.vario.climbingThreshold = doc["vClimbTh"].as<float>();

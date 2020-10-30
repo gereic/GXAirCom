@@ -148,12 +148,17 @@ public:
   typedef struct {
     float lat; //latitude
     float lon; //longitude
+    bool bTemp;
     float temp; //temp [°C]
     float wHeading; //wind heading [°]
+    bool bWind;
     float wSpeed; //km/h
     float wGust; //km/h
+    bool bHumidity;
     float Humidity;
+    bool bBaro;
     float Baro;
+    bool bStateOfCharge;
     uint8_t Charge; //+1byte lower 4 bits: 0x00 = 0%, 0x01 = 6.666%, .. 0x0F = 100%
   } weatherData;
 

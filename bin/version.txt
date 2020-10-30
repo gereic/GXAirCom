@@ -88,3 +88,10 @@ As Lora, the snr-value goes from -10dB to 20dB we send the inverted rssi-signal,
 V1.6.0
 Added legacy-Mode
 added Traccar tracking
+
+V1.7.0
+Legacy-Mode Bugfix --> now working directly with OGN-Ground-Station (Raspberry-pi and RTL-SDR-Dongle)
+BME280 and BMP280 are now supported as baro-sensor.
+in Ground-Station-Mode weather-data can be transmitted, if a BME280 is connected to the baro-pins (wind-sensor is not yet implemented)
+hostname will be set, so you can ping the device with gxaircom-07XXXX (XXXX --> device-id)
+improved screen switching (is now much faster (more responsive))

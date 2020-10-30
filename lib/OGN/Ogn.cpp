@@ -115,11 +115,12 @@ uint8_t Ogn::getSenderDetails(aircraft_t aircraftType,String devId){
         break;
     }
     type = type << 2;
-    if (!devId.startsWith("11")){
-        type += 3;
-    }else{
-        type += 2; //address type FLARM
-    }
+    //cause, GXAircom is also able to send legacy-mode --> we send always as flarm-device.
+    //if (!devId.startsWith("11")){
+    //    type += 3;
+    //}else{
+    type += 2; //address type FLARM
+    //}
     
     return type;
 }

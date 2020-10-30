@@ -23,6 +23,7 @@
 #include "SparkFun_Ublox_Arduino_Library.h"
 #include <TimeLib.h>
 #include <HTTPClient.h>
+#include <Weather.h>
 
 
 //#include <U8g2lib.h>
@@ -69,6 +70,7 @@ FanetLora::trackingData MyFanetData;
 
 FanetLora::trackingData testTrackingData;
 FanetLora::weatherData testWeatherData;
+bool sendWeatherData = false;
 String testString;
 uint32_t fanetReceiver;
 uint8_t sendTestData = 0;
@@ -125,6 +127,7 @@ TaskHandle_t xHandleBackground = NULL;
 TaskHandle_t xHandleBluetooth = NULL;
 TaskHandle_t xHandleMemory = NULL;
 TaskHandle_t xHandleEInk = NULL;
+TaskHandle_t xHandleWeather = NULL;
 
 /********** function prototypes ******************/
 void setupAXP192();
@@ -134,6 +137,7 @@ void taskBackGround(void *pvParameters);
 void taskEInk(void *pvParameters);
 void taskBluetooth(void *pvParameters);
 void taskMemory(void *pvParameters);
+void taskWeather(void *pvParameters);
 void setupWifi();
 void IRAM_ATTR ppsHandler(void);
 void startOLED();
@@ -704,7 +708,14 @@ void IRAM_ATTR ppsHandler(void){
 }
 
 void WiFiEvent(WiFiEvent_t event){
+  esp_err_t err;
   switch(event){
+    case SYSTEM_EVENT_STA_START:
+      log_i("SYSTEM_EVENT_STA_START");
+      break;
+    case SYSTEM_EVENT_ETH_START:
+      log_i("SYSTEM_EVENT_ETH_START");
+      break;
     case SYSTEM_EVENT_AP_START:
       log_d("AP started. IP: [%s]", WiFi.softAPIP().toString().c_str() );
       break;
@@ -746,6 +757,7 @@ void setupWifi(){
   //delay(500);
   WiFi.persistent(false);
   WiFi.onEvent(WiFiEvent);
+  WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE); // call is only a workaround for bug in WiFi class
   log_i("Setting soft-AP ... ");
   //if (WiFi.softAP(host_name.c_str(), setting.appw.c_str(),rand() % 12 + 1,0,2)){
   if (WiFi.softAP(host_name.c_str(), setting.wifi.appw.c_str())){
@@ -762,8 +774,6 @@ void setupWifi(){
   }
   delay(10);
 
-  log_i("hostname=%s",host_name.c_str());
-  WiFi.setHostname(host_name.c_str());
   //now configure access-point
   //so we have wifi connect and access-point at same time
   //we connecto to wifi
@@ -781,6 +791,9 @@ void setupWifi(){
       WiFi.begin();
     }
   }
+  log_i("hostname=%s",host_name.c_str());
+  WiFi.setHostname(host_name.c_str());
+
   log_i("my APIP=%s",local_IP.toString().c_str());
   status.wifiStat = 1;
   Web_setup();
@@ -865,10 +878,12 @@ void printSettings(){
   log_i("GS LON=%02.6f",setting.gs.lon);
   log_i("GS ALT=%0.2f",setting.gs.alt);
   log_i("GS AWID=%s",setting.gs.AWID);
+  log_i("WD Fanet-Weatherdata=%d",setting.wd.sendFanet);
   log_i("OGN-Livetracking=%d",setting.OGNLiveTracking);
   log_i("Traccar-Livetracking=%d",setting.traccarLiveTracking);
   log_i("Traccar-Address=%s",setting.TraccarSrv.c_str());
   log_i("Legacy-TX=%d",setting.LegacyTxEnable);
+  
   //vario
   log_i("VarioSinkingThreshold=%0.2f",setting.vario.sinkingThreshold);
   log_i("VarioClimbingThreshold=%0.2f",setting.vario.climbingThreshold);
@@ -934,6 +949,7 @@ void setup() {
   Serial.begin(115200);
 
   status.bPowerOff = false;
+  status.bHasBME = false;
 
   ledcSetup(channel, freq, resolution);
   ledcAttachPin(PINBUZZER, channel);  
@@ -1052,7 +1068,66 @@ void setup() {
   //xTaskCreatePinnedToCore(taskMemory, "taskMemory", 4096, NULL, 1, &xHandleMemory, ARDUINO_RUNNING_CORE1);
   //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
   xTaskCreatePinnedToCore(taskBluetooth, "taskBluetooth", 4096, NULL, 7, &xHandleBluetooth, ARDUINO_RUNNING_CORE1);
+
+  //start weather-task
+  xTaskCreatePinnedToCore(taskWeather, "taskWeather", 4096, NULL, 8, &xHandleWeather, ARDUINO_RUNNING_CORE1);
 }
+
+void taskWeather(void *pvParameters){
+  static uint32_t tSendData = millis();
+  Weather::weatherData wData;
+  log_i("starting weather-task ");  
+  if (setting.Mode != MODE_GROUND_STATION){
+    status.bHasBME = false;    
+    log_i("not in GS-Mode --> stop task");
+    vTaskDelete(xHandleWeather);
+    return;    
+  }
+  TwoWire i2cWeather = TwoWire(0);
+  if (setting.boardType == BOARD_HELTEC_LORA){
+    i2cWeather.begin(13,23,400000); //init i2cBaro for Baro
+  }else{
+    i2cWeather.begin(13,14,400000); //init i2cBaro for Baro
+  }
+  Weather weather;
+  if (!weather.begin(&i2cWeather,setting.gs.alt)){
+    log_i("no BME-sensor found --> stopping task");
+    vTaskDelete(xHandleWeather);
+    return;    
+  }
+  while (1){
+    uint32_t tAct = millis();
+    weather.run();
+    if (setting.wd.sendFanet){
+      if (timeOver(tAct,tSendData,WEATHER_UPDATE_RATE)){
+        weather.getValues(&wData);
+        testWeatherData.lat = setting.gs.lat;
+        testWeatherData.lon = setting.gs.lon;
+        testWeatherData.bWind = true;
+        testWeatherData.wHeading = 0;
+        testWeatherData.wSpeed = 0;
+        testWeatherData.wGust = 0;      
+        testWeatherData.bTemp = wData.bTemp;
+        testWeatherData.bHumidity = wData.bHumidity;
+        testWeatherData.bBaro = wData.bPressure;
+        testWeatherData.temp = wData.temp;
+        testWeatherData.Humidity = wData.Humidity;
+        testWeatherData.Baro = wData.Pressure;      
+        testWeatherData.bStateOfCharge = true;
+        //testWeatherData.Charge = status.BattPerc;
+        testWeatherData.Charge = 44;
+        sendWeatherData = true;
+        tSendData = tAct;
+      }
+    }
+    delay(1);
+    if ((WebUpdateRunning) || (bPowerOff)) break;
+  }
+  log_i("stop task");
+  vTaskDelete(xHandleWeather); //delete weather-task
+}
+
+
 
 void taskBaro(void *pvParameters){
   static uint32_t tRefresh = millis();
@@ -1130,7 +1205,11 @@ void taskMemory(void *pvParameters) {
 void taskBluetooth(void *pvParameters) {
 
 	// BLEServer *pServer;
+  //Put a 10 second delay before Seral BT start to allow settings to work.
+  if ((setting.outputMode == OUTPUT_BLUETOOTH))
+    delay(10000);
 
+  //esp_coex_preference_set(ESP_COEX_PREFER_BT);
   while(host_name.length() == 0){
     delay(100); //wait until we have the devid
   }
@@ -1156,7 +1235,7 @@ void taskBluetooth(void *pvParameters) {
     esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT);
     esp_bt_controller_enable(ESP_BT_MODE_BLE);    
     //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());    
-    start_ble(host_name);
+    start_ble(host_name+"-LE");
     status.bluetoothStat = 1;
 	 while (1)
 	 {
@@ -1463,77 +1542,71 @@ void DrawRadarScreen(uint32_t tAct,uint8_t mode){
   float rads;
   
   String s = "";
-  //if ((tAct - tPrint) >= 1000){
-    tPrint = tAct;
-    display.clearDisplay();
-    drawAircraftType(0,0,setting.AircraftType);
-    drawSatCount(18,0,(status.GPS_NumSat > 9) ? 9 : status.GPS_NumSat);
-    //drawSatCount(18,0,9);
-    if (status.wifiStat==1) display.drawXBitmap(85,0,WIFI_AP_bits,WIFI_width,WIFI_height,WHITE);
-    if (status.wifiStat==2) display.drawXBitmap(85,0,WIFI_Sta_bits,WIFI_width,WIFI_height,WHITE);
-    drawBluetoothstat(101,0);
-    drawBatt(111, 0,(status.BattCharging) ? 255 : status.BattPerc);
+  tPrint = tAct;
+  display.clearDisplay();
+  drawAircraftType(0,0,setting.AircraftType);
+  drawSatCount(18,0,(status.GPS_NumSat > 9) ? 9 : status.GPS_NumSat);
+  //drawSatCount(18,0,9);
+  if (status.wifiStat==1) display.drawXBitmap(85,0,WIFI_AP_bits,WIFI_width,WIFI_height,WHITE);
+  if (status.wifiStat==2) display.drawXBitmap(85,0,WIFI_Sta_bits,WIFI_width,WIFI_height,WHITE);
+  drawBluetoothstat(101,0);
+  drawBatt(111, 0,(status.BattCharging) ? 255 : status.BattPerc);
 
-    
-    display.setTextSize(1);
-    display.drawCircle(RADAR_SCREEN_CENTER_X,RADAR_SCREEN_CENTER_Y,24,WHITE);
+  
+  display.setTextSize(1);
+  display.drawCircle(RADAR_SCREEN_CENTER_X,RADAR_SCREEN_CENTER_Y,24,WHITE);
 
-    DrawAngleLine(RADAR_SCREEN_CENTER_X,RADAR_SCREEN_CENTER_Y,30,fanet._myData.heading * -1);
-    DrawAngleLine(RADAR_SCREEN_CENTER_X,RADAR_SCREEN_CENTER_Y,6,(fanet._myData.heading + 90) * -1);
-    rads = deg2rad(fanet._myData.heading * -1);
-    xStart=(int)(((sin(rads) * 19) * 1) + RADAR_SCREEN_CENTER_X);
-    yStart=(int)(((cos(rads) * 19) * -1) + RADAR_SCREEN_CENTER_Y);
-    display.setCursor(xStart-2,yStart-3);
-    display.print("N");
+  DrawAngleLine(RADAR_SCREEN_CENTER_X,RADAR_SCREEN_CENTER_Y,30,fanet._myData.heading * -1);
+  DrawAngleLine(RADAR_SCREEN_CENTER_X,RADAR_SCREEN_CENTER_Y,6,(fanet._myData.heading + 90) * -1);
+  rads = deg2rad(fanet._myData.heading * -1);
+  xStart=(int)(((sin(rads) * 19) * 1) + RADAR_SCREEN_CENTER_X);
+  yStart=(int)(((cos(rads) * 19) * -1) + RADAR_SCREEN_CENTER_Y);
+  display.setCursor(xStart-2,yStart-3);
+  display.print("N");
 
-    //display.drawFastHLine(0,RADAR_SCREEN_CENTER_X,64,WHITE);
-    //display.drawFastVLine(RADAR_SCREEN_CENTER_X,8,56,WHITE);
-    display.setTextSize(1);
-    display.setCursor(42,0);
-    switch (mode)
-    {
-    case RADAR_CLOSEST:
-      display.print("CLOSEST");
-      if (status.GPS_Fix == 0){
-        display.setCursor(60,16);
-        display.print("NO GPS-FIX");
-        break;
-      } 
-      index = fanet.getNearestNeighborIndex();
-      //log_i("index %i",index);
-      if (index < 0) break;
-      neighborIndex = index;
-      DrawRadarPilot(neighborIndex);
+  //display.drawFastHLine(0,RADAR_SCREEN_CENTER_X,64,WHITE);
+  //display.drawFastVLine(RADAR_SCREEN_CENTER_X,8,56,WHITE);
+  display.setTextSize(1);
+  display.setCursor(42,0);
+  switch (mode)
+  {
+  case RADAR_CLOSEST:
+    display.print("CLOSEST");
+    if (status.GPS_Fix == 0){
+      display.setCursor(60,16);
+      display.print("NO GPS-FIX");
       break;
-    case RADAR_LIST:
-      display.print("LIST");
-      if (status.GPS_Fix == 0){
-        display.setCursor(60,16);
-        display.print("NO GPS-FIX");
-        break;
-      } 
-      index = fanet.getNextNeighbor(neighborIndex);
-      if (index < 0) break;
-      neighborIndex = index;
-      DrawRadarPilot(neighborIndex);
+    } 
+    index = fanet.getNearestNeighborIndex();
+    //log_i("index %i",index);
+    if (index < 0) break;
+    neighborIndex = index;
+    DrawRadarPilot(neighborIndex);
+    break;
+  case RADAR_LIST:
+    display.print("LIST");
+    if (status.GPS_Fix == 0){
+      display.setCursor(60,16);
+      display.print("NO GPS-FIX");
       break;
-    case RADAR_FRIENDS:
-      display.print("FRIENDS");
-      if (status.GPS_Fix == 0){
-        display.setCursor(50,16);
-        display.print("NO GPS-FIX");
-        break;
-      } 
-      break;    
-    default:
+    } 
+    index = fanet.getNextNeighbor(neighborIndex);
+    if (index < 0) break;
+    neighborIndex = index;
+    DrawRadarPilot(neighborIndex);
+    break;
+  case RADAR_FRIENDS:
+    display.print("FRIENDS");
+    if (status.GPS_Fix == 0){
+      display.setCursor(50,16);
+      display.print("NO GPS-FIX");
       break;
-    }
-
-
-
-
-    display.display();
-  //}
+    } 
+    break;    
+  default:
+    break;
+  }
+  display.display();
 }
 
 void drawSatCount(int16_t x, int16_t y,uint8_t value){
@@ -1810,6 +1883,7 @@ void taskStandard(void *pvParameters){
   FanetLora::trackingData myFanetData;  
   FanetLora::trackingData tFanetData;  
   
+  uint8_t oldScreenNumber = 0;
   tFanetData.rssi = 0;
   MyFanetData.rssi = 0;
 
@@ -1938,25 +2012,25 @@ void taskStandard(void *pvParameters){
           switch (setting.screenNumber)
           {
           case 0: //main-Display
-            if (timeOver(tAct,tDisplay,DISPLAY_UPDATE_RATE)){
+            if ((timeOver(tAct,tDisplay,DISPLAY_UPDATE_RATE)) || (oldScreenNumber != setting.screenNumber)){
               tDisplay = tAct;
               printGPSData(tAct);          
             }
             break;
           case 1: //radar-screen with list
-            if (timeOver(tAct,tDisplay,DISPLAY_UPDATE_RATE2)){
-              tDisplay = tAct;
+            if ((timeOver(tAct,tDisplay,DISPLAY_UPDATE_RATE2)) || (oldScreenNumber != setting.screenNumber)){
+              tDisplay = tAct;              
               DrawRadarScreen(tAct,RADAR_LIST);
             }
             break;
           case 2: //radar-screen with closest
-            if (timeOver(tAct,tDisplay,DISPLAY_UPDATE_RATE)){
+            if ((timeOver(tAct,tDisplay,DISPLAY_UPDATE_RATE)) || (oldScreenNumber != setting.screenNumber)){
               tDisplay = tAct;
               DrawRadarScreen(tAct,RADAR_CLOSEST);
             }
             break;
           case 3: //list aircrafts
-            if (timeOver(tAct,tDisplay,DISPLAY_UPDATE_RATE)){
+            if ((timeOver(tAct,tDisplay,DISPLAY_UPDATE_RATE)) || (oldScreenNumber != setting.screenNumber)){
               tDisplay = tAct;
               //DrawAircraftList();
             }
@@ -1964,6 +2038,7 @@ void taskStandard(void *pvParameters){
           default:
             break;
           }
+          oldScreenNumber = setting.screenNumber;
 
       }
     }
@@ -1984,8 +2059,18 @@ void taskStandard(void *pvParameters){
       sendTestData = 0;
     }else if (sendTestData == 4){
       log_i("sending msgtype 4");
+      testWeatherData.bStateOfCharge = true;
+      testWeatherData.bBaro = true;
+      testWeatherData.bHumidity = true;
+      testWeatherData.bWind = true;
+      testWeatherData.bTemp = true;
       fanet.writeMsgType4(&testWeatherData);
       sendTestData = 0;
+    }
+    if (sendWeatherData){ //we have to send weatherdata
+      log_i("sending weatherdata");
+      fanet.writeMsgType4(&testWeatherData);
+      sendWeatherData = false;
     }
     pSerialLine = readSerial();
     if (pSerialLine != NULL){
@@ -2324,7 +2409,8 @@ void taskBackGround(void *pvParameters){
     if (status.bPowerOff){
       powerOff(); //power off, when battery is empty !!
     }
-    if ((status.vBatt < BATTEMPTY) && (status.vBatt > 0)) {
+    if ((status.vBatt < BATTEMPTY) && (status.vBatt >= BATTPINOK)) { // if Batt-voltage is below 1V, maybe the resistor is missing.
+      log_i("Batt empty voltage=%d.%dV",status.vBatt/1000,status.vBatt%1000);
       powerOff(); //power off, when battery is empty !!
     }
     if (newStationConnected){
