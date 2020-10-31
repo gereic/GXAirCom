@@ -145,6 +145,8 @@ void FanetMac::frameReceived(int length)
 	num_received = LoRa.getFrame(rx_frame, sizeof(rx_frame));
 
 	int rssi = LoRa.getRssi();
+	int snr = (120 + rssi) * 10; //we use the rssi as snr-value cause snr is normally -10 to 20db on Lora. so we use rssi which is 0 - -120 in invert it to 0 - 120
+	if (snr < 0) snr = 0;	
 
 #if MAC_debug_mode > 0
 	Serial.printf("### Mac Rx:%d @ %d ", num_received, rssi);
@@ -161,7 +163,8 @@ void FanetMac::frameReceived(int length)
 	/* build frame from stream */
 	Frame *frm = new Frame(num_received, rx_frame);
 	frm->rssi = rssi;
-
+	frm->snr = snr;
+	
 	/* add to fifo */
 	if (rx_fifo.add(frm) < 0)
 		delete frm;

@@ -95,3 +95,6 @@ BME280 and BMP280 are now supported as baro-sensor.
 in Ground-Station-Mode weather-data can be transmitted, if a BME280 is connected to the baro-pins (wind-sensor is not yet implemented)
 hostname will be set, so you can ping the device with gxaircom-07XXXX (XXXX --> device-id)
 improved screen switching (is now much faster (more responsive))
+
+V1.7.1
+Bugfix with signal strength on OGN-Tracking

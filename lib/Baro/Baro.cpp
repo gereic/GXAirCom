@@ -26,7 +26,11 @@ bool Baro::initBME280(void){
   }
   
   if (!ret) return false;
-  log_i("found sensor BME280 on adr 0x%X",sensorAdr);
+  
+  char sensType ='P';
+  if (bme.sensorID()==BME280CHIP_ID)
+    sensType='E';    
+  log_i("found sensor BM%C280 on adr 0x%X",sensType,sensorAdr);
   sensorType = SENSORTYPE_BME280; //init to no sensor connected
   //sensor found --> set sampling
   bme.setSampling(Adafruit_BME280::MODE_NORMAL, // mode
