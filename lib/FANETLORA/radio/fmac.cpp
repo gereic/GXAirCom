@@ -248,6 +248,7 @@ bool FanetMac::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset, 
 /* wrapper to fit callback into c++ */
 void FanetMac::stateWrapper()
 {
+	fmac.handleIRQ();
 	fmac.handleRx();
 	fmac.handleTx();
 }
@@ -283,6 +284,16 @@ void FanetMac::ack(Frame* frm)
 	//note: this will not fail by define
 	if (tx_fifo.add(ack) != 0)
 		delete ack;
+}
+
+/*
+ * Processes irq
+ */
+void FanetMac::handleIRQ(){
+	int packetSize = LoRa.parsePacket();
+	if (packetSize > 0){
+		frameRxWrapper(packetSize);
+	}
 }
 
 /*
@@ -450,6 +461,7 @@ void FanetMac::handleTxLegacy()
 	LoRa.ClearIRQ();	
 	LoRa.setArmed(false,frameRxWrapper); 
 	//LoRa.dumpRegisters(Serial);
+	//LoRa.irqEnable(false);
 	if (!LoRa.setFSK())
 		Serial.println("FSK Set Error");
 
@@ -501,7 +513,7 @@ void FanetMac::handleTxLegacy()
 	LoRa.enableCrc();
 	//LoRa.dumpRegisters(Serial);
 	LoRa.setArmed(true,frameRxWrapper); 
-	LoRa.irqEnable(true);
+	//LoRa.irqEnable(true);
 	
 //	Serial.println("Lora Set Radio End ");
 }

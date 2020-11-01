@@ -98,3 +98,6 @@ improved screen switching (is now much faster (more responsive))
 
 V1.7.1
 Bugfix with signal strength on OGN-Tracking
+
+V1.7.2
+Bugfix (esp crashed randomly when used with baro)

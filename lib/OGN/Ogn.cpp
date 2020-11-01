@@ -68,6 +68,9 @@ void Ogn::checkLine(String line){
     String s = "";
     int32_t pos = 0;
     //log_i("%s",line.c_str());
+    if (!line.startsWith("# aprsc")){
+      log_i("%s",line.c_str());
+    }
     if (initOk == 0){
         pos = getStringValue(line,"server ","\r\n",0,&s);
         if (pos > 0){

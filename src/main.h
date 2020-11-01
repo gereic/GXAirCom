@@ -71,6 +71,9 @@ BUZZER 0
 
 
 ************* Pins for TTGO Lora32 ***************
+******* BUTTON ********
+BUTTON_PIN 0
+
 ******* LED *********
 LED_PIN 2
 
@@ -97,7 +100,14 @@ TXD 12
 RXD 15
 
 ******** BUZZER *******
-BUZZER 0
+BUZZER 17
+
+******** BATTERY-Voltate *******
+                       ____           ____
+BATT_VOLT_PIN 34   ---|____|----|----|____|-----
+                  GND  100K   GPIO34   27K     3.3V
+
+
 
 ************* Pins for TTGO Lora32 V2.1 1.6 ***************
 ******* LORA ********

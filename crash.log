@@ -1,0 +1,71 @@
+Guru Meditation Error: Core  1 panic'ed (Interrupt wdt timeout on CPU1)
+Core 1 register dump:
+PC      : 0x400948a2  PS      : 0x00060b34  A0      : 0x80093a5b  A1      : 0x3ffbe810
+A2      : 0x3ffdce24  A3      : 0x3ffd7154  A4      : 0x00000001  A5      : 0x00000001
+A6      : 0x00060b23  A7      : 0x00000000  A8      : 0x3ffd7154  A9      : 0x3ffd7154
+A10     : 0x0000000f  A11     : 0x0000000f  A12     : 0x00000001  A13     : 0x00000001
+A14     : 0x00060b21  A15     : 0x00000000  SAR     : 0x0000000e  EXCCAUSE: 0x00000006  
+EXCVADDR: 0x00000000  LBEG    : 0x400e6899  LEND    : 0x400e68a8  LCOUNT  : 0x00000000
+Core 1 was running in ISR context:
+EPC1    : 0x40092e42  EPC2    : 0x00000000  EPC3    : 0x00000000  EPC4    : 0x400948a2
+
+Backtrace: 0x400948a2:0x3ffbe810 0x40093a58:0x3ffbe830 0x40091beb:0x3ffbe850 0x401edb19:0x3ffbe890 0x401ea175:0x3ffbe8b0 0x400e4954:0x3ffbe8e0 0x400e4990:0x3ffbe900 0x400e5435:0x3ffbe920 0x400813a9:0x3ffbe940 0x400817c9:0x3ffbe960 0x40088271:0x3ffbe980 0x401edc94:0x3ffd6a90 0x401ea1aa:0x3ffd6ab0 0x400e4968:0x3ffd6ad0 0x400e4990:0x3ffd6af0 0x400e56be:0x3ffd6b10 0x400e68e4:0x3ffd6b30 0x400e6a5d:0x3ffd6b80 0x400e6b9f:0x3ffd6bb0 0x400e6f1d:0x3ffd6bd0 0x400e325a:0x3ffd6bf0 0x400dfe6a:0x3ffd6c10 0x40091e3d:0x3ffd70a0
+  #0  0x400948a2:0x3ffbe810 in vListInsert at /home/runner/work/esp32-arduino-lib-builder/esp32-arduino-lib-builder/esp-idf/components/freertos/list.c:188 (discriminator 1)
+  #1  0x40093a58:0x3ffbe830 in vTaskPlaceOnEventList at /home/runner/work/esp32-arduino-lib-builder/esp32-arduino-lib-builder/esp-idf/components/freertos/tasks.c:3507
+  #2  0x40091beb:0x3ffbe850 in xQueueGenericReceive at /home/runner/work/esp32-arduino-lib-builder/esp32-arduino-lib-builder/esp-idf/components/freertos/queue.c:2520
+  #3  0x401edb19:0x3ffbe890 in spiTransaction at C:\users\gereic\.platformio\packages\framework-arduinoespressif32\cores\esp32/esp32-hal-spi.c:283
+  #4  0x401ea175:0x3ffbe8b0 in SPIClass::beginTransaction(SPISettings) at C:\users\gereic\.platformio\packages\framework-arduinoespressif32\libraries\SPI\src/SPI.cpp:269
+  #5  0x400e4954:0x3ffbe8e0 in LoRaClass::singleTransfer(unsigned char, unsigned char) at lib\FANETLORA\radio/LoRa.cpp:1239
+  #6  0x400e4990:0x3ffbe900 in LoRaClass::readRegister(unsigned char) at lib\FANETLORA\radio/LoRa.cpp:1239
+  #7  0x400e5435:0x3ffbe920 in LoRaClass::handleDio0Rise() at lib\FANETLORA\radio/LoRa.cpp:1239
+  #8  0x400813a9:0x3ffbe940 in LoRaClass::onDio0Rise() at lib\FANETLORA\radio/LoRa.cpp:1239
+  #9  0x400817c9:0x3ffbe960 in __onPinInterrupt at C:\users\gereic\.platformio\packages\framework-arduinoespressif32\cores\esp32/esp32-hal-gpio.c:274
+  #10 0x40088271:0x3ffbe980 in _xt_lowint1 at /home/runner/work/esp32-arduino-lib-builder/esp32-arduino-lib-builder/esp-idf/components/freertos/xtensa_vectors.S:1154
+  #11 0x401edc94:0x3ffd6a90 in spiTransferByteNL at C:\users\gereic\.platformio\packages\framework-arduinoespressif32\cores\esp32/esp32-hal-spi.c:283
+  #12 0x401ea1aa:0x3ffd6ab0 in SPIClass::transfer(unsigned char) at C:\users\gereic\.platformio\packages\framework-arduinoespressif32\libraries\SPI\src/SPI.cpp:269
+  #13 0x400e4968:0x3ffd6ad0 in LoRaClass::singleTransfer(unsigned char, unsigned char) at lib\FANETLORA\radio/LoRa.cpp:1239
+  #14 0x400e4990:0x3ffd6af0 in LoRaClass::readRegister(unsigned char) at lib\FANETLORA\radio/LoRa.cpp:1239
+  #15 0x400e56be:0x3ffd6b10 in LoRaClass::WaitTxDone() at lib\FANETLORA\radio/LoRa.cpp:1239
+  #16 0x400e68e4:0x3ffd6b30 in FanetMac::handleTxLegacy() at lib\FANETLORA\radio/fmac.cpp:489
+  #17 0x400e6a5d:0x3ffd6b80 in FanetMac::handleTx() at lib\FANETLORA\radio/fmac.cpp:621
+  #18 0x400e6b9f:0x3ffd6bb0 in FanetMac::stateWrapper() at lib\FANETLORA\radio/fmac.cpp:252
+  #19 0x400e6f1d:0x3ffd6bd0 in TimerObject::Update() at lib\FANETLORA\radio\lib/TimerObject.cpp:28
+  #20 0x400e325a:0x3ffd6bf0 in FanetMac::handle() at C:\users\gereic\.platformio\packages\framework-arduinoespressif32\cores\esp32/WString.h:85
+      (inlined by) FanetLora::run() at lib\FANETLORA/FanetLora.cpp:345
+  #21 0x400dfe6a:0x3ffd6c10 in taskStandard(void*) at src/main.cpp:2088
+  #22 0x40091e3d:0x3ffd70a0 in vPortTaskWrapper at /home/runner/work/esp32-arduino-lib-builder/esp32-arduino-lib-builder/esp-idf/components/freertos/port.c:355 (discriminator 1)
+
+Core 0 register dump:
+PC      : 0x40092e4a  PS      : 0x00060034  A0      : 0x80093709  A1      : 0x3ffbe300
+A2      : 0x3ffc09d8  A3      : 0x0000cdcd  A4      : 0xb33fffff  A5      : 0x00000001
+A6      : 0x00060021  A7      : 0x0000abab  A8      : 0x0000cdcd  A9      : 0x3ffcb434  
+A10     : 0x00000003  A11     : 0x00060023  A12     : 0x00060021  A13     : 0x00000001
+A14     : 0x00060e20  A15     : 0x00000000  SAR     : 0x00000012  EXCCAUSE: 0x00000006
+EXCVADDR: 0x00000000  LBEG    : 0x00000000  LEND    : 0x00000000  LCOUNT  : 0x00000000
+
+Backtrace: 0x40092e4a:0x3ffbe300 0x40093706:0x3ffbe330 0x40091f2b:0x3ffbe350 0x40094715:0x3ffbe370 0x4008827a:0x3ffbe380 0x40226e47:0x3ffbc210 0x401080ae:0x3ffbc230 0x400936d1:0x3ffbc250 0x40091e3d:0x3ffbc270
+  #0  0x40092e4a:0x3ffbe300 in uxPortCompareSet at /home/runner/work/esp32-arduino-lib-builder/esp32-arduino-lib-builder/esp-idf/components/freertos/tasks.c:3507
+      (inlined by) vPortCPUAcquireMutexIntsDisabledInternal at /home/runner/work/esp32-arduino-lib-builder/esp32-arduino-lib-builder/esp-idf/components/freertos/portmux_impl.inc.h:86
+      (inlined by) vPortCPUAcquireMutexIntsDisabled at /home/runner/work/esp32-arduino-lib-builder/esp32-arduino-lib-builder/esp-idf/components/freertos/portmux_impl.h:98
+      (inlined by) vTaskEnterCritical at /home/runner/work/esp32-arduino-lib-builder/esp32-arduino-lib-builder/esp-idf/components/freertos/tasks.c:4201
+  #1  0x40093706:0x3ffbe330 in xTaskIncrementTick at /home/runner/work/esp32-arduino-lib-builder/esp32-arduino-lib-builder/esp-idf/components/freertos/tasks.c:3507
+  #2  0x40091f2b:0x3ffbe350 in xPortSysTickHandler at /home/runner/work/esp32-arduino-lib-builder/esp32-arduino-lib-builder/esp-idf/components/freertos/port.c:355 (discriminator 1)
+  #3  0x40094715:0x3ffbe370 in _frxt_timer_int at /home/runner/work/esp32-arduino-lib-builder/esp32-arduino-lib-builder/esp-idf/components/freertos/portasm.S:303
+  #4  0x4008827a:0x3ffbe380 in _xt_lowint1 at /home/runner/work/esp32-arduino-lib-builder/esp32-arduino-lib-builder/esp-idf/components/freertos/xtensa_vectors.S:1154
+  #5  0x40226e47:0x3ffbc210 in esp_pm_impl_waiti at /home/runner/work/esp32-arduino-lib-builder/esp32-arduino-lib-builder/esp-idf/components/esp32/pm_esp32.c:492
+  #6  0x401080ae:0x3ffbc230 in esp_vApplicationIdleHook at /home/runner/work/esp32-arduino-lib-builder/esp32-arduino-lib-builder/esp-idf/components/esp32/freertos_hooks.c:108
+  #7  0x400936d1:0x3ffbc250 in prvIdleTask at /home/runner/work/esp32-arduino-lib-builder/esp32-arduino-lib-builder/esp-idf/components/freertos/tasks.c:3507
+  #8  0x40091e3d:0x3ffbc270 in vPortTaskWrapper at /home/runner/work/esp32-arduino-lib-builder/esp32-arduino-lib-builder/esp-idf/components/freertos/port.c:355 (discriminator 1)
+
+Rebooting...
+ets Jun  8 2016 00:22:57
+
+rst:0xc (SW_CPU_RESET),boot:0x13 (SPI_FAST_FLASH_BOOT)
+configsip: 0, SPIWP:0xee
+clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
+mode:DIO, clock div:2
+load:0x3fff0018,len:4
+load:0x3fff001c,len:1044
+load:0x40078000,len:8896
+load:0x40080400,len:5828
+entry 0x400806ac

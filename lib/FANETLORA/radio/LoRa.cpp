@@ -190,7 +190,7 @@ bool LoRaClass::setArmed(bool mode,void(*callback)(int))
 		LoRa.sleep();
 	}
 
-  LoRa.onReceive(callback);
+  //LoRa.onReceive(callback); // we don't use the interrupt --> crashes ESP
 	return true;
 }
 

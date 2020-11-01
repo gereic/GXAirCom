@@ -170,6 +170,7 @@ private:
 	void ack(Frame* frm);
 
 	static void stateWrapper();
+	void handleIRQ();
 	void handleTx();
 	void handleRx();
 

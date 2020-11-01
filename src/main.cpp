@@ -113,7 +113,7 @@ Screen screen;
 
 Baro baro;
 beeper Beeper(BEEP_VELOCITY_DEFAULT_SINKING_THRESHOLD,BEEP_VELOCITY_DEFAULT_CLIMBING_THRESHOLD,BEEP_VELOCITY_DEFAULT_NEAR_CLIMBING_SENSITIVITY,BEEP_DEFAULT_VOLUME);
-#define PINBUZZER 0
+//#define PINBUZZER 0
 int freq = 2000;
 int channel = 0;
 int resolution = 8;
@@ -951,9 +951,6 @@ void setup() {
   status.bPowerOff = false;
   status.bHasBME = false;
 
-  ledcSetup(channel, freq, resolution);
-  ledcAttachPin(PINBUZZER, channel);  
-  
   //for new T-Beam output 4 is red led
   pinMode(4, OUTPUT);
   digitalWrite(4,HIGH); 
@@ -995,7 +992,6 @@ void setup() {
   if ((setting.wifi.ssid.length() <= 0) || (setting.wifi.password.length() <= 0)){
     setting.wifi.connect = WIFI_CONNECT_NONE; //if no pw or ssid given --> don't connecto to wifi
   }
-
 
   pinMode(BUTTON2, INPUT_PULLUP);
 
@@ -1114,8 +1110,8 @@ void taskWeather(void *pvParameters){
         testWeatherData.Humidity = wData.Humidity;
         testWeatherData.Baro = wData.Pressure;      
         testWeatherData.bStateOfCharge = true;
-        //testWeatherData.Charge = status.BattPerc;
-        testWeatherData.Charge = 44;
+        testWeatherData.Charge = status.BattPerc;
+        //testWeatherData.Charge = 44;
         sendWeatherData = true;
         tSendData = tAct;
       }
@@ -1134,10 +1130,20 @@ void taskBaro(void *pvParameters){
   uint8_t u8Volume = setting.vario.volume;
   log_i("starting baro-task ");  
   if (setting.Mode == MODE_GROUND_STATION){
+  //if (true){
     status.bHasVario = false;    
     log_i("GS-Mode --> stop task");
     vTaskDelete(xHandleBaro);
     return;    
+  }
+  TickType_t xLastWakeTime;
+  // Block for 500ms.
+  const TickType_t xDelay = 10 / portTICK_PERIOD_MS;  
+  ledcSetup(channel, freq, resolution);
+  if (setting.boardType == BOARD_HELTEC_LORA){
+    ledcAttachPin(17, channel); //Buzzer on Pin 17 --> Prog-Button is on PIN 0
+  }else{
+    ledcAttachPin(0, channel); //Buzzer on PIN 0
   }
   TwoWire i2cBaro = TwoWire(0);
   if (setting.boardType == BOARD_HELTEC_LORA){
@@ -1158,7 +1164,9 @@ void taskBaro(void *pvParameters){
     status.bHasVario = false;    
   }
   if (status.bHasVario){
-    while (1){
+    xLastWakeTime = xTaskGetTickCount ();
+    while (1){      
+      
       uint32_t tAct = millis();
       //if (u8Volume != setting.vario.volume){
       //  u8Volume = setting.vario.volume;
@@ -1180,7 +1188,9 @@ void taskBaro(void *pvParameters){
       #ifdef USE_BEEPER
         Beeper.update();
       #endif      
-      delay(1);
+      //delay(10);
+      // Wait for the next cycle.
+      vTaskDelayUntil( &xLastWakeTime, xDelay );
       if ((WebUpdateRunning) || (bPowerOff)) break;
     }
   }
@@ -1928,6 +1938,12 @@ void taskStandard(void *pvParameters){
       attachInterrupt(digitalPinToInterrupt(PPSPIN), ppsHandler, FALLING);
     }
 
+  }else{
+    //mode ground-station
+    status.GPS_Lat = setting.gs.lat;
+    status.GPS_Lon = setting.gs.lon;  
+    status.GPS_alt = setting.gs.alt;
+
   }  
   // create a binary semaphore for task synchronization
   long frequency = FREQUENCY868;
@@ -2108,7 +2124,7 @@ void taskStandard(void *pvParameters){
     }    
     flarm.run();
     sendLK8EX(tAct);
-    if (!status.bHasAXP192){
+    if ((!status.bHasAXP192) && (setting.Mode != MODE_GROUND_STATION)){
       if ((tAct - tOldPPS) >= 1000){
         ppsTriggered = true;
       }
@@ -2169,7 +2185,7 @@ void taskStandard(void *pvParameters){
       }
       tOldPPS = tAct;
     }
-    if ((tAct - tLastPPS) >= 10000){
+    if (((tAct - tLastPPS) >= 10000) && (setting.Mode != MODE_GROUND_STATION)){
       //no pps for more then 10sec. --> clear GPS-state
       status.GPS_Fix = 0;
       status.GPS_speed = 0.0;
@@ -2246,8 +2262,12 @@ void powerOff(){
   log_i("wait until all tasks are stopped");
   while(1){
     //wait until all tasks are stopped
-    if ((eTaskGetState(xHandleBaro) == eDeleted) && (eTaskGetState(xHandleEInk) == eDeleted) && (eTaskGetState(xHandleStandard) == eDeleted)) break; //now all tasks are stopped
-    delay(100);
+    eTaskState tBaro = eTaskGetState(xHandleBaro);
+    eTaskState tEInk = eTaskGetState(xHandleEInk);
+    eTaskState tStandard = eTaskGetState(xHandleStandard);
+    if ((tBaro == eDeleted) && (tEInk == eDeleted) && (tStandard == eDeleted)) break; //now all tasks are stopped    
+    //log_i("baro=%d,eink=%d,standard=%d",tBaro,tEInk,tStandard);
+    delay(500);
   }
 
   if (setting.displayType == OLED0_96){

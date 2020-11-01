@@ -328,27 +328,27 @@ void Screen::drawMainScreen(void){
         }
         if ((abs(data.compass - actData.compass) >= 1.0) || (bForceUpdate)){
             data.compass = actData.compass;
-            log_i("update Compass");
+            //log_i("update Compass");
             UpdateScreen = true;
         }
         if ((data.volume != actData.volume) || (bForceUpdate)){
             data.volume = actData.volume;
-            log_i("update Volume");
+            //log_i("update Volume");
             UpdateScreen = true;
         }
         if ((data.flying != actData.flying) || (bForceUpdate)){
             data.flying = actData.flying;  
-            log_i("update status flying");          
+            //log_i("update status flying");          
             UpdateScreen = true;
         }
         if ((data.wifi != actData.wifi) || (bForceUpdate)){
             data.wifi = actData.wifi;  
-            log_i("update wifi status");          
+            //log_i("update wifi status");          
             UpdateScreen = true;
         }
         if ((data.bluetooth != actData.bluetooth) || (bForceUpdate)){
             data.bluetooth = actData.bluetooth;  
-            log_i("update bluetooth status");          
+            //log_i("update bluetooth status");          
             UpdateScreen = true;
         }
         if ((!bFullUpdate) && (!UpdateScreen)){
