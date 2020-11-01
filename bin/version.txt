@@ -101,3 +101,6 @@ Bugfix with signal strength on OGN-Tracking
 
 V1.7.2
 Bugfix (esp crashed randomly when used with baro)
+
+V1.7.3
+included DS18B20 for Temperature of weatherstation (optional) (on Heltec/TTGO-Lora32 Board only at the moment (PIN22))

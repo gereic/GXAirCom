@@ -132,6 +132,7 @@ function sendValues(){
   vBeepFly : Number(document.getElementById("vBeepFly").checked),
 
   sFWD : Number(document.getElementById("sFWD").checked),
+  wdTempOffset : document.getElementById("wdTempOffset").value,
   
   save : 1 
 			};
@@ -414,6 +415,10 @@ window.addEventListener("load", init, false);
           <tr>
             <th>send weather-data over FANET</th>
             <td><input type="checkbox" id="sFWD" name="sFWD"></td>
+          </tr>
+          <tr>
+            <th>offset Temperature [K]</th>
+            <td><input type="number" id="wdTempOffset" name="wdTempOffset" step=".5"></td>
           </tr>
         </tbody>      
       </table>

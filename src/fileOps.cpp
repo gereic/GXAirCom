@@ -28,7 +28,6 @@ void load_configFile(SettingsData* pSetting){
     pSetting->gs.lon = preferences.getFloat("GSLON",0.0);
     pSetting->gs.alt = preferences.getFloat("GSALT",0.0);
     pSetting->gs.AWID = preferences.getString("GSAWID","");
-    pSetting->wd.sendFanet = preferences.getUChar("FanetWeather",0);
     pSetting->OGNLiveTracking = preferences.getUChar("OGN_LIVE",0);
     pSetting->screenNumber = preferences.getUChar("SCREEN",0);
     pSetting->displayType = preferences.getUChar("Display",0);
@@ -36,6 +35,10 @@ void load_configFile(SettingsData* pSetting){
     pSetting->traccarLiveTracking = preferences.getUChar("TRACCAR_LIVE",0);
     pSetting->TraccarSrv = preferences.getString("TRACCAR_SRV","");
     
+    //weathersettings
+    pSetting->wd.sendFanet = preferences.getUChar("FanetWeather",0);
+    pSetting->wd.tempOffset = preferences.getFloat("wdTempOffset",0.0);
+
 
     //vario
     pSetting->vario.sinkingThreshold = preferences.getFloat("vSinkTh",-2.0);
@@ -74,7 +77,6 @@ void write_configFile(SettingsData* pSetting){
     preferences.putFloat("GSLON",pSetting->gs.lon);
     preferences.putFloat("GSALT",pSetting->gs.alt);
     preferences.putString("GSAWID",pSetting->gs.AWID);
-    preferences.putUChar("FanetWeather",pSetting->wd.sendFanet);
     preferences.putUChar("OGN_LIVE",pSetting->OGNLiveTracking);
     preferences.putUChar("Display",pSetting->displayType);
     preferences.putUChar("LEGACY_TX",pSetting->LegacyTxEnable);
@@ -88,6 +90,10 @@ void write_configFile(SettingsData* pSetting){
     preferences.putFloat("vNClimbSens",pSetting->vario.nearClimbingSensitivity);
     preferences.putUChar("VarioVolume",pSetting->vario.volume);
     preferences.putUChar("VBeepFlying",pSetting->vario.BeepOnlyWhenFlying);
+
+    //weathersettings
+    preferences.putUChar("FanetWeather",pSetting->wd.sendFanet);
+    preferences.putFloat("wdTempOffset",pSetting->wd.tempOffset);
 
     ESP.restart();
 }

@@ -37,9 +37,24 @@ bool Weather::initBME280(void){
 }
 
 
-bool Weather::begin(TwoWire *pi2c, float height){
+bool Weather::begin(TwoWire *pi2c, float height,uint8_t oneWirePin){
   pI2c = pi2c;
   _height = height;
+  hasTempSensor = false;
+  log_i("onewire pin=%d",oneWirePin);
+  if (oneWirePin >= 0){
+    oneWire.begin(oneWirePin);
+    sensors.setOneWire(&oneWire);
+    sensors.begin();
+    oneWire.reset_search();
+    if (oneWire.search(tempSensorAdr)){
+      log_i("found onewire TempSensor with adr %X:%X:%X:%X:%X:%X:%X:%X ",tempSensorAdr[0],tempSensorAdr[1],tempSensorAdr[2],tempSensorAdr[3],tempSensorAdr[4],tempSensorAdr[5],tempSensorAdr[6],tempSensorAdr[7]);
+      sensors.setResolution(tempSensorAdr,12); //12 Bit resolution
+      float temperatureC = sensors.getTempC(tempSensorAdr);
+      log_i("temp of sensor 0 = %fC",temperatureC);
+      hasTempSensor = true;
+    }
+  }
   xMutex = xSemaphoreCreateMutex();
   _weather.bTemp = false;
   _weather.bHumidity = false;
@@ -92,6 +107,9 @@ float Weather::calcExpAvgf(float oldValue, float newValue, float Factor){
   }
 }
 
+void Weather::setTempOffset(float tempOffset){
+  _tempOffset = tempOffset; //set temperature-offset
+}
 
 void Weather::runBME280(uint32_t tAct){
   static uint32_t tOld = millis();
@@ -105,7 +123,12 @@ void Weather::runBME280(uint32_t tAct){
     rawPressure = (float)bme.getPressure() / 100.;
     humidity = (float)(bme.getHumidity()/ 100.); // in %
     pressure = calcPressure(rawPressure,temp,_height); // in mbar
-    dTemp = temp;
+    if (hasTempSensor){
+      dTemp = sensors.getTempC(tempSensorAdr);
+    }else{
+      dTemp = temp;
+    }
+    dTemp += _tempOffset;
     dHumidity = humidity;
     dPressure = pressure;
     //log_i("T=%f h=%f p1=%f p2=%f",dTemp,dHumidity,rawPressure,dPressure);

@@ -879,6 +879,7 @@ void printSettings(){
   log_i("GS ALT=%0.2f",setting.gs.alt);
   log_i("GS AWID=%s",setting.gs.AWID);
   log_i("WD Fanet-Weatherdata=%d",setting.wd.sendFanet);
+  log_i("WD tempoffset=%.1f",setting.wd.tempOffset);
   log_i("OGN-Livetracking=%d",setting.OGNLiveTracking);
   log_i("Traccar-Livetracking=%d",setting.traccarLiveTracking);
   log_i("Traccar-Address=%s",setting.TraccarSrv.c_str());
@@ -1079,14 +1080,18 @@ void taskWeather(void *pvParameters){
     vTaskDelete(xHandleWeather);
     return;    
   }
+
   TwoWire i2cWeather = TwoWire(0);
+  uint8_t oneWirePin = -1;
   if (setting.boardType == BOARD_HELTEC_LORA){
+    oneWirePin = 22;
     i2cWeather.begin(13,23,400000); //init i2cBaro for Baro
   }else{
     i2cWeather.begin(13,14,400000); //init i2cBaro for Baro
   }
   Weather weather;
-  if (!weather.begin(&i2cWeather,setting.gs.alt)){
+  weather.setTempOffset(setting.wd.tempOffset);
+  if (!weather.begin(&i2cWeather,setting.gs.alt,oneWirePin)){
     log_i("no BME-sensor found --> stopping task");
     vTaskDelete(xHandleWeather);
     return;    
@@ -1167,7 +1172,7 @@ void taskBaro(void *pvParameters){
     xLastWakeTime = xTaskGetTickCount ();
     while (1){      
       
-      uint32_t tAct = millis();
+      //uint32_t tAct = millis();
       //if (u8Volume != setting.vario.volume){
       //  u8Volume = setting.vario.volume;
       //  Beeper.setVolume(u8Volume);

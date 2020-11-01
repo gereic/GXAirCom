@@ -14,6 +14,8 @@
 #include <string.h>
 #include <Wire.h>
 #include <Adafruit_BME280.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
 
 #define WEATHER_REFRESH 2000
 
@@ -29,7 +31,8 @@ public:
     } weatherData;
 
     Weather(); //constructor
-    bool begin(TwoWire *pi2c, float height);
+    void setTempOffset(float tempOffset);
+    bool begin(TwoWire *pi2c, float height,uint8_t oneWirePin);
     void run(void);
     void getValues(weatherData *weather);
 
@@ -44,6 +47,7 @@ private:
     uint8_t sensorAdr;
     Adafruit_BME280 bme;
     uint16_t avgFactor; //factor for avg-factor
+    float _tempOffset = 0;
     float dTemp = 0;
     float dTempOld = 0;
     float dHumidity = 0;
@@ -54,5 +58,9 @@ private:
     bool bFirst;
     weatherData _weather;
     SemaphoreHandle_t xMutex;
+    OneWire oneWire;
+    DallasTemperature sensors;
+    bool hasTempSensor;
+    DeviceAddress tempSensorAdr;
 };
 #endif
