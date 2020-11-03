@@ -214,12 +214,19 @@ BUZZER 0
 #define FANET_CMD_START			"#FN"
 #define FANET_CMD_TRANSMIT	"#FNT"
 
-#define WIFI_DISABLED 0
-#define WIFI_STA 1
-#define WIFI_CONNECTED 2
+#define MODE_WIFI_DISABLED 0
+#define MODE_WIFI_STA 1
+#define MODE_WIFI_CONNECTED 2
 
 #define WEATHER_UPDATE_RATE 40000 //update every 40 seconds weatherdata
+#define WEATHER_UNDERGROUND_UPDATE_RATE 300000 //update 5min
 
+
+struct weatherupload{
+  bool enable;
+  String ID;
+  String KEY;
+};
 
 struct VarioSettings{
   float sinkingThreshold;
@@ -277,6 +284,7 @@ struct SettingsData{
   uint8_t traccarLiveTracking; //Traccar live-tracking
   String TraccarSrv; //OGN-Live-Tracking  
   WeatherSettings wd;
+  weatherupload WUUpload; //weather-underground upload-settings
 };
 
 struct statusData{

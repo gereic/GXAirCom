@@ -248,7 +248,7 @@ void Screen::getTextPositions(int16_t *posx, int16_t *posy,int16_t x, int16_t y,
 
 void Screen::drawMainScreen(void){
     uint32_t tAct = millis();
-    static uint32_t tOldUpate = millis();
+    //static uint32_t tOldUpate = millis();
     int16_t posx = 0;
     int16_t posy = 0;
     static screenMainData data;
@@ -355,7 +355,7 @@ void Screen::drawMainScreen(void){
             break;
         }
         //log_i("fullUpdate=%d UpdateScreen=%d time=%d",bFullUpdate,UpdateScreen,millis()-tOldUpate);
-        tOldUpate = millis();
+        //tOldUpate = millis();
         tAct = millis();
         e_ink.setTextColor(GxEPD_BLACK);
         e_ink.setRotation(0); 

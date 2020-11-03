@@ -47,11 +47,14 @@ bool Weather::begin(TwoWire *pi2c, float height,uint8_t oneWirePin){
     sensors.setOneWire(&oneWire);
     sensors.begin();
     oneWire.reset_search();
-    if (oneWire.search(tempSensorAdr)){
+    if (oneWire.search(&tempSensorAdr[0])){      
       log_i("found onewire TempSensor with adr %X:%X:%X:%X:%X:%X:%X:%X ",tempSensorAdr[0],tempSensorAdr[1],tempSensorAdr[2],tempSensorAdr[3],tempSensorAdr[4],tempSensorAdr[5],tempSensorAdr[6],tempSensorAdr[7]);
-      sensors.setResolution(tempSensorAdr,12); //12 Bit resolution
-      float temperatureC = sensors.getTempC(tempSensorAdr);
+      sensors.setResolution(&tempSensorAdr[0],12); //12 Bit resolution
+      sensors.requestTemperaturesByAddress(&tempSensorAdr[0]);
+      float temperatureC = sensors.getTempC(&tempSensorAdr[0]);
       log_i("temp of sensor 0 = %fC",temperatureC);
+      //temperatureC = sensors.getTempCByIndex(0);
+      //log_i("temp of sensor 0 = %fC",temperatureC);
       hasTempSensor = true;
     }
   }
@@ -124,14 +127,15 @@ void Weather::runBME280(uint32_t tAct){
     humidity = (float)(bme.getHumidity()/ 100.); // in %
     pressure = calcPressure(rawPressure,temp,_height); // in mbar
     if (hasTempSensor){
-      dTemp = sensors.getTempC(tempSensorAdr);
+      sensors.requestTemperaturesByAddress(&tempSensorAdr[0]);
+      dTemp = sensors.getTempC(&tempSensorAdr[0]);
     }else{
       dTemp = temp;
     }
     dTemp += _tempOffset;
     dHumidity = humidity;
     dPressure = pressure;
-    //log_i("T=%f h=%f p1=%f p2=%f",dTemp,dHumidity,rawPressure,dPressure);
+    //log_i("T1=%f T2=%f h=%f p1=%f p2=%f",dTemp,temp,dHumidity,rawPressure,dPressure);
     if (!bFirst){
       dTempOld = dTemp;
       dHumidityOld = dHumidity;

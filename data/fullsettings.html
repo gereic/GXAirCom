@@ -8,6 +8,8 @@
 <script language="javascript" type="text/javascript">
  
  var url = "ws://" + window.location.host + ":1337/";
+ var bHasBME = 0;
+ var bHasVario = 0;
  
 // This is called when the page finishes loading
 function init() {
@@ -62,18 +64,31 @@ function setFts(){
 function setVis(){
   //console.log("visible=" + document.getElementById("mode").style.display)
   if (document.getElementById("mode").value == 1){ //mode ground-station
+    if (bHasBME == 0){
+      document.getElementById("VisWD").style.display='none'; //set weather-data invisible
+      document.getElementById("VisWU").style.display='none'; //set weather-underground upload invisible
+    }else{
+      document.getElementById("VisWD").style.display=''; //set weather-data invisible
+      document.getElementById("VisWU").style.display=''; //set weather-underground upload invisible
+    }
     document.getElementById("VisAirCraftType").style.display='none';
     document.getElementById("VisLegacy").style.display='none';
     document.getElementById("legacytx").checked=false;
     document.getElementById("tName").innerHTML='Ground Station name';
     document.getElementById("VisGS").style.display=''; //set GS visible
-    document.getElementById("VisWD").style.display=''; //set weather-data visible
+    document.getElementById("VisVario").style.display='none';
   }else{
     document.getElementById("VisLegacy").style.display='';
     document.getElementById("VisAirCraftType").style.display='';
     document.getElementById("tName").innerHTML='Pilot name';
     document.getElementById("VisGS").style.display='none'; //set GS invisible
-    document.getElementById("VisWD").style.display='none'; //set weather-data visible
+    document.getElementById("VisWD").style.display='none'; //set weather-data invisible
+    document.getElementById("VisWU").style.display='none'; //set weather-underground upload invisible
+    if (bHasVario == 0){
+      document.getElementById("VisVario").style.display='none';
+    }else{
+      document.getElementById("VisVario").style.display='';
+    }
   }
   if (document.getElementById("output").value == 1){
     document.getElementById("VisUdpIp").style.display='';
@@ -101,18 +116,30 @@ function sendValues(){
   type : document.getElementById("type").value,
   mode : document.getElementById("mode").value,
   PilotName : document.getElementById("PilotName").value,
-
+  save : 1
+  };
+  doSend(JSON.stringify(obj));
+  
+  var obj = {
   gsawid : document.getElementById("gsawid").value,
   gslat : document.getElementById("gslat").value,
   gslon : document.getElementById("gslon").value,
   gsalt : document.getElementById("gsalt").value,
+  save : 1
+  };
+  doSend(JSON.stringify(obj));
   
+  var obj = {
   appw : document.getElementById("appw").value,
   wificonnect : document.getElementById("wificonnect").value,
   ssid : document.getElementById("ssid").value,
   password : document.getElementById("password").value,
   wifioff : document.getElementById("wifioff").value,
+  save : 1
+  };
+  doSend(JSON.stringify(obj));
   
+  var obj = {  
   output : document.getElementById("output").value,
   oGPS : Number(document.getElementById("oGPS").checked),
   oFlarm : Number(document.getElementById("oFlarm").checked),
@@ -121,6 +148,11 @@ function sendValues(){
   awlive : Number(document.getElementById("awlive").checked),
   UDPServerIP : document.getElementById("UDPServerIP").value,
   UDPSendPort : document.getElementById("UDPSendPort").value,
+  save : 1
+  };
+  doSend(JSON.stringify(obj));
+  
+  var obj = {  
   ognlive : Number(document.getElementById("ognlive").checked),
   traccar_live : Number(document.getElementById("traccar_live").checked),
   traccarsrv : document.getElementById("traccarsrv").value,
@@ -130,13 +162,21 @@ function sendValues(){
   vClimbTh : parseFloat(document.getElementById("vClimbTh").value),
   vVol : document.getElementById("vVol").value,
   vBeepFly : Number(document.getElementById("vBeepFly").checked),
-
-  sFWD : Number(document.getElementById("sFWD").checked),
-  wdTempOffset : document.getElementById("wdTempOffset").value,
-  
-  save : 1 
-			};
+  save : 1
+	};
   doSend(JSON.stringify(obj));
+
+  var obj = {  
+  sFWD : Number(document.getElementById("sFWD").checked),
+  wdTempOffset : document.getElementById("wdTempOffset").value,  
+
+  WUUlEnable : Number(document.getElementById("WUUlEnable").checked),
+  WUUlID : document.getElementById("WUUlID").value,  
+  WUUlKEY : document.getElementById("WUUlKEY").value,  
+  save : 2
+	};
+  doSend(JSON.stringify(obj));
+
   document.getElementById("btnsave").innerText  = "rebooting ..."
   var delay = 2000;
   setTimeout( callMainPage, delay )
@@ -153,11 +193,13 @@ function onMessage(evt) {
     for (var key of Object.keys(myObj)) {
         console.log(key + " -> " + myObj[key])
         if (key == "bHasVario"){
-          if (myObj[key] == 0){
-            document.getElementById("VisVario").style.display='none';
-          }
+          bHasVario = myObj[key];
+          continue;
+        }else if (key == "bHasBME"){
+          bHasBME = myObj[key];
           continue;
         }
+
         var e = document.getElementById(key);
         if (e instanceof HTMLSelectElement) {     // <select>
           document.getElementById(key).value = myObj[key];
@@ -419,6 +461,27 @@ window.addEventListener("load", init, false);
           <tr>
             <th>offset Temperature [K]</th>
             <td><input type="number" id="wdTempOffset" name="wdTempOffset" step=".5"></td>
+          </tr>
+        </tbody>      
+      </table>
+    </fieldset>
+    <p></p>
+    <p></p>
+    <fieldset id="VisWU">
+      <legend><b>Weather Underground Upload</b></legend>
+      <table style="width:100&#37;">
+        <tbody>
+          <tr>
+            <th>enable sending weather-data to WU</th>
+            <td><input type="checkbox" id="WUUlEnable" name="WUUlEnable"></td>
+          </tr>
+          <tr>
+            <th>ID</th>
+            <td><input type="text" id="WUUlID" name="WUUlID"></td>
+          </tr>
+          <tr>
+            <th>KEY</th>
+            <td><input type="text" id="WUUlKEY" name="WUUlKEY"></td>
           </tr>
         </tbody>      
       </table>

@@ -47,6 +47,10 @@ void load_configFile(SettingsData* pSetting){
     pSetting->vario.volume = preferences.getUChar("VarioVolume",10);
     pSetting->vario.BeepOnlyWhenFlying = preferences.getUChar("VBeepFlying",1);
 
+    //wu-upload
+    pSetting->WUUpload.enable = preferences.getUChar("WUUlEnable",0);
+    pSetting->WUUpload.ID = preferences.getString("WUUlID","");
+    pSetting->WUUpload.KEY = preferences.getString("WUUlKEY","");
 
     preferences.end(); 
 }
@@ -94,8 +98,13 @@ void write_configFile(SettingsData* pSetting){
     //weathersettings
     preferences.putUChar("FanetWeather",pSetting->wd.sendFanet);
     preferences.putFloat("wdTempOffset",pSetting->wd.tempOffset);
+    
+    //wu-upload
+    preferences.putUChar("WUUlEnable",pSetting->WUUpload.enable);
+    preferences.putString("WUUlID",pSetting->WUUpload.ID);
+    preferences.putString("WUUlKEY",pSetting->WUUpload.KEY);
 
-    ESP.restart();
+
 }
 
 void write_screenNumber(void){

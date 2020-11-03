@@ -24,6 +24,7 @@
 #include <TimeLib.h>
 #include <HTTPClient.h>
 #include <Weather.h>
+#include <WeatherUnderground.h>
 
 
 //#include <U8g2lib.h>
@@ -217,8 +218,8 @@ void serialBtCallBack(esp_spp_cb_event_t event, esp_spp_cb_param_t *param){
 
 void handleButton(uint32_t tAct){
   static uint32_t buttonTimer = millis();
-  static uint32_t dblClkTimer = millis();
-  static bool dblClkActive = false;
+  //static uint32_t dblClkTimer = millis();
+  //static bool dblClkActive = false;
   static bool buttonActive = false;
   static bool longPressActive = false;
   if (digitalRead(BUTTON2) == LOW){
@@ -407,108 +408,103 @@ void drawBluetoothstat(int16_t x, int16_t y){
 }
 
 void printGSData(uint32_t tAct){
-  static uint32_t tRefresh = millis();
   static uint8_t index = 0;
-  //if ((tAct - tRefresh) >= 1000){
-    tRefresh = tAct;
-    char buf[10];
-    display.clearDisplay();
+  char buf[10];
+  display.clearDisplay();
 
-    if (status.wifiStat==1) display.drawXBitmap(85,0,WIFI_AP_bits,WIFI_width,WIFI_height,WHITE);
-    if (status.wifiStat==2) display.drawXBitmap(85,0,WIFI_Sta_bits,WIFI_width,WIFI_height,WHITE);
-    drawBluetoothstat(101,0);
-    drawBatt(111, 0,(status.BattCharging) ? 255 : status.BattPerc);
+  if (status.wifiStat==1) display.drawXBitmap(85,0,WIFI_AP_bits,WIFI_width,WIFI_height,WHITE);
+  if (status.wifiStat==2) display.drawXBitmap(85,0,WIFI_Sta_bits,WIFI_width,WIFI_height,WHITE);
+  drawBluetoothstat(101,0);
+  drawBatt(111, 0,(status.BattCharging) ? 255 : status.BattPerc);
 
 
-    //show rx-count
-    display.setTextSize(1);
+  //show rx-count
+  display.setTextSize(1);
 
-    display.setCursor(78,0);
-    sprintf(buf, "%d", uint8_t(status.fanetRx) % 10);
-    display.print(buf);
-
-
-    //get next index
-    for (int i = 0;i <= MAXNEIGHBOURS;i++){
-      if (fanet.neighbours[index].devId) break;
-      index ++;
-      if (index >= MAXNEIGHBOURS) index = 0;
-    }
-    if (!fanet.neighbours[index].devId){
-      //no more neighbours --> return false
-      display.display();
-      return;
-    } 
+  display.setCursor(78,0);
+  sprintf(buf, "%d", uint8_t(status.fanetRx) % 10);
+  display.print(buf);
 
 
-
-    display.setCursor(0,0);
-    display.print(fanet.getDevId(fanet.neighbours[index].devId));
-    display.setCursor(35,0);
-    sprintf(buf, "%4ddb", fanet.neighbours[index].rssi);
-    display.print(buf);
-
-    display.setCursor(0,10);
-    display.print(fanet.getNeighbourName(fanet.neighbours[index].devId));
-
-    switch (fanet.neighbours[index].aircraftType)
-    {
-    case FanetLora::aircraft_t ::paraglider :
-      display.drawXBitmap(88, 12, PGRX_bits,PGRX_width, PGRX_height,WHITE);      
-      break;
-    case FanetLora::aircraft_t::hangglider :
-      display.drawXBitmap(88, 12, HGRX_bits,HGRX_width, HGRX_height,WHITE);      
-      break;
-    case FanetLora::aircraft_t::balloon :
-      display.drawXBitmap(88, 12, BLRX_bits,BLRX_width, BLRX_height,WHITE);      
-      break;
-    case FanetLora::aircraft_t::glider :
-      display.drawXBitmap(88, 12, SPRX_bits,SPRX_width, SPRX_height,WHITE);      
-      break;
-    case FanetLora::aircraft_t::poweredAircraft :
-      display.drawXBitmap(88, 12, Airplane40_bits,Airplane40_width, Airplane40_height,WHITE);      
-      break;
-    case FanetLora::aircraft_t::helicopter :
-      display.drawXBitmap(88, 10, Helicopter40_bits,Helicopter40_width, Helicopter40_height,WHITE);      
-      break;
-    case FanetLora::aircraft_t::uav:
-      display.drawXBitmap(88, 12, UAVRX_bits,UAVRX_width, UAVRX_height,WHITE);      
-      break;
-    
-    default:
-      display.drawXBitmap(88, 12, UFORX_bits,UFORX_width, UFORX_height,WHITE);      
-      break;
-    }
-    
-    display.setCursor(0,20);
-    display.print("alt:");
-    display.print(fanet.neighbours[index].altitude,0);
-    display.print("m");
-
-    display.setCursor(0,32);
-    display.print("speed:");
-    display.print(fanet.neighbours[index].speed,0);
-    display.print("kmh");
-
-    display.setCursor(0,44);
-    display.print(fanet.neighbours[index].climb,1);
-    display.print("m/s");
-
-    display.setCursor(50,44);
-    display.print(fanet.neighbours[index].heading,0);
-    display.print("deg");
-
-    display.setCursor(0,56);
-    display.print(fanet.neighbours[index].lat,6);
-    display.setCursor(64,56);
-    display.print(fanet.neighbours[index].lon,6);
-
-
-    display.display();
+  //get next index
+  for (int i = 0;i <= MAXNEIGHBOURS;i++){
+    if (fanet.neighbours[index].devId) break;
     index ++;
     if (index >= MAXNEIGHBOURS) index = 0;
+  }
+  if (!fanet.neighbours[index].devId){
+    //no more neighbours --> return false
+    display.display();
+    return;
+  } 
 
-  //}
+
+
+  display.setCursor(0,0);
+  display.print(fanet.getDevId(fanet.neighbours[index].devId));
+  display.setCursor(35,0);
+  sprintf(buf, "%4ddb", fanet.neighbours[index].rssi);
+  display.print(buf);
+
+  display.setCursor(0,10);
+  display.print(fanet.getNeighbourName(fanet.neighbours[index].devId));
+
+  switch (fanet.neighbours[index].aircraftType)
+  {
+  case FanetLora::aircraft_t ::paraglider :
+    display.drawXBitmap(88, 12, PGRX_bits,PGRX_width, PGRX_height,WHITE);      
+    break;
+  case FanetLora::aircraft_t::hangglider :
+    display.drawXBitmap(88, 12, HGRX_bits,HGRX_width, HGRX_height,WHITE);      
+    break;
+  case FanetLora::aircraft_t::balloon :
+    display.drawXBitmap(88, 12, BLRX_bits,BLRX_width, BLRX_height,WHITE);      
+    break;
+  case FanetLora::aircraft_t::glider :
+    display.drawXBitmap(88, 12, SPRX_bits,SPRX_width, SPRX_height,WHITE);      
+    break;
+  case FanetLora::aircraft_t::poweredAircraft :
+    display.drawXBitmap(88, 12, Airplane40_bits,Airplane40_width, Airplane40_height,WHITE);      
+    break;
+  case FanetLora::aircraft_t::helicopter :
+    display.drawXBitmap(88, 10, Helicopter40_bits,Helicopter40_width, Helicopter40_height,WHITE);      
+    break;
+  case FanetLora::aircraft_t::uav:
+    display.drawXBitmap(88, 12, UAVRX_bits,UAVRX_width, UAVRX_height,WHITE);      
+    break;
+  
+  default:
+    display.drawXBitmap(88, 12, UFORX_bits,UFORX_width, UFORX_height,WHITE);      
+    break;
+  }
+  
+  display.setCursor(0,20);
+  display.print("alt:");
+  display.print(fanet.neighbours[index].altitude,0);
+  display.print("m");
+
+  display.setCursor(0,32);
+  display.print("speed:");
+  display.print(fanet.neighbours[index].speed,0);
+  display.print("kmh");
+
+  display.setCursor(0,44);
+  display.print(fanet.neighbours[index].climb,1);
+  display.print("m/s");
+
+  display.setCursor(50,44);
+  display.print(fanet.neighbours[index].heading,0);
+  display.print("deg");
+
+  display.setCursor(0,56);
+  display.print(fanet.neighbours[index].lat,6);
+  display.setCursor(64,56);
+  display.print(fanet.neighbours[index].lon,6);
+
+
+  display.display();
+  index ++;
+  if (index >= MAXNEIGHBOURS) index = 0;
 }
 
 void sendAWGroundStationdata(uint32_t tAct){
@@ -546,7 +542,7 @@ void sendTraccarTrackingdata(FanetLora::trackingData *FanetData){
   msg += String(chs) + "&lon="; //
   sprintf(chs,"%02.6f",FanetData->lon);
   msg += String(chs) + "&timestamp="; //unix-timestamp
-  sprintf(chs,"%0d",now);
+  sprintf(chs,"%0ld",(long int)now);
   msg += String(chs) + "&altitude="; //alt in m
   sprintf(chs,"%0.2f",FanetData->altitude);
   msg += String(chs) + "&speed=";
@@ -708,7 +704,6 @@ void IRAM_ATTR ppsHandler(void){
 }
 
 void WiFiEvent(WiFiEvent_t event){
-  esp_err_t err;
   switch(event){
     case SYSTEM_EVENT_STA_START:
       log_i("SYSTEM_EVENT_STA_START");
@@ -782,7 +777,6 @@ void setupWifi(){
     log_i("Try to connect to WiFi ...");
     WiFi.status();
     WiFi.mode(WIFI_MODE_APSTA);
-    //WiFi.mode(WIFI_STA);
     if ((WiFi.SSID() != setting.wifi.ssid || WiFi.psk() != setting.wifi.password)){
       // ... Try to connect to WiFi station.
       WiFi.begin(setting.wifi.ssid.c_str(), setting.wifi.password.c_str());
@@ -878,8 +872,6 @@ void printSettings(){
   log_i("GS LON=%02.6f",setting.gs.lon);
   log_i("GS ALT=%0.2f",setting.gs.alt);
   log_i("GS AWID=%s",setting.gs.AWID);
-  log_i("WD Fanet-Weatherdata=%d",setting.wd.sendFanet);
-  log_i("WD tempoffset=%.1f",setting.wd.tempOffset);
   log_i("OGN-Livetracking=%d",setting.OGNLiveTracking);
   log_i("Traccar-Livetracking=%d",setting.traccarLiveTracking);
   log_i("Traccar-Address=%s",setting.TraccarSrv.c_str());
@@ -890,6 +882,14 @@ void printSettings(){
   log_i("VarioClimbingThreshold=%0.2f",setting.vario.climbingThreshold);
   log_i("VarioNearClimbingSensitivity=%0.2f",setting.vario.nearClimbingSensitivity);
   log_i("VarioVolume=%d",setting.vario.volume);
+
+  //weather-data
+  log_i("WD Fanet-Weatherdata=%d",setting.wd.sendFanet);
+  log_i("WD tempoffset=%.1f",setting.wd.tempOffset);
+  log_i("WUUlEnable=%d",setting.WUUpload.enable);
+  log_i("WUUlID=%s",setting.WUUpload.ID.c_str());
+  log_i("WUUlKEY=%s",setting.WUUpload.KEY.c_str());
+
 }
 
 void listSpiffsFiles(){
@@ -1030,10 +1030,10 @@ void setup() {
 
 
   if (setting.boardType == BOARD_T_BEAM){    
-    i2cOLED.begin(OLED_SDA, OLED_SCL);
+    i2cOLED.begin(21, 22);
     setupAXP192();
   }else if ((setting.boardType == BOARD_T_BEAM_V07) || (setting.boardType == BOARD_TTGO_T3_V1_6)){
-    i2cOLED.begin(OLED_SDA, OLED_SCL);
+    i2cOLED.begin(21, 22);
     status.bHasAXP192 = false;
     analogReadResolution(ADC_BITS); // Default of 12 is not very linear. Recommended to use 10 or 11 depending on needed resolution.
     //analogSetAttenuation(ADC_11db); // Default is 11db which is very noisy. Recommended to use 2.5 or 6. Options ADC_0db (1.1V), ADC_2_5db (1.5V), ADC_6db (2.2V), ADC_11db (3.9V but max VDD=3.3V)
@@ -1071,16 +1071,15 @@ void setup() {
 }
 
 void taskWeather(void *pvParameters){
-  static uint32_t tSendData = millis();
-  Weather::weatherData wData;
+  static uint32_t tSendData = millis() - WEATHER_UPDATE_RATE + 10000; //first sending is in 10 seconds
+  static uint32_t tUploadData = millis() - WEATHER_UNDERGROUND_UPDATE_RATE + 10000; //first sending is in 10seconds
   log_i("starting weather-task ");  
-  if (setting.Mode != MODE_GROUND_STATION){
-    status.bHasBME = false;    
+  if (setting.Mode != MODE_GROUND_STATION){    
     log_i("not in GS-Mode --> stop task");
     vTaskDelete(xHandleWeather);
     return;    
   }
-
+  Weather::weatherData wData;
   TwoWire i2cWeather = TwoWire(0);
   uint8_t oneWirePin = -1;
   if (setting.boardType == BOARD_HELTEC_LORA){
@@ -1096,6 +1095,9 @@ void taskWeather(void *pvParameters){
     vTaskDelete(xHandleWeather);
     return;    
   }
+  status.bHasBME = true; //we have a bme-sensor
+  const TickType_t xDelay = 1000 / portTICK_PERIOD_MS;   //only every 1sek.
+  TickType_t xLastWakeTime = xTaskGetTickCount (); //get actual tick-count
   while (1){
     uint32_t tAct = millis();
     weather.run();
@@ -1121,8 +1123,19 @@ void taskWeather(void *pvParameters){
         tSendData = tAct;
       }
     }
-    delay(1);
+    if (timeOver(tAct,tUploadData,WEATHER_UNDERGROUND_UPDATE_RATE)){
+      tUploadData = tAct;
+      if (setting.WUUpload.enable){
+        WeatherUnderground wu;
+        weather.getValues(&wData);
+        wu.setSettings(false,false); //no windsensor, no rain-sensor
+        log_i("temp=%f,humidity=%f",testWeatherData.temp,testWeatherData.Humidity);
+        wu.sendData(setting.WUUpload.ID,setting.WUUpload.KEY,testWeatherData.wHeading,testWeatherData.wSpeed,testWeatherData.wGust, testWeatherData.Humidity, testWeatherData.temp, testWeatherData.Baro,0.0, 0.0);
+      }
+    }
     if ((WebUpdateRunning) || (bPowerOff)) break;
+    vTaskDelayUntil( &xLastWakeTime, xDelay); //wait until next cycle
+    //delay(1);
   }
   log_i("stop task");
   vTaskDelete(xHandleWeather); //delete weather-task
@@ -1131,7 +1144,6 @@ void taskWeather(void *pvParameters){
 
 
 void taskBaro(void *pvParameters){
-  static uint32_t tRefresh = millis();
   uint8_t u8Volume = setting.vario.volume;
   log_i("starting baro-task ");  
   if (setting.Mode == MODE_GROUND_STATION){
@@ -1358,112 +1370,108 @@ void printBattVoltage(uint32_t tAct){
 }
 
 void printScanning(uint32_t tAct){
-  static uint32_t tPrint = millis();
   static uint8_t icon = 0;
-  //if ((tAct - tPrint) >= 300){
-    tPrint = tAct;
-    display.clearDisplay();
-    if (status.wifiStat==1) display.drawXBitmap(85,0,WIFI_AP_bits,WIFI_width,WIFI_height,WHITE);
-    if (status.wifiStat==2) display.drawXBitmap(85,0,WIFI_Sta_bits,WIFI_width,WIFI_height,WHITE);
-    drawBluetoothstat(101,0);
-    drawBatt(111, 0,(status.BattCharging) ? 255 : status.BattPerc);
-    switch (icon)
-    {
-    case 0: 
-      display.drawXBitmap(1,10,Antenna_bits,Antenna_width,Antenna_height,WHITE);
-      break;
-    case 1: 
-      display.drawXBitmap(1,10,Antenna_bits,Antenna_width,Antenna_height,WHITE);
-      display.drawXBitmap(42,10,WFTX_bits,WFTX_width,WFTX_height,WHITE);
-      break;
-    case 2: 
-      display.drawXBitmap(1,10,Antenna_bits,Antenna_width,Antenna_height,WHITE);
-      break;
-    case 3: 
-      display.drawXBitmap(1,10,Antenna_bits,Antenna_width,Antenna_height,WHITE);
-      display.drawXBitmap(42,10,WFTX_bits,WFTX_width,WFTX_height,WHITE);
-      display.drawXBitmap(66, 34, WFRX_bits,WFRX_width, WFRX_height,WHITE );
-      display.drawXBitmap(88, 10, PGRX_bits,PGRX_width, PGRX_height,WHITE);      
-      break;
-    case 4: 
-      display.drawXBitmap(1,10,Antenna_bits,Antenna_width,Antenna_height,WHITE);
-      break;
-    case 5: 
-      display.drawXBitmap(1,10,Antenna_bits,Antenna_width,Antenna_height,WHITE);
-      display.drawXBitmap(42,10,WFTX_bits,WFTX_width,WFTX_height,WHITE);
-      display.drawXBitmap(66, 34, WFRX_bits,WFRX_width, WFRX_height,WHITE );
-      display.drawXBitmap(88, 10, HGRX_bits,HGRX_width, HGRX_height,WHITE);      
-      break;
-    case 6: 
-      display.drawXBitmap(1,10,Antenna_bits,Antenna_width,Antenna_height,WHITE);
-      break;
-    case 7: 
-      display.drawXBitmap(1,10,Antenna_bits,Antenna_width,Antenna_height,WHITE);
-      display.drawXBitmap(42,10,WFTX_bits,WFTX_width,WFTX_height,WHITE);
-      display.drawXBitmap(66, 34, WFRX_bits,WFRX_width, WFRX_height,WHITE );
-      display.drawXBitmap(88, 10, BLRX_bits,BLRX_width, BLRX_height,WHITE);      
-      break;
-    case 8: 
-      display.drawXBitmap(1,10,Antenna_bits,Antenna_width,Antenna_height,WHITE);
-      break;
-    case 9: 
-      display.drawXBitmap(1,10,Antenna_bits,Antenna_width,Antenna_height,WHITE);
-      display.drawXBitmap(42,10,WFTX_bits,WFTX_width,WFTX_height,WHITE);
-      display.drawXBitmap(66, 34, WFRX_bits,WFRX_width, WFRX_height,WHITE );
-      display.drawXBitmap(88, 10, SPRX_bits,SPRX_width, SPRX_height,WHITE);      
-      break;
-    case 10: 
-      display.drawXBitmap(1,10,Antenna_bits,Antenna_width,Antenna_height,WHITE);
-      break;
-    case 11: 
-      display.drawXBitmap(1,10,Antenna_bits,Antenna_width,Antenna_height,WHITE);
-      display.drawXBitmap(42,10,WFTX_bits,WFTX_width,WFTX_height,WHITE);
-      display.drawXBitmap(66, 34, WFRX_bits,WFRX_width, WFRX_height,WHITE );
-      display.drawXBitmap(88, 10, Airplane40_bits,Airplane40_width, Airplane40_height,WHITE);      
-      break;
-    case 12: 
-      display.drawXBitmap(1,10,Antenna_bits,Antenna_width,Antenna_height,WHITE);
-      break;
-    case 13: 
-      display.drawXBitmap(1,10,Antenna_bits,Antenna_width,Antenna_height,WHITE);
-      display.drawXBitmap(42,10,WFTX_bits,WFTX_width,WFTX_height,WHITE);
-      display.drawXBitmap(66, 34, WFRX_bits,WFRX_width, WFRX_height,WHITE );
-      display.drawXBitmap(88, 10, Helicopter40_bits,Helicopter40_width, Helicopter40_height,WHITE);      
-      break;
-    case 14: 
-      display.drawXBitmap(1,10,Antenna_bits,Antenna_width,Antenna_height,WHITE);
-      break;
-    case 15: 
-      display.drawXBitmap(1,10,Antenna_bits,Antenna_width,Antenna_height,WHITE);
-      display.drawXBitmap(42,10,WFTX_bits,WFTX_width,WFTX_height,WHITE);
-      display.drawXBitmap(66, 34, WFRX_bits,WFRX_width, WFRX_height,WHITE );
-      display.drawXBitmap(88, 10, UAVRX_bits,UAVRX_width, UAVRX_height,WHITE);      
-      break;
-    case 16: 
-      display.drawXBitmap(1,10,Antenna_bits,Antenna_width,Antenna_height,WHITE);
-      break;
-    case 17: 
-      display.drawXBitmap(1,10,Antenna_bits,Antenna_width,Antenna_height,WHITE);
-      display.drawXBitmap(42,10,WFTX_bits,WFTX_width,WFTX_height,WHITE);
-      display.drawXBitmap(66, 34, WFRX_bits,WFRX_width, WFRX_height,WHITE );
-      display.drawXBitmap(88, 10, UFORX_bits,UFORX_width, UFORX_height,WHITE);      
-      break;
+  display.clearDisplay();
+  if (status.wifiStat==1) display.drawXBitmap(85,0,WIFI_AP_bits,WIFI_width,WIFI_height,WHITE);
+  if (status.wifiStat==2) display.drawXBitmap(85,0,WIFI_Sta_bits,WIFI_width,WIFI_height,WHITE);
+  drawBluetoothstat(101,0);
+  drawBatt(111, 0,(status.BattCharging) ? 255 : status.BattPerc);
+  switch (icon)
+  {
+  case 0: 
+    display.drawXBitmap(1,10,Antenna_bits,Antenna_width,Antenna_height,WHITE);
+    break;
+  case 1: 
+    display.drawXBitmap(1,10,Antenna_bits,Antenna_width,Antenna_height,WHITE);
+    display.drawXBitmap(42,10,WFTX_bits,WFTX_width,WFTX_height,WHITE);
+    break;
+  case 2: 
+    display.drawXBitmap(1,10,Antenna_bits,Antenna_width,Antenna_height,WHITE);
+    break;
+  case 3: 
+    display.drawXBitmap(1,10,Antenna_bits,Antenna_width,Antenna_height,WHITE);
+    display.drawXBitmap(42,10,WFTX_bits,WFTX_width,WFTX_height,WHITE);
+    display.drawXBitmap(66, 34, WFRX_bits,WFRX_width, WFRX_height,WHITE );
+    display.drawXBitmap(88, 10, PGRX_bits,PGRX_width, PGRX_height,WHITE);      
+    break;
+  case 4: 
+    display.drawXBitmap(1,10,Antenna_bits,Antenna_width,Antenna_height,WHITE);
+    break;
+  case 5: 
+    display.drawXBitmap(1,10,Antenna_bits,Antenna_width,Antenna_height,WHITE);
+    display.drawXBitmap(42,10,WFTX_bits,WFTX_width,WFTX_height,WHITE);
+    display.drawXBitmap(66, 34, WFRX_bits,WFRX_width, WFRX_height,WHITE );
+    display.drawXBitmap(88, 10, HGRX_bits,HGRX_width, HGRX_height,WHITE);      
+    break;
+  case 6: 
+    display.drawXBitmap(1,10,Antenna_bits,Antenna_width,Antenna_height,WHITE);
+    break;
+  case 7: 
+    display.drawXBitmap(1,10,Antenna_bits,Antenna_width,Antenna_height,WHITE);
+    display.drawXBitmap(42,10,WFTX_bits,WFTX_width,WFTX_height,WHITE);
+    display.drawXBitmap(66, 34, WFRX_bits,WFRX_width, WFRX_height,WHITE );
+    display.drawXBitmap(88, 10, BLRX_bits,BLRX_width, BLRX_height,WHITE);      
+    break;
+  case 8: 
+    display.drawXBitmap(1,10,Antenna_bits,Antenna_width,Antenna_height,WHITE);
+    break;
+  case 9: 
+    display.drawXBitmap(1,10,Antenna_bits,Antenna_width,Antenna_height,WHITE);
+    display.drawXBitmap(42,10,WFTX_bits,WFTX_width,WFTX_height,WHITE);
+    display.drawXBitmap(66, 34, WFRX_bits,WFRX_width, WFRX_height,WHITE );
+    display.drawXBitmap(88, 10, SPRX_bits,SPRX_width, SPRX_height,WHITE);      
+    break;
+  case 10: 
+    display.drawXBitmap(1,10,Antenna_bits,Antenna_width,Antenna_height,WHITE);
+    break;
+  case 11: 
+    display.drawXBitmap(1,10,Antenna_bits,Antenna_width,Antenna_height,WHITE);
+    display.drawXBitmap(42,10,WFTX_bits,WFTX_width,WFTX_height,WHITE);
+    display.drawXBitmap(66, 34, WFRX_bits,WFRX_width, WFRX_height,WHITE );
+    display.drawXBitmap(88, 10, Airplane40_bits,Airplane40_width, Airplane40_height,WHITE);      
+    break;
+  case 12: 
+    display.drawXBitmap(1,10,Antenna_bits,Antenna_width,Antenna_height,WHITE);
+    break;
+  case 13: 
+    display.drawXBitmap(1,10,Antenna_bits,Antenna_width,Antenna_height,WHITE);
+    display.drawXBitmap(42,10,WFTX_bits,WFTX_width,WFTX_height,WHITE);
+    display.drawXBitmap(66, 34, WFRX_bits,WFRX_width, WFRX_height,WHITE );
+    display.drawXBitmap(88, 10, Helicopter40_bits,Helicopter40_width, Helicopter40_height,WHITE);      
+    break;
+  case 14: 
+    display.drawXBitmap(1,10,Antenna_bits,Antenna_width,Antenna_height,WHITE);
+    break;
+  case 15: 
+    display.drawXBitmap(1,10,Antenna_bits,Antenna_width,Antenna_height,WHITE);
+    display.drawXBitmap(42,10,WFTX_bits,WFTX_width,WFTX_height,WHITE);
+    display.drawXBitmap(66, 34, WFRX_bits,WFRX_width, WFRX_height,WHITE );
+    display.drawXBitmap(88, 10, UAVRX_bits,UAVRX_width, UAVRX_height,WHITE);      
+    break;
+  case 16: 
+    display.drawXBitmap(1,10,Antenna_bits,Antenna_width,Antenna_height,WHITE);
+    break;
+  case 17: 
+    display.drawXBitmap(1,10,Antenna_bits,Antenna_width,Antenna_height,WHITE);
+    display.drawXBitmap(42,10,WFTX_bits,WFTX_width,WFTX_height,WHITE);
+    display.drawXBitmap(66, 34, WFRX_bits,WFRX_width, WFRX_height,WHITE );
+    display.drawXBitmap(88, 10, UFORX_bits,UFORX_width, UFORX_height,WHITE);      
+    break;
 
 
 
-    
-    default:
-      break;
-    }
-    icon++;
-    if (icon > 17) icon = 2;
+  
+  default:
+    break;
+  }
+  icon++;
+  if (icon > 17) icon = 2;
 
-    display.setTextSize(1);
-    display.setCursor(0,54);
-    display.print("Scanning the skyes...");
+  display.setTextSize(1);
+  display.setCursor(0,54);
+  display.print("Scanning the skyes...");
 
-    display.display();
-  //}
+  display.display();
 }
 void DrawRadarPilot(uint8_t neighborIndex){
   float pilotDistance = 0.0;
@@ -1548,8 +1556,6 @@ void DrawAngleLine(int16_t x,int16_t y,int16_t length,float deg){
 }
 
 void DrawRadarScreen(uint32_t tAct,uint8_t mode){
-  static uint32_t tPrint = millis();
-  static float angle = 0.0;
   static uint8_t neighborIndex = 0;
   int index;
   int16_t xStart;
@@ -1557,7 +1563,6 @@ void DrawRadarScreen(uint32_t tAct,uint8_t mode){
   float rads;
   
   String s = "";
-  tPrint = tAct;
   display.clearDisplay();
   drawAircraftType(0,0,setting.AircraftType);
   drawSatCount(18,0,(status.GPS_NumSat > 9) ? 9 : status.GPS_NumSat);
@@ -1669,54 +1674,36 @@ void drawspeaker(int16_t x, int16_t y){
 
 
 void printGPSData(uint32_t tAct){
-  static uint32_t tPrint = millis();
   String s = "";
-  //if ((tAct - tPrint) >= 1000){
-    tPrint = tAct;
-    display.clearDisplay();
-    display.setTextSize(2);
-    display.setCursor(0,0);
-    //display.print(setStringSize(String(status.BattPerc) + "% ",4));
-    drawAircraftType(0,0,setting.AircraftType);
-    
-    drawSatCount(18,0,(status.GPS_NumSat > 9) ? 9 : status.GPS_NumSat);
-    drawspeaker(47,0);
-    drawflying(67,0,status.flying);
-    if (status.wifiStat==1) display.drawXBitmap(85,0,WIFI_AP_bits,WIFI_width,WIFI_height,WHITE);
-    if (status.wifiStat==2) display.drawXBitmap(85,0,WIFI_Sta_bits,WIFI_width,WIFI_height,WHITE);
-    drawBluetoothstat(101,0);
-    drawBatt(111, 0,(status.BattCharging) ? 255 : status.BattPerc);
+  display.clearDisplay();
+  display.setTextSize(2);
+  display.setCursor(0,0);
+  //display.print(setStringSize(String(status.BattPerc) + "% ",4));
+  drawAircraftType(0,0,setting.AircraftType);
+  
+  drawSatCount(18,0,(status.GPS_NumSat > 9) ? 9 : status.GPS_NumSat);
+  drawspeaker(47,0);
+  drawflying(67,0,status.flying);
+  if (status.wifiStat==1) display.drawXBitmap(85,0,WIFI_AP_bits,WIFI_width,WIFI_height,WHITE);
+  if (status.wifiStat==2) display.drawXBitmap(85,0,WIFI_Sta_bits,WIFI_width,WIFI_height,WHITE);
+  drawBluetoothstat(101,0);
+  drawBatt(111, 0,(status.BattCharging) ? 255 : status.BattPerc);
 
+  display.setTextSize(3);
 
+  display.setCursor(0,20);
+  display.print(setStringSize(String(status.ClimbRate,1) + "ms",7));
 
-    /*
-    display.setTextSize(2);
-    display.setCursor(55,0);
-    s = "";
-    if (status.GPS_Fix == 1){
-      s = setStringSize(String(round(MyFanetData.altitude),0) + "m",6);
-    }else if (status.bHasVario){
-      s = setStringSize(String(round(status.varioAlt),0) + "m",6);
-    }
-    display.print(s);
-    */
+  display.setTextSize(2);
 
-    display.setTextSize(3);
+  display.setCursor(0,46);
+  display.print(setStringSize(String(status.GPS_alt,0) + "m",4));
 
-    display.setCursor(0,20);
-    display.print(setStringSize(String(status.ClimbRate,1) + "ms",7));
+  display.setCursor(65,46);
+  display.print(setStringSize(String(status.GPS_speed,0) + "kh",5));
 
-    display.setTextSize(2);
+  display.display();
 
-    display.setCursor(0,46);
-    display.print(setStringSize(String(status.GPS_alt,0) + "m",4));
-
-    display.setCursor(65,46);
-    display.print(setStringSize(String(status.GPS_speed,0) + "kh",5));
-
-    display.display();
-
-  //}
 }
 
 void checkReceivedLine(char *ch_str){
@@ -1886,12 +1873,10 @@ void taskStandard(void *pvParameters){
   static uint32_t tLife = millis();
   static uint32_t tLoop = millis();
   static uint8_t counter = 0;
-  static uint32_t tFlarmState = millis();
   static float oldAlt = 0.0;
   static uint32_t tOldPPS = millis();
   static uint32_t tLastPPS = millis();
   static uint32_t tDisplay = millis();
-  static uint32_t tTest = millis();
   char * pSerialLine = NULL;
   String sSerial = "";
   String s = "";

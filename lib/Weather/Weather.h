@@ -19,6 +19,8 @@
 
 #define WEATHER_REFRESH 2000
 
+#define WEATHER_UPLOAD 300000uL //weather upload intervall 5min
+
 class Weather {
 public:
     typedef struct {

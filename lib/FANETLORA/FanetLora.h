@@ -45,8 +45,8 @@
 //915E6 for North America
 //#define BAND 866E6
 //#define FREQUENCY868 868200012
-#define FREQUENCY868 868200000
-#define FREQUENCY915 916039978
+//#define FREQUENCY868 868200000
+//#define FREQUENCY915 916039978
 #define FANET_HEADER_SIZE 4
 #define ManuId 0x07 // for the moment we use soft-Rf, cause then airwhere is showing it on the map
 //#define ManuId 0xFA 
