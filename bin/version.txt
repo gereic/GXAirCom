@@ -105,3 +105,6 @@ Bugfix (esp crashed randomly when used with baro)
 V1.7.3
 included DS18B20 for Temperature of weatherstation (optional) (on Heltec/TTGO-Lora32 Board only at the moment (PIN22))
 added upload of weather-data for weather-underground
+
+V1.7.4
+added support for sending weather-data from WU over FANET (WU-->FANET bridge) in Ground-station-mode

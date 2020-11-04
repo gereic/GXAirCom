@@ -309,6 +309,7 @@ struct statusData{
   bool bHasAXP192;
   bool bHasVario;
   bool bHasBME;
+  bool bWUBroadCast;
   uint32_t tGPSCycle;
   uint32_t tLoop; //current Loop-time
   uint32_t tMaxLoop; //max Loop-time

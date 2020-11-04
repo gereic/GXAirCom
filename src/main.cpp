@@ -951,6 +951,7 @@ void setup() {
 
   status.bPowerOff = false;
   status.bHasBME = false;
+  status.bWUBroadCast = false;
 
   //for new T-Beam output 4 is red led
   pinMode(4, OUTPUT);
@@ -1073,6 +1074,7 @@ void setup() {
 void taskWeather(void *pvParameters){
   static uint32_t tSendData = millis() - WEATHER_UPDATE_RATE + 10000; //first sending is in 10 seconds
   static uint32_t tUploadData = millis() - WEATHER_UNDERGROUND_UPDATE_RATE + 10000; //first sending is in 10seconds
+  bool bDataOk = false;
   log_i("starting weather-task ");  
   if (setting.Mode != MODE_GROUND_STATION){    
     log_i("not in GS-Mode --> stop task");
@@ -1090,48 +1092,95 @@ void taskWeather(void *pvParameters){
   }
   Weather weather;
   weather.setTempOffset(setting.wd.tempOffset);
-  if (!weather.begin(&i2cWeather,setting.gs.alt,oneWirePin)){
-    log_i("no BME-sensor found --> stopping task");
+  if (weather.begin(&i2cWeather,setting.gs.alt,oneWirePin)){
+    status.bHasBME = true; //we have a bme-sensor
+  }
+  if (setting.WUUpload.enable){
+    status.bWUBroadCast = true;
+  }
+  if ((!status.bHasBME) && (!status.bWUBroadCast)){
+    log_i("stopping task");
     vTaskDelete(xHandleWeather);
     return;    
   }
-  status.bHasBME = true; //we have a bme-sensor
   const TickType_t xDelay = 1000 / portTICK_PERIOD_MS;   //only every 1sek.
   TickType_t xLastWakeTime = xTaskGetTickCount (); //get actual tick-count
   while (1){
     uint32_t tAct = millis();
-    weather.run();
-    if (setting.wd.sendFanet){
-      if (timeOver(tAct,tSendData,WEATHER_UPDATE_RATE)){
-        weather.getValues(&wData);
-        testWeatherData.lat = setting.gs.lat;
-        testWeatherData.lon = setting.gs.lon;
-        testWeatherData.bWind = true;
-        testWeatherData.wHeading = 0;
-        testWeatherData.wSpeed = 0;
-        testWeatherData.wGust = 0;      
-        testWeatherData.bTemp = wData.bTemp;
-        testWeatherData.bHumidity = wData.bHumidity;
-        testWeatherData.bBaro = wData.bPressure;
-        testWeatherData.temp = wData.temp;
-        testWeatherData.Humidity = wData.Humidity;
-        testWeatherData.Baro = wData.Pressure;      
-        testWeatherData.bStateOfCharge = true;
-        testWeatherData.Charge = status.BattPerc;
-        //testWeatherData.Charge = 44;
-        sendWeatherData = true;
-        tSendData = tAct;
+    if (status.bHasBME){
+      //station has BME --> we are a weather-station
+      weather.run();
+      if (setting.wd.sendFanet){
+        if (timeOver(tAct,tSendData,WEATHER_UPDATE_RATE)){
+          weather.getValues(&wData);
+          testWeatherData.lat = setting.gs.lat;
+          testWeatherData.lon = setting.gs.lon;
+          testWeatherData.bWind = true;
+          testWeatherData.wHeading = 0;
+          testWeatherData.wSpeed = 0;
+          testWeatherData.wGust = 0;      
+          testWeatherData.bTemp = wData.bTemp;
+          testWeatherData.bHumidity = wData.bHumidity;
+          testWeatherData.bBaro = wData.bPressure;
+          testWeatherData.temp = wData.temp;
+          testWeatherData.Humidity = wData.Humidity;
+          testWeatherData.Baro = wData.Pressure;      
+          testWeatherData.bStateOfCharge = true;
+          testWeatherData.Charge = status.BattPerc;
+          //testWeatherData.Charge = 44;
+          sendWeatherData = true;
+          tSendData = tAct;
+        }
+      }
+      if (timeOver(tAct,tUploadData,WEATHER_UNDERGROUND_UPDATE_RATE)){
+        tUploadData = tAct;
+        if (setting.WUUpload.enable){
+          WeatherUnderground::wData wuData;
+          WeatherUnderground wu;
+          weather.getValues(&wData);
+          //log_i("temp=%f,humidity=%f",testWeatherData.temp,testWeatherData.Humidity);
+          wuData.bWind = false;
+          wuData.winddir = testWeatherData.wHeading;
+          wuData.windspeed = testWeatherData.wSpeed;
+          wuData.windgust = testWeatherData.wGust;
+          wuData.humidity = testWeatherData.Humidity;
+          wuData.temp = testWeatherData.temp;
+          wuData.pressure = testWeatherData.Baro;
+          wuData.bRain = false;
+          wu.sendData(setting.WUUpload.ID,setting.WUUpload.KEY,&wuData);
+        }
       }
     }
-    if (timeOver(tAct,tUploadData,WEATHER_UNDERGROUND_UPDATE_RATE)){
-      tUploadData = tAct;
-      if (setting.WUUpload.enable){
-        WeatherUnderground wu;
-        weather.getValues(&wData);
-        wu.setSettings(false,false); //no windsensor, no rain-sensor
-        log_i("temp=%f,humidity=%f",testWeatherData.temp,testWeatherData.Humidity);
-        wu.sendData(setting.WUUpload.ID,setting.WUUpload.KEY,testWeatherData.wHeading,testWeatherData.wSpeed,testWeatherData.wGust, testWeatherData.Humidity, testWeatherData.temp, testWeatherData.Baro,0.0, 0.0);
+    if (status.bWUBroadCast){
+      //station should broadcast WU-Data over Fanet
+      if (timeOver(tAct,tUploadData,WEATHER_UNDERGROUND_UPDATE_RATE)){ //get Data from WU        
+        tUploadData = tAct;
+          WeatherUnderground::wData wuData;
+          WeatherUnderground wu;
+          bDataOk = wu.getData(setting.WUUpload.ID,setting.WUUpload.KEY,&wuData);
+          testWeatherData.lat = wuData.lat;
+          testWeatherData.lon = wuData.lon;
+          testWeatherData.bWind = true;
+          testWeatherData.wHeading = wuData.winddir;
+          testWeatherData.wSpeed = wuData.windspeed;
+          testWeatherData.wGust = wuData.windgust;      
+          testWeatherData.bTemp = true;
+          testWeatherData.bHumidity = true;
+          testWeatherData.bBaro = true;
+          testWeatherData.temp = wuData.temp;
+          testWeatherData.Humidity = wuData.humidity;
+          testWeatherData.Baro = wuData.pressure;      
+          testWeatherData.bStateOfCharge = true;  
+          log_i("winddir=%.1f speed=%.1f gust=%.1f temp=%.1f hum=%.1f press=%.1f",testWeatherData.wHeading,testWeatherData.wSpeed,testWeatherData.wGust,testWeatherData.temp,testWeatherData.Humidity,testWeatherData.Baro);
       }
+      if (timeOver(tAct,tSendData,WEATHER_UPDATE_RATE)){
+        tSendData = tAct;
+        if (bDataOk){
+          testWeatherData.Charge = status.BattPerc;
+          sendWeatherData = true;
+        }
+      }
+
     }
     if ((WebUpdateRunning) || (bPowerOff)) break;
     vTaskDelayUntil( &xLastWakeTime, xDelay); //wait until next cycle

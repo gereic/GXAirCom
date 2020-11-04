@@ -66,9 +66,14 @@ function setVis(){
   if (document.getElementById("mode").value == 1){ //mode ground-station
     if (bHasBME == 0){
       document.getElementById("VisWD").style.display='none'; //set weather-data invisible
-      document.getElementById("VisWU").style.display='none'; //set weather-underground upload invisible
+      document.getElementById("tWu").innerHTML='Broadcast weather-underground data to FANET';
+      document.getElementById("tWu2").innerHTML='enable sending wu-data to FANET';
+      document.getElementById("VisWU").style.display=''; //set weather-underground upload invisible
+      //document.getElementById("VisWU").style.display='none'; //set weather-underground upload invisible
     }else{
       document.getElementById("VisWD").style.display=''; //set weather-data invisible
+      document.getElementById("tWu").innerHTML='Weather Underground Upload';
+      document.getElementById("tWu2").innerHTML='enable sending weather-data to WU';
       document.getElementById("VisWU").style.display=''; //set weather-underground upload invisible
     }
     document.getElementById("VisAirCraftType").style.display='none';
@@ -468,11 +473,11 @@ window.addEventListener("load", init, false);
     <p></p>
     <p></p>
     <fieldset id="VisWU">
-      <legend><b>Weather Underground Upload</b></legend>
+      <legend id="tWu"><b>Weather Underground Upload</b></legend>
       <table style="width:100&#37;">
         <tbody>
           <tr>
-            <th>enable sending weather-data to WU</th>
+            <th id="tWu2">enable sending weather-data to WU</th>
             <td><input type="checkbox" id="WUUlEnable" name="WUUlEnable"></td>
           </tr>
           <tr>
