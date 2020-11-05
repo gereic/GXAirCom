@@ -1,5 +1,5 @@
-set PORT=COM1
-set firmware=firmware_v1.6.2_esp32noPSRam.bin
+set PORT=COM12
+set firmware=firmware_v1.7.4_am_oled_psRam.bin
 
 set esptooldir=C:\Users\gereic\AppData\Local\Programs\Python\Python38-32\Scripts\
 REM set firmware=firmware_v1.6.0_esp32PSRam.bin

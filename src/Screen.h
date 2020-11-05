@@ -14,8 +14,8 @@ extern struct statusData status;
 
 #include <Arduino.h>
 #include <GxEPD2_BW.h>
-#include <GxEPD2_3C.h>
-#include <GxEPD2_7C.h>
+//#include <GxEPD2_3C.h>
+//#include <GxEPD2_7C.h>
 #include <Fonts/FreeSansBold9pt7b.h>
 #include <Fonts/FreeSansBold12pt7b.h>
 #include <Fonts/FreeMonoBold9pt7b.h>
