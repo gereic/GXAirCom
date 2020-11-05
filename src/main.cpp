@@ -1931,7 +1931,6 @@ void sendLK8EX(uint32_t tAct){
 
 
 void taskStandard(void *pvParameters){
-  static uint32_t tLife = millis();
   static uint32_t tLoop = millis();
   static float oldAlt = 0.0;
   static uint32_t tOldPPS = millis();
@@ -2274,6 +2273,7 @@ void taskStandard(void *pvParameters){
   }
   log_i("stop task");
   #ifdef OLED
+  if (WebUpdateRunning){
   display.clearDisplay();
   display.setTextSize(2);
   display.setCursor(10,5);
@@ -2281,6 +2281,7 @@ void taskStandard(void *pvParameters){
   display.setCursor(10,30);
   display.print("wait...");
   display.display();
+  }
   #endif
   fanet.end();
   if (setting.OGNLiveTracking) ogn.end();
@@ -2308,11 +2309,14 @@ void powerOff(){
   */
 
   log_i("wait until all tasks are stopped");
+  eTaskState tBaro = eDeleted;
+  eTaskState tEInk = eDeleted;
+  eTaskState tStandard = eDeleted;
   while(1){
     //wait until all tasks are stopped
-    eTaskState tBaro = eTaskGetState(xHandleBaro);
-    eTaskState tEInk = eTaskGetState(xHandleEInk);
-    eTaskState tStandard = eTaskGetState(xHandleStandard);
+    if (xHandleBaro != NULL) tBaro = eTaskGetState(xHandleBaro);
+    if (xHandleEInk != NULL) tEInk = eTaskGetState(xHandleEInk);
+    if (xHandleStandard != NULL) tStandard = eTaskGetState(xHandleStandard);
     if ((tBaro == eDeleted) && (tEInk == eDeleted) && (tStandard == eDeleted)) break; //now all tasks are stopped    
     //log_i("baro=%d,eink=%d,standard=%d",tBaro,tEInk,tStandard);
     delay(500);
@@ -2392,7 +2396,6 @@ void taskEInk(void *pvParameters){
 #endif
 
 void taskBackGround(void *pvParameters){
-  static uint32_t tLife = millis();
   static uint32_t tWifiCheck = millis();
   static uint32_t warning_time=0;
   static uint8_t ntpOk = 0;
