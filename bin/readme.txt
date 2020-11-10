@@ -103,6 +103,14 @@ BATT_VOLT_PIN 34   ---|____|----|----|____|-----
 ******** Temperature-sensor DS18B20 for Ground-station *********
 TEMP_PIN 22
 
+******** Aneometer (Davis 6410) *********
+WINDDIR_PIN 36
+WINDSPEED_PIN 37
+
+******** RAIN-Sensor VENTUS W174 *********
+RAIN_PIN 38   (need 10K Pull-Up-Resistor) Bucket-Size 0.5l
+
+
 ************* Pins for TTGO Lora32 V2.1 1.6 ***************
 ******* LORA ********
 SCK 5

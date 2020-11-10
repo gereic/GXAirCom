@@ -113,7 +113,7 @@ AXP20X_Class axp;
 volatile bool AXP192_Irq = false;
 volatile float BattCurrent = 0.0;
 
-bool newStationConnected = false;
+//bool newStationConnected = false;
 
 #define SDA2 13
 #define SCL2 14
@@ -752,7 +752,7 @@ void WiFiEvent(WiFiEvent_t event){
       log_d("AP Stopped");
       break;
     case SYSTEM_EVENT_AP_STADISCONNECTED:
-      newStationConnected = true;
+      //newStationConnected = true;
       log_d("WiFi Client Disconnected");
       break;
     case SYSTEM_EVENT_AP_STACONNECTED:
@@ -765,7 +765,7 @@ void WiFiEvent(WiFiEvent_t event){
       status.wifiStat=2;
       break;
     case SYSTEM_EVENT_AP_STAIPASSIGNED:
-      newStationConnected = true;
+      //newStationConnected = true;
       log_i("SYSTEM_EVENT_AP_STAIPASSIGNED!!!!!!!!!!!!");
       break;
 
@@ -1053,7 +1053,7 @@ void setup() {
   }else if (setting.boardType == BOARD_HELTEC_LORA){    
     i2cOLED.begin(4, 15);
     status.bHasAXP192 = false;
-    analogReadResolution(12); //12 Bit resolution
+    analogReadResolution(10); //10 Bit resolution
     pinMode(HELTEC_BAT_PIN, INPUT); //input-Voltage on GPIO34
   }else{
     log_e("wrong-board-definition --> please correct");
@@ -1090,8 +1090,8 @@ void setup() {
 
 #ifdef GSMODULE
 void taskWeather(void *pvParameters){
+  static uint32_t tUploadData = millis() - WEATHER_UNDERGROUND_UPDATE_RATE + 5000; //first sending is in 5seconds
   static uint32_t tSendData = millis() - WEATHER_UPDATE_RATE + 10000; //first sending is in 10 seconds
-  static uint32_t tUploadData = millis() - WEATHER_UNDERGROUND_UPDATE_RATE + 10000; //first sending is in 10seconds
   bool bDataOk = false;
   log_i("starting weather-task ");  
   Weather::weatherData wData;
@@ -1105,7 +1105,7 @@ void taskWeather(void *pvParameters){
   }
   Weather weather;
   weather.setTempOffset(setting.wd.tempOffset);
-  if (weather.begin(&i2cWeather,setting.gs.alt,oneWirePin)){
+  if (weather.begin(&i2cWeather,setting.gs.alt,oneWirePin,36,37,38)){
     status.bHasBME = true; //we have a bme-sensor
   }
   if (setting.WUUpload.enable){
@@ -1123,15 +1123,45 @@ void taskWeather(void *pvParameters){
     if (status.bHasBME){
       //station has BME --> we are a weather-station
       weather.run();
+      weather.getValues(&wData);
+      status.weather.temp = wData.temp;
+      status.weather.Humidity = wData.Humidity;
+      status.weather.Pressure = wData.Pressure;
+      status.weather.WindDir = wData.WindDir;
+      status.weather.WindSpeed = wData.WindSpeed;
+      status.weather.WindGust = wData.WindGust;
+      status.weather.rain1h = wData.rain1h;
+      status.weather.rain1d = wData.rain1d;
+      if (timeOver(tAct,tUploadData,WEATHER_UNDERGROUND_UPDATE_RATE)){
+        tUploadData = tAct;
+        if (setting.WUUpload.enable){
+          WeatherUnderground::wData wuData;
+          WeatherUnderground wu;
+          //log_i("temp=%f,humidity=%f",testWeatherData.temp,testWeatherData.Humidity);
+          wuData.bWind = true;
+          wuData.winddir = wData.WindDir;
+          wuData.windspeed = wData.WindSpeed;
+          wuData.windgust = wData.WindGust;
+          wuData.humidity = wData.Humidity;
+          wuData.temp = wData.temp;
+          wuData.pressure = wData.Pressure;
+          wuData.bRain = true;
+          wuData.rain1h = wData.rain1h ;
+          wuData.raindaily = wData.rain1d;
+          wu.sendData(setting.WUUpload.ID,setting.WUUpload.KEY,&wuData);
+        }
+        weather.resetWindGust();
+      }
+      
       if (setting.wd.sendFanet){
         if (timeOver(tAct,tSendData,WEATHER_UPDATE_RATE)){
-          weather.getValues(&wData);
+          
           testWeatherData.lat = setting.gs.lat;
           testWeatherData.lon = setting.gs.lon;
           testWeatherData.bWind = true;
-          testWeatherData.wHeading = 0;
-          testWeatherData.wSpeed = 0;
-          testWeatherData.wGust = 0;      
+          testWeatherData.wHeading = wData.WindDir;
+          testWeatherData.wSpeed = wData.WindSpeed;
+          testWeatherData.wGust = wData.WindGust;      
           testWeatherData.bTemp = wData.bTemp;
           testWeatherData.bHumidity = wData.bHumidity;
           testWeatherData.bBaro = wData.bPressure;
@@ -1143,24 +1173,6 @@ void taskWeather(void *pvParameters){
           //testWeatherData.Charge = 44;
           sendWeatherData = true;
           tSendData = tAct;
-        }
-      }
-      if (timeOver(tAct,tUploadData,WEATHER_UNDERGROUND_UPDATE_RATE)){
-        tUploadData = tAct;
-        if (setting.WUUpload.enable){
-          WeatherUnderground::wData wuData;
-          WeatherUnderground wu;
-          weather.getValues(&wData);
-          //log_i("temp=%f,humidity=%f",testWeatherData.temp,testWeatherData.Humidity);
-          wuData.bWind = false;
-          wuData.winddir = testWeatherData.wHeading;
-          wuData.windspeed = testWeatherData.wSpeed;
-          wuData.windgust = testWeatherData.wGust;
-          wuData.humidity = testWeatherData.Humidity;
-          wuData.temp = testWeatherData.temp;
-          wuData.pressure = testWeatherData.Baro;
-          wuData.bRain = false;
-          wu.sendData(setting.WUUpload.ID,setting.WUUpload.KEY,&wuData);
         }
       }
     }
@@ -1387,7 +1399,7 @@ float readBattvoltage(){
     adc_reading /= NO_OF_SAMPLES;
     // voltage-divier 27kOhm and 100kOhm
     // vIn = (R1+R2)/R2 * VOut
-    vBatt = (100000.0f + 27000.0f) / 100000.0f * (float(adc_reading) / 4095.0f *3.3) ;
+    vBatt = (100000.0f + 27000.0f) / 100000.0f * (float(adc_reading) / 1023.0f *3.3) ;
     //log_i("adc=%d, vBatt=%.3f",adc_reading,vBatt);
     return vBatt;
     //return (27f/100.0f) * 3.30f * float(analogRead(34)) / 4096.0f;  // LiPo battery
@@ -2480,10 +2492,10 @@ void taskBackGround(void *pvParameters){
       log_i("Batt empty voltage=%d.%dV",status.vBatt/1000,status.vBatt%1000);
       powerOff(); //power off, when battery is empty !!
     }
-    if (newStationConnected){
+    //if (newStationConnected){
       //listConnectedStations();
-      newStationConnected = false;
-    }
+      //newStationConnected = false;
+    //}
     delay(1);
 	}
 }

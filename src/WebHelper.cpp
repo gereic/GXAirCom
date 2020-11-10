@@ -62,7 +62,13 @@ void onWebSocketEvent(uint8_t client_num,
           doc["myDevId"] = setting.myDevId;
           doc["compiledate"] = String(compile_date);
           doc["bHasVario"] = (uint8_t)status.bHasVario;
+          doc["bHasBME"] = (uint8_t)status.bHasBME;
+          doc["board"] = setting.boardType;
+          doc["disp"] = setting.displayType;
+          doc["band"] = setting.band;
+          doc["power"] = setting.LoraPower;
           doc["mode"] = setting.Mode;
+          doc["type"] = (uint8_t)setting.AircraftType;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
         }else if (clientPages[client_num] == 2){ //sendmessage
@@ -502,12 +508,14 @@ void Web_loop(void){
     doc.clear();
     doc["counter"] = counter;
     doc["vBatt"] = String((float)status.vBatt/1000.,2);
+    #ifdef AIRMODULE
     doc["gpsFix"] = status.GPS_Fix;
     doc["gpsNumSat"] = status.GPS_NumSat;
+    doc["gpsSpeed"] = String(status.GPS_speed,2);
+    #endif
     doc["gpslat"] = String(status.GPS_Lat,6);
     doc["gpslon"] = String(status.GPS_Lon,6);
     doc["gpsAlt"] = String(status.GPS_alt,1);
-    doc["gpsSpeed"] = String(status.GPS_speed,2);
     doc["climbrate"] = String(status.ClimbRate,1);
     doc["fanetTx"] = status.fanetTx;
     doc["fanetRx"] = status.fanetRx;
@@ -522,6 +530,26 @@ void Web_loop(void){
         webSocket.sendTXT(i, msg_buf);
       }
     }
+    #ifdef GSMODULE
+    //weahter-data
+    doc.clear();
+    doc["wsTemp"] = String(status.weather.temp,1);
+    doc["wsHum"] = String(status.weather.Humidity,1);
+    doc["wsPress"] = String(status.weather.Pressure,2);
+    doc["wsWDir"] = String(status.weather.WindDir,1);
+    doc["wsWSpeed"] = String(status.weather.WindSpeed,1);
+    doc["wsWGust"] = String(status.weather.WindGust,1);
+    doc["wsR1h"] = String(status.weather.rain1h,1);
+    doc["wsR1d"] = String(status.weather.rain1d,1);
+    serializeJson(doc, msg_buf);
+    for (int i = 0;i <MAXCLIENTS;i++){
+      if (clientPages[i] == 1){
+        log_d("Sending to [%u]: %s", i, msg_buf);
+        webSocket.sendTXT(i, msg_buf);
+      }
+    }
+    #endif
+
     counter++;
   }
   if (restartNow){

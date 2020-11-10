@@ -54,6 +54,27 @@ function resetMaxLoopTime(){
   doSend(JSON.stringify(obj));
 
 }
+
+//this function sets visible depending on actual option
+function setVis(){
+  //console.log("visible=" + document.getElementById("mode").style.display)
+  if (document.getElementById("mode").value == 1){ //mode ground-station
+    //document.getElementById("VisWeather").style.display='';
+    document.getElementById("VisAirCraftType").style.display='none';
+    document.getElementById("VisgpsFix").style.display='none';
+    document.getElementById("VisgpsNumSat").style.display='none';
+    document.getElementById("VisgpsSpeed").style.display='none';
+  }else{
+    //document.getElementById("VisWeather").style.display='none';
+    document.getElementById("VisAirCraftType").style.display='';
+    document.getElementById("VisgpsFix").style.display='';
+    document.getElementById("VisgpsNumSat").style.display='';
+    document.getElementById("VisgpsSpeed").style.display='';
+  }
+}
+
+
+
 // Called when a message is received from the server
 function onMessage(evt) {
  
@@ -67,6 +88,12 @@ function onMessage(evt) {
         if (key == "bHasVario"){
           if (myObj[key] == 0){
             document.getElementById("VisVario").style.display='none';
+          }
+          continue;
+        }
+        if (key == "bHasBME"){
+          if (myObj[key] == 0){
+            document.getElementById("VisWeather").style.display='none';
           }
           continue;
         }
@@ -99,11 +126,6 @@ function doSend(message) {
     websocket.send(message);
 }
 
-//this function sets visible depending on actual option
-function setVis(){
-
-}
- 
 // Call the init function as soon as the page loads
 window.addEventListener("load", init, false);
  
@@ -117,89 +139,201 @@ window.addEventListener("load", init, false);
       <h3>build-date: %BUILD%</h3>
       <h3>%PILOT%</h3>      
     </div>
-    <style>td{padding:0px 5px;}</style>
-    <div>
+    <fieldset>
+      <legend><b>General Info</b></legend>
       <table style="width:100&#37;">
         <tbody>
           <tr>
             <th>built</th>
-            <td id="compiledate"></td>
+            <td><input type="text" id="compiledate" disabled></td>
           </tr>
           <tr>
             <th>Device-ID</th>
-            <td id="myDevId"></td>
-          </tr>
-          <tr><th></th><td>&nbsp;</td></tr>
-          <tr>
-            <th>Batt</th>
-            <td id="vBatt"></td>
-          </tr>
-          <tr><th></th><td>&nbsp;</td></tr>
-          <tr>
-            <th>GPS-fix</th>
-            <td id="gpsFix"></td>
+            <td><input type="text" id="myDevId" disabled></td>
           </tr>
           <tr>
-            <th>GPS-numSat</th>
-            <td id="gpsNumSat"></td>
+            <th>Board Type</th>
+            <td><select name="board" id="board" disabled>
+              <option value="0">TTGO T-Beam T22_V1.0 / T22_V1.1</option>
+              <option value="2">TTGO T-Beam T22_V07</option>
+              <option value="1">HELTEC / TTGO LORA</option>
+              <option value="3">TTGO LORA T3_V1.6 (V2 1.6)</option>
+            </select></td>
           </tr>
           <tr>
-            <th>GPS-LAT [DD.dddddd]</th>
-            <td id="gpslat"></td>
+            <th>Display Type</th>
+            <td><select name="disp" id="disp" disabled>
+              <option value="0">0.96' OLED</option>
+              <option value="1">2.9' E-Ink</option>
+            </select></td>
           </tr>
           <tr>
-            <th>GPS-Lon [DD.dddddd]</th>
-            <td id="gpslon"></td>
+            <th>Radio Frequency</th>
+            <td><select name="band" id="band" disabled>
+              <option value="0">868mhz</option>
+              <option value="1">915mhz</option>
+            </select></td>
           </tr>
           <tr>
-            <th>GPS-alt [m]</th>
-            <td id="gpsAlt"></td>
+            <th>output-power</th>
+            <td><select name="power" id="power" disabled>
+              <option value="5">LOW</option>
+              <option value="10">MID</option>
+              <option value="14">HIGH</option>
+            </select></td>
           </tr>
           <tr>
-            <th>GPS-speed [km/h]</th>
-            <td id="gpsSpeed"></td>
+            <th>operating-mode</th>
+            <td><select name="mode" id="mode" disabled>
+              <option value="0">AIR-Module</option>
+              <option value="1">Ground-Station</option>
+              <option value="100">Developer-mode</option>
+            </select></td>
           </tr>
-          <tr><th></th><td>&nbsp;</td></tr>
-          <tr id="VisVario">
-            <th>climbrate [m/s]</th>
-            <td id="climbrate"></td>
-          </tr>
-          <tr><th></th><td>&nbsp;</td></tr>
+          <tr id="VisAirCraftType">
+            <th>Aircraft Type</th>
+            <td><select name="type" id="type" disabled>
+              <option value="0">Unknown</option>
+              <option value="1">Paraglider</option>
+              <option value="2">Hangglider</option>
+              <option value="3">Balloon</option>
+              <option value="4">Glider</option>
+              <option value="5">Powered Aircraft</option>
+              <option value="6">Helicopter</option>
+              <option value="7">UAV</option>
+            </select></td>
+          </tr>	
           <tr>
-            <th>fanet rx-count</th>
-            <td id="fanetRx"></td>
+            <th>Batt [V]</th>
+            <td><input type="text" id="vBatt" disabled></td>
           </tr>
-          <tr>
-            <th>fanet tx-count</th>
-            <td id="fanetTx"></td>
-          </tr>
-          <tr><th></th><td>&nbsp;</td></tr>
           <tr>
             <th>current loop-time [ms]</th>
-            <td id="tLoop"></td>
+            <td><input type="text" id="tLoop" disabled></td>
           </tr>
           <tr>
             <th>max loop-time [ms]</th>
-            <td id="tMaxLoop"></td>
-            <!-- <td><button onClick="resetMaxLoopTime()">reset</button></td> -->
+            <td><input type="text" id="tMaxLoop" disabled></td>
           </tr>
-          <tr><th></th><td>&nbsp;</td></tr>
           <tr>
             <th>actual free heap</th>
-            <td id="freeHeap"></td>
+            <td><input type="text" id="freeHeap" disabled></td>
           </tr>
           <tr>
             <th>min ever free heap</th>
-            <td id="fHeapMin"></td>
+            <td><input type="text" id="fHeapMin" disabled></td>
           </tr>
           <tr>
             <th>Live-Counter</th>
-            <td id="counter"></td>
-          </tr>        
+            <td><input type="text" id="counter" disabled></td>
+          </tr>
         </tbody>      
       </table>
-    </div>
-    <div></div>
+    </fieldset>
+    <p></p>
+    <p></p>
+    <fieldset>
+      <legend><b>GPS</b></legend>
+      <table style="width:100&#37;">
+        <tbody>
+          <tr id="VisgpsFix">
+            <th>fix</th>
+            <td><input type="text" id="gpsFix" disabled></td>
+          </tr>
+          <tr id="VisgpsNumSat">
+            <th>sat count</th>
+            <td><input type="text" id="gpsNumSat" disabled></td>
+          </tr>
+          <tr>
+            <th>GPS-LAT [DD.dddddd]</th>
+            <td><input type="text" id="gpslat" disabled></td>
+          </tr>
+          <tr>
+            <th>GPS-Lon [DD.dddddd]</th>
+            <td><input type="text" id="gpslon" disabled></td>
+          </tr>
+          <tr>
+            <th>GPS-alt [m]</th>
+            <td><input type="text" id="gpsAlt" disabled></td>
+          </tr>
+          <tr id="VisgpsSpeed">
+            <th>GPS-speed [km/h]</th>
+            <td><input type="text" id="gpsSpeed" disabled></td>
+          </tr>
+        </tbody>      
+      </table>
+    </fieldset>
+    <p></p>
+    <p></p>
+    <fieldset>
+      <legend><b>FANET</b></legend>
+      <table style="width:100&#37;">
+        <tbody>
+          <tr>
+            <th>rx-count</th>
+            <td><input type="text" id="fanetRx" disabled></td>
+          </tr>
+          <tr>
+            <th>tx-count</th>
+            <td><input type="text" id="fanetTx" disabled></td>
+          </tr>
+        </tbody>      
+      </table>
+    </fieldset>
+    <p></p>
+    <p></p>
+    <fieldset id="VisVario">
+      <legend><b>Vario</b></legend>
+      <table style="width:100&#37;">
+        <tbody>
+          <tr>
+            <th>climbrate [m/s]</th>
+            <td><input type="text" id="climbrate" disabled></td>
+          </tr>
+        </tbody>      
+      </table>
+    </fieldset>
+    <p></p>
+    <p></p>
+    <fieldset id="VisWeather">
+      <legend><b>Weather-data</b></legend>
+      <table style="width:100&#37;">
+        <tbody>
+          <tr>
+            <th>Temp [°C]</th>
+            <td><input type="text" id="wsTemp" disabled></td>
+          </tr>
+          <tr>
+            <th>Humidity [%rH]</th>
+            <td><input type="text" id="wsHum" disabled></td>
+          </tr>
+          <tr>
+            <th>Pressure [hPa]</th>
+            <td><input type="text" id="wsPress" disabled></td>
+          </tr>
+          <tr>
+            <th>Wind direction [°]</th>
+            <td><input type="text" id="wsWDir" disabled></td>
+          </tr>
+          <tr>
+            <th>Wind speed [km/h]</th>
+            <td><input type="text" id="wsWSpeed" disabled></td>
+          </tr>
+          <tr>
+            <th>Wind gust [km/h]</th>
+            <td><input type="text" id="wsWGust" disabled></td>
+          </tr>
+          <tr>
+            <th>rain 1 hour [l]</th>
+            <td><input type="text" id="wsR1h" disabled></td>
+          </tr>
+          <tr>
+            <th>rain 1 day [l]</th>
+            <td><input type="text" id="wsR1d" disabled></td>
+          </tr>
+        </tbody>      
+      </table>
+    </fieldset>
     <p></p>
     <table style="width:100&#37;">
       <tr>

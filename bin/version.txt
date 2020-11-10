@@ -108,3 +108,8 @@ added upload of weather-data for weather-underground
 
 V1.7.4
 added support for sending weather-data from WU over FANET (WU-->FANET bridge) in Ground-station-mode
+
+V1.7.5
+added support for Aneometer (Davis 6410)
+added support for rain-sensor VENTUS W174 
+new info-page

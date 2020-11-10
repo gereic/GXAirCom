@@ -287,6 +287,17 @@ struct SettingsData{
   weatherupload WUUpload; //weather-underground upload-settings
 };
 
+struct weatherStatus{
+  float temp; //temp [°C]
+  float Humidity; // [%rH]
+  float Pressure; // [hPa]
+  float WindDir; //[Deg]
+  float WindSpeed; //[km/h]
+  float WindGust; //[km/h]
+  float rain1h; // rain this hour [l/h]
+  float rain1d; // rain this day [l/h]
+};
+
 struct statusData{
   String myIP; //my IP-Adress
   uint16_t vBatt; //battery-voltage 1/1000V
@@ -319,6 +330,7 @@ struct statusData{
   uint32_t flightTime; //flight-time in sek.
   bool bMuting; //muting beeper
   bool bPowerOff;
+  weatherStatus weather;
 };
 
 #endif

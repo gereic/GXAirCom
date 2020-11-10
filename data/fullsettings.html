@@ -262,7 +262,7 @@ window.addEventListener("load", init, false);
           </tr>
           <tr>
             <th>Display Type</th>
-            <td><select name="disp" id="disp">
+            <td><select name="disp" id="disp" disabled>
               <option value="0">0.96' OLED</option>
               <option value="1">2.9' E-Ink</option>
             </select></td>
@@ -285,7 +285,7 @@ window.addEventListener("load", init, false);
           </tr>
           <tr>
             <th>operating-mode</th>
-            <td><select onchange="setVis()" name="mode" id="mode">
+            <td><select onchange="setVis()" name="mode" id="mode" disabled>
               <option value="0">AIR-Module</option>
               <option value="1">Ground-Station</option>
               <option value="100">Developer-mode</option>
