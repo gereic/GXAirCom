@@ -177,7 +177,10 @@ function sendValues(){
 
   WUUlEnable : Number(document.getElementById("WUUlEnable").checked),
   WUUlID : document.getElementById("WUUlID").value,  
-  WUUlKEY : document.getElementById("WUUlKEY").value,  
+  WUUlKEY : document.getElementById("WUUlKEY").value,
+  GSMAPN : document.getElementById("GSMAPN").value,  
+  GSMUSER : document.getElementById("GSMUSER").value,  
+  GSMPWD : document.getElementById("GSMPWD").value,    
   save : 2
 	};
   doSend(JSON.stringify(obj));
@@ -203,8 +206,12 @@ function onMessage(evt) {
         }else if (key == "bHasBME"){
           bHasBME = myObj[key];
           continue;
+        }else if (key == "bHasGSM"){
+          if (myObj[key] == 0){
+            document.getElementById("VisGSM").style.display='none';
+          }
+          continue;          
         }
-
         var e = document.getElementById(key);
         if (e instanceof HTMLSelectElement) {     // <select>
           document.getElementById(key).value = myObj[key];
@@ -258,6 +265,7 @@ window.addEventListener("load", init, false);
               <option value="2">TTGO T-Beam T22_V07</option>
               <option value="1">HELTEC / TTGO LORA</option>
               <option value="3">TTGO LORA T3_V1.6 (V2 1.6)</option>
+              <option value="4">TTGO T-SIM7000G</option>
             </select></td>
           </tr>
           <tr>
@@ -521,6 +529,27 @@ window.addEventListener("load", init, false);
           <tr>
             <th>beep only when flying</th>
             <td><input type="checkbox" id="vBeepFly" name="vBeepFly"></td>
+          </tr>
+        </tbody>      
+      </table>
+    </fieldset>
+    <p></p>
+    <p></p>
+    <fieldset id="VisGSM">
+      <legend><b>GSM settings</b></legend>
+      <table style="width:100&#37;">
+        <tbody>
+          <tr>
+            <th>APN</th>
+            <td><input type="text" id="GSMAPN" name="GSMAPN"></td>
+          </tr>
+          <tr>
+            <th>USER</th>
+            <td><input type="text" id="GSMUSER" name="GSMUSER"></td>
+          </tr>
+          <tr>
+            <th>PWD</th>
+            <td><input type="text" id="GSMPWD" name="GSMPWD"></td>
           </tr>
         </tbody>      
       </table>

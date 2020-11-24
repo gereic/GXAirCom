@@ -114,6 +114,6 @@ added support for Aneometer (Davis 6410)
 added support for rain-sensor VENTUS W174 
 new info-page
 
-V1.7.6
+V1.8.0
 source-cleanup
-added support for SIM800L-ground-station
+added support for SIM800L-ground-station(pin-descrition --> see readme.txt)

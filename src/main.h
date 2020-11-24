@@ -135,6 +135,28 @@ RXD 12
 BUZZER 0
 
 
+************* Pins for TTGO-TSIM7000G ***************
+******* LORA ********
+SCK 18
+MISO 19
+MOSI 23
+SS 5
+RST 12
+DIO0 32
+
+******** GPS *********
+TXD 27 
+RXD 26
+
+******* OLED ********
+SDA 21
+SCL 22 
+
+******** BARO *********
+SDA 13
+SCL 14 
+
+
 
 
 */
@@ -160,6 +182,7 @@ BUZZER 0
 #define BOARD_HELTEC_LORA 1
 #define BOARD_T_BEAM_V07 2
 #define BOARD_TTGO_T3_V1_6 3
+#define BOARD_TTGO_TSIM_7000 4
 
 #define BAND868 0
 #define BAND915 1
@@ -253,6 +276,12 @@ struct WeatherSettings{
   uint8_t sendFanet;  
 };
 
+struct GsmSettings{
+  String apn;
+  String user;
+  String pwd;
+};
+
 struct WifiSettings{
   String appw; //access-point-Password
   String ssid; //WIFI SSID
@@ -290,6 +319,7 @@ struct SettingsData{
   String TraccarSrv; //OGN-Live-Tracking  
   WeatherSettings wd;
   weatherupload WUUpload; //weather-underground upload-settings
+  GsmSettings gsm; //settings for GSM
 };
 
 struct weatherStatus{
@@ -339,6 +369,7 @@ struct statusData{
   uint8_t modemstatus; //status of mobile-device (sim800)
   bool bInternetConnected;
   bool bTimeOk;
+  bool bHasGSM;
 };
 
 #endif

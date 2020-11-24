@@ -52,6 +52,11 @@ void load_configFile(SettingsData* pSetting){
     pSetting->WUUpload.ID = preferences.getString("WUUlID","");
     pSetting->WUUpload.KEY = preferences.getString("WUUlKEY","");
 
+    //gsm
+    pSetting->gsm.apn = preferences.getString("GSMAPN","");
+    pSetting->gsm.user = preferences.getString("GSMUSER","");
+    pSetting->gsm.pwd = preferences.getString("GSMKEY","");
+
     preferences.end(); 
 }
 
@@ -104,7 +109,10 @@ void write_configFile(SettingsData* pSetting){
     preferences.putString("WUUlID",pSetting->WUUpload.ID);
     preferences.putString("WUUlKEY",pSetting->WUUpload.KEY);
 
-
+    //gsm
+    preferences.putString("GSMAPN",pSetting->gsm.apn);
+    preferences.putString("GSMUSER",pSetting->gsm.user);
+    preferences.putString("GSMKEY",pSetting->gsm.pwd);
 }
 
 void write_screenNumber(void){

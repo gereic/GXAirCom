@@ -135,6 +135,15 @@ void onWebSocketEvent(uint8_t client_num,
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
 
+          doc.clear();
+          doc["bHasGSM"] = (uint8_t)status.bHasGSM;
+          doc["GSMAPN"] = setting.gsm.apn;
+          doc["GSMUSER"] = setting.gsm.user;
+          doc["GSMPWD"] = setting.gsm.pwd;
+          serializeJson(doc, msg_buf);
+          webSocket.sendTXT(client_num, msg_buf);
+          
+
         }else if (clientPages[client_num] == 11){ //settings general
           doc["board"] = setting.boardType;
           doc["band"] = setting.band;
@@ -246,7 +255,11 @@ void onWebSocketEvent(uint8_t client_num,
         if (root.containsKey("WUUlEnable")) newSetting.WUUpload.enable = doc["WUUlEnable"].as<bool>();
         if (root.containsKey("WUUlID")) newSetting.WUUpload.ID = doc["WUUlID"].as<String>();
         if (root.containsKey("WUUlKEY")) newSetting.WUUpload.KEY = doc["WUUlKEY"].as<String>();
-        
+        //GSM
+        if (root.containsKey("GSMAPN")) newSetting.gsm.apn = doc["GSMAPN"].as<String>();
+        if (root.containsKey("GSMUSER")) newSetting.gsm.user = doc["GSMUSER"].as<String>();
+        if (root.containsKey("GSMPWD")) newSetting.gsm.pwd = doc["GSMPWD"].as<String>();
+
         setting = newSetting;
         log_i("write config-to file");
         write_configFile(&newSetting);

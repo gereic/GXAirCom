@@ -23,28 +23,26 @@
 //#include <HTTPClient.h>
 #include <ArduinoHttpClient.h>
 
-#ifdef SIM800
+#ifdef GSM_MODULE
 
 // Set serial for debug console (to the SerialMon Monitor, default speed 115200)
 //#define MODEMDEBUG
 
-#define SIM800_RESET 25
-#define TINY_GSM_MODEM_SIM800
 #include <TinyGsmClient.h>
-  HardwareSerial Sim800Serial(2);
+  HardwareSerial GsmSerial(2);
 
 #if defined(MODEMDEBUG)
   #define SerialMon Serial
   #define TINY_GSM_DEBUG SerialMon
   #include <StreamDebugger.h>
-  StreamDebugger debugger(Sim800Serial, SerialMon);
+  StreamDebugger debugger(GsmSerial, SerialMon);
   TinyGsm modem(debugger);
 #else
-  TinyGsm modem(Sim800Serial);
+  TinyGsm modem(GsmSerial);
 #endif
-  //TinyGsm modem(Sim800Serial);
-  TinyGsmClient Sim800OGNClient(modem,0); //client number 0 for OGN
-  TinyGsmClient Sim800WUClient(modem,1); //client number 1 for weather-underground
+  //TinyGsm modem(GsmSerial);
+  TinyGsmClient GsmOGNClient(modem,0); //client number 0 for OGN
+  TinyGsmClient GsmWUClient(modem,1); //client number 1 for weather-underground
 #endif
 
 #ifdef EINK
@@ -150,13 +148,6 @@ String airwhere_web_ip = "37.128.187.9";
 
 BluetoothSerial SerialBT;
 
-//TTGO T-Beam V07
-const byte ADCBOARDVOLTAGE_PIN = 35; // Prefer Use of ADC1 (8 channels, attached to GPIOs 32 - 39) . ADC2 (10 channels, attached to GPIOs 0, 2, 4, 12 - 15 and 25 - 27)
-const byte ADC_BITS = 10; // 10 - 12 bits
-
-#define HELTEC_BAT_PIN 34
-
-
  unsigned long ble_low_heap_timer=0;
  String ble_data="";
  bool ble_mutex=false;
@@ -165,6 +156,52 @@ const byte ADC_BITS = 10; // 10 - 12 bits
 static RTC_NOINIT_ATTR uint8_t startOption;
 uint32_t psRamSize = 0;
 
+
+//PIN-Definition
+
+//LED
+int8_t PinUserLed = -1;
+
+//ADC-Voltage
+int8_t PinADCVoltage = -1;
+
+//LORA-Module
+int8_t PinLoraRst = -1;
+int8_t PinLoraDI0 = -1;
+int8_t PinLora_SS = -1;
+int8_t PinLora_MISO = -1;
+int8_t PinLora_MOSI = -1;
+int8_t PinLora_SCK = -1;
+
+//GSM-Module
+int8_t PinGsmRst = -1;
+int8_t PinGsmTx = -1;
+int8_t PinGsmRx = -1;
+
+//OLED-Display / AXP192
+int8_t PinOledRst = -1;
+int8_t PinOledSDA = -1;
+int8_t PinOledSCL = -1;
+
+//BARO
+int8_t PinBaroSDA = -1;
+int8_t PinBaroSCL = -1;
+
+//BUZZER
+int8_t PinBuzzer = -1;
+
+//ONE-WIRE
+int8_t PinOneWire = -1;
+
+//aneometer
+int8_t PinWindDir = -1;
+int8_t PinWindSpeed = -1;
+int8_t PinRainGauge = -1;
+
+float adcVoltageMultiplier = 0.0;
+
+
+
 TaskHandle_t xHandleBaro = NULL;
 TaskHandle_t xHandleStandard = NULL;
 TaskHandle_t xHandleBackground = NULL;
@@ -172,9 +209,9 @@ TaskHandle_t xHandleBluetooth = NULL;
 TaskHandle_t xHandleMemory = NULL;
 TaskHandle_t xHandleEInk = NULL;
 TaskHandle_t xHandleWeather = NULL;
-#ifdef SIM800
-TaskHandle_t xHandleSim800 = NULL;
-SemaphoreHandle_t xSim800Mutex;
+#ifdef GSM_MODULE
+TaskHandle_t xHandleGsm = NULL;
+SemaphoreHandle_t xGsmMutex;
 #endif
 
 /********** function prototypes ******************/
@@ -190,8 +227,8 @@ void taskBaro(void *pvParameters);
 #ifdef EINK
 void taskEInk(void *pvParameters);
 #endif
-#ifdef SIM800
-void taskSIM800(void *pvParameters);
+#ifdef GSM_MODULE
+void taskGsm(void *pvParameters);
 #endif
 #ifdef OLED
 void startOLED();
@@ -915,12 +952,12 @@ void setupWifi(){
 //Initialize OLED display
 void startOLED(){
   //reset OLED display via software
-  if (setting.boardType == BOARD_HELTEC_LORA){
+  if (PinOledRst >= 0){
     log_i("Heltec-board");
-    pinMode(OLED_RST, OUTPUT);
-    digitalWrite(OLED_RST, LOW);
+    pinMode(PinOledRst, OUTPUT);
+    digitalWrite(PinOledRst, LOW);
     delay(100);
-    digitalWrite(OLED_RST, HIGH);
+    digitalWrite(PinOledRst, HIGH);
     delay(100);
   }
 
@@ -1008,6 +1045,13 @@ void printSettings(){
   log_i("WUUlID=%s",setting.WUUpload.ID.c_str());
   log_i("WUUlKEY=%s",setting.WUUpload.KEY.c_str());
 
+  #ifdef GSM_MODULE
+  //GSM
+  log_i("GSM APN=%s",setting.gsm.apn.c_str());
+  log_i("GSM USER=%s",setting.gsm.user.c_str());
+  log_i("GSM PWD=%s",setting.gsm.pwd.c_str());
+  #endif
+
 }
 
 void listSpiffsFiles(){
@@ -1073,10 +1117,6 @@ void setup() {
   status.bInternetConnected = false;
   status.bTimeOk = false;
 
-  //for new T-Beam output 4 is red led
-  pinMode(4, OUTPUT);
-  digitalWrite(4,HIGH); 
-
   log_e("error");
   
   log_i("SDK-Version=%s",ESP.getSdkVersion());
@@ -1118,6 +1158,10 @@ void setup() {
   #ifdef AIRMODULE
     setting.Mode = MODE_AIR_MODULE;
   #endif
+  status.bHasGSM = false;
+  #ifdef GSM_MODULE
+    status.bHasGSM = true;
+  #endif
   if ((setting.wifi.ssid.length() <= 0) || (setting.wifi.password.length() <= 0)){
     setting.wifi.connect = WIFI_CONNECT_NONE; //if no pw or ssid given --> don't connecto to wifi
   }
@@ -1125,33 +1169,166 @@ void setup() {
   pinMode(BUTTON2, INPUT_PULLUP);
 
   printSettings();
+  analogReadResolution(10); // Default of 12 is not very linear. Recommended to use 10 or 11 depending on needed resolution.
+  switch (setting.boardType)
+  {
+  case BOARD_T_BEAM: 
+    log_i("Board=T_BEAM");
+    PinLoraRst = 23;
+    PinLoraDI0 = 26;
+    PinLora_SS = 18;
+    PinLora_MISO = 19;
+    PinLora_MOSI = 27;
+    PinLora_SCK = 5;
 
+    PinOledRst = -1;
+    PinOledSDA = 21;
+    PinOledSCL = 22;
 
-  if (setting.boardType == BOARD_T_BEAM){    
-    i2cOLED.begin(21, 22);
+    PinBaroSDA = 13;
+    PinBaroSCL = 14;
+
+    PinUserLed = 4;
+
+    PinBuzzer = 0;
+
+    i2cOLED.begin(PinOledSDA, PinOledSCL);
     setupAXP192();
-  }else if ((setting.boardType == BOARD_T_BEAM_V07) || (setting.boardType == BOARD_TTGO_T3_V1_6)){
-    i2cOLED.begin(21, 22);
-    status.bHasAXP192 = false;
-    analogReadResolution(ADC_BITS); // Default of 12 is not very linear. Recommended to use 10 or 11 depending on needed resolution.
-    //analogSetAttenuation(ADC_11db); // Default is 11db which is very noisy. Recommended to use 2.5 or 6. Options ADC_0db (1.1V), ADC_2_5db (1.5V), ADC_6db (2.2V), ADC_11db (3.9V but max VDD=3.3V)
-    pinMode(ADCBOARDVOLTAGE_PIN, INPUT);
-  }else if (setting.boardType == BOARD_HELTEC_LORA){    
-    i2cOLED.begin(4, 15);
-    status.bHasAXP192 = false;
-    analogReadResolution(10); //10 Bit resolution
-    pinMode(HELTEC_BAT_PIN, INPUT); //input-Voltage on GPIO34
-  }else{
-    log_e("wrong-board-definition --> please correct");
-    //wrong board-definition !!
-  }
+    //for new T-Beam output 4 is red led
+    pinMode(PinUserLed, OUTPUT);
+    digitalWrite(PinUserLed,HIGH); 
 
+    break;
+  case BOARD_T_BEAM_V07:
+    log_i("Board=T_BEAM_V07");
+    PinLoraRst = 23;
+    PinLoraDI0 = 26;
+    PinLora_SS = 18;
+    PinLora_MISO = 19;
+    PinLora_MOSI = 27;
+    PinLora_SCK = 5;
+
+    PinOledRst = -1;
+    PinOledSDA = 21;
+    PinOledSCL = 22;
+
+    PinBaroSDA = 13;
+    PinBaroSCL = 14;
+
+    PinADCVoltage = 35;
+
+    PinBuzzer = 0;
+
+    i2cOLED.begin(PinOledSDA, PinOledSCL);
+    status.bHasAXP192 = false;    
+    // voltage-divier 100kOhm and 100kOhm
+    // vIn = (R1+R2)/R2 * VOut
+    adcVoltageMultiplier = 2.0f * 3.76f; // not sure if it is ok ?? don't have this kind of board
+    pinMode(PinADCVoltage, INPUT);
+    break;
+  case BOARD_TTGO_T3_V1_6:
+    log_i("Board=TTGO_T3_V1_6");
+    PinLoraRst = 23;
+    PinLoraDI0 = 26;
+    PinLora_SS = 18;
+    PinLora_MISO = 19;
+    PinLora_MOSI = 27;
+    PinLora_SCK = 5;
+
+    PinOledRst = -1;
+    PinOledSDA = 21;
+    PinOledSCL = 22;
+
+    PinBaroSDA = 13;
+    PinBaroSCL = 14;
+
+    PinADCVoltage = 35;
+
+    PinBuzzer = 0;
+
+    i2cOLED.begin(PinOledSDA, PinOledSCL);
+    status.bHasAXP192 = false;
+    // voltage-divier 100kOhm and 100kOhm
+    // vIn = (R1+R2)/R2 * VOut
+    adcVoltageMultiplier = 2.0f * 3.76f; // not sure if it is ok ?? don't have this kind of board
+    pinMode(PinADCVoltage, INPUT);
+    break;
+  case BOARD_HELTEC_LORA:
+    log_i("Board=HELTEC_LORA");
+    PinLoraRst = 14;
+    PinLoraDI0 = 26;
+    PinLora_SS = 18;
+    PinLora_MISO = 19;
+    PinLora_MOSI = 27;
+    PinLora_SCK = 5;
+    PinGsmRst = 25;
+    PinGsmTx = 12;
+    PinGsmRx = 21;
+
+    PinOledRst = 16;
+    PinOledSDA = 4;
+    PinOledSCL = 15;
+
+    PinBaroSDA = 13;
+    PinBaroSCL = 23;
+
+    PinOneWire = 22;    
+
+    PinWindDir = 36;
+    PinWindSpeed = 37;
+    PinRainGauge = 38;
+
+    PinADCVoltage = 34;
+
+    PinBuzzer = 17;
+
+    i2cOLED.begin(PinOledSDA, PinOledSCL);
+    status.bHasAXP192 = false;
+    // voltage-divier 27kOhm and 100kOhm
+    // vIn = (R1+R2)/R2 * VOut
+    adcVoltageMultiplier = (100000.0f + 27000.0f) / 100000.0f * 3.3;
+    pinMode(PinADCVoltage, INPUT); //input-Voltage on GPIO34
+    break;
+  case BOARD_TTGO_TSIM_7000:
+    log_i("Board=TTGO_TSIM_7000");
+    PinLoraRst = 12;
+    PinLoraDI0 = 32;
+    PinLora_SS = 5;
+    PinLora_MISO = 19;
+    PinLora_MOSI = 23;
+    PinLora_SCK = 18;
+    PinGsmRst = 4;
+    PinGsmTx = 27;
+    PinGsmRx = 26;
+
+    PinOledRst = -1;
+    PinOledSDA = 21;
+    PinOledSCL = 22;
+
+    PinBaroSDA = 13;
+    PinBaroSCL = 14;
+
+    PinADCVoltage = 35;
+
+    PinBuzzer = 0;
+
+    status.bHasAXP192 = false;       
+    // voltage-divier 100kOhm and 100kOhm
+    // vIn = (R1+R2)/R2 * VOut
+    adcVoltageMultiplier = 2.0f * 3.76f; // not sure if it is ok ?? don't have this kind of board
+    pinMode(PinADCVoltage, INPUT);
+
+    break;
+  default:
+    log_e("wrong-board-definition --> please correct");
+    break;
+  }
   #ifdef OLED
   startOLED();  
   #endif
   setting.myDevId = "";
-#ifdef SIM800
-xSim800Mutex = xSemaphoreCreateMutex();
+#ifdef GSM_MODULE
+xGsmMutex = xSemaphoreCreateMutex();
 #endif
 
   //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
@@ -1175,19 +1352,19 @@ xSim800Mutex = xSemaphoreCreateMutex();
   //start weather-task
   xTaskCreatePinnedToCore(taskWeather, "taskWeather", 4096, NULL, 8, &xHandleWeather, ARDUINO_RUNNING_CORE1);
 #endif  
-#ifdef SIM800
-  //start sim800-task
-  xTaskCreatePinnedToCore(taskSIM800, "taskSIM800", 4096, NULL, 6, &xHandleSim800, ARDUINO_RUNNING_CORE1);
+#ifdef GSM_MODULE
+  //start Gsm-task
+  xTaskCreatePinnedToCore(taskGsm, "taskGsm", 4096, NULL, 6, &xHandleGsm, ARDUINO_RUNNING_CORE1);
 #endif
 
 }
 
 
-#ifdef SIM800
+#ifdef GSM_MODULE
 
 bool connectGPRS(){
   log_i("Connecting to internet");
-  return modem.gprsConnect("webaut", "", "");
+  return modem.gprsConnect(setting.gsm.apn.c_str(), setting.gsm.user.c_str(), setting.gsm.pwd.c_str());
 
 }
 
@@ -1195,9 +1372,9 @@ bool connectGPRS(){
 bool initModem(){
   //reset modem
   log_i("reset modem");
-  digitalWrite(SIM800_RESET,LOW);
+  digitalWrite(PinGsmRst,LOW);
   delay(200); //wait200ms
-  digitalWrite(SIM800_RESET,HIGH);
+  digitalWrite(PinGsmRst,HIGH);
   delay(3000); //wait until modem is ok now
   log_i("restarting modem...");
   if (!modem.restart()) return false;
@@ -1210,15 +1387,15 @@ bool initModem(){
   return true;
 }
 
-void taskSIM800(void *pvParameters){  
+void taskGsm(void *pvParameters){  
   status.modemstatus = MODEM_DISCONNECTED;  
-  pinMode(SIM800_RESET, OUTPUT);
-  Sim800Serial.begin(9600,SERIAL_8N1,21,12,false); //baud, config, rx, tx, invert
+  pinMode(PinGsmRst, OUTPUT);
+  GsmSerial.begin(9600,SERIAL_8N1,PinGsmRx,PinGsmTx,false); //baud, config, rx, tx, invert
   const TickType_t xDelay = 5000 / portTICK_PERIOD_MS;   //only every 1sek.
   TickType_t xLastWakeTime = xTaskGetTickCount (); //get actual tick-count
   //bool status;
   while(1){
-    xSemaphoreTake( xSim800Mutex, portMAX_DELAY );
+    xSemaphoreTake( xGsmMutex, portMAX_DELAY );
     if (modem.isGprsConnected()){
       status.modemstatus = MODEM_CONNECTED;
       xLastWakeTime = xTaskGetTickCount (); //get actual tick-count
@@ -1232,7 +1409,7 @@ void taskSIM800(void *pvParameters){
         initModem(); //init modem
       }
     }
-    xSemaphoreGive( xSim800Mutex );
+    xSemaphoreGive( xGsmMutex );
     vTaskDelayUntil( &xLastWakeTime, xDelay); //wait until next cycle
   }
 }
@@ -1247,16 +1424,10 @@ void taskWeather(void *pvParameters){
   log_i("starting weather-task ");  
   Weather::weatherData wData;
   TwoWire i2cWeather = TwoWire(0);
-  uint8_t oneWirePin = -1;
-  if (setting.boardType == BOARD_HELTEC_LORA){
-    oneWirePin = 22;
-    i2cWeather.begin(13,23,400000); //init i2cBaro for Baro
-  }else{
-    i2cWeather.begin(13,14,400000); //init i2cBaro for Baro
-  }
+  i2cWeather.begin(PinBaroSDA,PinBaroSCL,400000); //init i2cBaro for Baro
   Weather weather;
   weather.setTempOffset(setting.wd.tempOffset);
-  if (weather.begin(&i2cWeather,setting.gs.alt,oneWirePin,36,37,38)){
+  if (weather.begin(&i2cWeather,setting.gs.alt,PinOneWire,PinWindDir,PinWindSpeed,PinRainGauge)){
     status.bHasBME = true; //we have a bme-sensor
   }
   if ((setting.WUUpload.enable) && (!status.bHasBME)){
@@ -1295,10 +1466,10 @@ void taskWeather(void *pvParameters){
         if ((setting.WUUpload.enable) && (status.bInternetConnected) && (status.bTimeOk)){
           WeatherUnderground::wData wuData;
           WeatherUnderground wu;
-          #ifdef SIM800
+          #ifdef GSM_MODULE
             if (setting.wifi.connect == MODE_WIFI_DISABLED){
-              wu.setClient(&Sim800WUClient);
-              wu.setMutex(&xSim800Mutex);
+              wu.setClient(&GsmWUClient);
+              wu.setMutex(&xGsmMutex);
             }
           #endif
           //log_i("temp=%f,humidity=%f",testWeatherData.temp,testWeatherData.Humidity);
@@ -1346,10 +1517,10 @@ void taskWeather(void *pvParameters){
         tUploadData = tAct;
         WeatherUnderground::wData wuData;
         WeatherUnderground wu;
-        #ifdef SIM800
+        #ifdef GSM_MODULE
           if (setting.wifi.connect == MODE_WIFI_DISABLED){
-            wu.setClient(&Sim800WUClient);
-            wu.setMutex(&xSim800Mutex);
+            wu.setClient(&GsmWUClient);
+            wu.setMutex(&xGsmMutex);
           }
         #endif
         bDataOk = wu.getData(setting.WUUpload.ID,setting.WUUpload.KEY,&wuData);
@@ -1403,19 +1574,10 @@ void taskBaro(void *pvParameters){
   // Block for 500ms.
   const TickType_t xDelay = 10 / portTICK_PERIOD_MS;  
   ledcSetup(channel, freq, resolution);
-  if (setting.boardType == BOARD_HELTEC_LORA){
-    ledcAttachPin(17, channel); //Buzzer on Pin 17 --> Prog-Button is on PIN 0
-  }else{
-    ledcAttachPin(0, channel); //Buzzer on PIN 0
-  }
+  ledcAttachPin(PinBuzzer, channel); //Buzzer on Pin 17 --> Prog-Button is on PIN 0
   TwoWire i2cBaro = TwoWire(0);
-  if (setting.boardType == BOARD_HELTEC_LORA){
-    Wire.begin(13,23,400000);
-    i2cBaro.begin(13,23,400000); //init i2cBaro for Baro
-  }else{
-    Wire.begin(13,14,400000);
-    i2cBaro.begin(13,14,400000); //init i2cBaro for Baro
-  }
+  Wire.begin(PinBaroSDA,PinBaroSCL,400000);
+  i2cBaro.begin(PinBaroSDA,PinBaroSCL,400000); //init i2cBaro for Baro
   if (baro.begin(&i2cBaro)){
     status.bHasVario = true;
     Beeper.setThresholds(setting.vario.sinkingThreshold,setting.vario.climbingThreshold,setting.vario.nearClimbingSensitivity);
@@ -1568,30 +1730,17 @@ float readBattvoltage(){
   const byte NO_OF_SAMPLES = 5;
   uint32_t adc_reading = 0;
   float vBatt = 0.0;
-  if (setting.boardType == BOARD_HELTEC_LORA){
-    analogRead(HELTEC_BAT_PIN); // First measurement has the biggest difference on my board, this line just skips the first measurement
-    for (int i = 0; i < NO_OF_SAMPLES; i++) {
-      uint16_t thisReading = analogRead(HELTEC_BAT_PIN);
-      adc_reading += thisReading;
-    }
-    adc_reading /= NO_OF_SAMPLES;
-    // voltage-divier 27kOhm and 100kOhm
-    // vIn = (R1+R2)/R2 * VOut
-    vBatt = (100000.0f + 27000.0f) / 100000.0f * (float(adc_reading) / 1023.0f *3.3) ;
-    //log_i("adc=%d, vBatt=%.3f",adc_reading,vBatt);
-    return vBatt;
-    //return (27f/100.0f) * 3.30f * float(analogRead(34)) / 4096.0f;  // LiPo battery
-  }else{
-    analogRead(ADCBOARDVOLTAGE_PIN); // First measurement has the biggest difference on my board, this line just skips the first measurement
-    for (int i = 0; i < NO_OF_SAMPLES; i++) {
-      uint16_t thisReading = analogRead(ADCBOARDVOLTAGE_PIN);
-      adc_reading += thisReading;
-    }
-    adc_reading /= NO_OF_SAMPLES;
-    // Convert ADC reading to voltage in deciVolt, 1024/2048/4096 not hardcoded but calculated depending on the set ADC_BITS
-    byte voltage = adc_reading * 39 * 2 / (1 << ADC_BITS); // 3.9V because of 11dB, 100K/100K Voltage Divider, maxResolution (1024/2048/4096) 
-    return (float)voltage / 10.0; 
+
+  analogRead(PinADCVoltage); // First measurement has the biggest difference on my board, this line just skips the first measurement
+  for (int i = 0; i < NO_OF_SAMPLES; i++) {
+    uint16_t thisReading = analogRead(PinADCVoltage);
+    adc_reading += thisReading;
   }
+  adc_reading /= NO_OF_SAMPLES;
+
+  vBatt = adcVoltageMultiplier * float(adc_reading) / 1023.0f;
+  //log_i("adc=%d, vBatt=%.3f",adc_reading,vBatt);
+  return vBatt;
 }
 
 void printBattVoltage(uint32_t tAct){
@@ -2182,15 +2331,10 @@ void taskStandard(void *pvParameters){
   #endif
   // create a binary semaphore for task synchronization
   long frequency = FREQUENCY868;
+  //bool begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset, int dio0,long frequency,uint8_t outputPower);
   if (setting.band == BAND915)frequency = FREQUENCY915; 
   fanet.setLegacy(setting.LegacyTxEnable);
-  if (setting.boardType == BOARD_HELTEC_LORA){
-    fanet.begin(5, 19, 27, 18,14, 26,frequency,setting.LoraPower);
-
-  }else{
-    fanet.begin(SCK, MISO, MOSI, SS,RST, DIO0,frequency,setting.LoraPower);
-  }
- 
+  fanet.begin(PinLora_SCK, PinLora_MISO, PinLora_MOSI, PinLora_SS,PinLoraRst, PinLoraDI0,frequency,setting.LoraPower);
   fanet.setPilotname(setting.PilotName);
   fanet.setAircraftType(setting.AircraftType);
   //if (setting.Mode != MODE_DEVELOPER){ //
@@ -2206,10 +2350,10 @@ void taskStandard(void *pvParameters){
   if (setting.OGNLiveTracking){
     #ifdef GSMODULE
       ogn.setAirMode(false); //set airmode
-      #ifdef SIM800
+      #ifdef GSM_MODULE
         if (setting.wifi.connect == MODE_WIFI_DISABLED){
-          ogn.setClient(&Sim800OGNClient);
-          ogn.setMutex(&xSim800Mutex);
+          ogn.setClient(&GsmOGNClient);
+          ogn.setMutex(&xGsmMutex);
         }
       #endif
       if (setting.PilotName.length() > 0){
@@ -2627,13 +2771,14 @@ void taskBackGround(void *pvParameters){
           status.bTimeOk = true;
         } 
       }
-    #ifdef SIM800
+    #ifdef GSM_MODULE
     }else if ((status.modemstatus == MODEM_CONNECTED) && (setting.wifi.connect == MODE_WIFI_DISABLED)){
       if ((!ntpOk) && (timeOver(tAct,tGetTime,5000))){
         log_i("get ntp-time");
-        xSemaphoreTake( xSim800Mutex, portMAX_DELAY );
-        byte ret = modem.NTPServerSync("pool.ntp.org",0);
-        xSemaphoreGive( xSim800Mutex );
+        byte ret = -1;
+        xSemaphoreTake( xGsmMutex, portMAX_DELAY );
+        ret = modem.NTPServerSync("pool.ntp.org",0);
+        xSemaphoreGive( xGsmMutex );
         //log_i("ret=%d",ret);
         if (ret >= 0){
           int year3 = 0;
@@ -2643,9 +2788,9 @@ void taskBackGround(void *pvParameters){
           int min3 = 0;
           int sec3 = 0;
           float timezone = 0;
-          xSemaphoreTake( xSim800Mutex, portMAX_DELAY );
+          xSemaphoreTake( xGsmMutex, portMAX_DELAY );
           bool bret = modem.getNetworkTime(&year3, &month3, &day3, &hour3, &min3, &sec3,&timezone);
-          xSemaphoreGive( xSim800Mutex );
+          xSemaphoreGive( xGsmMutex );
           //log_i("h=%d,min=%d,sec=%d,day=%d,month=%d,year=%d,ret=%d",hour3,min3, sec3, day3,month3, year3,bret);
           if (bret){
             //log_i("set time");

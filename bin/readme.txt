@@ -142,3 +142,27 @@ RXD 12
 ******** BUZZER *******
 BUZZER 0
 
+************* Pins for TTGO-TSIM7000G ***************
+******* LORA ********
+SCK 18
+MISO 19
+MOSI 23
+SS 5
+RST 12
+DIO0 32
+
+******** GPS *********
+TXD 27 
+RXD 26
+
+******* OLED ********
+SDA 21
+SCL 22 
+
+******** BARO *********
+SDA 13
+SCL 14 
+
+
+
+
