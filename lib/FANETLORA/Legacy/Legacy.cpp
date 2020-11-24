@@ -138,10 +138,6 @@ bool legacy_decode(void *legacy_pkt, ufo_t *this_aircraft, ufo_t *fop) {
 
     int16_t alt = pkt->alt ; /* relative to WGS84 ellipsoid */
 
- 
-
-    fop->protocol = RF_PROTOCOL_LEGACY;
-
     fop->addr = pkt->addr;
     fop->addr_type = pkt->addr_type;
     fop->timestamp = timestamp;

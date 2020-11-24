@@ -61,8 +61,8 @@ void onWebSocketEvent(uint8_t client_num,
         if (clientPages[client_num] == 1){ //info
           doc["myDevId"] = setting.myDevId;
           doc["compiledate"] = String(compile_date);
-          doc["bHasVario"] = (uint8_t)status.bHasVario;
-          doc["bHasBME"] = (uint8_t)status.bHasBME;
+          doc["bHasVario"] = (uint8_t)status.bHasVario;          
+          doc["VisWeather"] = (uint8_t)(status.bHasBME | status.bWUBroadCast);
           doc["board"] = setting.boardType;
           doc["disp"] = setting.displayType;
           doc["band"] = setting.band;

@@ -20,7 +20,32 @@
 #include "esp_spi_flash.h"
 #include "SparkFun_Ublox_Arduino_Library.h"
 #include <TimeLib.h>
-#include <HTTPClient.h>
+//#include <HTTPClient.h>
+#include <ArduinoHttpClient.h>
+
+#ifdef SIM800
+
+// Set serial for debug console (to the SerialMon Monitor, default speed 115200)
+//#define MODEMDEBUG
+
+#define SIM800_RESET 25
+#define TINY_GSM_MODEM_SIM800
+#include <TinyGsmClient.h>
+  HardwareSerial Sim800Serial(2);
+
+#if defined(MODEMDEBUG)
+  #define SerialMon Serial
+  #define TINY_GSM_DEBUG SerialMon
+  #include <StreamDebugger.h>
+  StreamDebugger debugger(Sim800Serial, SerialMon);
+  TinyGsm modem(debugger);
+#else
+  TinyGsm modem(Sim800Serial);
+#endif
+  //TinyGsm modem(Sim800Serial);
+  TinyGsmClient Sim800OGNClient(modem,0); //client number 0 for OGN
+  TinyGsmClient Sim800WUClient(modem,1); //client number 1 for weather-underground
+#endif
 
 #ifdef EINK
 #include <Screen.h>
@@ -87,7 +112,9 @@ const char compile_date[] = __DATE__ " " __TIME__;
 FanetLora fanet;
 //NmeaOut nmeaout;
 Flarm flarm;
+#ifdef AIRMODULE
 HardwareSerial NMeaSerial(2);
+#endif
 //MicroNMEA library structures
 
 Ogn ogn;
@@ -145,6 +172,10 @@ TaskHandle_t xHandleBluetooth = NULL;
 TaskHandle_t xHandleMemory = NULL;
 TaskHandle_t xHandleEInk = NULL;
 TaskHandle_t xHandleWeather = NULL;
+#ifdef SIM800
+TaskHandle_t xHandleSim800 = NULL;
+SemaphoreHandle_t xSim800Mutex;
+#endif
 
 /********** function prototypes ******************/
 #ifdef GSMODULE
@@ -158,6 +189,9 @@ void taskBaro(void *pvParameters);
 #endif
 #ifdef EINK
 void taskEInk(void *pvParameters);
+#endif
+#ifdef SIM800
+void taskSIM800(void *pvParameters);
 #endif
 #ifdef OLED
 void startOLED();
@@ -174,7 +208,24 @@ void drawAircraftType(int16_t x, int16_t y, FanetLora::aircraft_t AircraftType);
 void drawSatCount(int16_t x, int16_t y,uint8_t value);
 void drawspeaker(int16_t x, int16_t y);
 void drawBluetoothstat(int16_t x, int16_t y);
+void drawWifiStat(int wifiStat);
 
+void drawWifiStat(int wifiStat)
+{
+  if (wifiStat==1) 
+  {
+    
+    WIFI_bits[2]=0xC4;
+    WIFI_bits[6]=0xC9;
+    display.drawXBitmap(85,0,WIFI_bits,WIFI_width,WIFI_height,WHITE);
+  }
+  if (wifiStat==2) 
+  { 
+    WIFI_bits[2]=0x4;
+    WIFI_bits[6]=0x9;
+    display.drawXBitmap(85,0,WIFI_bits,WIFI_width,WIFI_height,WHITE);
+  }
+}
 #endif
 
 void setupAXP192();
@@ -224,13 +275,22 @@ void printChipInfo(void){
 
 bool printLocalTime()
 {
-  struct tm timeinfo;
+  //struct tm timeinfo;
+  if (timeStatus() == timeSet){
+    log_i("%d %d %d %d:%d:%d",year(),month(),day(),hour(),minute(),second());
+    return true;
+  }
+  log_i("Failed to obtain time");
+  return false;
+  /*
   if(!getLocalTime(&timeinfo)){
-    Serial.println("Failed to obtain time");
+    
+    Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");
     return false;
   }
   Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");
   return true;
+  */
 }
 
 void serialBtCallBack(esp_spp_cb_event_t event, esp_spp_cb_param_t *param){
@@ -439,9 +499,7 @@ void printGSData(uint32_t tAct){
   static uint8_t index = 0;
   char buf[10];
   display.clearDisplay();
-
-  if (status.wifiStat==1) display.drawXBitmap(85,0,WIFI_AP_bits,WIFI_width,WIFI_height,WHITE);
-  if (status.wifiStat==2) display.drawXBitmap(85,0,WIFI_Sta_bits,WIFI_width,WIFI_height,WHITE);
+  drawWifiStat(status.wifiStat);
   drawBluetoothstat(101,0);
   drawBatt(111, 0,(status.BattCharging) ? 255 : status.BattPerc);
 
@@ -558,13 +616,31 @@ void sendAWGroundStationdata(uint32_t tAct){
 
 void sendTraccarTrackingdata(FanetLora::trackingData *FanetData){
 
-  if ((!setting.traccarLiveTracking) || (!setting.TraccarSrv.startsWith("http://")) || (WiFi.status() != WL_CONNECTED)) return;
+  if ((!setting.traccarLiveTracking) || (!setting.TraccarSrv.startsWith("http://")) || (WiFi.status() != WL_CONNECTED) || (!status.bTimeOk)) return;
 
-  HTTPClient http;
+  //HTTPClient http;
+  //WiFiClient c;
+  //HttpClient http(c);
+  String server = setting.TraccarSrv.substring(strlen("http://"),setting.TraccarSrv.length());
+  int iPort = 80;
+  int posPortStart = server.indexOf(':');  
+  if (posPortStart > 0){
+    posPortStart++;
+    int posPortEnd = server.indexOf('/',posPortStart);
+    if (posPortEnd > 0){
+    }else{
+      posPortEnd = server.length();
+    }
+    String port = server.substring(posPortStart,posPortEnd);
+    iPort = server.substring(posPortStart,posPortEnd).toInt();
+    server = server.substring(0,posPortStart-1);
+    //log_i("port=%s, %d",port.c_str(),iPort);
+  }
+  //log_i("server=%s port=%d",server.c_str(),iPort);
   time_t now;
   time(&now);
   char chs[120];
-  String msg="?id=FANET_";
+  String msg="/?id=FANET_";
   msg +=fanet.getDevId(FanetData->devId) + "&lat=";
 
   sprintf(chs,"%02.6f",FanetData->lat);
@@ -579,15 +655,23 @@ void sendTraccarTrackingdata(FanetLora::trackingData *FanetData){
   msg += String(chs) + "&heading=";
   sprintf(chs,"%0.2f",FanetData->heading); //heading in degrees
   msg += String(chs);
-  msg = setting.TraccarSrv + msg;
   
+  //log_i("server=%s port=%d",server.c_str(),iPort);
   //log_i("%s",msg.c_str());
-  http.begin(msg.c_str());
-  int httpResponseCode = http.GET();
-  if (httpResponseCode != 200){
-    log_e("resp=%d %s",httpResponseCode,http.getString().c_str());
+
+  WiFiClient c;
+  HttpClient http(c, server,iPort);
+  int httpResponseCode = http.get(msg);
+  if (httpResponseCode == 0){
+    httpResponseCode = http.responseStatusCode();
+    if (httpResponseCode != 200){
+      log_e("resp=%d",httpResponseCode);
+    } 
+  }else{
+    log_e("failed to connect=%d",httpResponseCode);
   }
-  //
+  http.stop();
+  //log_i("ready");
 }
 
 void sendAWTrackingdata(FanetLora::trackingData *FanetData){
@@ -986,6 +1070,8 @@ void setup() {
   status.bPowerOff = false;
   status.bHasBME = false;
   status.bWUBroadCast = false;
+  status.bInternetConnected = false;
+  status.bTimeOk = false;
 
   //for new T-Beam output 4 is red led
   pinMode(4, OUTPUT);
@@ -1064,6 +1150,9 @@ void setup() {
   startOLED();  
   #endif
   setting.myDevId = "";
+#ifdef SIM800
+xSim800Mutex = xSemaphoreCreateMutex();
+#endif
 
   //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
 #ifdef AIRMODULE
@@ -1086,12 +1175,74 @@ void setup() {
   //start weather-task
   xTaskCreatePinnedToCore(taskWeather, "taskWeather", 4096, NULL, 8, &xHandleWeather, ARDUINO_RUNNING_CORE1);
 #endif  
+#ifdef SIM800
+  //start sim800-task
+  xTaskCreatePinnedToCore(taskSIM800, "taskSIM800", 4096, NULL, 6, &xHandleSim800, ARDUINO_RUNNING_CORE1);
+#endif
+
 }
+
+
+#ifdef SIM800
+
+bool connectGPRS(){
+  log_i("Connecting to internet");
+  return modem.gprsConnect("webaut", "", "");
+
+}
+
+
+bool initModem(){
+  //reset modem
+  log_i("reset modem");
+  digitalWrite(SIM800_RESET,LOW);
+  delay(200); //wait200ms
+  digitalWrite(SIM800_RESET,HIGH);
+  delay(3000); //wait until modem is ok now
+  log_i("restarting modem...");
+  if (!modem.restart()) return false;
+  modem.sleepEnable(false); //set sleepmode off
+  log_i("Waiting for network...");
+  if (!modem.waitForNetwork(120000L)) return false;
+  log_i("signal quality %d",modem.getSignalQuality());
+  if (!connectGPRS()) return false;
+  log_i("connected successfully");
+  return true;
+}
+
+void taskSIM800(void *pvParameters){  
+  status.modemstatus = MODEM_DISCONNECTED;  
+  pinMode(SIM800_RESET, OUTPUT);
+  Sim800Serial.begin(9600,SERIAL_8N1,21,12,false); //baud, config, rx, tx, invert
+  const TickType_t xDelay = 5000 / portTICK_PERIOD_MS;   //only every 1sek.
+  TickType_t xLastWakeTime = xTaskGetTickCount (); //get actual tick-count
+  //bool status;
+  while(1){
+    xSemaphoreTake( xSim800Mutex, portMAX_DELAY );
+    if (modem.isGprsConnected()){
+      status.modemstatus = MODEM_CONNECTED;
+      xLastWakeTime = xTaskGetTickCount (); //get actual tick-count
+      //log_i("signal quality %d",modem.getSignalQuality());
+      //log_i("gprs connected");
+    }else{
+      status.modemstatus = MODEM_CONNECTING;
+      if (modem.isNetworkConnected()){  
+        connectGPRS();
+      }else{
+        initModem(); //init modem
+      }
+    }
+    xSemaphoreGive( xSim800Mutex );
+    vTaskDelayUntil( &xLastWakeTime, xDelay); //wait until next cycle
+  }
+}
+
+#endif
 
 #ifdef GSMODULE
 void taskWeather(void *pvParameters){
-  static uint32_t tUploadData = millis() - WEATHER_UNDERGROUND_UPDATE_RATE + 5000; //first sending is in 5seconds
-  static uint32_t tSendData = millis() - WEATHER_UPDATE_RATE + 10000; //first sending is in 10 seconds
+  static uint32_t tUploadData =  0;
+  static uint32_t tSendData = millis() - WEATHER_UPDATE_RATE + 30000; //first sending is in 10 seconds
   bool bDataOk = false;
   log_i("starting weather-task ");  
   Weather::weatherData wData;
@@ -1108,8 +1259,9 @@ void taskWeather(void *pvParameters){
   if (weather.begin(&i2cWeather,setting.gs.alt,oneWirePin,36,37,38)){
     status.bHasBME = true; //we have a bme-sensor
   }
-  if (setting.WUUpload.enable){
+  if ((setting.WUUpload.enable) && (!status.bHasBME)){
     status.bWUBroadCast = true;
+    log_i("wu broadcast enabled");
   }
   if ((!status.bHasBME) && (!status.bWUBroadCast)){
     log_i("stopping task");
@@ -1120,6 +1272,12 @@ void taskWeather(void *pvParameters){
   TickType_t xLastWakeTime = xTaskGetTickCount (); //get actual tick-count
   while (1){
     uint32_t tAct = millis();
+    if (tUploadData == 0){
+      //first time sending if we have internet and time is ok
+      if ((status.bInternetConnected) && (status.bTimeOk)){
+        tUploadData = tAct - WEATHER_UNDERGROUND_UPDATE_RATE + 2000;
+      }
+    }
     if (status.bHasBME){
       //station has BME --> we are a weather-station
       weather.run();
@@ -1134,9 +1292,15 @@ void taskWeather(void *pvParameters){
       status.weather.rain1d = wData.rain1d;
       if (timeOver(tAct,tUploadData,WEATHER_UNDERGROUND_UPDATE_RATE)){
         tUploadData = tAct;
-        if (setting.WUUpload.enable){
+        if ((setting.WUUpload.enable) && (status.bInternetConnected) && (status.bTimeOk)){
           WeatherUnderground::wData wuData;
           WeatherUnderground wu;
+          #ifdef SIM800
+            if (setting.wifi.connect == MODE_WIFI_DISABLED){
+              wu.setClient(&Sim800WUClient);
+              wu.setMutex(&xSim800Mutex);
+            }
+          #endif
           //log_i("temp=%f,humidity=%f",testWeatherData.temp,testWeatherData.Humidity);
           wuData.bWind = true;
           wuData.winddir = wData.WindDir;
@@ -1180,23 +1344,37 @@ void taskWeather(void *pvParameters){
       //station should broadcast WU-Data over Fanet
       if (timeOver(tAct,tUploadData,WEATHER_UNDERGROUND_UPDATE_RATE)){ //get Data from WU        
         tUploadData = tAct;
-          WeatherUnderground::wData wuData;
-          WeatherUnderground wu;
-          bDataOk = wu.getData(setting.WUUpload.ID,setting.WUUpload.KEY,&wuData);
-          testWeatherData.lat = wuData.lat;
-          testWeatherData.lon = wuData.lon;
-          testWeatherData.bWind = true;
-          testWeatherData.wHeading = wuData.winddir;
-          testWeatherData.wSpeed = wuData.windspeed;
-          testWeatherData.wGust = wuData.windgust;      
-          testWeatherData.bTemp = true;
-          testWeatherData.bHumidity = true;
-          testWeatherData.bBaro = true;
-          testWeatherData.temp = wuData.temp;
-          testWeatherData.Humidity = wuData.humidity;
-          testWeatherData.Baro = wuData.pressure;      
-          testWeatherData.bStateOfCharge = true;  
-          log_i("winddir=%.1f speed=%.1f gust=%.1f temp=%.1f hum=%.1f press=%.1f",testWeatherData.wHeading,testWeatherData.wSpeed,testWeatherData.wGust,testWeatherData.temp,testWeatherData.Humidity,testWeatherData.Baro);
+        WeatherUnderground::wData wuData;
+        WeatherUnderground wu;
+        #ifdef SIM800
+          if (setting.wifi.connect == MODE_WIFI_DISABLED){
+            wu.setClient(&Sim800WUClient);
+            wu.setMutex(&xSim800Mutex);
+          }
+        #endif
+        bDataOk = wu.getData(setting.WUUpload.ID,setting.WUUpload.KEY,&wuData);
+        status.weather.temp = wuData.temp;
+        status.weather.Humidity = wuData.humidity;
+        status.weather.Pressure = wuData.pressure;
+        status.weather.WindDir = wuData.winddir;
+        status.weather.WindSpeed = wuData.windspeed;
+        status.weather.WindGust = wuData.windgust;
+        status.weather.rain1h = wuData.rain1h;
+        status.weather.rain1d = wuData.raindaily;
+        testWeatherData.lat = wuData.lat;
+        testWeatherData.lon = wuData.lon;
+        testWeatherData.bWind = true;
+        testWeatherData.wHeading = wuData.winddir;
+        testWeatherData.wSpeed = wuData.windspeed;
+        testWeatherData.wGust = wuData.windgust;      
+        testWeatherData.bTemp = true;
+        testWeatherData.bHumidity = true;
+        testWeatherData.bBaro = true;
+        testWeatherData.temp = wuData.temp;
+        testWeatherData.Humidity = wuData.humidity;
+        testWeatherData.Baro = wuData.pressure;      
+        testWeatherData.bStateOfCharge = true;  
+        log_i("winddir=%.1f speed=%.1f gust=%.1f temp=%.1f hum=%.1f press=%.1f",testWeatherData.wHeading,testWeatherData.wSpeed,testWeatherData.wGust,testWeatherData.temp,testWeatherData.Humidity,testWeatherData.Baro);
       }
       if (timeOver(tAct,tSendData,WEATHER_UPDATE_RATE)){
         tSendData = tAct;
@@ -1442,8 +1620,7 @@ void printBattVoltage(uint32_t tAct){
 void printScanning(uint32_t tAct){
   static uint8_t icon = 0;
   display.clearDisplay();
-  if (status.wifiStat==1) display.drawXBitmap(85,0,WIFI_AP_bits,WIFI_width,WIFI_height,WHITE);
-  if (status.wifiStat==2) display.drawXBitmap(85,0,WIFI_Sta_bits,WIFI_width,WIFI_height,WHITE);
+  drawWifiStat(status.wifiStat);
   drawBluetoothstat(101,0);
   drawBatt(111, 0,(status.BattCharging) ? 255 : status.BattPerc);
   switch (icon)
@@ -1637,8 +1814,7 @@ void DrawRadarScreen(uint32_t tAct,uint8_t mode){
   drawAircraftType(0,0,setting.AircraftType);
   drawSatCount(18,0,(status.GPS_NumSat > 9) ? 9 : status.GPS_NumSat);
   //drawSatCount(18,0,9);
-  if (status.wifiStat==1) display.drawXBitmap(85,0,WIFI_AP_bits,WIFI_width,WIFI_height,WHITE);
-  if (status.wifiStat==2) display.drawXBitmap(85,0,WIFI_Sta_bits,WIFI_width,WIFI_height,WHITE);
+  drawWifiStat(status.wifiStat);
   drawBluetoothstat(101,0);
   drawBatt(111, 0,(status.BattCharging) ? 255 : status.BattPerc);
 
@@ -1754,8 +1930,7 @@ void printGPSData(uint32_t tAct){
   drawSatCount(18,0,(status.GPS_NumSat > 9) ? 9 : status.GPS_NumSat);
   drawspeaker(47,0);
   drawflying(67,0,status.flying);
-  if (status.wifiStat==1) display.drawXBitmap(85,0,WIFI_AP_bits,WIFI_width,WIFI_height,WHITE);
-  if (status.wifiStat==2) display.drawXBitmap(85,0,WIFI_Sta_bits,WIFI_width,WIFI_height,WHITE);
+  drawWifiStat(status.wifiStat);
   drawBluetoothstat(101,0);
   drawBatt(111, 0,(status.BattCharging) ? 255 : status.BattPerc);
 
@@ -2030,6 +2205,13 @@ void taskStandard(void *pvParameters){
   #endif
   if (setting.OGNLiveTracking){
     #ifdef GSMODULE
+      ogn.setAirMode(false); //set airmode
+      #ifdef SIM800
+        if (setting.wifi.connect == MODE_WIFI_DISABLED){
+          ogn.setClient(&Sim800OGNClient);
+          ogn.setMutex(&xSim800Mutex);
+        }
+      #endif
       if (setting.PilotName.length() > 0){
         ogn.begin(setting.PilotName,VERSION "." APPNAME);
       }else{
@@ -2038,6 +2220,7 @@ void taskStandard(void *pvParameters){
       ogn.setGPS(setting.gs.lat,setting.gs.lon,setting.gs.alt,0.0,0.0);
     #endif
     #ifdef AIRMODULE
+      ogn.setAirMode(true); //set airmode
       ogn.begin("FNB" + setting.myDevId,VERSION "." APPNAME);
     #endif
   } 
@@ -2063,7 +2246,7 @@ void taskStandard(void *pvParameters){
     
     handleButton(tAct);
 
-    if (setting.OGNLiveTracking) ogn.run();
+    if (setting.OGNLiveTracking) ogn.run(status.bInternetConnected);
     checkFlyingState(tAct);
     printBattVoltage(tAct);
     #ifdef AIRMODULE
@@ -2423,13 +2606,62 @@ void taskBackGround(void *pvParameters){
   setupWifi();
   while (1){
     uint32_t tAct = millis();
+    if ((WiFi.status() == WL_CONNECTED) || (status.modemstatus == MODEM_CONNECTED)){
+      status.bInternetConnected = true;
+    }else{
+      status.bInternetConnected = false;
+    }
     if (WiFi.status() == WL_CONNECTED){
       if ((!ntpOk) && (timeOver(tAct,tGetTime,5000))){
         log_i("get ntp-time");
         configTime(0, 0, "pool.ntp.org");
+        adjustTime(0);
+        struct tm timeinfo;
+        if(getLocalTime(&timeinfo)){
+          //log_i("h=%d,min=%d,sec=%d,day=%d,month=%d,year=%d",timeinfo.tm_hour,timeinfo.tm_min, timeinfo.tm_sec, timeinfo.tm_mday,timeinfo.tm_mon+1, timeinfo.tm_year + 1900);
+          setTime(timeinfo.tm_hour,timeinfo.tm_min, timeinfo.tm_sec, timeinfo.tm_mday,timeinfo.tm_mon+1, timeinfo.tm_year+1900);
+        }
         tGetTime = tAct;
-        if (printLocalTime() == true) ntpOk = 1;
+        if (printLocalTime() == true){
+          ntpOk = 1;
+          status.bTimeOk = true;
+        } 
       }
+    #ifdef SIM800
+    }else if ((status.modemstatus == MODEM_CONNECTED) && (setting.wifi.connect == MODE_WIFI_DISABLED)){
+      if ((!ntpOk) && (timeOver(tAct,tGetTime,5000))){
+        log_i("get ntp-time");
+        xSemaphoreTake( xSim800Mutex, portMAX_DELAY );
+        byte ret = modem.NTPServerSync("pool.ntp.org",0);
+        xSemaphoreGive( xSim800Mutex );
+        //log_i("ret=%d",ret);
+        if (ret >= 0){
+          int year3 = 0;
+          int month3 = 0;
+          int day3 = 0;
+          int hour3 = 0;
+          int min3 = 0;
+          int sec3 = 0;
+          float timezone = 0;
+          xSemaphoreTake( xSim800Mutex, portMAX_DELAY );
+          bool bret = modem.getNetworkTime(&year3, &month3, &day3, &hour3, &min3, &sec3,&timezone);
+          xSemaphoreGive( xSim800Mutex );
+          //log_i("h=%d,min=%d,sec=%d,day=%d,month=%d,year=%d,ret=%d",hour3,min3, sec3, day3,month3, year3,bret);
+          if (bret){
+            //log_i("set time");
+            setTime(hour3,min3, sec3, day3,month3, year3);
+            adjustTime(0);
+            //log_i("timestatus = %d",timeStatus());
+          }
+        }        
+        tGetTime = tAct;
+        //log_i("print time");        
+        if (printLocalTime() == true){
+          ntpOk = 1;
+          status.bTimeOk = true;
+        } 
+      }
+    #endif
     }else{
       ntpOk = 0;
       tGetTime = tAct;
@@ -2441,8 +2673,10 @@ void taskBackGround(void *pvParameters){
         WiFi.disconnect();
         WiFi.mode(WIFI_OFF);
         WiFi.persistent(false);
+        WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE); // call is only a workaround for bug in WiFi class
         WiFi.mode(WIFI_MODE_APSTA);
-        WiFi.begin(setting.wifi.ssid.c_str(), setting.wifi.password.c_str());        
+        WiFi.begin(setting.wifi.ssid.c_str(), setting.wifi.password.c_str()); 
+        WiFi.setHostname(host_name.c_str());
       }
     }
     if (xPortGetMinimumEverFreeHeapSize()<100000)

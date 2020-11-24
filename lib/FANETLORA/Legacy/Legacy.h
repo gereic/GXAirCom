@@ -61,17 +61,12 @@ typedef struct {
 
 
 typedef struct UFO {
-    uint8_t   raw[34];
     long    timestamp;
-
-    uint8_t   protocol;
-
     uint32_t  addr;
     uint8_t   addr_type;
     float     latitude;
     float     longitude;
     float     altitude;
-    float     pressure_altitude;
     float     course;     /* CoG */
     float     speed;      /* ground speed in knots */
     uint8_t   aircraft_type;
@@ -85,16 +80,6 @@ typedef struct UFO {
     int8_t    ew[4];
 
     float     geoid_separation; /* metres */
-    uint16_t  hdop; /* cm */
-    int8_t    rssi; /* SX1276 only */
-
-    /* 'legacy' specific data */
-    float     distance;
-    float     bearing;
-    int8_t    alarm_level;
-
-    /* ADS-B (ES, UAT, GDL90) specific data */
-    uint8_t   callsign[8];
 } ufo_t;
 
 void createLegacyPkt(FanetLora::trackingData *Data,uint8_t * buffer);

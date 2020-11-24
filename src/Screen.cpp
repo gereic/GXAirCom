@@ -374,7 +374,7 @@ void Screen::drawMainScreen(void){
             e_ink.fillScreen(GxEPD_WHITE);
             drawspeaker(49,0,16,16,data.volume);
             drawflying(67,0,16,16,data.flying);
-            if (data.wifi) e_ink.drawXBitmap(85, 4,WIFI_AP_bits,  14, 8, GxEPD_BLACK);
+            if (data.wifi) e_ink.drawXBitmap(85, 4,WIFI_bits,  14, 8, GxEPD_BLACK);
             if (data.bluetooth == 1){
                 e_ink.drawXBitmap(101, 3,BT_bits,  8, 10, GxEPD_BLACK);
             }else if (data.bluetooth == 2){

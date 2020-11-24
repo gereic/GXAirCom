@@ -8,6 +8,16 @@
 
 Ogn::Ogn(){
     _user = "";
+    client = NULL;
+    xMutex = NULL;
+}
+
+void Ogn::setClient(Client *_client){
+    client = _client;
+}
+
+void Ogn::setMutex(SemaphoreHandle_t *_xMutex){
+    xMutex = _xMutex;
 }
 
 bool Ogn::begin(String user,String version){
@@ -18,6 +28,13 @@ bool Ogn::begin(String user,String version){
     connected = false;
     GPSOK = 0;
     tStatus = 0;
+    if (client == NULL){ //if now client is set, we use the wifi-client
+      client = new WiFiClient();
+    }
+    if (xMutex == NULL){ //create new Mutex
+        xMutex = new SemaphoreHandle_t();
+        *xMutex = xSemaphoreCreateMutex();
+    }
     return true;
 }
 
@@ -25,11 +42,17 @@ void Ogn::end(void){
 
 }
 
+void Ogn::setAirMode(bool _AirMode){
+    AirMode = _AirMode;
+}
+
 void Ogn::sendLoginMsg(void){
     //String login ="user " + _user + " pass " + calcPass(_user) + " vers " + _version + " filter m/10\r\n";
     String login ="user " + _user + " pass " + calcPass(_user) + " vers " + _version + "\r\n";
-    //log_i("%s",login.c_str());
-    client.print(login);
+    log_i("%s",login.c_str());
+    xSemaphoreTake( *xMutex, portMAX_DELAY );
+    client->print(login);
+    xSemaphoreGive( *xMutex );
 }
 
 String Ogn::calcPass(String user){
@@ -51,16 +74,28 @@ String Ogn::calcPass(String user){
     return String(hash);
 }
 
-void Ogn::connect2Server(void){
+void Ogn::connect2Server(uint32_t tAct){
+    static uint32_t tConnRetry = tAct;
     initOk = 0;
-    //sntp_setoperatingmode(SNTP_OPMODE_POLL);
-    //sntp_setservername(0, "pool.ntp.org");
-    //sntp_init();
-    //init and get the time
-    configTime(0, 0, "pool.ntp.org");
-    if (client.connect("aprs.glidernet.org", 14580)) {
-        sendLoginMsg();
-        connected = true;
+    connected = false;
+    if ((tAct - tConnRetry) >= 5000){
+        tConnRetry = tAct;
+        xSemaphoreTake( *xMutex, portMAX_DELAY );
+        client->stop();
+        xSemaphoreGive( *xMutex );
+        //sntp_setoperatingmode(SNTP_OPMODE_POLL);
+        //sntp_setservername(0, "pool.ntp.org");
+        //sntp_init();
+        //init and get the time
+        configTime(0, 0, "pool.ntp.org");
+        xSemaphoreTake( *xMutex, portMAX_DELAY );
+        int ret = client->connect("aprs.glidernet.org", 14580);
+        xSemaphoreGive( *xMutex );
+        if (ret) {
+            sendLoginMsg();
+            connected = true;
+        }
+        
     }
 }
 
@@ -129,7 +164,8 @@ uint8_t Ogn::getSenderDetails(aircraft_t aircraftType,String devId){
 }
 
 void Ogn::sendTrackingData(float lat,float lon,float alt,float speed,float heading,float climb,String devId,aircraft_t aircraftType,float snr){
-    if ((WiFi.status() != WL_CONNECTED) || (initOk < 10)) return; //nothing todo
+    //if ((WiFi.status() != WL_CONNECTED) || (initOk < 10)) return; //nothing todo
+    if (initOk < 10) return; //nothing todo
     char buff[200];
     float lLat = abs(lat);
     float lLon = abs(lon);
@@ -144,15 +180,19 @@ void Ogn::sendTrackingData(float lat,float lon,float alt,float speed,float headi
     //            ,devId.c_str(),_servername.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,(lat < 0)?'S':'N',lonDeg,lonMin/1000,lonMin/10 %100,(lon < 0)?'W':'E',int(heading),int(speed * 0.53996),int(alt * 3.28084),int(latMin %10),int(latMin %10),getSenderDetails(aircraftType,devId),devId.c_str(),climb*196.85f);
     sprintf (buff,"FLR%s>APRS,qAR:/%sh%02d%02d.%02d%c/%03d%02d.%02d%cg%03d/%03d/A=%06d !W%01d%01d! id%02X%s %+04.ffpm %0.1fdB\r\n"
                 ,devId.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,(lat < 0)?'S':'N',lonDeg,lonMin/1000,lonMin/10 %100,(lon < 0)?'W':'E',int(heading),int(speed * 0.53996),int(alt * 3.28084),int(latMin %10),int(latMin %10),getSenderDetails(aircraftType,devId),devId.c_str(),climb*196.85f,snr);
-    client.print(buff);                
-    //log_i("%s",buff);
+    xSemaphoreTake( *xMutex, portMAX_DELAY );
+    client->print(buff);                
+    xSemaphoreGive( *xMutex );
+    log_i("%s",buff);
 }
 
 void Ogn::sendReceiverStatus(String sTime){
     //String sStatus = _user + ">APRS,TCPIP*,qAC," + _servername + ":>" + sTime + "h h00 " + _version + "\r\n";
     String sStatus = _user + ">APRS,TCPIP*,qAC," + _servername + ":>" + sTime + "h " + _version + "\r\n";
-    client.print(sStatus);
-    //log_i("%s",sStatus.c_str());
+    xSemaphoreTake( *xMutex, portMAX_DELAY );
+    client->print(sStatus);
+    xSemaphoreGive( *xMutex );
+    log_i("%s",sStatus.c_str());
 }
 
 void Ogn::sendReceiverBeacon(String sTime){
@@ -164,30 +204,49 @@ void Ogn::sendReceiverBeacon(String sTime){
     int lonDeg = int(lLon);
     int lonMin = (roundf((lLon - int(lLon)) * 60 * 1000));
 
-    sprintf (buff,"%s>APRS,TCPIP*,qAC,%s:/%sh%02d%02d.%02d%cI%03d%02d.%02d%c&%03d/%03d/A=%06d !W%01d%01d!\r\n"
-                ,_user.c_str(),_servername.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,(_lat < 0)?'S':'N',lonDeg,lonMin/1000,lonMin/10 %100,(_lon < 0)?'W':'E',int(_heading),int(_speed * 0.53996),int(_alt * 3.28084),int(latMin %10),int(latMin %10));
+    if (AirMode){
+        sprintf (buff,"%s>APRS,TCPIP*,qAC,%s:/%sh%02d%02d.%02d%cI%03d%02d.%02d%c&%03d/%03d/A=%06d !W%01d%01d!\r\n"
+                    ,_user.c_str(),_servername.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,(_lat < 0)?'S':'N',lonDeg,lonMin/1000,lonMin/10 %100,(_lon < 0)?'W':'E',int(_heading),int(_speed * 0.53996),int(_alt * 3.28084),int(latMin %10),int(latMin %10));
+    }else{
+        sprintf (buff,"%s>APRS,TCPIP*,qAC,%s:/%sh%02d%02d.%02d%cI%03d%02d.%02d%c&/A=%06d\r\n"
+                    ,_user.c_str(),_servername.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,(_lat < 0)?'S':'N',lonDeg,lonMin/1000,lonMin/10 %100,(_lon < 0)?'W':'E',int(_alt * 3.28084));
+    }
+    //sprintf (buff,"%s>APRS,TCPIP*,qAC,%s:/%sh%02d%02d.%02d%cI%03d%02d.%02d%c&%03d/%03d/A=%06d !W%01d%01d!\r\n"
+    //            ,_user.c_str(),_servername.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,(_lat < 0)?'S':'N',lonDeg,lonMin/1000,lonMin/10 %100,(_lon < 0)?'W':'E',int(_heading),int(_speed * 0.53996),int(_alt * 3.28084),int(latMin %10),int(latMin %10));
 
     //sprintf (buff,"%s>APRS,TCPIP*,qAC,%s:/%sh%02d%02d.%02d%cI%03d%02d.%02d%c&%03d/%03d/A=%06d\r\n"
     //            ,_user.c_str(),_servername.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,(_lat < 0)?'S':'N',lonDeg,lonMin/1000,lonMin/10 %100,(_lon < 0)?'W':'E',int(_heading),int(_speed * 0.53996),int(_alt * 3.28084));
-    client.print(buff); 
+    log_i("%s",buff);
+    xSemaphoreTake( *xMutex, portMAX_DELAY );
+    client->print(buff); 
+    xSemaphoreGive( *xMutex );
     initOk = 10; //now we can send, because we have sent GPS-Position               
-    //log_i("%s",buff);
+    
 }
 
 String Ogn::getActTimeString(){
     struct tm timeinfo;
     char buff[20];
+    if (timeStatus() == timeSet){
+        //log_i("%d %d %d %d:%d:%d",year(),month(),day(),hour(),minute(),second());
+        sprintf (buff,"%02d%02d%02d",hour(),minute(),second());
+        //log_i("%s",buff);
+        return String(buff);
+    }else{
+        return "";
+    }
+    /*
     if(getLocalTime(&timeinfo)){
         strftime(buff, 20, "%H%M%S", &timeinfo);
         return String(buff);
     }else{
         return "";
     }
+    */
 }
 
 void Ogn::sendStatus(uint32_t tAct){
-    if (initOk > 0){
-        
+    if (initOk > 0){        
         if (GPSOK){
             if ((tAct - tRecBaecon) >= OGNSTATUSINTERVALL){
                 tRecBaecon = tAct;
@@ -212,8 +271,9 @@ void Ogn::sendStatus(uint32_t tAct){
 
 void Ogn::readClient(){
   String line = "";
-  while (client.available()){
-    char c = client.read(); //read 1 character 
+  xSemaphoreTake( *xMutex, portMAX_DELAY );
+  while (client->available()){
+    char c = client->read(); //read 1 character 
     
     line += c; //read 1 character
     if (c == '\n'){
@@ -222,18 +282,33 @@ void Ogn::readClient(){
     }
 
   }
+  xSemaphoreGive( *xMutex );
 }
 
-void Ogn::run(void){
-    uint32_t tAct = millis();
-    if (WiFi.status() == WL_CONNECTED){
-        if (!connected) connect2Server();
-        readClient();
+void Ogn::checkClientConnected(uint32_t tAct){
+    static uint32_t tCheck = tAct;
+    if ((tAct - tCheck) >= 10000){
+        xSemaphoreTake( *xMutex, portMAX_DELAY );
+        if (!client->connected()){
+            connected = false;        
+        }
+        xSemaphoreGive( *xMutex );
+    }
+}
+
+void Ogn::run(bool bNetworkOk){    
+    uint32_t tAct = millis();    
+    //if (WiFi.status() == WL_CONNECTED){
+    if (bNetworkOk){
+        checkClientConnected(tAct);
         if (connected){
+            readClient();
             sendStatus(tAct);
+        }else{
+            //not connected --> try to connect
+            connect2Server(tAct);
         }
     }else{
-        if (connected) client.stop();
         connected = false;
     }
 }

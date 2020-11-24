@@ -110,6 +110,13 @@ WINDSPEED_PIN 37
 ******** RAIN-Sensor VENTUS W174 *********
 RAIN_PIN 38   (need 10K Pull-Up-Resistor) Bucket-Size 0.5l
 
+******** SIM800l module *********
+TXD 12
+RXD 21
+RESET 25
+
+
+
 
 ************* Pins for TTGO Lora32 V2.1 1.6 ***************
 ******* LORA ********

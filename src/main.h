@@ -221,6 +221,11 @@ BUZZER 0
 #define WEATHER_UPDATE_RATE 40000 //update every 40 seconds weatherdata
 #define WEATHER_UNDERGROUND_UPDATE_RATE 300000 //update 5min
 
+#define MODEM_DISCONNECTED 0
+#define MODEM_CONNECTING 1
+#define MODEM_CONNECTED 2
+
+
 
 struct weatherupload{
   bool enable;
@@ -331,6 +336,9 @@ struct statusData{
   bool bMuting; //muting beeper
   bool bPowerOff;
   weatherStatus weather;
+  uint8_t modemstatus; //status of mobile-device (sim800)
+  bool bInternetConnected;
+  bool bTimeOk;
 };
 
 #endif

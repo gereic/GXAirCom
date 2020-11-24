@@ -113,3 +113,7 @@ V1.7.5
 added support for Aneometer (Davis 6410)
 added support for rain-sensor VENTUS W174 
 new info-page
+
+V1.7.6
+source-cleanup
+added support for SIM800L-ground-station

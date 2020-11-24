@@ -12,6 +12,7 @@
 #include <WiFi.h>
 #include "time.h"
 #include "tools.h"
+#include <TimeLib.h>
 
 #define OGNSTATUSINTERVALL 300000ul
 
@@ -31,12 +32,16 @@ public:
   Ogn(); //constructor
   bool begin(String user,String version);
   void end(void);
-  void run(void); //has to be called cyclic
+  void run(bool bNetworkOk); //has to be called cyclic
+  void setAirMode(bool _AirMode); //sets the mode (for sending heading and speed only if Air-Module)
   void setGPS(float lat,float lon,float alt,float speed,float heading);
   void sendTrackingData(float lat,float lon,float alt,float speed,float heading,float climb,String devId,aircraft_t aircraftType,float snr);
+  void setClient(Client *_client);
+  void setMutex(SemaphoreHandle_t *_xMutex);
 
 private:
-    void connect2Server(void);
+    void checkClientConnected(uint32_t tAct);
+    void connect2Server(uint32_t tAct);
     void sendLoginMsg(void);
     String calcPass(String user);
     void readClient();
@@ -47,7 +52,8 @@ private:
     String getActTimeString();
     uint8_t getSenderDetails(aircraft_t aircraftType,String devId);
     bool connected = false;
-    WiFiClient client;
+    Client *client;
+    SemaphoreHandle_t *xMutex;    
     String _user;
     String _version;
     String _servername;
@@ -60,6 +66,7 @@ private:
     uint32_t tRecBaecon;
     uint8_t initOk;
     uint8_t GPSOK;
+    bool AirMode = false;
 };
 
 #endif
