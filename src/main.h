@@ -248,6 +248,16 @@ SCL 14
 #define MODEM_CONNECTING 1
 #define MODEM_CONNECTED 2
 
+#define SCREEN_ALWAYS_ON 0
+#define SCREEN_ON_WHEN_TRAFFIC 1
+#define SCREEN_ALWAYS_OFF 2
+
+#define DISPLAY_STAT_OFF 0
+#define DISPLAY_STAT_ON 1
+
+#define GS_POWER_ALWAYS_ON 0
+#define GS_POWER_SAFE 1
+
 
 
 struct weatherupload{
@@ -269,6 +279,8 @@ struct GSSettings{
   float lon; //Ground-Station Longitude
   float alt; //Ground-Station altitude
   String AWID; //Ground-Station ID
+  uint8_t SreenOption; //energy-option for display
+  uint8_t PowerSave; //powersave-option
 };
 
 struct WeatherSettings{
@@ -319,6 +331,7 @@ struct SettingsData{
   String TraccarSrv; //OGN-Live-Tracking  
   WeatherSettings wd;
   weatherupload WUUpload; //weather-underground upload-settings
+  weatherupload WindyUpload; //weather-underground upload-settings
   GsmSettings gsm; //settings for GSM
 };
 
@@ -370,6 +383,7 @@ struct statusData{
   bool bInternetConnected;
   bool bTimeOk;
   bool bHasGSM;
+  uint8_t displayStat; //stat of display
 };
 
 #endif

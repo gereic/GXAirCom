@@ -115,6 +115,12 @@ void onWebSocketEvent(uint8_t client_num,
           doc["gslat"] = setting.gs.lat;
           doc["gslon"] = setting.gs.lon;
           doc["gsalt"] = setting.gs.alt;
+          doc["gsScr"] = setting.gs.SreenOption;
+          doc["gsPs"] = setting.gs.PowerSave;
+          serializeJson(doc, msg_buf);
+          webSocket.sendTXT(client_num, msg_buf);
+
+          doc.clear();
           
           doc["sFWD"] = setting.wd.sendFanet;
           doc["wdTempOffset"] = setting.wd.tempOffset;
@@ -132,6 +138,9 @@ void onWebSocketEvent(uint8_t client_num,
           doc["WUUlEnable"] = setting.WUUpload.enable;
           doc["WUUlID"] = setting.WUUpload.ID;
           doc["WUUlKEY"] = setting.WUUpload.KEY;
+          doc["WIUlEnable"] = setting.WindyUpload.enable;
+          doc["WIUlID"] = setting.WindyUpload.ID;
+          doc["WIUlKEY"] = setting.WindyUpload.KEY;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
 
@@ -233,11 +242,16 @@ void onWebSocketEvent(uint8_t client_num,
         if (root.containsKey("wifioff")) newSetting.wifi.tWifiStop = doc["wifioff"].as<uint32_t>();
         if (root.containsKey("UDPServerIP")) newSetting.UDPServerIP = doc["UDPServerIP"].as<String>();
         if (root.containsKey("UDPSendPort")) newSetting.UDPSendPort = doc["UDPSendPort"].as<uint16_t>();
+        //gs settings
         if (root.containsKey("gsawid")) newSetting.gs.AWID = doc["gsawid"].as<String>();
         if (root.containsKey("gslat")) newSetting.gs.lat = doc["gslat"].as<float>();
         if (root.containsKey("gslon")) newSetting.gs.lon = doc["gslon"].as<float>();
         if (root.containsKey("gsalt")) newSetting.gs.alt = doc["gsalt"].as<float>();
+        if (root.containsKey("gsScr")) newSetting.gs.SreenOption = doc["gsScr"].as<uint8_t>();
+        if (root.containsKey("gsPs")) newSetting.gs.PowerSave = doc["gsPs"].as<uint8_t>();
+        
         if (root.containsKey("mode")) newSetting.Mode = doc["mode"].as<uint8_t>();
+        
         if (root.containsKey("ognlive")) newSetting.OGNLiveTracking = doc["ognlive"].as<uint8_t>();
         if (root.containsKey("traccar_live")) newSetting.traccarLiveTracking = doc["traccar_live"].as<uint8_t>();
         if (root.containsKey("traccarsrv")) newSetting.TraccarSrv = doc["traccarsrv"].as<String>();
@@ -255,6 +269,10 @@ void onWebSocketEvent(uint8_t client_num,
         if (root.containsKey("WUUlEnable")) newSetting.WUUpload.enable = doc["WUUlEnable"].as<bool>();
         if (root.containsKey("WUUlID")) newSetting.WUUpload.ID = doc["WUUlID"].as<String>();
         if (root.containsKey("WUUlKEY")) newSetting.WUUpload.KEY = doc["WUUlKEY"].as<String>();
+        //Windy upload
+        if (root.containsKey("WIUlEnable")) newSetting.WindyUpload.enable = doc["WIUlEnable"].as<bool>();
+        if (root.containsKey("WIUlID")) newSetting.WindyUpload.ID = doc["WIUlID"].as<String>();
+        if (root.containsKey("WIUlKEY")) newSetting.WindyUpload.KEY = doc["WIUlKEY"].as<String>();
         //GSM
         if (root.containsKey("GSMAPN")) newSetting.gsm.apn = doc["GSMAPN"].as<String>();
         if (root.containsKey("GSMUSER")) newSetting.gsm.user = doc["GSMUSER"].as<String>();

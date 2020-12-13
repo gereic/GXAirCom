@@ -201,12 +201,11 @@ size_t legacy_encode(void *legacy_pkt, ufo_t *this_aircraft) {
     pkt->addr = id & 0x00FFFFFF;
 
 #if !defined(SOFTRF_ADDRESS)
-    pkt->addr_type = ADDR_TYPE_FLARM; /* ADDR_TYPE_ANONYMOUS */
+    pkt->addr_type = ADDR_TYPE_ANONYMOUS; /* ADDR_TYPE_ANONYMOUS */
 #else
     pkt->addr_type = (pkt->addr == SOFTRF_ADDRESS ?
                       ADDR_TYPE_ICAO : ADDR_TYPE_FLARM); /* ADDR_TYPE_ANONYMOUS */
 #endif
-
     pkt->parity = 0;
 
     pkt->stealth = this_aircraft->stealth;
@@ -292,6 +291,8 @@ void createLegacyPkt(FanetLora::trackingData *Data,uint8_t * buffer)
     ufo_t air={0};
 
     //FlarmDataData.heading = Data->heading;
+    air.stealth = false;
+    air.no_track = false;
     air.aircraft_type=(uint8_t)LP_Fanet2FlarmAircraft(Data->aircraftType);
     air.altitude= Data->altitude;
     air.addr = Data->devId;

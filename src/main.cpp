@@ -20,6 +20,7 @@
 #include "esp_spi_flash.h"
 #include "SparkFun_Ublox_Arduino_Library.h"
 #include <TimeLib.h>
+#include <sys/time.h>
 //#include <HTTPClient.h>
 #include <ArduinoHttpClient.h>
 
@@ -54,8 +55,25 @@ Screen screen;
 
 #ifdef GSMODULE
 
+#include <Dusk2Dawn.h> //for sunset and sunrise-functions
 #include <Weather.h>
 #include <WeatherUnderground.h>
+#include <Windy.h>
+
+#define uS_TO_S_FACTOR 1000000uL  /* Conversion factor for micro seconds to seconds */
+//#define uS_TO_ms_FACTOR 1000000uL  /* Conversion factor for micro seconds to seconds */
+//#define TIME_TO_SLEEP  5uL //5 seconds
+//#define TIME_TO_SLEEP  1800uL //1/2 Stunde
+#define TIME_TO_SLEEP  60uL //1 min
+//#define TIME_TO_SLEEP  10uL //10 sec
+//#define TIME_TO_SLEEP  21600uL //6 Stunden
+//#define TIME_TO_SLEEP  43200uL //12 Stunden
+//#define TIME_TO_SLEEP  3600uL //1 Stunde
+//#define TIME_TO_SLEEP  600uL //10 min
+
+RTC_DATA_ATTR int iSunRise = -1;
+RTC_DATA_ATTR int iSunSet = -1;
+
 #endif
 
 //Libraries for OLED Display
@@ -218,7 +236,9 @@ SemaphoreHandle_t xGsmMutex;
 #ifdef GSMODULE
 void taskWeather(void *pvParameters);
 void sendAWGroundStationdata(uint32_t tAct);
-
+void enterDeepsleep();
+int isDayTime();
+uint64_t calcSleepTime();
 #endif
 #ifdef AIRMODULE
 void readGPS();
@@ -246,6 +266,39 @@ void drawSatCount(int16_t x, int16_t y,uint8_t value);
 void drawspeaker(int16_t x, int16_t y);
 void drawBluetoothstat(int16_t x, int16_t y);
 void drawWifiStat(int wifiStat);
+void oledPowerOff();
+void oledPowerOn();
+
+void oledPowerOn(){
+  if (status.displayStat == DISPLAY_STAT_ON){
+    return;
+  }
+  //reset OLED display via software
+  if (PinOledRst >= 0){
+    log_i("Heltec-board");
+    pinMode(PinOledRst, OUTPUT);
+    digitalWrite(PinOledRst, LOW);
+    delay(100);
+    digitalWrite(PinOledRst, HIGH);
+    delay(100);
+  }
+
+  //initialize OLED
+  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3c, false, false)) { // Address 0x3C for 128x32
+    log_e("SSD1306 allocation failed");
+    for(;;); // Don't proceed, loop forever
+  }
+  status.displayStat = DISPLAY_STAT_ON;
+}
+
+void oledPowerOff(){
+  if (status.displayStat == DISPLAY_STAT_OFF){
+    return;
+  }
+  display.clearDisplay();
+  display.ssd1306_command(SSD1306_DISPLAYOFF);
+  status.displayStat = DISPLAY_STAT_OFF; //Display if off now
+}
 
 void drawWifiStat(int wifiStat)
 {
@@ -296,6 +349,23 @@ char* readBtSerial();
 void checkReceivedLine(char *ch_str);
 void serialBtCallBack(esp_spp_cb_event_t event, esp_spp_cb_param_t *param);
 void printChipInfo(void);
+void setAllTime(tm &timeinfo);
+
+void setAllTime(tm &timeinfo){
+  tmElements_t tm;          // a cache of time elements
+  //fill time-structure
+  tm.Year = timeinfo.tm_year+1900 - 1970;
+  tm.Month = timeinfo.tm_mon+1;
+  tm.Day = timeinfo.tm_mday;
+  tm.Hour = timeinfo.tm_hour;
+  tm.Minute = timeinfo.tm_min;
+  tm.Second = timeinfo.tm_sec;
+  time_t t =  makeTime(tm);  
+  setTime(t); //set time of timelib
+  timeval epoch = {(int32_t)t, 0};
+  settimeofday((const timeval*)&epoch, 0); //set time on RTC of ESP32
+
+}
 
 void printChipInfo(void){
   esp_chip_info_t chip_info;
@@ -312,13 +382,24 @@ void printChipInfo(void){
 
 bool printLocalTime()
 {
+  struct tm now;
+  getLocalTime(&now,0);
+  if (now.tm_year >= 117){
+    //Serial.println(&now, "%B %d %Y %H:%M:%S (%A)");
+    log_i("%04d %02d %02d %02d:%02d:%02d",now.tm_year+1900,now.tm_mon+1,now.tm_mday,now.tm_hour,now.tm_min,now.tm_sec);
+    return true;
+  }else{
+    return false;
+  }
   //struct tm timeinfo;
+  /*
   if (timeStatus() == timeSet){
     log_i("%d %d %d %d:%d:%d",year(),month(),day(),hour(),minute(),second());
     return true;
   }
   log_i("Failed to obtain time");
   return false;
+  */
   /*
   if(!getLocalTime(&timeinfo)){
     
@@ -535,6 +616,7 @@ void drawBluetoothstat(int16_t x, int16_t y){
 void printGSData(uint32_t tAct){
   static uint8_t index = 0;
   char buf[10];
+  oledPowerOn();
   display.clearDisplay();
   drawWifiStat(status.wifiStat);
   drawBluetoothstat(101,0);
@@ -632,6 +714,40 @@ void printGSData(uint32_t tAct){
 #endif
 
 #ifdef GSMODULE
+uint64_t calcSleepTime(){
+  return 0;
+}
+
+
+int isDayTime(){
+  if ((iSunRise >= 0) && (iSunSet >= 0)) {
+    if (iSunRise < iSunSet){
+      struct tm now;
+      getLocalTime(&now,0);
+      if (now.tm_year < 117) return -3; //time not set yet
+      int iAct = (now.tm_hour * 60) + now.tm_hour;
+      if ((iAct >= iSunRise) && (iAct <= iSunSet)){
+        // all ok. We are between sunrise and sunset
+        return 1;
+      }else{
+        return 0;
+      }
+    }else{
+      log_e("sunset before sunrise not possible");
+      return -2; //error sunrise > sunset
+    }
+  }
+  log_e("sunrise or sunset not set");
+  return -1; //error sunrise and sunset not set
+
+}
+
+void enterDeepsleep(){
+  esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR); //set Timer for wakeup
+  log_i("not day --> Power off --> enter deep-sleep");
+  powerOff();
+}
+
 void sendAWGroundStationdata(uint32_t tAct){
   static uint32_t tSend = millis() - 290000; //10sec. delay, to get wifi working
   if ((tAct - tSend) < 300000) return; //every 5min.
@@ -951,6 +1067,7 @@ void setupWifi(){
 #ifdef OLED
 //Initialize OLED display
 void startOLED(){
+  /*
   //reset OLED display via software
   if (PinOledRst >= 0){
     log_i("Heltec-board");
@@ -966,6 +1083,8 @@ void startOLED(){
     log_e("SSD1306 allocation failed");
     for(;;); // Don't proceed, loop forever
   }
+  */
+  oledPowerOn();
   if (startOption == 0){
     display.setTextColor(WHITE);
     display.clearDisplay();
@@ -1023,10 +1142,15 @@ void printSettings(){
   log_i("UDP_PORT=%d",setting.UDPSendPort);
   log_i("UDP_SERVER=%s",setting.UDPServerIP.c_str());
   log_i("UDP_PORT=%d",setting.UDPSendPort);
+  
+  //ground-station
   log_i("GS LAT=%02.6f",setting.gs.lat);
   log_i("GS LON=%02.6f",setting.gs.lon);
   log_i("GS ALT=%0.2f",setting.gs.alt);
   log_i("GS AWID=%s",setting.gs.AWID);
+  log_i("GS SCREEN OPTION=%d",setting.gs.SreenOption);
+  log_i("GS POWERSAFE=%d",setting.gs.PowerSave);
+  
   log_i("OGN-Livetracking=%d",setting.OGNLiveTracking);
   log_i("Traccar-Livetracking=%d",setting.traccarLiveTracking);
   log_i("Traccar-Address=%s",setting.TraccarSrv.c_str());
@@ -1044,6 +1168,9 @@ void printSettings(){
   log_i("WUUlEnable=%d",setting.WUUpload.enable);
   log_i("WUUlID=%s",setting.WUUpload.ID.c_str());
   log_i("WUUlKEY=%s",setting.WUUpload.KEY.c_str());
+  log_i("WIUlEnable=%d",setting.WindyUpload.enable);
+  log_i("WIUlID=%s",setting.WindyUpload.ID.c_str());
+  log_i("WIUlKEY=%s",setting.WindyUpload.KEY.c_str());
 
   #ifdef GSM_MODULE
   //GSM
@@ -1117,7 +1244,7 @@ void setup() {
   status.bInternetConnected = false;
   status.bTimeOk = false;
 
-  log_e("error");
+  //log_e("error");
   
   log_i("SDK-Version=%s",ESP.getSdkVersion());
   log_i("CPU-Speed=%d",ESP.getCpuFreqMHz());
@@ -1136,7 +1263,7 @@ void setup() {
   log_i("current free heap: %d, minimum ever free heap: %d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
 
   //esp_sleep_wakeup_cause_t reason = print_wakeup_reason(); //print reason for wakeup
-  print_wakeup_reason(); //print reason for wakeup
+  esp_sleep_wakeup_cause_t reason2 = print_wakeup_reason(); //print reason for wakeup
   esp_reset_reason_t reason = esp_reset_reason();
   if (reason != ESP_RST_SW) {
     startOption = 0;
@@ -1161,6 +1288,17 @@ void setup() {
   status.bHasGSM = false;
   #ifdef GSM_MODULE
     status.bHasGSM = true;
+  #endif
+
+  #ifdef GSMODULE
+  if ((setting.gs.PowerSave == GS_POWER_SAFE) && (reason2 == ESP_SLEEP_WAKEUP_TIMER)){
+    printLocalTime();
+    if (isDayTime() == 0){
+      log_i("not day --> enter deep-sleep");
+      esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR); //set Timer for wakeup
+      esp_deep_sleep_start();
+    }
+  }
   #endif
   if ((setting.wifi.ssid.length() <= 0) || (setting.wifi.password.length() <= 0)){
     setting.wifi.connect = WIFI_CONNECT_NONE; //if no pw or ssid given --> don't connecto to wifi
@@ -1463,27 +1601,52 @@ void taskWeather(void *pvParameters){
       status.weather.rain1d = wData.rain1d;
       if (timeOver(tAct,tUploadData,WEATHER_UNDERGROUND_UPDATE_RATE)){
         tUploadData = tAct;
-        if ((setting.WUUpload.enable) && (status.bInternetConnected) && (status.bTimeOk)){
-          WeatherUnderground::wData wuData;
-          WeatherUnderground wu;
-          #ifdef GSM_MODULE
-            if (setting.wifi.connect == MODE_WIFI_DISABLED){
-              wu.setClient(&GsmWUClient);
-              wu.setMutex(&xGsmMutex);
-            }
-          #endif
-          //log_i("temp=%f,humidity=%f",testWeatherData.temp,testWeatherData.Humidity);
-          wuData.bWind = true;
-          wuData.winddir = wData.WindDir;
-          wuData.windspeed = wData.WindSpeed;
-          wuData.windgust = wData.WindGust;
-          wuData.humidity = wData.Humidity;
-          wuData.temp = wData.temp;
-          wuData.pressure = wData.Pressure;
-          wuData.bRain = true;
-          wuData.rain1h = wData.rain1h ;
-          wuData.raindaily = wData.rain1d;
-          wu.sendData(setting.WUUpload.ID,setting.WUUpload.KEY,&wuData);
+        if ((status.bInternetConnected) && (status.bTimeOk)){
+          if (setting.WUUpload.enable){
+            WeatherUnderground::wData wuData;
+            WeatherUnderground wu;
+            #ifdef GSM_MODULE
+              if (setting.wifi.connect == MODE_WIFI_DISABLED){
+                wu.setClient(&GsmWUClient);
+                wu.setMutex(&xGsmMutex);
+              }
+            #endif
+            //log_i("temp=%f,humidity=%f",testWeatherData.temp,testWeatherData.Humidity);
+            wuData.bWind = true;
+            wuData.winddir = wData.WindDir;
+            wuData.windspeed = wData.WindSpeed;
+            wuData.windgust = wData.WindGust;
+            wuData.humidity = wData.Humidity;
+            wuData.temp = wData.temp;
+            wuData.pressure = wData.Pressure;
+            wuData.bRain = true;
+            wuData.rain1h = wData.rain1h ;
+            wuData.raindaily = wData.rain1d;
+            wu.sendData(setting.WUUpload.ID,setting.WUUpload.KEY,&wuData);
+          }
+          if (setting.WindyUpload.enable){
+            Windy::wData wiData;
+            Windy wi;
+            #ifdef GSM_MODULE
+              if (setting.wifi.connect == MODE_WIFI_DISABLED){
+                wi.setClient(&GsmWUClient);
+                wi.setMutex(&xGsmMutex);
+              }
+            #endif
+            //log_i("temp=%f,humidity=%f",testWeatherData.temp,testWeatherData.Humidity);
+            wiData.bWind = true;
+            wiData.winddir = wData.WindDir;
+            wiData.windspeed = wData.WindSpeed;
+            wiData.windgust = wData.WindGust;
+            wiData.humidity = wData.Humidity;
+            wiData.temp = wData.temp;
+            wiData.pressure = wData.Pressure;
+            wiData.bRain = true;
+            wiData.rain1h = wData.rain1h ;
+            wiData.raindaily = wData.rain1d;
+            wi.sendData(setting.WindyUpload.ID,setting.WindyUpload.KEY,&wiData);
+          }
+
         }
         weather.resetWindGust();
       }
@@ -1768,6 +1931,11 @@ void printBattVoltage(uint32_t tAct){
 #ifdef OLED
 void printScanning(uint32_t tAct){
   static uint8_t icon = 0;
+  if (setting.gs.SreenOption == SCREEN_ON_WHEN_TRAFFIC){
+    oledPowerOff();
+    return;
+  }
+  oledPowerOn();
   display.clearDisplay();
   drawWifiStat(status.wifiStat);
   drawBluetoothstat(101,0);
@@ -2377,7 +2545,11 @@ void taskStandard(void *pvParameters){
   display.print(setting.myDevId);
   display.display();
   delay(3000);
+  if (setting.gs.SreenOption == SCREEN_ALWAYS_OFF){
+    oledPowerOff();
+  }
 #endif
+
 
   //udp.begin(UDPPORT);
   tLoop = millis();
@@ -2399,15 +2571,17 @@ void taskStandard(void *pvParameters){
     sendFlarmData(tAct);
     #ifdef OLED
     #ifdef GSMODULE
-      if (fanet.getNeighboursCount() == 0){
-        if (timeOver(tAct,tDisplay,500)){
-          tDisplay = tAct;
-          printScanning(tAct);
-        }
-      }else{
-        if (timeOver(tAct,tDisplay,DISPLAY_UPDATE_RATE_GS)){
-          tDisplay = tAct;
-          printGSData(tAct);
+      if (setting.gs.SreenOption != SCREEN_ALWAYS_OFF){
+        if (fanet.getNeighboursCount() == 0){
+          if (timeOver(tAct,tDisplay,500)){
+            tDisplay = tAct;
+            printScanning(tAct);
+          }
+        }else{
+          if (timeOver(tAct,tDisplay,DISPLAY_UPDATE_RATE_GS)){
+            tDisplay = tAct;
+            printGSData(tAct);
+          }
         }
       }
     #endif
@@ -2683,12 +2857,16 @@ void powerOff(){
   display.drawXBitmap(0,2,G_Logo_bits,G_Logo_width,G_Logo_height,WHITE);
   display.display();
   delay(1000);
-  display.clearDisplay();
-  display.ssd1306_command(SSD1306_DISPLAYOFF);
+  oledPowerOff();
   #endif
+  #ifdef GSM_MODULE
+    //modem.stop(15000L);
+    modem.poweroff();
+  #endif
+  
   log_i("switch power-supply off");
   delay(100);
-    if (status.bHasAXP192){
+  if (status.bHasAXP192){
     // switch all off
     axp.setChgLEDMode(AXP20X_LED_OFF);
     axp.setPowerOutPut(AXP192_LDO2, AXP202_OFF); //LORA
@@ -2702,9 +2880,8 @@ void powerOff(){
     axp.setPowerOutPut(AXP192_DCDC2, AXP202_OFF); // NC
     axp.setPowerOutPut(AXP192_EXTEN, AXP202_OFF);
     delay(20);
+    esp_sleep_enable_ext0_wakeup((gpio_num_t) AXP_IRQ, 0); // 1 = High, 0 = Low
   }
-
-  esp_sleep_enable_ext0_wakeup((gpio_num_t) AXP_IRQ, 0); // 1 = High, 0 = Low
 
   esp_deep_sleep_start();
 
@@ -2739,7 +2916,11 @@ void taskBackGround(void *pvParameters){
   static uint32_t warning_time=0;
   static uint8_t ntpOk = 0;
   static uint32_t tGetTime = millis();
-
+  #ifdef GSMODULE
+  static uint32_t tCheckDayTime = millis();
+  bool bSunsetOk = false;
+  Dusk2Dawn dusk2dawn(setting.gs.lat,setting.gs.lon, 0);
+  #endif
 
   if (startOption != 0){ //we start wifi
     log_i("stop task");
@@ -2750,6 +2931,28 @@ void taskBackGround(void *pvParameters){
   setupWifi();
   while (1){
     uint32_t tAct = millis();
+    #ifdef GSMODULE
+    if (setting.gs.PowerSave == GS_POWER_SAFE){
+      if (status.bTimeOk == true){
+        if (!bSunsetOk){
+          bSunsetOk = true;
+          /*  Time is returned in minutes elapsed since midnight. If no sunrises or
+          *  sunsets are expected, a "-1" is returned.
+          */
+          iSunRise = dusk2dawn.sunrise(year(), month(), day(), false);
+          iSunSet = dusk2dawn.sunset(year(), month(), day(), false);
+        }else{
+          //check every 10 seconds
+          if (timeOver(tAct,tCheckDayTime,10000)){
+            tCheckDayTime = tAct;
+            if (isDayTime() == 0){
+              enterDeepsleep();
+            }
+          }
+        }
+      }
+    }
+    #endif
     if ((WiFi.status() == WL_CONNECTED) || (status.modemstatus == MODEM_CONNECTED)){
       status.bInternetConnected = true;
     }else{
@@ -2763,7 +2966,12 @@ void taskBackGround(void *pvParameters){
         struct tm timeinfo;
         if(getLocalTime(&timeinfo)){
           //log_i("h=%d,min=%d,sec=%d,day=%d,month=%d,year=%d",timeinfo.tm_hour,timeinfo.tm_min, timeinfo.tm_sec, timeinfo.tm_mday,timeinfo.tm_mon+1, timeinfo.tm_year + 1900);
-          setTime(timeinfo.tm_hour,timeinfo.tm_min, timeinfo.tm_sec, timeinfo.tm_mday,timeinfo.tm_mon+1, timeinfo.tm_year+1900);
+          setAllTime(timeinfo);
+          struct tm now;
+          getLocalTime(&now,0);
+          if (now.tm_year >= 117) Serial.println(&now, "%B %d %Y %H:%M:%S (%A)");
+
+
         }
         tGetTime = tAct;
         if (printLocalTime() == true){
@@ -2791,11 +2999,21 @@ void taskBackGround(void *pvParameters){
           xSemaphoreTake( xGsmMutex, portMAX_DELAY );
           bool bret = modem.getNetworkTime(&year3, &month3, &day3, &hour3, &min3, &sec3,&timezone);
           xSemaphoreGive( xGsmMutex );
-          //log_i("h=%d,min=%d,sec=%d,day=%d,month=%d,year=%d,ret=%d",hour3,min3, sec3, day3,month3, year3,bret);
+          log_i("h=%d,min=%d,sec=%d,day=%d,month=%d,year=%d,ret=%d",hour3,min3, sec3, day3,month3, year3,bret);
           if (bret){
             //log_i("set time");
-            setTime(hour3,min3, sec3, day3,month3, year3);
             adjustTime(0);
+            struct tm timeinfo;
+            timeinfo.tm_year = year3 - 1900;
+            timeinfo.tm_mon = month3-1;
+            timeinfo.tm_mday = day3;
+            timeinfo.tm_hour = hour3;
+            timeinfo.tm_min = min3;
+            timeinfo.tm_sec = sec3;
+            setAllTime(timeinfo);
+
+            //setTime(hour3,min3, sec3, day3,month3, year3);
+            
             //log_i("timestatus = %d",timeStatus());
           }
         }        
@@ -2871,10 +3089,6 @@ void taskBackGround(void *pvParameters){
       log_i("Batt empty voltage=%d.%dV",status.vBatt/1000,status.vBatt%1000);
       powerOff(); //power off, when battery is empty !!
     }
-    //if (newStationConnected){
-      //listConnectedStations();
-      //newStationConnected = false;
-    //}
     delay(1);
 	}
 }

@@ -69,12 +69,16 @@ function setVis(){
       document.getElementById("tWu").innerHTML='Broadcast weather-underground data to FANET';
       document.getElementById("tWu2").innerHTML='enable sending wu-data to FANET';
       document.getElementById("VisWU").style.display=''; //set weather-underground upload invisible
+      document.getElementById("VisWI").style.display='none'; //set windy upload invisible
       //document.getElementById("VisWU").style.display='none'; //set weather-underground upload invisible
     }else{
       document.getElementById("VisWD").style.display=''; //set weather-data invisible
       document.getElementById("tWu").innerHTML='Weather Underground Upload';
       document.getElementById("tWu2").innerHTML='enable sending weather-data to WU';
       document.getElementById("VisWU").style.display=''; //set weather-underground upload invisible
+      document.getElementById("tWi").innerHTML='windy Upload';
+      document.getElementById("tWi2").innerHTML='enable sending weather-data to windy';
+      document.getElementById("VisWI").style.display=''; //set weather-underground upload invisible
     }
     document.getElementById("VisAirCraftType").style.display='none';
     document.getElementById("VisLegacy").style.display='none';
@@ -89,6 +93,7 @@ function setVis(){
     document.getElementById("VisGS").style.display='none'; //set GS invisible
     document.getElementById("VisWD").style.display='none'; //set weather-data invisible
     document.getElementById("VisWU").style.display='none'; //set weather-underground upload invisible
+    document.getElementById("VisWI").style.display='none'; //set windy upload invisible
     if (bHasVario == 0){
       document.getElementById("VisVario").style.display='none';
     }else{
@@ -130,6 +135,8 @@ function sendValues(){
   gslat : document.getElementById("gslat").value,
   gslon : document.getElementById("gslon").value,
   gsalt : document.getElementById("gsalt").value,
+  gsScr : document.getElementById("gsScr").value,
+  gsPs : document.getElementById("gsPs").value,
   save : 1
   };
   doSend(JSON.stringify(obj));
@@ -178,6 +185,9 @@ function sendValues(){
   WUUlEnable : Number(document.getElementById("WUUlEnable").checked),
   WUUlID : document.getElementById("WUUlID").value,  
   WUUlKEY : document.getElementById("WUUlKEY").value,
+  WIUlEnable : Number(document.getElementById("WIUlEnable").checked),
+  WIUlID : document.getElementById("WIUlID").value,  
+  WIUlKEY : document.getElementById("WIUlKEY").value,
   GSMAPN : document.getElementById("GSMAPN").value,  
   GSMUSER : document.getElementById("GSMUSER").value,  
   GSMPWD : document.getElementById("GSMPWD").value,    
@@ -260,7 +270,7 @@ window.addEventListener("load", init, false);
         <tbody>
           <tr>
             <th>Board Type</th>
-            <td><select name="board" id="board">
+            <td><select id="board">
               <option value="0">TTGO T-Beam T22_V1.0 / T22_V1.1</option>
               <option value="2">TTGO T-Beam T22_V07</option>
               <option value="1">HELTEC / TTGO LORA</option>
@@ -270,21 +280,21 @@ window.addEventListener("load", init, false);
           </tr>
           <tr>
             <th>Display Type</th>
-            <td><select name="disp" id="disp" disabled>
+            <td><select id="disp" disabled>
               <option value="0">0.96' OLED</option>
               <option value="1">2.9' E-Ink</option>
             </select></td>
           </tr>
           <tr>
             <th>Radio Frequency</th>
-            <td><select name="band" id="band">
+            <td><select id="band">
               <option value="0">868mhz</option>
               <option value="1">915mhz</option>
             </select></td>
           </tr>
           <tr>
             <th>output-power</th>
-            <td><select name="power" id="power">
+            <td><select id="power">
               <option value="5">LOW</option>
               <option value="10">MID</option>
               <option value="14">HIGH</option>
@@ -293,7 +303,7 @@ window.addEventListener("load", init, false);
           </tr>
           <tr>
             <th>operating-mode</th>
-            <td><select onchange="setVis()" name="mode" id="mode" disabled>
+            <td><select onchange="setVis()" id="mode" disabled>
               <option value="0">AIR-Module</option>
               <option value="1">Ground-Station</option>
               <option value="100">Developer-mode</option>
@@ -301,11 +311,11 @@ window.addEventListener("load", init, false);
           </tr>
           <tr>
             <th id="tName">PilotName</th>
-            <td><input type="text" id="PilotName" name="PilotName"></td>
+            <td><input type="text" id="PilotName"></td>
           </tr>
           <tr id="VisAirCraftType">
             <th>Aircraft Type</th>
-            <td><select name="type" id="type">
+            <td><select id="type">
               <option value="0">Unknown</option>
               <option value="1">Paraglider</option>
               <option value="2">Hangglider</option>
@@ -318,7 +328,7 @@ window.addEventListener("load", init, false);
           </tr>	
           <tr id="VisLegacy">
             <th>Legacy Protocol TX</th>
-            <td><input type="checkbox" id="legacytx" name="legacytx"></td>
+            <td><input type="checkbox" id="legacytx" ></td>
           </tr>	
         </tbody>      
       </table>
@@ -331,19 +341,19 @@ window.addEventListener("load", init, false);
         <tbody>
           <tr>
             <th>airwhere live-tracking</th>
-            <td><input type="checkbox" id="awlive" name="awlive"></td>
+            <td><input type="checkbox" id="awlive" ></td>
             <td></td>
           </tr>
           <tr>
             <th>OGN live-tracking</th>
-            <td><input type="checkbox" id="ognlive" name="ognlive"></td>
+            <td><input type="checkbox" id="ognlive" ></td>
           </tr>
           <td></td>	  
           <tr>
             <th>Traccar Server</th>
-            <td><input type="checkbox" id="traccar_live" name="traccar_live"></td>
+            <td><input type="checkbox" id="traccar_live" ></td>
             <td>
-              <input type="text" id="traccarsrv" name="traccarsrv" style="width: 98%;" maxlength="50">
+              <input type="text" id="traccarsrv" style="width: 98%;" maxlength="50">
             </td>
             <td>   
               <button type="button"  onclick="setFts()" class="button byel" style="line-height: 1.7rem;">FTS</button>
@@ -360,7 +370,7 @@ window.addEventListener("load", init, false);
         <tbody>
           <tr>
             <th>output</th>
-            <td><select onchange="setVis()" name="output" id="output">
+            <td><select onchange="setVis()" id="output">
               <option value="0">serial</option>
               <option value="1">udp</option>
               <option value="2">bluetooth serial</option>
@@ -369,27 +379,27 @@ window.addEventListener("load", init, false);
           </tr>
           <tr>
             <th>output GPS</th>
-            <td><input type="checkbox" id="oGPS" name="oGPS"></td>
+            <td><input type="checkbox" id="oGPS" ></td>
           </tr>
           <tr>
             <th>output FLARM</th>
-            <td><input type="checkbox" id="oFlarm" name="oFlarm"></td>
+            <td><input type="checkbox" id="oFlarm" ></td>
           </tr>
           <tr>
             <th>output FANET</th>
-            <td><input type="checkbox" id="oFanet" name="oFanet"></td>
+            <td><input type="checkbox" id="oFanet" ></td>
           </tr>
           <tr>
             <th>output LK8EX1</th>
-            <td><input type="checkbox" id="oLK8EX1" name="oLK8EX1"></td>
+            <td><input type="checkbox" id="oLK8EX1" ></td>
           </tr>
           <tr id="VisUdpIp">
             <th>UDP-IP</th>
-            <td><input type="text" id="UDPServerIP" name="UDPServerIP"></td>
+            <td><input type="text" id="UDPServerIP" ></td>
           </tr>
           <tr id="VisUdpPort">
             <th>UDP-Port</th>
-            <td><input type="number" id="UDPSendPort" name="UDPSendPort"></td>
+            <td><input type="number" id="UDPSendPort" ></td>
           </tr>
         </tbody>      
       </table>
@@ -402,13 +412,13 @@ window.addEventListener("load", init, false);
         <tbody>
           <tr>
             <th>ACCESS-POINT Password</th>
-            <td><input type="text" id="appw" name="appw"></td>
+            <td><input type="text" id="appw" ></td>
           </tr>
           <p></p>
           <p></p>      
           <tr>
             <th>connect to wifi:</th>
-            <td><select onchange="setVis()" name="wificonnect" id="wificonnect">
+            <td><select onchange="setVis()" id="wificonnect">
               <option value="0">don't connect</option>
               <option value="1">try connect once</option>
               <option value="2">stay connected (60sec. reconnect)</option>
@@ -416,15 +426,15 @@ window.addEventListener("load", init, false);
           </tr>
           <tr id="VisWifiSsid">
             <th>WIFI SSID</th>
-            <td><input type="text" id="ssid" name="ssid"></td>
+            <td><input type="text" id="ssid"></td>
           </tr>
           <tr id="VisWifiPwd">
             <th>WIFI Password</th>
-            <td><input type="text" id="password" name="password"></td>
+            <td><input type="text" id="password"></td>
           </tr>
           <tr>
             <th>Wifi off</th>
-            <td><select name="wifioff" id="wifioff">
+            <td><select id="wifioff">
               <option value="0">always on</option>
               <option value="60">1min.</option>
               <option value="120">2min.</option>
@@ -444,19 +454,34 @@ window.addEventListener("load", init, false);
         <tbody>
           <tr>
             <th>Airwhere ID</th>
-            <td><input type="text" id="gsawid" name="gsawid"></td>
+            <td><input type="text" id="gsawid"></td>
           </tr>
           <tr>
             <th>lat [DD.dddddd] (ground-station)</th>
-            <td><input type="number" id="gslat" name="gslat"></td>
+            <td><input type="number" id="gslat"></td>
           </tr>
           <tr>
             <th>lon [DD.dddddd] (ground-station)</th>
-            <td><input type="number" id="gslon" name="gslon"></td>
+            <td><input type="number" id="gslon"></td>
           </tr>
           <tr>
             <th>alt [m] (ground-station)</th>
-            <td><input type="number" id="gsalt" name="gsalt"></td>
+            <td><input type="number" id="gsalt"></td>
+          </tr>
+          <tr>
+            <th>Screen option</th>
+            <td><select id="gsScr">
+              <option value="0">always on</option>
+              <option value="1">only on when traffic</option>
+              <option value="2">always off</option>
+            </select></td>
+          </tr>
+          <tr>
+            <th>Power option</th>
+            <td><select id="gsPs">
+              <option value="0">always on</option>
+              <option value="1">only on between sunset and sunrise</option>
+            </select></td>
           </tr>
         </tbody>      
       </table>
@@ -469,11 +494,11 @@ window.addEventListener("load", init, false);
         <tbody>
           <tr>
             <th>send weather-data over FANET</th>
-            <td><input type="checkbox" id="sFWD" name="sFWD"></td>
+            <td><input type="checkbox" id="sFWD"></td>
           </tr>
           <tr>
             <th>offset Temperature [K]</th>
-            <td><input type="number" id="wdTempOffset" name="wdTempOffset" step=".5"></td>
+            <td><input type="number" id="wdTempOffset" step=".5"></td>
           </tr>
         </tbody>      
       </table>
@@ -486,15 +511,36 @@ window.addEventListener("load", init, false);
         <tbody>
           <tr>
             <th id="tWu2">enable sending weather-data to WU</th>
-            <td><input type="checkbox" id="WUUlEnable" name="WUUlEnable"></td>
+            <td><input type="checkbox" id="WUUlEnable"></td>
           </tr>
           <tr>
             <th>ID</th>
-            <td><input type="text" id="WUUlID" name="WUUlID"></td>
+            <td><input type="text" id="WUUlID"></td>
           </tr>
           <tr>
             <th>KEY</th>
-            <td><input type="text" id="WUUlKEY" name="WUUlKEY"></td>
+            <td><input type="text" id="WUUlKEY"></td>
+          </tr>
+        </tbody>      
+      </table>
+    </fieldset>
+    <p></p>
+    <p></p>
+    <fieldset id="VisWI">
+      <legend id="tWi"><b>windy Upload</b></legend>
+      <table style="width:100&#37;">
+        <tbody>
+          <tr>
+            <th id="tWi2">enable sending weather-data to windy</th>
+            <td><input type="checkbox" id="WIUlEnable"></td>
+          </tr>
+          <tr>
+            <th>stationid</th>
+            <td><input type="text" id="WIUlID"></td>
+          </tr>
+          <tr>
+            <th>API-KEY</th>
+            <td><input type="text" id="WIUlKEY"></td>
           </tr>
         </tbody>      
       </table>
@@ -507,20 +553,20 @@ window.addEventListener("load", init, false);
         <tbody>
           <tr>
             <th>climbing threshold [m/s]</th>
-            <td><input type="number" id="vClimbTh" name="vClimbTh" step=".01"></td>
+            <td><input type="number" id="vClimbTh" step=".01"></td>
           </tr>
           <!--
           <tr>
             <th>near climbing sensitivity [m/s]</th>
-            <td><input type="number" id="vNClimbSens" name="vNClimbSens"></td>
+            <td><input type="number" id="vNClimbSens"></td>
           </tr>-->
           <tr>
             <th>sinking threshold [m/s]</th>
-            <td><input type="number" id="vSinkTh" name="vSinkTh" step=".01"></td>
+            <td><input type="number" id="vSinkTh" step=".01"></td>
           </tr>
           <tr>
             <th>volume</th>
-            <td><select name="vVol" id="vVol">
+            <td><select id="vVol">
               <option value="50">Low</option>
               <option value="100">MID</option>
               <option value="250">HIGH</option>
@@ -528,7 +574,7 @@ window.addEventListener("load", init, false);
           </tr>
           <tr>
             <th>beep only when flying</th>
-            <td><input type="checkbox" id="vBeepFly" name="vBeepFly"></td>
+            <td><input type="checkbox" id="vBeepFly"></td>
           </tr>
         </tbody>      
       </table>
@@ -541,15 +587,15 @@ window.addEventListener("load", init, false);
         <tbody>
           <tr>
             <th>APN</th>
-            <td><input type="text" id="GSMAPN" name="GSMAPN"></td>
+            <td><input type="text" id="GSMAPN"></td>
           </tr>
           <tr>
             <th>USER</th>
-            <td><input type="text" id="GSMUSER" name="GSMUSER"></td>
+            <td><input type="text" id="GSMUSER"></td>
           </tr>
           <tr>
             <th>PWD</th>
-            <td><input type="text" id="GSMPWD" name="GSMPWD"></td>
+            <td><input type="text" id="GSMPWD"></td>
           </tr>
         </tbody>      
       </table>
@@ -559,7 +605,7 @@ window.addEventListener("load", init, false);
     <table style="width:100&#37;">
       <tr>
         <td style="width:100&#37;">
-          <button id="btnsave" name="btnsave" onClick="sendValues()" class="button bgrn">save and reboot</button>
+          <button id="btnsave" onClick="sendValues()" class="button bgrn">save and reboot</button>
         </td>
       </tr>
     </table>

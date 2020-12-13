@@ -24,10 +24,16 @@ void load_configFile(SettingsData* pSetting){
     pSetting->UDPSendPort = preferences.getUInt("UDP_PORT",10110); //Port of udp-server
     pSetting->outputMode = preferences.getUChar("OutputMode",OUTPUT_SERIAL); //output-mode
     pSetting->Mode = preferences.getUChar("Mode",0);
+    
+    //gs settings
     pSetting->gs.lat = preferences.getFloat("GSLAT",0.0);
     pSetting->gs.lon = preferences.getFloat("GSLON",0.0);
     pSetting->gs.alt = preferences.getFloat("GSALT",0.0);
     pSetting->gs.AWID = preferences.getString("GSAWID","");
+    pSetting->gs.SreenOption = preferences.getUChar("GSSCR",0);
+    pSetting->gs.PowerSave = preferences.getUChar("GSPS",0);
+
+    //live-tracking
     pSetting->OGNLiveTracking = preferences.getUChar("OGN_LIVE",0);
     pSetting->screenNumber = preferences.getUChar("SCREEN",0);
     pSetting->displayType = preferences.getUChar("Display",0);
@@ -51,6 +57,11 @@ void load_configFile(SettingsData* pSetting){
     pSetting->WUUpload.enable = preferences.getUChar("WUUlEnable",0);
     pSetting->WUUpload.ID = preferences.getString("WUUlID","");
     pSetting->WUUpload.KEY = preferences.getString("WUUlKEY","");
+
+    //windy-upload
+    pSetting->WindyUpload.enable = preferences.getUChar("WIUlEnable",0);
+    pSetting->WindyUpload.ID = preferences.getString("WIUlID","");
+    pSetting->WindyUpload.KEY = preferences.getString("WIUlKEY","");
 
     //gsm
     pSetting->gsm.apn = preferences.getString("GSMAPN","");
@@ -82,10 +93,16 @@ void write_configFile(SettingsData* pSetting){
     preferences.putUInt("UDP_PORT",pSetting->UDPSendPort); //Port of udp-server
     preferences.putUChar("OutputMode",pSetting->outputMode);
     preferences.putUChar("Mode",pSetting->Mode);
+
+    //GS Settings
     preferences.putFloat("GSLAT",pSetting->gs.lat);
     preferences.putFloat("GSLON",pSetting->gs.lon);
     preferences.putFloat("GSALT",pSetting->gs.alt);
     preferences.putString("GSAWID",pSetting->gs.AWID);
+    preferences.putUChar("GSSCR",pSetting->gs.SreenOption);
+    preferences.putUChar("GSPS",pSetting->gs.PowerSave);
+
+    //live-tracking
     preferences.putUChar("OGN_LIVE",pSetting->OGNLiveTracking);
     preferences.putUChar("Display",pSetting->displayType);
     preferences.putUChar("LEGACY_TX",pSetting->LegacyTxEnable);
@@ -108,6 +125,11 @@ void write_configFile(SettingsData* pSetting){
     preferences.putUChar("WUUlEnable",pSetting->WUUpload.enable);
     preferences.putString("WUUlID",pSetting->WUUpload.ID);
     preferences.putString("WUUlKEY",pSetting->WUUpload.KEY);
+
+    //windy-upload
+    preferences.putUChar("WIUlEnable",pSetting->WindyUpload.enable);
+    preferences.putString("WIUlID",pSetting->WindyUpload.ID);
+    preferences.putString("WIUlKEY",pSetting->WindyUpload.KEY);
 
     //gsm
     preferences.putString("GSMAPN",pSetting->gsm.apn);

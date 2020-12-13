@@ -117,3 +117,9 @@ new info-page
 V1.8.0
 source-cleanup
 added support for SIM800L-ground-station(pin-descrition --> see readme.txt)
+
+V1.9.0
+added support for weather-upload to windy
+Bugfix with OGN-tracking
+added new Feature for oled (Power-option) on ground-Station
+added new Feature for Power-save on ground-station
