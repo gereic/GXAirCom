@@ -192,7 +192,7 @@ void Ogn::sendTrackingData(float lat,float lon,float alt,float speed,float headi
     xSemaphoreTake( *xMutex, portMAX_DELAY );
     client->print(buff);                
     xSemaphoreGive( *xMutex );
-    log_i("%s",buff);
+    //log_i("%s",buff);
 }
 
 void Ogn::sendReceiverStatus(String sTime){
@@ -201,7 +201,7 @@ void Ogn::sendReceiverStatus(String sTime){
     xSemaphoreTake( *xMutex, portMAX_DELAY );
     client->print(sStatus);
     xSemaphoreGive( *xMutex );
-    log_i("%s",sStatus.c_str());
+    //log_i("%s",sStatus.c_str());
 }
 
 void Ogn::sendReceiverBeacon(String sTime){
@@ -225,7 +225,7 @@ void Ogn::sendReceiverBeacon(String sTime){
 
     //sprintf (buff,"%s>APRS,TCPIP*,qAC,%s:/%sh%02d%02d.%02d%cI%03d%02d.%02d%c&%03d/%03d/A=%06d\r\n"
     //            ,_user.c_str(),_servername.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,(_lat < 0)?'S':'N',lonDeg,lonMin/1000,lonMin/10 %100,(_lon < 0)?'W':'E',int(_heading),int(_speed * 0.53996),int(_alt * 3.28084));
-    log_i("%s",buff);
+    //log_i("%s",buff);
     xSemaphoreTake( *xMutex, portMAX_DELAY );
     client->print(buff); 
     xSemaphoreGive( *xMutex );
