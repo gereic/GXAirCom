@@ -123,3 +123,5 @@ added support for weather-upload to windy
 Bugfix with OGN-tracking
 added new Feature for oled (Power-option) on ground-Station
 added new Feature for Power-save on ground-station
+increased mtu-size for ble
+battery-empty delay of 60seconds --> battery-voltage has to be 60sec. below min. then poweroff is triggered.

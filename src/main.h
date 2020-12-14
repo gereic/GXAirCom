@@ -188,7 +188,7 @@ SCL 14
 #define BAND915 1
 
 #define BATTFULL 4050
-#define BATTEMPTY 3400
+#define BATTEMPTY 3300
 #define BATTPINOK 1000 //1 Volt for Batt-pinOK
 
 #define MAXSCREENS 2

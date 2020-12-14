@@ -107,7 +107,8 @@ void NEMEA_Checksum(String *sentence)
 
 void start_ble (String bleId)
 {
-    esp_coex_preference_set(ESP_COEX_PREFER_BT);
+	BLEDevice::setMTU(128); //set MTU-Size to 128 Byte
+	esp_coex_preference_set(ESP_COEX_PREFER_BT);
     BLEDevice::init(bleId.c_str());
 	BLEServer *pServer = BLEDevice::createServer();
 	pServer->setCallbacks(new MyServerCallbacks());

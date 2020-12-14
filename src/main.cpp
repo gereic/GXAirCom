@@ -715,17 +715,34 @@ void printGSData(uint32_t tAct){
 
 #ifdef GSMODULE
 uint64_t calcSleepTime(){
-  return 0;
+  uint64_t iRet = 0;
+  struct tm now;
+  getLocalTime(&now,0);
+  if (now.tm_year < 117) return -3; //time not set yet
+  int iAct = (now.tm_hour * 60) + now.tm_hour;
+  if (iAct > iSunSet){
+    iRet = (3600 - iAct + iSunRise) * 60; //we have to calc until midnight and then until sunrise
+  }else if (iAct < iSunRise){
+    iRet = (iSunRise - iAct) * 60; //we have to calc until from now to sunrise
+  }
+  return iRet;  
 }
 
 
 int isDayTime(){
   if ((iSunRise >= 0) && (iSunSet >= 0)) {
+    struct tm now;
+    getLocalTime(&now,0);
+    if (now.tm_year < 117) return -3; //time not set yet
+    int iAct = (now.tm_hour * 60) + now.tm_min;
+    char time1[] = "00:00";
+    char time2[] = "00:00";
+    char time3[] = "00:00";
+    Dusk2Dawn::min2str(time1, iSunRise);
+    Dusk2Dawn::min2str(time2, iSunSet);
+    Dusk2Dawn::min2str(time3, iAct);
+    //log_i("%02d:%02d:%02d sunrise=%s sunset=%s iAct=%s",now.tm_hour,now.tm_min,now.tm_sec,time1,time2,time3);
     if (iSunRise < iSunSet){
-      struct tm now;
-      getLocalTime(&now,0);
-      if (now.tm_year < 117) return -3; //time not set yet
-      int iAct = (now.tm_hour * 60) + now.tm_hour;
       if ((iAct >= iSunRise) && (iAct <= iSunSet)){
         // all ok. We are between sunrise and sunset
         return 1;
@@ -733,8 +750,12 @@ int isDayTime(){
         return 0;
       }
     }else{
-      log_e("sunset before sunrise not possible");
-      return -2; //error sunrise > sunset
+      if ((iAct >= iSunSet) && (iAct <= iSunRise)){
+        return 0;
+      }else{
+        // all ok. We are between sunrise and sunset
+        return 1;
+      }
     }
   }
   log_e("sunrise or sunset not set");
@@ -743,7 +764,9 @@ int isDayTime(){
 }
 
 void enterDeepsleep(){
-  esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR); //set Timer for wakeup
+  uint64_t tSleep = calcSleepTime();
+  log_i("time to sleep = %d",tSleep);
+  esp_sleep_enable_timer_wakeup(tSleep * uS_TO_S_FACTOR); //set Timer for wakeup
   log_i("not day --> Power off --> enter deep-sleep");
   powerOff();
 }
@@ -1236,7 +1259,7 @@ void setup() {
   
   
   // put your setup code here, to run once:  
-  Serial.begin(115200);
+  Serial.begin(57600);
 
   status.bPowerOff = false;
   status.bHasBME = false;
@@ -1295,7 +1318,10 @@ void setup() {
     printLocalTime();
     if (isDayTime() == 0){
       log_i("not day --> enter deep-sleep");
-      esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR); //set Timer for wakeup
+      uint64_t tSleep = calcSleepTime();
+      log_i("time to sleep = %d",tSleep);
+      esp_sleep_enable_timer_wakeup(tSleep * uS_TO_S_FACTOR); //set Timer for wakeup      
+      //esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR); //set Timer for wakeup
       esp_deep_sleep_start();
     }
   }
@@ -2916,6 +2942,7 @@ void taskBackGround(void *pvParameters){
   static uint32_t warning_time=0;
   static uint8_t ntpOk = 0;
   static uint32_t tGetTime = millis();
+  uint32_t tBattEmpty = millis();
   #ifdef GSMODULE
   static uint32_t tCheckDayTime = millis();
   bool bSunsetOk = false;
@@ -2941,10 +2968,19 @@ void taskBackGround(void *pvParameters){
           */
           iSunRise = dusk2dawn.sunrise(year(), month(), day(), false);
           iSunSet = dusk2dawn.sunset(year(), month(), day(), false);
+          if (iSunRise < 0) iSunRise += 1440;
+          if (iSunSet < 0) iSunSet += 1440;
+          char time1[] = "00:00";
+          char time2[] = "00:00";
+          Dusk2Dawn::min2str(time1, iSunRise);
+          Dusk2Dawn::min2str(time2, iSunSet);
+          log_i("sunrise=%d sunset=%d",iSunRise,iSunSet);
+          log_i("sunrise=%s sunset=%s",time1,time2);
         }else{
           //check every 10 seconds
           if (timeOver(tAct,tCheckDayTime,10000)){
             tCheckDayTime = tAct;
+            
             if (isDayTime() == 0){
               enterDeepsleep();
             }
@@ -3086,8 +3122,12 @@ void taskBackGround(void *pvParameters){
       powerOff(); //power off, when battery is empty !!
     }
     if ((status.vBatt < BATTEMPTY) && (status.vBatt >= BATTPINOK)) { // if Batt-voltage is below 1V, maybe the resistor is missing.
-      log_i("Batt empty voltage=%d.%dV",status.vBatt/1000,status.vBatt%1000);
-      powerOff(); //power off, when battery is empty !!
+      if (timeOver(tAct,tBattEmpty,60000)){ //min 60sek. below
+        log_i("Batt empty voltage=%d.%dV",status.vBatt/1000,status.vBatt%1000);
+        powerOff(); //power off, when battery is empty !!
+      }
+    }else{
+      tBattEmpty = millis();
     }
     delay(1);
 	}
