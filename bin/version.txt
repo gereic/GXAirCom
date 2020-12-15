@@ -125,3 +125,10 @@ added new Feature for oled (Power-option) on ground-Station
 added new Feature for Power-save on ground-station
 increased mtu-size for ble
 battery-empty delay of 60seconds --> battery-voltage has to be 60sec. below min. then poweroff is triggered.
+
+V1.9.1
+added 3min. delay after startup for powersave, to have a chance to change settings.
+added support of DAVIS-Aneometer for ttgo T-SIM7000
+added support of BME280 for ttgo T-SIM7000
+added support of DS18B20 for ttgo T-SIM7000
+added support of rain-gauge for ttgo T-SIM7000

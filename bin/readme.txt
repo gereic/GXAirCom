@@ -156,12 +156,22 @@ TXD 27
 RXD 26
 
 ******* OLED ********
+NO OLED-Support YET
+
+******** BARO *********
 SDA 21
 SCL 22 
 
-******** BARO *********
-SDA 13
-SCL 14 
+******** Temperature-sensor DS18B20 for Ground-station *********
+TEMP_PIN 25
+
+******** Aneometer (Davis 6410) *********
+WINDDIR_PIN 33
+WINDSPEED_PIN 34
+
+******** RAIN-Sensor VENTUS W174 *********
+RAIN_PIN 39   (need 10K Pull-Up-Resistor) Bucket-Size 0.5l
+
 
 
 

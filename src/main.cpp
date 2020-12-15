@@ -1274,6 +1274,7 @@ void setup() {
   log_i("CPU-Speed=%d",ESP.getCpuFreqMHz());
   log_i("Total heap: %d", ESP.getHeapSize());
   log_i("Free heap: %d", ESP.getFreeHeap());
+  #ifdef BOARD_HAS_PSRAM
   if (psramFound()){
     psRamSize = ESP.getPsramSize();
     log_i("Total PSRAM: %d", psRamSize);
@@ -1282,6 +1283,7 @@ void setup() {
     psRamSize = 0;
     log_i("No PSRAM found");
   }
+  #endif
   printChipInfo();
   log_i("compiled at %s",compile_date);
   log_i("current free heap: %d, minimum ever free heap: %d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
@@ -1466,12 +1468,18 @@ void setup() {
     PinGsmTx = 27;
     PinGsmRx = 26;
 
-    PinOledRst = -1;
-    PinOledSDA = 21;
-    PinOledSCL = 22;
+    PinOledRst = -1; //no oled-support yet
+    PinOledSDA = -1;
+    PinOledSCL = -1;
 
-    PinBaroSDA = 13;
-    PinBaroSCL = 14;
+    PinBaroSDA = 21;
+    PinBaroSCL = 22;
+
+    PinOneWire = 25;    
+
+    PinWindDir = 33;
+    PinWindSpeed = 34;
+    PinRainGauge = 39;
 
     PinADCVoltage = 35;
 
@@ -2944,6 +2952,8 @@ void taskBackGround(void *pvParameters){
   static uint8_t ntpOk = 0;
   static uint32_t tGetTime = millis();
   uint32_t tBattEmpty = millis();
+  uint32_t tRuntime = millis();
+  bool bPowersaveOk = false;
   #ifdef GSMODULE
   static uint32_t tCheckDayTime = millis();
   bool bSunsetOk = false;
@@ -2961,6 +2971,7 @@ void taskBackGround(void *pvParameters){
     uint32_t tAct = millis();
     #ifdef GSMODULE
     if (setting.gs.PowerSave == GS_POWER_SAFE){
+      if (timeOver(tAct,tRuntime,180000)) bPowersaveOk = true; //after 3min. esp is allowed to go to sleep, so that anybody has a chance to change settings
       if (status.bTimeOk == true){
         if (!bSunsetOk){
           bSunsetOk = true;
@@ -2982,7 +2993,7 @@ void taskBackGround(void *pvParameters){
           if (timeOver(tAct,tCheckDayTime,10000)){
             tCheckDayTime = tAct;
             
-            if (isDayTime() == 0){
+            if ((isDayTime() == 0) && (bPowersaveOk)){
               enterDeepsleep();
             }
           }
