@@ -132,3 +132,4 @@ added support of DAVIS-Aneometer for ttgo T-SIM7000
 added support of BME280 for ttgo T-SIM7000
 added support of DS18B20 for ttgo T-SIM7000
 added support of rain-gauge for ttgo T-SIM7000
+Bugfix on sleep-mode (device did not wake up)

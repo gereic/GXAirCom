@@ -787,6 +787,7 @@ void LoRaClass::idle()
 
 void LoRaClass::sleep()
 {
+  log_i("go to sleep");
   writeRegister(REG_OP_MODE, MODE_LONG_RANGE_MODE | MODE_SLEEP);
 }
 

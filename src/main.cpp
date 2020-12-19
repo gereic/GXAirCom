@@ -238,7 +238,7 @@ void taskWeather(void *pvParameters);
 void sendAWGroundStationdata(uint32_t tAct);
 void enterDeepsleep();
 int isDayTime();
-uint64_t calcSleepTime();
+uint32_t calcSleepTime();
 #endif
 #ifdef AIRMODULE
 void readGPS();
@@ -296,6 +296,7 @@ void oledPowerOff(){
     return;
   }
   display.clearDisplay();
+  log_i("set display to off");
   display.ssd1306_command(SSD1306_DISPLAYOFF);
   status.displayStat = DISPLAY_STAT_OFF; //Display if off now
 }
@@ -714,14 +715,22 @@ void printGSData(uint32_t tAct){
 #endif
 
 #ifdef GSMODULE
-uint64_t calcSleepTime(){
-  uint64_t iRet = 0;
+uint32_t calcSleepTime(){
+  uint32_t iRet = 0;
   struct tm now;
   getLocalTime(&now,0);
   if (now.tm_year < 117) return -3; //time not set yet
-  int iAct = (now.tm_hour * 60) + now.tm_hour;
+  int iAct = (now.tm_hour * 60) + now.tm_min;
+  char time1[] = "00:00";
+  char time2[] = "00:00";
+  char time3[] = "00:00";
+  Dusk2Dawn::min2str(time1, iSunRise);
+  Dusk2Dawn::min2str(time2, iSunSet);
+  Dusk2Dawn::min2str(time3, iAct);
+  log_i("sunrise=%s sunset=%s iAct=%s",time1,time2,time3);
+  log_i("sunrise=%d sunset=%d iAct=%d",iSunRise, iSunSet, iAct);
   if (iAct > iSunSet){
-    iRet = (3600 - iAct + iSunRise) * 60; //we have to calc until midnight and then until sunrise
+    iRet = (1440 - iAct + iSunRise) * 60; //we have to calc until midnight and then until sunrise
   }else if (iAct < iSunRise){
     iRet = (iSunRise - iAct) * 60; //we have to calc until from now to sunrise
   }
@@ -764,9 +773,10 @@ int isDayTime(){
 }
 
 void enterDeepsleep(){
-  uint64_t tSleep = calcSleepTime();
+  uint32_t tSleep = calcSleepTime();
   log_i("time to sleep = %d",tSleep);
-  esp_sleep_enable_timer_wakeup(tSleep * uS_TO_S_FACTOR); //set Timer for wakeup
+  log_i("time to sleep = %02d:%02d:%02d",tSleep/60/60,(tSleep/60)%60,tSleep%60);
+  esp_sleep_enable_timer_wakeup((uint64_t)tSleep * uS_TO_S_FACTOR); //set Timer for wakeup
   log_i("not day --> Power off --> enter deep-sleep");
   powerOff();
 }
@@ -1321,9 +1331,10 @@ void setup() {
     printLocalTime();
     if (isDayTime() == 0){
       log_i("not day --> enter deep-sleep");
-      uint64_t tSleep = calcSleepTime();
-      log_i("time to sleep = %d",tSleep);
-      esp_sleep_enable_timer_wakeup(tSleep * uS_TO_S_FACTOR); //set Timer for wakeup      
+      uint32_t tSleep = calcSleepTime();
+      //log_i("time to sleep = %d",tSleep);
+      log_i("time to sleep = %d --> %02d:%02d:%02d",tSleep,tSleep/60/60,(tSleep/60)%60,(tSleep)%60);
+      esp_sleep_enable_timer_wakeup((uint64_t)tSleep * uS_TO_S_FACTOR); //set Timer for wakeup      
       //esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR); //set Timer for wakeup
       esp_deep_sleep_start();
     }
@@ -1563,7 +1574,11 @@ bool initModem(){
 void taskGsm(void *pvParameters){  
   status.modemstatus = MODEM_DISCONNECTED;  
   pinMode(PinGsmRst, OUTPUT);
-  GsmSerial.begin(9600,SERIAL_8N1,PinGsmRx,PinGsmTx,false); //baud, config, rx, tx, invert
+  #ifdef TINY_GSM_MODEM_SIM7000
+    GsmSerial.begin(115200,SERIAL_8N1,PinGsmRx,PinGsmTx,false); //baud, config, rx, tx, invert
+  #else
+    GsmSerial.begin(9600,SERIAL_8N1,PinGsmRx,PinGsmTx,false); //baud, config, rx, tx, invert
+  #endif
   const TickType_t xDelay = 5000 / portTICK_PERIOD_MS;   //only every 1sek.
   TickType_t xLastWakeTime = xTaskGetTickCount (); //get actual tick-count
   //bool status;
@@ -2972,6 +2987,7 @@ void taskBackGround(void *pvParameters){
     #ifdef GSMODULE
     if (setting.gs.PowerSave == GS_POWER_SAFE){
       if (timeOver(tAct,tRuntime,180000)) bPowersaveOk = true; //after 3min. esp is allowed to go to sleep, so that anybody has a chance to change settings
+      //bPowersaveOk = true; //after 3min. esp is allowed to go to sleep, so that anybody has a chance to change settings
       if (status.bTimeOk == true){
         if (!bSunsetOk){
           bSunsetOk = true;
