@@ -69,6 +69,7 @@ void onWebSocketEvent(uint8_t client_num,
           doc["power"] = setting.LoraPower;
           doc["mode"] = setting.Mode;
           doc["type"] = (uint8_t)setting.AircraftType;
+          doc["bHasGSM"] = (uint8_t)status.bHasGSM;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
         }else if (clientPages[client_num] == 2){ //sendmessage
@@ -561,6 +562,21 @@ void Web_loop(void){
         webSocket.sendTXT(i, msg_buf);
       }
     }
+    doc.clear();
+    doc["wifiRssi"] = String(status.wifiRssi);
+    doc["wifiStat"] = String(status.wifiStat);
+    #ifdef GSM_MODULE
+      doc["GSMRssi"] = String(status.GSMSignalQuality);     
+      doc["GSMStat"] = String(status.modemstatus);
+    #endif
+    serializeJson(doc, msg_buf);
+    for (int i = 0;i <MAXCLIENTS;i++){
+      if (clientPages[i] == 1){
+        log_d("Sending to [%u]: %s", i, msg_buf);
+        webSocket.sendTXT(i, msg_buf);
+      }
+    }
+
     #ifdef GSMODULE
     //weahter-data
     doc.clear();

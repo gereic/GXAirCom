@@ -56,10 +56,12 @@ bool Dusk2Dawn::min2str(char *str, int minutes) {
     isError = true;
   }
 
-   float floatHour   = minutes / 60.0;
-   float floatMinute = 60.0 * (floatHour - floor(floatHour));
-   byte  byteHour    = (byte) floatHour;
-   byte  byteMinute  = (byte) floatMinute;
+   //float floatHour   = minutes / 60.0;
+   //float floatMinute = 60.0 * (floatHour - floor(floatHour));
+   //byte  byteHour    = (byte) floatHour;
+   //byte  byteMinute  = (byte) floatMinute;
+   byte  byteHour    = minutes / 60;
+   byte  byteMinute  = minutes % 60;
 
    if (byteMinute > 59) {
      byteHour   += 1;

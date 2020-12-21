@@ -181,6 +181,9 @@ void FanetMac::end()
 {
   // stop LoRa class
   LoRa.end();
+  SPI.end();
+  //if (_ss >= 0) digitalWrite(_ss,LOW);
+  //if (_reset >= 0) digitalWrite(_reset,HIGH);
 }
 
 
@@ -188,6 +191,8 @@ bool FanetMac::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset, 
 {
 	myApp = &app;
 	setup_frequency=frequency;
+	_ss = ss;
+	_reset = reset;
 
 	/* configure phy radio */
 	//SPI LoRa pins

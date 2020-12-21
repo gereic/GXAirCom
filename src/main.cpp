@@ -16,13 +16,17 @@
 #include <ble.h>
 #include <icons.h>
 #include <Ogn.h>
-#include "esp_system.h"
-#include "esp_spi_flash.h"
 #include "SparkFun_Ublox_Arduino_Library.h"
 #include <TimeLib.h>
 #include <sys/time.h>
 //#include <HTTPClient.h>
 #include <ArduinoHttpClient.h>
+
+#include "esp_system.h"
+#include "esp_spi_flash.h"
+#include "esp_bt_main.h"
+#include "driver/adc.h"
+
 
 #ifdef GSM_MODULE
 
@@ -115,6 +119,7 @@ int resolution = 8;
 
 bool WebUpdateRunning = false;
 bool bPowerOff = false;
+bool bGsmOff= false;
 
 struct SettingsData setting;
 struct statusData status;
@@ -195,6 +200,7 @@ int8_t PinLora_SCK = -1;
 int8_t PinGsmRst = -1;
 int8_t PinGsmTx = -1;
 int8_t PinGsmRx = -1;
+int8_t PinGsmGPSPower = -1;
 
 //OLED-Display / AXP192
 int8_t PinOledRst = -1;
@@ -288,6 +294,9 @@ void oledPowerOn(){
     log_e("SSD1306 allocation failed");
     for(;;); // Don't proceed, loop forever
   }
+  //set display to full contrast
+  display.ssd1306_command(SSD1306_SETCONTRAST);
+  display.ssd1306_command(0xFF);
   status.displayStat = DISPLAY_STAT_ON;
 }
 
@@ -297,7 +306,10 @@ void oledPowerOff(){
   }
   display.clearDisplay();
   log_i("set display to off");
-  display.ssd1306_command(SSD1306_DISPLAYOFF);
+  //display.ssd1306_command(SSD1306_DISPLAYOFF);
+  display.ssd1306_command(0x8D); //into charger pump set mode
+  display.ssd1306_command(0x10); //turn off charger pump
+  display.ssd1306_command(0xAE); //set OLED sleep  
   status.displayStat = DISPLAY_STAT_OFF; //Display if off now
 }
 
@@ -742,7 +754,7 @@ int isDayTime(){
   if ((iSunRise >= 0) && (iSunSet >= 0)) {
     struct tm now;
     getLocalTime(&now,0);
-    if (now.tm_year < 117) return -3; //time not set yet
+    if (now.tm_year < 117) return -3; //time not set yet    
     int iAct = (now.tm_hour * 60) + now.tm_min;
     char time1[] = "00:00";
     char time2[] = "00:00";
@@ -750,12 +762,13 @@ int isDayTime(){
     Dusk2Dawn::min2str(time1, iSunRise);
     Dusk2Dawn::min2str(time2, iSunSet);
     Dusk2Dawn::min2str(time3, iAct);
-    //log_i("%02d:%02d:%02d sunrise=%s sunset=%s iAct=%s",now.tm_hour,now.tm_min,now.tm_sec,time1,time2,time3);
     if (iSunRise < iSunSet){
       if ((iAct >= iSunRise) && (iAct <= iSunSet)){
         // all ok. We are between sunrise and sunset
         return 1;
       }else{
+        printLocalTime();
+        log_i("%02d:%02d:%02d sunrise=%s sunset=%s iAct=%s",now.tm_hour,now.tm_min,now.tm_sec,time1,time2,time3);
         return 0;
       }
     }else{
@@ -1277,6 +1290,7 @@ void setup() {
   status.bWUBroadCast = false;
   status.bInternetConnected = false;
   status.bTimeOk = false;
+  status.modemstatus = MODEM_DISCONNECTED;
 
   //log_e("error");
   
@@ -1326,6 +1340,30 @@ void setup() {
     status.bHasGSM = true;
   #endif
 
+  //esp_wifi_stop();
+  /*
+  pinMode(4, OUTPUT);
+  pinMode(5, OUTPUT);
+  pinMode(12, OUTPUT);
+  digitalWrite(12,HIGH); 
+  delay(500);
+  digitalWrite(4,LOW); 
+  digitalWrite(5,LOW); 
+  digitalWrite(12,LOW); 
+  delay(500);
+  log_i("start sleeping");
+  delay(500);
+  //Serial.end();
+  esp_bluedroid_disable();
+  esp_bluedroid_deinit();
+  esp_bt_controller_disable();
+  esp_bt_controller_deinit();
+  esp_bt_mem_release(ESP_BT_MODE_BTDM);
+  adc_power_off();  
+  esp_deep_sleep_start();
+  */
+
+
   #ifdef GSMODULE
   if ((setting.gs.PowerSave == GS_POWER_SAFE) && (reason2 == ESP_SLEEP_WAKEUP_TIMER)){
     printLocalTime();
@@ -1336,6 +1374,13 @@ void setup() {
       log_i("time to sleep = %d --> %02d:%02d:%02d",tSleep,tSleep/60/60,(tSleep/60)%60,(tSleep)%60);
       esp_sleep_enable_timer_wakeup((uint64_t)tSleep * uS_TO_S_FACTOR); //set Timer for wakeup      
       //esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR); //set Timer for wakeup
+      esp_wifi_stop();
+      esp_bluedroid_disable();
+      esp_bluedroid_deinit();
+      esp_bt_controller_disable();
+      esp_bt_controller_deinit();
+      esp_bt_mem_release(ESP_BT_MODE_BTDM);
+      adc_power_off();
       esp_deep_sleep_start();
     }
   }
@@ -1373,8 +1418,6 @@ void setup() {
     i2cOLED.begin(PinOledSDA, PinOledSCL);
     setupAXP192();
     //for new T-Beam output 4 is red led
-    pinMode(PinUserLed, OUTPUT);
-    digitalWrite(PinUserLed,HIGH); 
 
     break;
   case BOARD_T_BEAM_V07:
@@ -1472,12 +1515,16 @@ void setup() {
     PinLoraRst = 12;
     PinLoraDI0 = 32;
     PinLora_SS = 5;
+    //pinMode(5, OUTPUT);
+    //digitalWrite(5,LOW); 
+    //PinLora_SS = 16; //unused Pin, but pin5 is also for reset of GSM
     PinLora_MISO = 19;
     PinLora_MOSI = 23;
     PinLora_SCK = 18;
-    PinGsmRst = 4;
+    PinGsmRst = 4; //is PowerKey, but IO5 is covered by Lora SS
     PinGsmTx = 27;
     PinGsmRx = 26;
+    //PinGsmGPSPower = 4; //we don't need it.
 
     PinOledRst = -1; //no oled-support yet
     PinOledSDA = -1;
@@ -1493,7 +1540,9 @@ void setup() {
     PinRainGauge = 39;
 
     PinADCVoltage = 35;
-
+    
+    //PinUserLed = 12; //PinLoraRst
+    
     PinBuzzer = 0;
 
     status.bHasAXP192 = false;       
@@ -1507,6 +1556,11 @@ void setup() {
     log_e("wrong-board-definition --> please correct");
     break;
   }
+  if (PinUserLed >= 0){
+    pinMode(PinUserLed, OUTPUT);
+    digitalWrite(PinUserLed,HIGH); 
+  }
+
   #ifdef OLED
   startOLED();  
   #endif
@@ -1555,13 +1609,18 @@ bool connectGPRS(){
 
 bool initModem(){
   //reset modem
-  log_i("reset modem");
-  digitalWrite(PinGsmRst,LOW);
-  delay(200); //wait200ms
-  digitalWrite(PinGsmRst,HIGH);
-  delay(3000); //wait until modem is ok now
+  if (PinGsmRst >= 0){
+    log_i("reset modem");
+    digitalWrite(PinGsmRst,LOW);
+    delay(500); //wait200ms
+    digitalWrite(PinGsmRst,HIGH);
+    delay(3000); //wait until modem is ok now
+  }  
   log_i("restarting modem...");
   if (!modem.restart()) return false;
+  #ifdef TINY_GSM_MODEM_SIM7000
+    modem.disableGPS();
+  #endif
   modem.sleepEnable(false); //set sleepmode off
   log_i("Waiting for network...");
   if (!modem.waitForNetwork(120000L)) return false;
@@ -1572,9 +1631,30 @@ bool initModem(){
 }
 
 void taskGsm(void *pvParameters){  
-  status.modemstatus = MODEM_DISCONNECTED;  
-  pinMode(PinGsmRst, OUTPUT);
-  #ifdef TINY_GSM_MODEM_SIM7000
+  if (setting.wifi.connect != MODE_WIFI_DISABLED){
+    if (PinGsmRst >= 0){
+      digitalWrite(PinGsmRst,LOW);
+    }
+    log_i("stop task");
+    vTaskDelete(xHandleGsm); //delete weather-task
+    return;
+  }
+  
+  if (PinGsmGPSPower >= 0){
+    pinMode(PinGsmGPSPower, OUTPUT); //set GsmReset to output
+    digitalWrite(PinGsmGPSPower,HIGH);
+    delay(1000); //wait until hardware is stable
+  }
+
+  if (PinGsmRst >= 0){
+    pinMode(PinGsmRst, OUTPUT); //set GsmReset to output
+    log_i("reset modem");
+    digitalWrite(PinGsmRst,LOW);
+    delay(500); //wait200ms
+    digitalWrite(PinGsmRst,HIGH);
+    delay(3000); //wait until modem is ok now
+  } 
+#ifdef TINY_GSM_MODEM_SIM7000
     GsmSerial.begin(115200,SERIAL_8N1,PinGsmRx,PinGsmTx,false); //baud, config, rx, tx, invert
   #else
     GsmSerial.begin(9600,SERIAL_8N1,PinGsmRx,PinGsmTx,false); //baud, config, rx, tx, invert
@@ -1587,8 +1667,16 @@ void taskGsm(void *pvParameters){
     if (modem.isGprsConnected()){
       status.modemstatus = MODEM_CONNECTED;
       xLastWakeTime = xTaskGetTickCount (); //get actual tick-count
-      //log_i("signal quality %d",modem.getSignalQuality());
-      //log_i("gprs connected");
+      status.GSMSignalQuality = modem.getSignalQuality();
+      /*
+      modem.sendAT(GF("+CNSMOD?"));      
+      String res;
+      if (modem.waitResponse(GF("+CNSMOD:")) == 1){
+        modem.streamSkipUntil(',');  // Skip context id
+        String res = modem.stream.readStringUntil('\r');
+        log_i("network system mode %s",res.c_str());
+      }
+      */
     }else{
       status.modemstatus = MODEM_CONNECTING;
       if (modem.isNetworkConnected()){  
@@ -1598,8 +1686,34 @@ void taskGsm(void *pvParameters){
       }
     }
     xSemaphoreGive( xGsmMutex );
+    if ((WebUpdateRunning) || (bGsmOff)) break;
+    //delay(1);
     vTaskDelayUntil( &xLastWakeTime, xDelay); //wait until next cycle
   }
+  //modem.stop(15000L);
+  xSemaphoreTake( xGsmMutex, portMAX_DELAY );
+  
+  log_i("stop gprs connection");
+  modem.gprsDisconnect();
+  log_i("switch radio off");
+  modem.radioOff();  
+
+  #ifdef TINY_GSM_MODEM_SIM7000
+    digitalWrite(5,HIGH);
+  #endif
+  digitalWrite(PinGsmRst,HIGH);
+  for (int i = 0; i < 10;i++){
+    log_i("power off modem");
+    if (modem.poweroff()) break;
+    delay(1000);
+  }
+  xSemaphoreGive( xGsmMutex );
+  //GsmSerial.end();
+  if (PinGsmRst >= 0){
+    digitalWrite(PinGsmRst,LOW);
+  }
+  log_i("stop task");
+  vTaskDelete(xHandleGsm); //delete weather-task
 }
 
 #endif
@@ -2875,15 +2989,28 @@ void powerOff(){
   eTaskState tBaro = eDeleted;
   eTaskState tEInk = eDeleted;
   eTaskState tStandard = eDeleted;
+  eTaskState tGSM = eDeleted;
+  eTaskState tWeather = eDeleted;
   while(1){
     //wait until all tasks are stopped
     if (xHandleBaro != NULL) tBaro = eTaskGetState(xHandleBaro);
     if (xHandleEInk != NULL) tEInk = eTaskGetState(xHandleEInk);
     if (xHandleStandard != NULL) tStandard = eTaskGetState(xHandleStandard);
-    if ((tBaro == eDeleted) && (tEInk == eDeleted) && (tStandard == eDeleted)) break; //now all tasks are stopped    
-    //log_i("baro=%d,eink=%d,standard=%d",tBaro,tEInk,tStandard);
-    delay(500);
+    if (xHandleWeather != NULL) tWeather = eTaskGetState(xHandleWeather);    
+    if ((tBaro == eDeleted) && (tEInk == eDeleted) && (tWeather == eDeleted) && (tStandard == eDeleted)) break; //now all tasks are stopped    
+    log_i("baro=%d,eink=%d,standard=%d,weather=%d",tBaro,tEInk,tStandard,tWeather);
+    delay(1000);
   }
+  #ifdef GSM_MODULE
+  bGsmOff = true; //now switch gsm off
+  while(1){
+    //wait until all tasks are stopped
+    if (xHandleGsm != NULL) tGSM = eTaskGetState(xHandleGsm);
+    if (tGSM == eDeleted) break; //now all tasks are stopped    
+    log_i("Gsm=%d",tGSM);
+    delay(1000);
+  }
+  #endif
 
   #ifdef OLED
   display.setTextColor(WHITE);
@@ -2909,11 +3036,10 @@ void powerOff(){
   delay(1000);
   oledPowerOff();
   #endif
-  #ifdef GSM_MODULE
-    //modem.stop(15000L);
-    modem.poweroff();
-  #endif
-  
+  if (PinUserLed >= 0){
+    pinMode(PinUserLed, OUTPUT);
+    digitalWrite(PinUserLed,HIGH); 
+  }
   log_i("switch power-supply off");
   delay(100);
   if (status.bHasAXP192){
@@ -2932,7 +3058,14 @@ void powerOff(){
     delay(20);
     esp_sleep_enable_ext0_wakeup((gpio_num_t) AXP_IRQ, 0); // 1 = High, 0 = Low
   }
-
+  //Serial.end();
+  esp_wifi_stop();
+  esp_bluedroid_disable();
+  esp_bluedroid_deinit();
+  esp_bt_controller_disable();
+  esp_bt_controller_deinit();
+  esp_bt_mem_release(ESP_BT_MODE_BTDM);
+  adc_power_off();
   esp_deep_sleep_start();
 
 }
@@ -2968,6 +3101,7 @@ void taskBackGround(void *pvParameters){
   static uint32_t tGetTime = millis();
   uint32_t tBattEmpty = millis();
   uint32_t tRuntime = millis();
+  uint32_t tGetWifiRssi = millis();
   bool bPowersaveOk = false;
   #ifdef GSMODULE
   static uint32_t tCheckDayTime = millis();
@@ -2995,6 +3129,7 @@ void taskBackGround(void *pvParameters){
           *  sunsets are expected, a "-1" is returned.
           */
           iSunRise = dusk2dawn.sunrise(year(), month(), day(), false);
+          //iSunRise = 900;
           iSunSet = dusk2dawn.sunset(year(), month(), day(), false);
           if (iSunRise < 0) iSunRise += 1440;
           if (iSunSet < 0) iSunSet += 1440;
@@ -3006,21 +3141,28 @@ void taskBackGround(void *pvParameters){
           log_i("sunrise=%s sunset=%s",time1,time2);
         }else{
           //check every 10 seconds
+          
           if (timeOver(tAct,tCheckDayTime,10000)){
             tCheckDayTime = tAct;
-            
-            if ((isDayTime() == 0) && (bPowersaveOk)){
-              enterDeepsleep();
+            if (bPowersaveOk){              
+              if (isDayTime() == 0){
+                enterDeepsleep();
+              }
             }
           }
         }
       }
     }
     #endif
-    if ((WiFi.status() == WL_CONNECTED) || (status.modemstatus == MODEM_CONNECTED)){
+    if ((WiFi.status() == WL_CONNECTED) || ((status.modemstatus == MODEM_CONNECTED) && (setting.wifi.connect == MODE_WIFI_DISABLED))){
       status.bInternetConnected = true;
     }else{
       status.bInternetConnected = false;
+    }
+    if (timeOver(tAct,tGetWifiRssi,5000)){
+      tGetWifiRssi = tAct;
+      status.wifiRssi = WiFi.RSSI();
+      //log_i("wifi-strength=%d",status.wifiRssi);
     }
     if (WiFi.status() == WL_CONNECTED){
       if ((!ntpOk) && (timeOver(tAct,tGetTime,5000))){

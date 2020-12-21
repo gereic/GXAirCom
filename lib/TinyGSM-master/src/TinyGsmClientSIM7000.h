@@ -221,7 +221,7 @@ class TinyGsmSim7000 : public TinyGsmModem<TinyGsmSim7000>,
 
   bool powerOffImpl() {
     sendAT(GF("+CPOWD=1"));
-    return waitResponse(GF("NORMAL POWER DOWN")) == 1;
+    return waitResponse(5000L,GF("NORMAL POWER DOWN")) == 1;
   }
 
   // During sleep, the SIM7000 module has its serial communication disabled.

@@ -374,6 +374,7 @@ struct statusData{
   uint32_t tMaxLoop; //max Loop-time
   bool flying;
   uint8_t wifiStat;
+  int8_t wifiRssi;
   uint8_t bluetoothStat;
   uint32_t flightTime; //flight-time in sek.
   bool bMuting; //muting beeper
@@ -383,6 +384,7 @@ struct statusData{
   bool bInternetConnected;
   bool bTimeOk;
   bool bHasGSM;
+  int16_t GSMSignalQuality;
   uint8_t displayStat; //stat of display
 };
 

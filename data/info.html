@@ -90,11 +90,67 @@ function onMessage(evt) {
             document.getElementById("VisVario").style.display='none';
           }
           continue;
-        }
-        if (key == "VisWeather"){
+        }else if (key == "bHasGSM"){
+          if (myObj[key] == 0){
+            document.getElementById("VisGSM").style.display='none';
+          }
+          continue;          
+        }else if (key == "VisWeather"){
           if (myObj[key] == 0){
             document.getElementById("VisWeather").style.display='none';
           }
+          continue;
+        }else if (key == "GSMStat"){
+          var value = parseInt(myObj[key]);
+          var text = "";
+          if (value == 1){
+            text = "connecting"
+          }else if (value == 2){
+            text = "connected"
+          }else{
+            text = "disconnected"
+          }
+          document.getElementById(key).value = text;
+          continue;
+        }else if (key == "GSMRssi"){
+          var text = "";
+          var value = parseInt(myObj[key]);
+          if ((value == 0) || (value == 99)){
+            text = "not known or not detectable"
+          }else if (value <=  9) {
+            text = "Marginal"
+          }else if (value <=  14){
+            text = "OK"
+          }else if (value <=  19){
+            text = "Good"
+          }else{
+            text = "Excellent"
+          }
+          text = text +  " (" + myObj[key] + ")";
+          document.getElementById(key).value = text;
+          continue;
+        }else if (key == "wifiRssi"){
+          var text = "";
+          var value = parseInt(myObj[key]);
+          if ((value <=  -90) || (value == 0)) {
+            text = "no connection "
+          }else if (value <=  -80){
+            text = "Unreliable signal strength "
+          }else if (value <=  -70){
+            text = "Not a strong signal "
+          }else if (value <=  -76){
+            text = "Reliable signal strength "
+          }else if (value <=  -60){
+            text = "Good signal strength "
+          }else if (value <=  -50){
+            text = "excellent signal strength "
+          }else if (value <=  -30){
+            text = "excellent signal strength "
+          }else{
+            text = "excellent signal strength "
+          }
+          text = text +  myObj[key] + "dBm";
+          document.getElementById(key).value = text;
           continue;
         }
         var e = document.getElementById(key);
@@ -207,6 +263,10 @@ window.addEventListener("load", init, false);
           <tr>
             <th>Batt [V]</th>
             <td><input type="text" id="vBatt" disabled></td>
+          </tr>
+          <tr>
+            <th>Wifi RSSI</th>
+            <td><input type="text" id="wifiRssi" disabled></td>
           </tr>
           <tr>
             <th>current loop-time [ms]</th>
@@ -331,6 +391,23 @@ window.addEventListener("load", init, false);
           <tr>
             <th>rain 1 day [l]</th>
             <td><input type="text" id="wsR1d" disabled></td>
+          </tr>
+        </tbody>      
+      </table>
+    </fieldset>
+    <p></p>
+    <p></p>
+    <fieldset id="VisGSM">
+      <legend><b>GSM settings</b></legend>
+      <table style="width:100&#37;">
+        <tbody>
+          <tr>
+            <th>status</th>
+            <td><input type="text" id="GSMStat"></td>
+          </tr>
+          <tr>
+            <th>signal strength</th>
+            <td><input type="text" id="GSMRssi"></td>
           </tr>
         </tbody>      
       </table>

@@ -133,3 +133,9 @@ added support of BME280 for ttgo T-SIM7000
 added support of DS18B20 for ttgo T-SIM7000
 added support of rain-gauge for ttgo T-SIM7000
 Bugfix on sleep-mode (device did not wake up)
+
+V2.0.0
+new Fanet manu-id 08 ... for gxaircom
+added wifi-signal strength to info-page
+added GSM-signal strength to info-page
+improvements in gs-mode for power-consumption in sleep-mode

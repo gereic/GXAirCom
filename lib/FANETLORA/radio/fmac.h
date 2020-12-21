@@ -30,7 +30,7 @@
 #define FREQUENCY915 916039978
 
 //#define ManuId 0x07 // for the moment we use soft-Rf, cause then airwhere is showing it on the map
-#define ManuId 0x07
+#define ManuId 0x08 //08 ... GxAircom
 
 
 
@@ -155,6 +155,9 @@ private:
 	LinkedList2<NeighborNode *> neighbors;
 	Fapp *myApp = NULL;
 	MacAddr _myAddr;
+
+	int8_t _ss;
+	int8_t _reset;
 
 	unsigned long csma_next_tx = 0;
 	int csma_backoff_exp = MAC_TX_BACKOFF_EXP_MIN;
