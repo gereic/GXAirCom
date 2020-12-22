@@ -131,7 +131,6 @@ function sendValues(){
   doSend(JSON.stringify(obj));
   
   var obj = {
-  gsawid : document.getElementById("gsawid").value,
   gslat : document.getElementById("gslat").value,
   gslon : document.getElementById("gslon").value,
   gsalt : document.getElementById("gsalt").value,
@@ -452,10 +451,6 @@ window.addEventListener("load", init, false);
       <legend><b>Ground station settings</b></legend>
       <table style="width:100&#37;">
         <tbody>
-          <tr>
-            <th>Airwhere ID</th>
-            <td><input type="text" id="gsawid"></td>
-          </tr>
           <tr>
             <th>lat [DD.dddddd] (ground-station)</th>
             <td><input type="number" id="gslat"></td>

@@ -112,7 +112,6 @@ void onWebSocketEvent(uint8_t client_num,
           webSocket.sendTXT(client_num, msg_buf);
 
           doc.clear();
-          doc["gsawid"] = setting.gs.AWID;
           doc["gslat"] = setting.gs.lat;
           doc["gslon"] = setting.gs.lon;
           doc["gsalt"] = setting.gs.alt;
@@ -181,7 +180,6 @@ void onWebSocketEvent(uint8_t client_num,
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
         }else if (clientPages[client_num] == 14){ //settings ground station
-          doc["gsawid"] = setting.gs.AWID;
           doc["gslat"] = setting.gs.lat;
           doc["gslon"] = setting.gs.lon;
           doc["gsalt"] = setting.gs.alt;
@@ -244,7 +242,6 @@ void onWebSocketEvent(uint8_t client_num,
         if (root.containsKey("UDPServerIP")) newSetting.UDPServerIP = doc["UDPServerIP"].as<String>();
         if (root.containsKey("UDPSendPort")) newSetting.UDPSendPort = doc["UDPSendPort"].as<uint16_t>();
         //gs settings
-        if (root.containsKey("gsawid")) newSetting.gs.AWID = doc["gsawid"].as<String>();
         if (root.containsKey("gslat")) newSetting.gs.lat = doc["gslat"].as<float>();
         if (root.containsKey("gslon")) newSetting.gs.lon = doc["gslon"].as<float>();
         if (root.containsKey("gsalt")) newSetting.gs.alt = doc["gsalt"].as<float>();

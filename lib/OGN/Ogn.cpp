@@ -159,7 +159,7 @@ uint8_t Ogn::getSenderDetails(aircraft_t aircraftType,String devId){
     //	ICAO(1)
     //	FLARM(2)  FLARM HW
     //	OGN(3)    OGN tracker HW
-    if (devId.startsWith("11") || devId.startsWith("20") || devId.startsWith("DD") || devId.startsWith("DE") || devId.startsWith("DF")){
+    if (devId.startsWith("08") || devId.startsWith("11") || devId.startsWith("20") || devId.startsWith("DD") || devId.startsWith("DE") || devId.startsWith("DF")){
         type += 2; //address type FLARM
         //log_i("address=%s Flarm",devId.c_str());
     }else{

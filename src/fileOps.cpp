@@ -29,7 +29,6 @@ void load_configFile(SettingsData* pSetting){
     pSetting->gs.lat = preferences.getFloat("GSLAT",0.0);
     pSetting->gs.lon = preferences.getFloat("GSLON",0.0);
     pSetting->gs.alt = preferences.getFloat("GSALT",0.0);
-    pSetting->gs.AWID = preferences.getString("GSAWID","");
     pSetting->gs.SreenOption = preferences.getUChar("GSSCR",0);
     pSetting->gs.PowerSave = preferences.getUChar("GSPS",0);
 
@@ -98,7 +97,6 @@ void write_configFile(SettingsData* pSetting){
     preferences.putFloat("GSLAT",pSetting->gs.lat);
     preferences.putFloat("GSLON",pSetting->gs.lon);
     preferences.putFloat("GSALT",pSetting->gs.alt);
-    preferences.putString("GSAWID",pSetting->gs.AWID);
     preferences.putUChar("GSSCR",pSetting->gs.SreenOption);
     preferences.putUChar("GSPS",pSetting->gs.PowerSave);
 

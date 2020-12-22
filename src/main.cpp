@@ -797,11 +797,11 @@ void enterDeepsleep(){
 void sendAWGroundStationdata(uint32_t tAct){
   static uint32_t tSend = millis() - 290000; //10sec. delay, to get wifi working
   if ((tAct - tSend) < 300000) return; //every 5min.
-
+  if (!setting.awLiveTracking) return;
   tSend = tAct;
   char chs[20];
   String msg = ">GS Location,"
-            + setting.gs.AWID + ",";
+            + setting.myDevId + ",";  
   sprintf(chs,"%02.6f",setting.gs.lat);
   msg += String(chs) + ",";
   sprintf(chs,"%02.6f",setting.gs.lon);
@@ -875,7 +875,6 @@ void sendTraccarTrackingdata(FanetLora::trackingData *FanetData){
 
 void sendAWTrackingdata(FanetLora::trackingData *FanetData){
   if (!setting.awLiveTracking) return;
-
   char chs[20];
   String msg;
   #ifdef GSMODULE
@@ -1193,10 +1192,11 @@ void printSettings(){
   log_i("GS LAT=%02.6f",setting.gs.lat);
   log_i("GS LON=%02.6f",setting.gs.lon);
   log_i("GS ALT=%0.2f",setting.gs.alt);
-  log_i("GS AWID=%s",setting.gs.AWID);
   log_i("GS SCREEN OPTION=%d",setting.gs.SreenOption);
   log_i("GS POWERSAFE=%d",setting.gs.PowerSave);
   
+  
+  log_i("Airwhere-Livetracking=%d",setting.awLiveTracking);
   log_i("OGN-Livetracking=%d",setting.OGNLiveTracking);
   log_i("Traccar-Livetracking=%d",setting.traccarLiveTracking);
   log_i("Traccar-Address=%s",setting.TraccarSrv.c_str());
@@ -3047,14 +3047,15 @@ void powerOff(){
     axp.setChgLEDMode(AXP20X_LED_OFF);
     axp.setPowerOutPut(AXP192_LDO2, AXP202_OFF); //LORA
     axp.setPowerOutPut(AXP192_LDO3, AXP202_OFF); //GPS
+    
+    axp.setPowerOutPut(AXP192_DCDC2, AXP202_OFF); // NC
+    axp.setPowerOutPut(AXP192_EXTEN, AXP202_OFF);
     if (setting.displayType == OLED0_96){
       axp.setPowerOutPut(AXP192_DCDC1, AXP202_ON); //OLED-Display 3V3
     }else{
       axp.setPowerOutPut(AXP192_DCDC1, AXP202_OFF); //OLED-Display 3V3
     }
     
-    axp.setPowerOutPut(AXP192_DCDC2, AXP202_OFF); // NC
-    axp.setPowerOutPut(AXP192_EXTEN, AXP202_OFF);
     delay(20);
     esp_sleep_enable_ext0_wakeup((gpio_num_t) AXP_IRQ, 0); // 1 = High, 0 = Low
   }

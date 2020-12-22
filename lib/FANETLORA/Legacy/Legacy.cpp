@@ -200,12 +200,17 @@ size_t legacy_encode(void *legacy_pkt, ufo_t *this_aircraft) {
 
     pkt->addr = id & 0x00FFFFFF;
 
-#if !defined(SOFTRF_ADDRESS)
-    pkt->addr_type = ADDR_TYPE_ANONYMOUS; /* ADDR_TYPE_ANONYMOUS */
-#else
-    pkt->addr_type = (pkt->addr == SOFTRF_ADDRESS ?
-                      ADDR_TYPE_ICAO : ADDR_TYPE_FLARM); /* ADDR_TYPE_ANONYMOUS */
-#endif
+pkt->addr_type = ADDR_TYPE_ICAO;
+//pkt->addr_type = ADDR_TYPE_FLARM;
+
+
+//#if !defined(SOFTRF_ADDRESS)
+//    pkt->addr_type = ADDR_TYPE_ANONYMOUS; /* ADDR_TYPE_ANONYMOUS */
+//#else
+//    pkt->addr_type = (pkt->addr == SOFTRF_ADDRESS ?
+//                      ADDR_TYPE_ICAO : ADDR_TYPE_FLARM); /* ADDR_TYPE_ANONYMOUS */
+//#endif
+
     pkt->parity = 0;
 
     pkt->stealth = this_aircraft->stealth;

@@ -278,7 +278,6 @@ struct GSSettings{
   float lat; //Ground-Station Latitude
   float lon; //Ground-Station Longitude
   float alt; //Ground-Station altitude
-  String AWID; //Ground-Station ID
   uint8_t SreenOption; //energy-option for display
   uint8_t PowerSave; //powersave-option
 };

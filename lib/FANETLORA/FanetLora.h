@@ -49,9 +49,6 @@
 //#define FREQUENCY915 916039978
 #define FANET_HEADER_SIZE 4
 //see fmac.h
-//#define ManuId 0x11 // for the moment we use soft-Rf, cause then airwhere is showing it on the map
-//#define ManuId 0x07 // for the moment we use soft-Rf, cause then airwhere is showing it on the map
-//#define ManuId 0xFA 
 /*
 Manufacturer IDs:
 0x00		[reserved]
@@ -61,6 +58,7 @@ Manufacturer IDs:
 0x05		Windline
 0x06		Burnair.ch
 0x07		SoftRF
+0x08    GxAircom
 ...
 0x11		FANET+ (incl FLARM. Currently Skytraxx, and Naviter)
 ...

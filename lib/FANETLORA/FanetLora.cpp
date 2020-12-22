@@ -421,7 +421,7 @@ void FanetLora::handle_frame(Frame *frm){
       insertNameToNeighbour(devId,msg2);
   }
   actMsg = msg;
-  log_i("%s",msg.c_str());
+  //log_i("%s",msg.c_str());
   newMsg = true;
   rxCount++;
 }
