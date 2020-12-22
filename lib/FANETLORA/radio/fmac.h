@@ -29,8 +29,8 @@
 #define FREQUENCY868 868200012
 #define FREQUENCY915 916039978
 
-//#define ManuId 0x07 // for the moment we use soft-Rf, cause then airwhere is showing it on the map
-#define ManuId 0x08 //08 ... GxAircom
+#define ManuId 0x07 // for the moment we use soft-Rf, cause then airwhere is showing it on the map
+//#define ManuId 0x08 //08 ... GxAircom
 
 
 
