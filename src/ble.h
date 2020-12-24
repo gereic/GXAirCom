@@ -109,7 +109,7 @@ void start_ble (String bleId)
 {
 	esp_coex_preference_set(ESP_COEX_PREFER_BT);
     BLEDevice::init(bleId.c_str());
-	BLEDevice::setMTU(128); //set MTU-Size to 128 Byte
+	BLEDevice::setMTU(256); //set MTU-Size to 256 Byte
 	BLEServer *pServer = BLEDevice::createServer();
 	pServer->setCallbacks(new MyServerCallbacks());
 

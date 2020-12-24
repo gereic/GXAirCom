@@ -138,3 +138,8 @@ V2.0.0
 added wifi-signal strength to info-page
 added GSM-signal strength to info-page
 improvements in gs-mode for power-consumption in sleep-mode
+
+V2.0.1
+changed ble MTU-Size to 256
+changed gateway 192.168.4.250 -> 192.168.4.1
+

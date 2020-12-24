@@ -109,7 +109,6 @@ MicroNMEA nmea(nmeaBuffer, sizeof(nmeaBuffer));
 
 Baro baro;
 beeper Beeper(BEEP_VELOCITY_DEFAULT_SINKING_THRESHOLD,BEEP_VELOCITY_DEFAULT_CLIMBING_THRESHOLD,BEEP_VELOCITY_DEFAULT_NEAR_CLIMBING_SENSITIVITY,BEEP_DEFAULT_VOLUME);
-//#define PINBUZZER 0
 int freq = 2000;
 int channel = 0;
 int resolution = 8;
@@ -151,7 +150,7 @@ uint32_t fanetReceiver;
 uint8_t sendTestData = 0;
 
 IPAddress local_IP(192,168,4,1);
-IPAddress gateway(192,168,4,250);
+IPAddress gateway(192,168,4,1);
 IPAddress subnet(255,255,255,0);
 
 volatile bool ppsTriggered = false;
@@ -1900,8 +1899,13 @@ void taskBaro(void *pvParameters){
   TickType_t xLastWakeTime;
   // Block for 500ms.
   const TickType_t xDelay = 10 / portTICK_PERIOD_MS;  
+  
   ledcSetup(channel, freq, resolution);
-  ledcAttachPin(PinBuzzer, channel); //Buzzer on Pin 17 --> Prog-Button is on PIN 0
+  if (PinBuzzer >= 0){
+    pinMode(PinBuzzer, OUTPUT);
+    ledcAttachPin(PinBuzzer, channel); //Buzzer on Pin 17 --> Prog-Button is on PIN 0
+  }  
+  
   TwoWire i2cBaro = TwoWire(0);
   Wire.begin(PinBaroSDA,PinBaroSCL,400000);
   i2cBaro.begin(PinBaroSDA,PinBaroSCL,400000); //init i2cBaro for Baro
@@ -3040,7 +3044,11 @@ void powerOff(){
     pinMode(PinUserLed, OUTPUT);
     digitalWrite(PinUserLed,HIGH); 
   }
-  log_i("switch power-supply off");
+  if (PinBuzzer >= 0){
+    digitalWrite(PinBuzzer,LOW);     
+  }  
+  
+  log_i("switch power-supply off");  
   delay(100);
   if (status.bHasAXP192){
     // switch all off
