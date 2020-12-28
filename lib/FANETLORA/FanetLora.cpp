@@ -5,7 +5,7 @@
  */
 
 #include "FanetLora.h"
-#include "Legacy\Legacy.h"
+#include "Legacy/Legacy.h"
 
 FanetLora::FanetLora(){
 }

@@ -12,8 +12,8 @@
 #include "LoRa.h"
 #include "fmac.h"
 #include <TimeLib.h>
-#include "Legacy\Legacy.h"
-#include "CRC\lib_crc.h"
+#include "Legacy/Legacy.h"
+#include "CRC/lib_crc.h"
 
 
 /* get next frame which can be sent out */
