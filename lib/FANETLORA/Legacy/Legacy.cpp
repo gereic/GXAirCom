@@ -1,6 +1,6 @@
 #include <math.h>
 #include <stdint.h>
-#include <arduino.h>
+#include <Arduino.h> //
 #include "FanetLora.h"
 #include "Legacy.h"
 #include "Flarm.h"
