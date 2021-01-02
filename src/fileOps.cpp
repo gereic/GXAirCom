@@ -46,11 +46,12 @@ void load_configFile(SettingsData* pSetting){
 
 
     //vario
-    pSetting->vario.sinkingThreshold = preferences.getFloat("vSinkTh",-2.0);
+    pSetting->vario.sinkingThreshold = preferences.getFloat("vSinkTh",-2.5);
     pSetting->vario.climbingThreshold = preferences.getFloat("vClimbTh",0.2);
-    pSetting->vario.nearClimbingSensitivity = preferences.getFloat("vNClimbSens",0.5);
+    pSetting->vario.nearClimbingSensitivity = preferences.getFloat("vNClimbSens",0.2);
     pSetting->vario.volume = preferences.getUChar("VarioVolume",10);
     pSetting->vario.BeepOnlyWhenFlying = preferences.getUChar("VBeepFlying",1);
+    pSetting->vario.useMPU = preferences.getUChar("useMPU",0);
 
     //wu-upload
     pSetting->WUUpload.enable = preferences.getUChar("WUUlEnable",0);
@@ -114,6 +115,7 @@ void write_configFile(SettingsData* pSetting){
     preferences.putFloat("vNClimbSens",pSetting->vario.nearClimbingSensitivity);
     preferences.putUChar("VarioVolume",pSetting->vario.volume);
     preferences.putUChar("VBeepFlying",pSetting->vario.BeepOnlyWhenFlying);
+    preferences.putUChar("useMPU",pSetting->vario.useMPU);
 
     //weathersettings
     preferences.putUChar("FanetWeather",pSetting->wd.sendFanet);

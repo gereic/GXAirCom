@@ -100,6 +100,11 @@ function onMessage(evt) {
             document.getElementById("VisWeather").style.display='none';
           }
           continue;
+        }else if (key == "bHasMPU"){
+          if (myObj[key] == 0){
+            document.getElementById("VisMPU").style.display='none';
+          }
+          continue;
         }else if (key == "GSMStat"){
           var value = parseInt(myObj[key]);
           var text = "";
@@ -350,6 +355,31 @@ window.addEventListener("load", init, false);
           <tr>
             <th>climbrate [m/s]</th>
             <td><input type="text" id="climbrate" disabled></td>
+          </tr>
+        </tbody>      
+      </table>
+    </fieldset>
+    <p></p>
+    <p></p>
+    <fieldset id="VisMPU">
+      <legend><b>motion processor unit (MPU)</b></legend>
+      <table style="width:100&#37;">
+        <tbody>
+          <tr>
+            <th>accel</th>
+            <td><input type="text" id="accel_0" disabled></td>
+            <td><input type="text" id="accel_1" disabled></td>
+            <td><input type="text" id="accel_2" disabled></td>
+          </tr>
+          <tr>
+            <th>gyro x</th>
+            <td><input type="text" id="gyro_0" disabled></td>
+            <td><input type="text" id="gyro_1" disabled></td>
+            <td><input type="text" id="gyro_2" disabled></td>
+          </tr>
+          <tr>
+            <th>acc z [m/s²]</th>
+            <td><input type="text" id="acc_z" disabled></td>
           </tr>
         </tbody>      
       </table>

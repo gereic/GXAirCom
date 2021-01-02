@@ -1,4 +1,9 @@
 #include <Baro.h>
+//#include <MPU6050.h>
+#include "MPU6050_6Axis_MotionApps20.h"
+
+
+MPU6050 mpu;
 
 Baro::Baro(){
   //FilterAlt(1.0f, 1.0f, 0.01f);
@@ -42,6 +47,15 @@ bool Baro::initBME280(void){
   return true;
 }
 
+void Baro::getMPUValues(int16_t accel[3],int16_t gyro[3],float *acc_Z){
+  for (int i = 0; i < 3;i++){
+    accel[i] = logData.accel[i];
+    gyro[i] = logData.gyro[i];
+  }
+  *acc_Z = logData.acc;
+}
+
+
 bool Baro::initMS5611(void){
   // Initialize MS5611 sensor
   // Ultra high resolution: MS5611_ULTRA_HIGH_RES
@@ -67,45 +81,85 @@ bool Baro::initMS5611(void){
   }  
   */
   sensorType = SENSORTYPE_MS5611; //init to no sensor connected
-  //ms5611.doConversion();
-  //accelgyro.initialize();
-  // initialize device
-  accelgyro.initialize();
-  // reset offsets  
-  accelgyro.setXAccelOffset(-1617);
-  accelgyro.setYAccelOffset(-1551);
-  accelgyro.setZAccelOffset(1147);
-  accelgyro.setXGyroOffset(110);
-  accelgyro.setYGyroOffset(48);
-  accelgyro.setZGyroOffset(-14);
-  accelgyro.setI2CMasterModeEnabled(false);
-  accelgyro.setI2CBypassEnabled(true) ;
-  accelgyro.setSleepEnabled(false);
-  //accelgyro.setDMPEnabled();
-  mag.initialize();
-  //Serial.println(mag.testConnection() ? "HMC5883L connection successful" : "HMC5883L connection failed");
+  if (mpu.testConnection()){
+    log_i("MPU6050 connection successful");
+  }else{
+    log_i("MPU6050 connection failed");
+  }
 
-  // verify connection
-  //Serial.println("Testing device connections...");
-  //Serial.println(accelgyro.testConnection() ? "MPU6050 connection successful" : "MPU6050 connection failed"); 
+  Preferences preferences;
+	preferences.begin("fastvario", false);
+	ax_offset = preferences.getInt("axOffset", 0);
+	ay_offset = preferences.getInt("ayOffset", 0);
+	az_offset = preferences.getInt("azOffset", 0);
+	ax_scale = preferences.getFloat("axScale", 0);
+	ay_scale = preferences.getFloat("ayScale", 0);
+	az_scale = preferences.getFloat("azScale", 0);
+	gx_offset = preferences.getInt("gxOffset", 0);
+	gy_offset = preferences.getInt("gyOffset", 0);
+	gz_offset = preferences.getInt("gzOffset", 0);
+  preferences.end();
+  // initialize device
+  mpu.initialize();
+
+	log_i("Initializing DMP...");
+	devStatus = mpu.dmpInitialize();
+
+  if ((gx_offset == 0) && (gy_offset == 0) && (gz_offset == 0)){
+    //bUseAcc = false;
+    gx_offset = mpu.getXGyroOffset();
+    gy_offset = mpu.getYGyroOffset();
+    gz_offset = mpu.getZGyroOffset();
+    log_i("gyro not calibrated");
+  }else{
+    mpu.setXGyroOffset(gx_offset);
+    mpu.setYGyroOffset(gy_offset);
+    mpu.setZGyroOffset(gz_offset);
+  }
+
+  log_i("scale ax_scale=%.02f,ay_scale=%.02f,az_scale=%.02f,",ax_scale,ay_scale,az_scale);
+  log_i("acc offsets ax_offset=%d,ay_offset=%d,az_offset=%d",ax_offset,ay_offset,az_offset);
+  log_i("gyro offsets gx_offset=%d,gy_offset=%d,gz_offset=%d",gx_offset,gy_offset,gz_offset);
+
+  mpu.setDMPEnabled(true);
+
+  // get expected DMP packet size for later comparison		
+  packetSize = mpu.dmpGetFIFOPacketSize();
+
+  mag.initialize(); //init mag
   return true;
 }
 
-bool Baro::begin(TwoWire *pi2c){
+uint8_t Baro::begin(TwoWire *pi2c){
+  uint8_t ret = 0;
   pI2c = pi2c;
   sensorType = SENSORTYPE_NONE; //init to no sensor connected
+  if (initBME280()){
+    ret = 1; //BME280;
+  }else if (initMS5611()){
+    ret = 2; //GY-86-Board
+  }else{
+    return 0;
+  }
+  /*
   if (!initBME280()){
     if (!initMS5611()){
       return false;
     }
   }
+  */
   xMutex = xSemaphoreCreateMutex();
   //Serial.print("size of data:"); Serial.println(sizeof(logData));  
   memset(&logData,0,sizeof(logData));
   countReadings = 0;
   logData.newData = 0x80; //first measurement
   
-  return true;
+  return ret;
+
+}
+
+void Baro::useMPU(bool bUseMPU){
+  bUseAcc = bUseMPU;
 }
 
 void Baro::calcClimbing(void){
@@ -113,20 +167,35 @@ void Baro::calcClimbing(void){
   if (logData.newData == 0x80){
     //init alt-array
     //double test = logData.altitude;
-    Kalmanvert.init(logData.altitude,
-                    0.0,
-                    POSITION_MEASURE_STANDARD_DEVIATION,
-                    ACCELERATION_MEASURE_STANDARD_DEVIATION,
-                    millis());
+    if (bUseAcc){
+      Kalmanvert.init(logData.altitude,
+                      0.0,
+                      0.1,
+                      0.3,
+                      millis());
+    }else{
+      Kalmanvert.init(logData.altitude,
+                      0.0,
+                      0.1,
+                      0.6,
+                      millis());
+    }
     //Serial.println("KalmanInit");
   }else{
-    Kalmanvert.update( logData.altitude,
-                       0.0,
-                       millis());
+    if (bUseAcc){
+      Kalmanvert.update( logData.altitude,
+                        logData.acc,
+                        millis());
+    }else{
+      Kalmanvert.update( logData.altitude,
+                        0.0,
+                        millis());
+    }
     //Serial.println("KalmanUpdate");
   }
   logData.altitudeFiltered = Kalmanvert.getPosition();
-  logData.climb = Kalmanvert.getVelocity();
+  logData.pos = Kalmanvert.getPosition();
+  logData.velo = Kalmanvert.getVelocity();
   //Serial.print("alt:");Serial.print(logData.altitude);Serial.print("alt2:");Serial.print(logData.altitudeFiltered);Serial.print(";climb:");Serial.println(logData.climb);
 }
 float Baro::getHeading(void){
@@ -148,7 +217,7 @@ float Baro::getAlt(void){
 void Baro::copyValues(void){
   xSemaphoreTake( xMutex, portMAX_DELAY );
   fPressure = logData.pressure;
-  fClimbRate = logData.climb;
+  fClimbRate = logData.velo;
   fAltitude = logData.altitudeFiltered;
   fTemp = logData.temp;
   xSemaphoreGive( xMutex );
@@ -170,12 +239,156 @@ void Baro::getValues(float *pressure,float *alt,float *climb,float *temp){
 
 }
 
+bool Baro::mpuDrdy(void){
+  
+  uint8_t mpuIntStatus = mpu.getIntStatus();
+  uint16_t fifoCount = mpu.getFIFOCount();
+  
+  //if (!drdyFlag) return false; //wait for new Data
+  //drdyFlag = false;
+  // check for overflow (this should never happen unless our code is too inefficient)
+  if ((mpuIntStatus & 0x10) || fifoCount == 1024) {
+    // reset so we can continue cleanly
+    mpu.resetFIFO();
+    //log_i("FIFO overflow! resetting..");
+    //log_i("Enabling FIFO...");
+    mpu.setFIFOEnabled(true);
+    //log_i("Enabling DMP...");
+    mpu.setDMPEnabled(true);
+  }else if (mpuIntStatus & 0x02) {
+    //log_i("new data from mpu");
+    uint16_t fifoCount = mpu.getFIFOCount();
+    if( fifoCount != packetSize){
+      //log_i("wrong packet-length %d",fifoCount);
+      // reset so we can continue cleanly
+      mpu.resetFIFO();
+      //log_i("FIFO overflow! resetting..");
+      //log_i("Enabling FIFO...");
+      mpu.setFIFOEnabled(true);
+      //log_i("Enabling DMP...");
+      mpu.setDMPEnabled(true);
+    }else{
+      mpu.getFIFOBytes(fifoBuffer, packetSize);
+      return true;
+    }
+    
+  }
+  return false;
+
+}
+void Baro::scaleAccel(VectorInt16 *accel){
+  //y=mx+b; //linear function
+  float scale_x,scale_y,scale_z;
+  float offset_x,offset_y,offset_z;
+  scale_x = 1;
+  scale_y = 1;
+  scale_z = 1;
+  offset_x = 0;
+  offset_y = 0;
+  offset_z = 0;
+
+  /*
+  scale factor=((average couts at +1g)-(average counts at -1g))/(2g's)
+  X +1g = 8265,164    -1g= -7989,700 = 8265,164 - (-7989,700) / 16384,0 = 0,99212 --> 1,0079
+  Y +1g = 8092,989    -1g= -8167,884 = 8092,989 - (-8167,884) / 16384,0 = 0,99248 --> 1,0076
+  Z +1g = 7804,699    -1g= -8779,637 = 7804,699 - (-8779,637) / 16384,0 = 1,0122  --> 0,9879
+
+
+  Offset = - (average counts when axis is perpendicular to g)
+  x1=223,229 x2=60,713 x3=150,532 x4=225,815 = 165,07225
+  y1=-73,071 y2=76,648 y3=36,225 y4=-48,902 = -2,275
+  z1=-1606,632 z2=159,373 z3=-556,161 z4=-1123,953 = -781,843
+
+  */
+  scale_x = 1.0079;
+  scale_y = 1.0076;
+  scale_z = 0.9879;
+
+  offset_x = -165.07225;
+  offset_y = 2.275;
+  offset_z = 581.843;
+
+
+  accel->x = (int16_t)round(scale_x * (float)accel->x + offset_x);//(offset_x * scale_x));
+  accel->y = (int16_t)round(scale_y * (float)accel->y + offset_y);//(offset_y * scale_y));
+  accel->z = (int16_t)round(scale_z * (float)accel->z + offset_z);//(offset_z * scale_z));
+}
+
+float Baro::getGravityCompensatedAccel(void){
+    // orientation/motion vars
+    Quaternion q;           // [w, x, y, z]         quaternion container
+    VectorInt16 aa;         // [x, y, z]            accel sensor measurements
+    VectorInt16 gy;         // [x, y, z]            gyro sensor measurements
+    VectorInt16 aaReal;     // [x, y, z]            gravity-free accel sensor measurements
+    VectorInt16 aaWorld;    // [x, y, z]            world-frame accel sensor measurements
+    VectorFloat gravity;    // [x, y, z]            gravity vector
+    // get current FIFO count
+    
+    //uint16_t fifoCount = mpu.getFIFOCount();
+    //if( fifoCount != packetSize){
+    //  log_i("wrong packet-length %d",fifoCount);
+    //}
+    // wait for correct available data length, should be a VERY short wait
+    //while (fifoCount < packetSize){
+    //  fifoCount = mpu.getFIFOCount();
+    //  delay(1);
+    //} 
+    //mpu.getFIFOBytes(fifoBuffer, packetSize);
+
+    // track FIFO count here in case there is > 1 packet available
+    // (this lets us immediately read more without waiting for an interrupt)
+    //fifoCount -= packetSize;
+
+
+    // display initial world-frame acceleration, adjusted to remove gravity
+    // and rotated based on known orientation from quaternion
+    mpu.dmpGetQuaternion(&q, fifoBuffer);
+    mpu.dmpGetAccel(&aa, fifoBuffer);
+    mpu.dmpGetGyro(&gy, fifoBuffer);
+    scaleAccel(&aa); //scale an offset to acceleration !!
+    logData.accel[0] = aa.x;
+    logData.accel[1] = aa.y;
+    logData.accel[2] = aa.z;
+    logData.gyro[0] = gy.x;
+    logData.gyro[1] = gy.y;
+    logData.gyro[2] = gy.z;
+    mpu.dmpGetGravity(&gravity, &q);
+    mpu.dmpGetLinearAccel(&aaReal, &aa, &gravity);
+    mpu.dmpGetLinearAccelInWorld(&aaWorld, &aaReal, &q);
+    return float(aaWorld.z*(9.80665 / MPU6050_2G_SENSITIVITY)); //to get m/s
+
+}
+
+
+
 void Baro::runMS5611(uint32_t tAct){
   static uint32_t tOld;
+  static float press = 0.0f;
+  static float temp = 0.0f;
+  static uint8_t baroCount = 0;
+
+  static float acc = 0.0f;
+  static uint8_t mpuCount = 0;
   ms5611.run();
   if (ms5611.convFinished()){
-    mag.getHeading(&logData.mx, &logData.my, &logData.mz);
-    accelgyro.getMotion6(&logData.ax, &logData.ay, &logData.az, &logData.gx, &logData.gy, &logData.gz);
+    press += ms5611.readPressure(true);
+    temp += ms5611.readTemperature(true);
+    baroCount++;
+  }
+  bool bReady = mpuDrdy();
+  if (bReady){
+    acc += getGravityCompensatedAccel();
+		mpuCount++;
+  }
+
+  if ((baroCount > 0) && (mpuCount > 0)){
+    
+    press = press / float(baroCount);
+    temp = temp / float(baroCount);
+    acc = acc / float(mpuCount);
+    logData.acc = acc;
+    logData.baroCount = baroCount;
+    logData.mpuCount = mpuCount;
     if (countReadings < 10){
       countReadings++;
     }else{
@@ -184,24 +397,21 @@ void Baro::runMS5611(uint32_t tAct){
         countReadings++;
       }
       // To calculate heading in degrees. 0 degree indicates North
+      //mag.getHeading(&logData.mx, &logData.my, &logData.mz);
       logData.heading = atan2(logData.my, logData.mx);
       if(logData.heading < 0){
         logData.heading += 2 * M_PI;
       }      
       logData.heading  = logData.heading * 180/M_PI;
 
-      logData.temp = ms5611.readTemperature(true);
-      logData.pressure = ms5611.readPressure(true);
+      logData.temp = temp;
+      logData.pressure = press;
       //log_i("temp=%f pressure=%f",logData.temp,logData.pressure);
 
       logData.altitude = ms5611.getAltitude(logData.pressure);
-      //logData.altitude = alt;
-      //float altNew = FilterAlt.updateEstimate(alt);
-      //logData.altitudeFiltered = FilterAlt.updateEstimate(logData.altitude);
-      //logData.pressureFiltered = FilterPressure.updateEstimate(logData.pressure);  
-      //logData.altitudeFiltered = logData.altitude;
-      logData.loopTime = tAct - tOld;
-      //logData.climb = (logData.altitudeFiltered - oldAlt) * (float)logData.loopTime / 1000.0   ;
+      logData.baroPos = ms5611.getAltitude(logData.pressure);
+      logData.loopTime = micros() - tOld;
+      tOld = micros();
       calcClimbing();
       if (logData.newData == 0x80){
         logData.newData = 0;
@@ -211,13 +421,12 @@ void Baro::runMS5611(uint32_t tAct){
         logData.newData = 1;
         bNewValues = true;
       }
-      //Serial.print(logData.pressure,2);Serial.print(";");
-      //Serial.print(logData.pressureFiltered,2);Serial.print(";");
-      //Serial.print(logData.altitude,2);Serial.print(";");
-      //Serial.print(altNew,2);Serial.print(";");
-      //Serial.print(logData.loopTime);Serial.print(";");
-      //Serial.println(logData.temp,2);
-    }    
+    }
+    press = 0.0f;
+    temp = 0.0f;
+    baroCount = 0;
+    acc = 0.0f;
+    mpuCount = 0;
   }
 
 }
@@ -262,65 +471,28 @@ void Baro::run(void){
   }
 
   #ifdef BARO_DEBUG
-  if ((WiFi.status() == WL_CONNECTED) && (logData.newData)){
-    udp.beginPacket(BARO_DEBUG_IP,BARO_DEBUG_PORT);
-    unsigned int bufferSize = sizeof(logData);
-    udp.write((uint8_t *)&logData,bufferSize);
-    udp.endPacket(); 
+  if (logData.newData){
+    if ((WiFi.status() == WL_CONNECTED) && (logData.newData)){
+      udp.beginPacket(BARO_DEBUG_IP,BARO_DEBUG_PORT);
+      unsigned int bufferSize = sizeof(logData);
+      udp.write((uint8_t *)&logData,bufferSize);
+      udp.endPacket(); 
+    }else{
+      //log_i("acc_x=%d,acc_y=%d,acc_z=%d,gyro_x=%d,gyro_y=%d,gyro_z=%d,climd=%.2f",logData.accel[0],logData.accel[1],logData.accel[2],logData.gyro[0],logData.gyro[1],logData.gyro[2],logData.velo);
+    }
   }
   #endif 
   if (logData.newData){
     tOld = tAct;  
     logData.newData = 0;
   }
-  /*
-  ms5611.doConversion();
-  logData.temp = ms5611.readTemperature(true);
-  logData.pressure = ms5611.readPressure(true);
-  logData.altitude = ms5611.getAltitude(logData.pressure);
-  logData.altitudeFiltered = pFilterAlt->updateEstimate(logData.altitude);
-  logData.pressureFiltered = pFilterPressure->updateEstimate((float)logData.pressure);  
-  */
+}
 
-  /*
-  // display tab-separated accel/gyro x/y/z values
-  Serial.print("a/g:\t");
-  Serial.print(logData.ax); Serial.print("\t");
-  Serial.print(logData.ay); Serial.print("\t");
-  Serial.print(logData.az); Serial.print("\t");
-  Serial.print(logData.gx); Serial.print("\t");
-  Serial.print(logData.gy); Serial.print("\t");
-  Serial.print(logData.gz);Serial.print("\t");
-   
-  Serial.print("mag:\t");
-  Serial.print(logData.mx); Serial.print("\t");
-  Serial.print(logData.my); Serial.print("\t");
-  Serial.print(logData.mz); Serial.print("\t");
-   
-// To calculate heading in degrees. 0 degree indicates North
-  logData.heading = atan2(logData.my, logData.mx);
-  if(logData.heading < 0)
-    logData.heading += 2 * M_PI;
-  logData.heading  = logData.heading * 180/M_PI;
-  //Serial.print("heading:\t");
-  //Serial.println(logData.heading);
-  */
-
-  //copy data for udp
-  //xSemaphoreTake(data_mutex, portMAX_DELAY); 
-  //stUdpData = logData; //copy data
-  //xSemaphoreGive(data_mutex); 
-
-  /*
-  // Output
-  Serial.print(logData.temp);
-  Serial.print(":");
-  Serial.print(logData.pressure);
-  Serial.print(":");
-  Serial.print(logData.altitude);
-  Serial.print(":");
-  Serial.print(tAct - tOld);
-  Serial.println();
-  */
-
+void Baro::end(void){
+  if (sensorType == SENSORTYPE_MS5611){
+    mpu.resetFIFO();
+    mpu.setFIFOEnabled(false);
+    mpu.setDMPEnabled(false);
+    mpu.setSleepEnabled(true);
+  }
 }

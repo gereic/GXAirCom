@@ -162,9 +162,6 @@ volatile float BattCurrent = 0.0;
 
 //bool newStationConnected = false;
 
-#define SDA2 13
-#define SCL2 14
-
 #define AIRWHERE_UDP_PORT 5555
 String airwhere_web_ip = "37.128.187.9";
 
@@ -1206,6 +1203,7 @@ void printSettings(){
   log_i("VarioClimbingThreshold=%0.2f",setting.vario.climbingThreshold);
   log_i("VarioNearClimbingSensitivity=%0.2f",setting.vario.nearClimbingSensitivity);
   log_i("VarioVolume=%d",setting.vario.volume);
+  log_i("Vario use MPU=%d",setting.vario.useMPU);
 
   //weather-data
   log_i("WD Fanet-Weatherdata=%d",setting.wd.sendFanet);
@@ -1285,7 +1283,7 @@ void setup() {
   Serial.begin(115200);
 
   status.bPowerOff = false;
-  status.bHasBME = false;
+  status.vario.bHasBME = false;
   status.bWUBroadCast = false;
   status.bInternetConnected = false;
   status.bTimeOk = false;
@@ -1410,9 +1408,12 @@ void setup() {
     PinBaroSDA = 13;
     PinBaroSCL = 14;
 
-    PinUserLed = 4;
-
-    PinBuzzer = 0;
+    #ifdef EINK
+      PinUserLed = 4;
+      PinBuzzer = 0;
+    #else
+      PinBuzzer = 4;
+    #endif
 
     i2cOLED.begin(PinOledSDA, PinOledSCL);
     setupAXP192();
@@ -1899,41 +1900,46 @@ void taskBaro(void *pvParameters){
   TickType_t xLastWakeTime;
   // Block for 500ms.
   const TickType_t xDelay = 10 / portTICK_PERIOD_MS;  
-  
+  status.vario.bHasMPU = false;
+
   ledcSetup(channel, freq, resolution);
   if (PinBuzzer >= 0){
     pinMode(PinBuzzer, OUTPUT);
-    ledcAttachPin(PinBuzzer, channel); //Buzzer on Pin 17 --> Prog-Button is on PIN 0
+    digitalWrite(PinBuzzer,LOW);
+    ledcAttachPin(PinBuzzer, channel);
   }  
   
-  TwoWire i2cBaro = TwoWire(0);
   Wire.begin(PinBaroSDA,PinBaroSCL,400000);
-  i2cBaro.begin(PinBaroSDA,PinBaroSCL,400000); //init i2cBaro for Baro
-  if (baro.begin(&i2cBaro)){
-    status.bHasVario = true;
+  //TwoWire i2cBaro = TwoWire(0);
+  //i2cBaro.begin(PinBaroSDA,PinBaroSCL,400000); //init i2cBaro for Baro
+  //if (baro.begin(&i2cBaro)){
+  baro.useMPU(setting.vario.useMPU);
+  uint8_t baroSensor = baro.begin(&Wire);
+  if (baroSensor > 0){
+    if (baroSensor == 2){
+      status.vario.bHasMPU = true;
+    }
+    status.vario.bHasVario = true;
     Beeper.setThresholds(setting.vario.sinkingThreshold,setting.vario.climbingThreshold,setting.vario.nearClimbingSensitivity);
     Beeper.setVolume(u8Volume);
-    //Beeper.setGlidingBeepState(true);
+    Beeper.setGlidingBeepState(true);
     //Beeper.setGlidingAlarmState(true);
   }else{
     log_i("no baro found --> end baro-task ");  
-    status.bHasVario = false;    
+    status.vario.bHasVario = false;    
   }
-  if (status.bHasVario){
+  if (status.vario.bHasVario){
     xLastWakeTime = xTaskGetTickCount ();
     while (1){      
-      
-      //uint32_t tAct = millis();
-      //if (u8Volume != setting.vario.volume){
-      //  u8Volume = setting.vario.volume;
-      //  Beeper.setVolume(u8Volume);
-      //}
       if (((!status.flying) && (setting.vario.BeepOnlyWhenFlying)) || (status.bMuting)){
         Beeper.setVolume(0);
       }else{
         Beeper.setVolume(setting.vario.volume);
       }
       baro.run();
+      if (setting.vario.useMPU){
+        baro.getMPUValues(&status.vario.accel[0],&status.vario.gyro[0],&status.vario.acc_Z);
+      }
       if (baro.isNewVAlues()){
         baro.getValues(&status.pressure,&status.varioAlt,&status.ClimbRate,&status.varioTemp);
         status.varioHeading = baro.getHeading();
@@ -1946,10 +1952,12 @@ void taskBaro(void *pvParameters){
       #endif      
       //delay(10);
       // Wait for the next cycle.
-      vTaskDelayUntil( &xLastWakeTime, xDelay );
+      //vTaskDelayUntil( &xLastWakeTime, xDelay );
+      delay(1);
       if ((WebUpdateRunning) || (bPowerOff)) break;
     }
   }
+  baro.end();
   log_i("stop task");
   vTaskDelete(xHandleBaro); //delete baro-task
 }
@@ -2576,7 +2584,7 @@ void sendLK8EX(uint32_t tAct){
     //String s = "$LK8EX1,101300,99999,99999,99,999,";
     String s = "$LK8EX1,";
 
-    if (status.bHasVario){
+    if (status.vario.bHasVario){
       s += String(status.pressure,2) + ","; //raw pressure in hPascal: hPA*100 (example for 1013.25 becomes  101325) 
       if (status.GPS_Fix){
         s += String(status.GPS_alt,2) + ","; // altitude in meters, relative to QNH 1013.25
@@ -2618,7 +2626,6 @@ void taskStandard(void *pvParameters){
   tFanetData.rssi = 0;
   MyFanetData.rssi = 0;
 
-
   #ifdef AIRMODULE
   if (status.bHasAXP192){
     NMeaSerial.begin(GPSBAUDRATE,SERIAL_8N1,34,12,false);
@@ -2627,6 +2634,7 @@ void taskStandard(void *pvParameters){
     NMeaSerial.begin(GPSBAUDRATE,SERIAL_8N1,12,15,false);
     log_i("GPS Baud=9600,8N1,RX=12,TX=15");
   }
+  
   SFE_UBLOX_GPS ublox;
   bool isConnected = false;
   for (int i = 0; i < 3; i++){
@@ -2642,12 +2650,21 @@ void taskStandard(void *pvParameters){
   }else{
     log_i("UBLOX GPS not connected\n");
   }
+
   // Change the echoing messages to the ones recognized by the MicroNMEA library
   MicroNMEA::sendSentence(NMeaSerial, "$PSTMSETPAR,1201,0x00000042");
   MicroNMEA::sendSentence(NMeaSerial, "$PSTMSAVEPAR");
 
   //Reset the device so that the changes could take plaace
   MicroNMEA::sendSentence(NMeaSerial, "$PSTMSRR");
+
+
+  /*
+  host_name = APPNAME "-"; //String((ESP32_getChipId() & 0xFFFFFF), HEX);
+  while(1){
+    delay(1);
+  }
+  */
 
   delay(1000);
   //clear serial buffer
@@ -2665,6 +2682,8 @@ void taskStandard(void *pvParameters){
   status.GPS_Lon = setting.gs.lon;  
   status.GPS_alt = setting.gs.alt;
   #endif
+
+
   // create a binary semaphore for task synchronization
   long frequency = FREQUENCY868;
   //bool begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset, int dio0,long frequency,uint8_t outputPower);
@@ -2717,7 +2736,6 @@ void taskStandard(void *pvParameters){
     oledPowerOff();
   }
 #endif
-
 
   //udp.begin(UDPPORT);
   tLoop = millis();
@@ -2882,14 +2900,14 @@ void taskStandard(void *pvParameters){
         status.GPS_alt = alt/1000.;
         setTime(nmea.getHour(), nmea.getMinute(), nmea.getSecond(), nmea.getDay(), nmea.getMonth(), nmea.getYear());
         if (oldAlt == 0) oldAlt = status.GPS_alt;        
-        if (!status.bHasVario) status.ClimbRate = (status.GPS_alt - oldAlt) / (float(status.tGPSCycle) / 1000.0);        
+        if (!status.vario.bHasVario) status.ClimbRate = (status.GPS_alt - oldAlt) / (float(status.tGPSCycle) / 1000.0);        
         oldAlt = status.GPS_alt;
         MyFanetData.climb = status.ClimbRate;
         MyFanetData.lat = status.GPS_Lat;
         MyFanetData.lon = status.GPS_Lon;
         MyFanetData.altitude = status.GPS_alt;
         MyFanetData.speed = status.GPS_speed; //speed in cm/s --> we need km/h
-        if ((status.GPS_speed <= 5.0) && (status.bHasVario)){
+        if ((status.GPS_speed <= 5.0) && (status.vario.bHasVario)){
           MyFanetData.heading = status.varioHeading;
         }else{
           MyFanetData.heading = status.GPS_course;
@@ -2910,7 +2928,7 @@ void taskStandard(void *pvParameters){
         status.GPS_alt = 0.0;
         status.GPS_course = 0.0;
         status.GPS_NumSat = 0;
-        if (!status.bHasVario) status.ClimbRate = 0.0;
+        if (!status.vario.bHasVario) status.ClimbRate = 0.0;
         oldAlt = 0.0;
       }
       tOldPPS = tAct;

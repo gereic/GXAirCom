@@ -143,3 +143,6 @@ V2.0.1
 changed ble MTU-Size to 256
 changed gateway 192.168.4.250 -> 192.168.4.1
 
+V2.1.0
+New Fanet-manufacturer-id 0x07 (softrf) --> 0x08 GXAircom
+

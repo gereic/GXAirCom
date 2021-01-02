@@ -272,6 +272,18 @@ struct VarioSettings{
   float nearClimbingSensitivity;
   uint8_t volume;
   bool BeepOnlyWhenFlying;
+  bool useMPU;
+  int16_t accel[3];
+  int16_t gyro[3];
+};
+
+struct VarioStatus{
+  bool bHasVario;
+  bool bHasMPU;
+  bool bHasBME;
+  int16_t accel[3];
+  int16_t gyro[3];
+  float acc_Z;
 };
 
 struct GSSettings{
@@ -365,8 +377,7 @@ struct statusData{
   uint16_t fanetTx;
   uint16_t fanetRx;
   bool bHasAXP192;
-  bool bHasVario;
-  bool bHasBME;
+  VarioStatus vario;
   bool bWUBroadCast;
   uint32_t tGPSCycle;
   uint32_t tLoop; //current Loop-time

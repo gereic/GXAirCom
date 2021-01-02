@@ -129,15 +129,15 @@ void beeper::setVelocity(double velocity) {
     /* need climbing alarm ? */
     if( beepType == BEEP_TYPE_SINKING || beepType == BEEP_TYPE_SILENT ) {
       if( velocity > beepGlidingThreshold && velocity < beepClimbingThreshold ) {
-	startAlarm = true;
-	bst_set(CLIMBING_ALARM);
+        startAlarm = true;
+        bst_set(CLIMBING_ALARM);
       }
     }
     /* else need sinking alarm ? */
     else {
       if( velocity > beepSinkingThreshold && velocity < beepGlidingThreshold ) {
-	startAlarm = true;
-	bst_set(SINKING_ALARM);
+        startAlarm = true;
+        bst_set(SINKING_ALARM);
       }
     }
   }

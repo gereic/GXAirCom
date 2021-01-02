@@ -16,18 +16,19 @@
 #include <WiFiUdp.h>
 #include <Wire.h>
 #include <I2Cdev.h>
-#include <MPU6050.h>
 #include <HMC5883L.h>
 #include <MS5611.h>
 #include <math.h>
 #include <kalmanvert.h>
 #include <Adafruit_BME280.h>
+#include <Preferences.h>
+#include "helper_3dmath.h"
 
 //#define BARO_DEBUG
-#define BARO_DEBUG_IP "192.168.0.110"
+#define BARO_DEBUG_IP "192.168.0.178"
 #define BARO_DEBUG_PORT 5010
 
-#define POSITION_MEASURE_STANDARD_DEVIATION 0.3
+#define POSITION_MEASURE_STANDARD_DEVIATION 0.1
 #ifdef HAVE_ACCELEROMETER 
 #define ACCELERATION_MEASURE_STANDARD_DEVIATION 0.3
 #else
@@ -38,6 +39,8 @@
 #define SENSORTYPE_MS5611 1
 #define SENSORTYPE_BME280 2
 
+#define MPU6050_2G_SENSITIVITY 		16384.0f 	// lsb per g
+
 class Baro {
     struct udpData{
     float temp;
@@ -46,24 +49,28 @@ class Baro {
     float altitude;
     float altitudeFiltered;
     float heading;    
-    int16_t ax;
-    int16_t ay;
-    int16_t az;
-    int16_t gx;
-    int16_t gy;
-    int16_t gz;
+    uint32_t loopTime;
+    float baroPos;
+    float pos;
+    float velo;
+    float acc;
     int16_t mx;
     int16_t my;
     int16_t mz;
-    uint32_t loopTime;
-    float climb;
     uint8_t newData;
+    uint8_t baroCount;
+    uint8_t mpuCount;
+    int16_t accel[3];
+    int16_t gyro[3];
     };    
 public:
     Baro(); //constructor
-    bool begin(TwoWire *pi2c);
+    uint8_t begin(TwoWire *pi2c);
+    void useMPU(bool bUseMPU);
     void run(void);
+    void end(void);
     void getValues(float *pressure,float *alt,float *climb,float *temp);
+    void getMPUValues(int16_t accel[3],int16_t gyro[3],float *acc_Z);
     float getHeading(void);
     float getAlt(void);
     bool isNewVAlues();
@@ -77,12 +84,14 @@ private:
     bool initBME280(void);
     void runMS5611(uint32_t tAct);
     void runBME280(uint32_t tAct);
+    bool mpuDrdy(void);
+    float getGravityCompensatedAccel(void);
+    void scaleAccel(VectorInt16 *accel);
     uint8_t sensorType;
     uint8_t sensorAdr;
     bool bNewValues;
     Adafruit_BME280 bme;
     MS5611 ms5611;
-    MPU6050 accelgyro;
     HMC5883L mag;
     udpData logData;
     WiFiUDP udp;
@@ -95,6 +104,13 @@ private:
     kalmanvert Kalmanvert;
     uint8_t countReadings;
     SemaphoreHandle_t xMutex;
+    uint16_t packetSize;    // expected DMP packet size (default is 42 bytes)
+    uint8_t devStatus;      // return status after each device operation (0 = success, !0 = error)
+    int ax_offset, ay_offset, az_offset, gx_offset, gy_offset, gz_offset;
+    float ax_scale,ay_scale,az_scale;
+    bool bUseAcc = false;
+    int pinDRDYInt = 2;
+    uint8_t fifoBuffer[64]; // FIFO storage buffer
 };
 
 

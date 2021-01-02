@@ -61,8 +61,9 @@ void onWebSocketEvent(uint8_t client_num,
         if (clientPages[client_num] == 1){ //info
           doc["myDevId"] = setting.myDevId;
           doc["compiledate"] = String(compile_date);
-          doc["bHasVario"] = (uint8_t)status.bHasVario;          
-          doc["VisWeather"] = (uint8_t)(status.bHasBME | status.bWUBroadCast);
+          doc["bHasVario"] = (uint8_t)status.vario.bHasVario;       
+          doc["bHasMPU"] = (uint8_t)status.vario.bHasMPU;   
+          doc["VisWeather"] = (uint8_t)(status.vario.bHasBME | status.bWUBroadCast);
           doc["board"] = setting.boardType;
           doc["disp"] = setting.displayType;
           doc["band"] = setting.band;
@@ -72,6 +73,41 @@ void onWebSocketEvent(uint8_t client_num,
           doc["bHasGSM"] = (uint8_t)status.bHasGSM;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
+
+          doc.clear();
+          doc["vBatt"] = String((float)status.vBatt/1000.,2);
+          #ifdef AIRMODULE
+          doc["gpsFix"] = status.GPS_Fix;
+          doc["gpsNumSat"] = status.GPS_NumSat;
+          doc["gpsSpeed"] = String(status.GPS_speed,2);
+          #endif
+          doc["gpslat"] = String(status.GPS_Lat,6);
+          doc["gpslon"] = String(status.GPS_Lon,6);
+          doc["gpsAlt"] = String(status.GPS_alt,1);
+          doc["fanetTx"] = status.fanetTx;
+          doc["fanetRx"] = status.fanetRx;
+          doc["tLoop"] = status.tLoop;
+          doc["tMaxLoop"] = status.tMaxLoop;
+          doc["freeHeap"] = xPortGetFreeHeapSize();
+          doc["fHeapMin"] = xPortGetMinimumEverFreeHeapSize();
+          serializeJson(doc, msg_buf);
+          webSocket.sendTXT(client_num, msg_buf);
+
+          #ifdef GSMODULE
+          doc.clear();
+          doc["wsTemp"] = String(status.weather.temp,1);
+          doc["wsHum"] = String(status.weather.Humidity,1);
+          doc["wsPress"] = String(status.weather.Pressure,2);
+          doc["wsWDir"] = String(status.weather.WindDir,1);
+          doc["wsWSpeed"] = String(status.weather.WindSpeed,1);
+          doc["wsWGust"] = String(status.weather.WindGust,1);
+          doc["wsR1h"] = String(status.weather.rain1h,1);
+          doc["wsR1d"] = String(status.weather.rain1d,1);
+          serializeJson(doc, msg_buf);
+          webSocket.sendTXT(client_num, msg_buf);
+          #endif
+
+
         }else if (clientPages[client_num] == 2){ //sendmessage
 
         }else if (clientPages[client_num] == 10){ //full settings
@@ -125,16 +161,19 @@ void onWebSocketEvent(uint8_t client_num,
           doc["sFWD"] = setting.wd.sendFanet;
           doc["wdTempOffset"] = setting.wd.tempOffset;
 
-          doc["bHasVario"] = (uint8_t)status.bHasVario;
+          doc["bHasVario"] = (uint8_t)status.vario.bHasVario;
+          doc["bHasMPU"] = (uint8_t)status.vario.bHasMPU;
           doc["vSinkTh"] = serialized(String(setting.vario.sinkingThreshold,2));
           doc["vClimbTh"] = serialized(String(setting.vario.climbingThreshold,2));
+          doc["vNClimbSens"] = serialized(String(setting.vario.nearClimbingSensitivity,2));
           doc["vVol"] = setting.vario.volume;
           doc["vBeepFly"] = setting.vario.BeepOnlyWhenFlying;
+          doc["useMPU"] = (uint8_t)setting.vario.useMPU;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
 
           doc.clear();
-          doc["bHasBME"] = (uint8_t)status.bHasBME;
+          doc["bHasBME"] = (uint8_t)status.vario.bHasBME;
           doc["WUUlEnable"] = setting.WUUpload.enable;
           doc["WUUlID"] = setting.WUUpload.ID;
           doc["WUUlKEY"] = setting.WUUpload.KEY;
@@ -263,6 +302,7 @@ void onWebSocketEvent(uint8_t client_num,
         if (root.containsKey("vNClimbSens")) newSetting.vario.nearClimbingSensitivity = doc["vNClimbSens"].as<float>();
         if (root.containsKey("vVol")) newSetting.vario.volume = doc["vVol"].as<uint8_t>();
         if (root.containsKey("vBeepFly")) newSetting.vario.BeepOnlyWhenFlying = doc["vBeepFly"].as<uint8_t>();
+        if (root.containsKey("useMPU")) newSetting.vario.useMPU = doc["useMPU"].as<uint8_t>();        
         //weather-underground upload
         if (root.containsKey("WUUlEnable")) newSetting.WUUpload.enable = doc["WUUlEnable"].as<bool>();
         if (root.containsKey("WUUlID")) newSetting.WUUpload.ID = doc["WUUlID"].as<String>();
@@ -529,67 +569,218 @@ void Web_loop(void){
   static uint16_t counter = 0;
   static uint32_t tRestart = millis();
   uint32_t tAct = millis();
+  bool bSend = false;
+  statusData mStatus;
+  StaticJsonDocument<300> doc; //Memory pool
   // Look for and handle WebSocket data
   webSocket.loop();
-  if ((tAct - tLife) >= 500){
+
+
+
+  if ((tAct - tLife) >= 100){
     tLife = tAct;
-    StaticJsonDocument<300> doc;                      //Memory pool
+    //vario
+    if (status.vario.bHasVario){
+      doc.clear();
+      bSend = false;
+      if (mStatus.ClimbRate != status.ClimbRate){
+        bSend = true;
+        mStatus.ClimbRate = status.ClimbRate;
+        doc["climbrate"] = String(status.ClimbRate,1);
+      }    
+      if (status.vario.bHasMPU){
+        char buff[10];
+        for (int i = 0; i < 3; i++){
+          if (mStatus.vario.accel[i] != status.vario.accel[i]){
+            bSend = true;
+            mStatus.vario.accel[i] = status.vario.accel[i];
+            sprintf (buff,"accel_%d",i);
+            doc[buff] = status.vario.accel[i];
+          }    
+          if (mStatus.vario.gyro[i] != status.vario.gyro[i]){
+            bSend = true;
+            mStatus.vario.gyro[i] = status.vario.gyro[i];
+            sprintf (buff,"gyro_%d",i);
+            doc[buff] = status.vario.gyro[i];
+          }    
+        }
+        if (mStatus.vario.acc_Z != status.vario.acc_Z){
+          bSend = true;
+          mStatus.vario.acc_Z = status.vario.acc_Z;
+          doc["acc_z"] = String(status.vario.acc_Z,2);
+        }    
+      }
+      if (bSend){
+        serializeJson(doc, msg_buf);
+        for (int i = 0;i <MAXCLIENTS;i++){
+          if (clientPages[i] == 1){
+            log_d("Sending to [%u]: %s", i, msg_buf);
+            webSocket.sendTXT(i, msg_buf);
+          }
+        }
+      }
+    }
+
+
     doc.clear();
+    bSend = false;
     doc["counter"] = counter;
-    doc["vBatt"] = String((float)status.vBatt/1000.,2);
+    bSend = true;
+    if (mStatus.vBatt != status.vBatt){
+      bSend = true;
+      mStatus.vBatt = status.vBatt;
+      doc["vBatt"] = String((float)status.vBatt/1000.,2);
+    }    
     #ifdef AIRMODULE
-    doc["gpsFix"] = status.GPS_Fix;
-    doc["gpsNumSat"] = status.GPS_NumSat;
-    doc["gpsSpeed"] = String(status.GPS_speed,2);
+    if (mStatus.GPS_Fix != status.GPS_Fix){
+      bSend = true;
+      mStatus.GPS_Fix = status.GPS_Fix;
+      doc["gpsFix"] = status.GPS_Fix;
+    }    
+    if (mStatus.GPS_NumSat != status.GPS_NumSat){
+      bSend = true;
+      mStatus.GPS_NumSat = status.GPS_NumSat;
+      doc["gpsNumSat"] = status.GPS_NumSat;
+    }    
+    if (mStatus.GPS_speed != status.GPS_speed){
+      bSend = true;
+      mStatus.GPS_speed = status.GPS_speed;
+      doc["gpsSpeed"] = String(status.GPS_speed,2);
+    }    
     #endif
-    doc["gpslat"] = String(status.GPS_Lat,6);
-    doc["gpslon"] = String(status.GPS_Lon,6);
-    doc["gpsAlt"] = String(status.GPS_alt,1);
-    doc["climbrate"] = String(status.ClimbRate,1);
-    doc["fanetTx"] = status.fanetTx;
-    doc["fanetRx"] = status.fanetRx;
-    doc["tLoop"] = status.tLoop;
-    doc["tMaxLoop"] = status.tMaxLoop;
-    doc["freeHeap"] = xPortGetFreeHeapSize();
-    doc["fHeapMin"] = xPortGetMinimumEverFreeHeapSize();
-    serializeJson(doc, msg_buf);
-    for (int i = 0;i <MAXCLIENTS;i++){
-      if (clientPages[i] == 1){
-        log_d("Sending to [%u]: %s", i, msg_buf);
-        webSocket.sendTXT(i, msg_buf);
+    if (mStatus.GPS_Lat != status.GPS_Lat){
+      bSend = true;
+      mStatus.GPS_Lat = status.GPS_Lat;
+      doc["gpslat"] = String(status.GPS_Lat,6);
+    }    
+    if (mStatus.GPS_Lon != status.GPS_Lon){
+      bSend = true;
+      mStatus.GPS_Lon = status.GPS_Lon;
+      doc["gpslon"] = String(status.GPS_Lon,6);
+    }    
+    if (mStatus.GPS_alt != status.GPS_alt){
+      bSend = true;
+      mStatus.GPS_alt = status.GPS_alt;
+      doc["gpsAlt"] = String(status.GPS_alt,1);
+    }    
+    if (mStatus.fanetTx != status.fanetTx){
+      bSend = true;
+      mStatus.fanetTx = status.fanetTx;
+      doc["fanetTx"] = status.fanetTx;
+    }    
+    if (mStatus.fanetRx != status.fanetRx){
+      bSend = true;
+      mStatus.fanetRx = status.fanetRx;
+      doc["fanetRx"] = status.fanetRx;
+    }    
+    if (mStatus.tLoop != status.tLoop){
+      bSend = true;
+      mStatus.tLoop = status.tLoop;
+      doc["tLoop"] = status.tLoop;
+    }    
+    if (mStatus.tMaxLoop != status.tMaxLoop){
+      bSend = true;
+      mStatus.tMaxLoop = status.tMaxLoop;
+      doc["tMaxLoop"] = status.tMaxLoop;
+    }    
+    //doc["freeHeap"] = xPortGetFreeHeapSize();
+    //doc["fHeapMin"] = xPortGetMinimumEverFreeHeapSize();
+    if (bSend){
+      serializeJson(doc, msg_buf);
+      for (int i = 0;i <MAXCLIENTS;i++){
+        if (clientPages[i] == 1){
+          log_d("Sending to [%u]: %s", i, msg_buf);
+          webSocket.sendTXT(i, msg_buf);
+        }
       }
     }
+
     doc.clear();
-    doc["wifiRssi"] = String(status.wifiRssi);
-    doc["wifiStat"] = String(status.wifiStat);
+    bSend = false;
+    if (mStatus.wifiRssi != status.wifiRssi){
+      bSend = true;
+      mStatus.wifiRssi = status.wifiRssi;
+      doc["wifiRssi"] = String(status.wifiRssi);
+    }    
+    if (mStatus.wifiStat != status.wifiStat){
+      bSend = true;
+      mStatus.wifiStat = status.wifiStat;
+      doc["wifiStat"] = String(status.wifiStat);
+    }    
     #ifdef GSM_MODULE
-      doc["GSMRssi"] = String(status.GSMSignalQuality);     
+    if (mStatus.GSMSignalQuality != status.GSMSignalQuality){
+      bSend = true;
+      mStatus.GSMSignalQuality = status.GSMSignalQuality;
+      doc["GSMRssi"] = String(status.GSMSignalQuality);
+    }    
+    if (mStatus.modemstatus != status.modemstatus){
+      bSend = true;
+      mStatus.modemstatus = status.modemstatus;
       doc["GSMStat"] = String(status.modemstatus);
+    }    
     #endif
-    serializeJson(doc, msg_buf);
-    for (int i = 0;i <MAXCLIENTS;i++){
-      if (clientPages[i] == 1){
-        log_d("Sending to [%u]: %s", i, msg_buf);
-        webSocket.sendTXT(i, msg_buf);
+    if (bSend){
+      serializeJson(doc, msg_buf);
+      for (int i = 0;i <MAXCLIENTS;i++){
+        if (clientPages[i] == 1){
+          log_d("Sending to [%u]: %s", i, msg_buf);
+          webSocket.sendTXT(i, msg_buf);
+        }
       }
     }
+
 
     #ifdef GSMODULE
     //weahter-data
     doc.clear();
-    doc["wsTemp"] = String(status.weather.temp,1);
-    doc["wsHum"] = String(status.weather.Humidity,1);
-    doc["wsPress"] = String(status.weather.Pressure,2);
-    doc["wsWDir"] = String(status.weather.WindDir,1);
-    doc["wsWSpeed"] = String(status.weather.WindSpeed,1);
-    doc["wsWGust"] = String(status.weather.WindGust,1);
-    doc["wsR1h"] = String(status.weather.rain1h,1);
-    doc["wsR1d"] = String(status.weather.rain1d,1);
-    serializeJson(doc, msg_buf);
-    for (int i = 0;i <MAXCLIENTS;i++){
-      if (clientPages[i] == 1){
-        log_d("Sending to [%u]: %s", i, msg_buf);
-        webSocket.sendTXT(i, msg_buf);
+    bSend = false;
+    if (mStatus.weather.temp != status.weather.temp){
+      bSend = true;
+      mStatus.weather.temp = status.weather.temp;
+      doc["wsTemp"] = String(status.weather.temp,1);
+    }    
+    if (mStatus.weather.Humidity != status.weather.Humidity){
+      bSend = true;
+      mStatus.weather.Humidity = status.weather.Humidity;
+      doc["wsHum"] = String(status.weather.Humidity,1);
+    }    
+    if (mStatus.weather.Pressure != status.weather.Pressure){
+      bSend = true;
+      mStatus.weather.Pressure = status.weather.Pressure;
+      doc["wsPress"] = String(status.weather.Pressure,2);
+    }    
+    if (mStatus.weather.WindDir != status.weather.WindDir){
+      bSend = true;
+      mStatus.weather.WindDir = status.weather.WindDir;
+      doc["wsWDir"] = String(status.weather.WindDir,1);
+    }    
+    if (mStatus.weather.WindSpeed != status.weather.WindSpeed){
+      bSend = true;
+      mStatus.weather.WindSpeed = status.weather.WindSpeed;
+      doc["wsWSpeed"] = String(status.weather.WindSpeed,1);
+    }    
+    if (mStatus.weather.WindGust != status.weather.WindGust){
+      bSend = true;
+      mStatus.weather.WindGust = status.weather.WindGust;
+      doc["wsWGust"] = String(status.weather.WindGust,1);
+    }    
+    if (mStatus.weather.rain1h != status.weather.rain1h){
+      bSend = true;
+      mStatus.weather.rain1h = status.weather.rain1h;
+      doc["wsR1h"] = String(status.weather.rain1h,1);
+    }    
+    if (mStatus.weather.rain1d != status.weather.rain1d){
+      bSend = true;
+      mStatus.weather.rain1d = status.weather.rain1d;
+      doc["wsR1d"] = String(status.weather.rain1d,1);
+    }    
+    if (bSend){
+      serializeJson(doc, msg_buf);
+      for (int i = 0;i <MAXCLIENTS;i++){
+        if (clientPages[i] == 1){
+          log_d("Sending to [%u]: %s", i, msg_buf);
+          webSocket.sendTXT(i, msg_buf);
+        }
       }
     }
     #endif
