@@ -150,4 +150,11 @@ added config-button for ublox-GPS --> only GPGGA and GPRMC will sent --> much le
 added new configuration extpw (external power switch on Pin 36) --> to use directly in kobo (without display)
 added new setting "additional output over serial" to send data to serial and  2.device (ble, ...) so if installed on kobo, you can connect with bluetooth at same time (running xctrack or xcguide)
 
+V2.2.0
+added new setting to set FANET-Mode (always air-mode / switch between air-mode and ground-mode).
+sending ground-tracking-data to OGN
+sending weather-data to OGN
+forward ground-tracking-data to OGN
+forward fanet-name to OGN
+
 

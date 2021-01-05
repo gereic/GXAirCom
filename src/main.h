@@ -198,9 +198,9 @@ SCL 14
 #define RADAR_FRIENDS 2
 
 #define MIN_FLIGHT_SPEED 15.0 //min speed for flying-detection 
-// > at least for 10sec --> takeoff
+// > at least for 5sec --> takeoff
 // < at least for 60sec --> landing
-#define MIN_FLIGHT_TIME 10000
+#define MIN_FLIGHT_TIME 5000
 #define MIN_GROUND_TIME 60000
 
 #define WIFI_RECONNECT_TIME 600000
@@ -258,6 +258,9 @@ SCL 14
 
 #define GS_POWER_ALWAYS_ON 0
 #define GS_POWER_SAFE 1
+
+#define FN_GROUNT_AIR_TRACKING 0
+#define FN_AIR_TRACKING 1
 
 
 
@@ -350,6 +353,7 @@ struct SettingsData{
   weatherupload WindyUpload; //weather-underground upload-settings
   GsmSettings gsm; //settings for GSM
   bool bConfigGPS;
+  uint8_t fanetMode; //fanet tracking-mode 0 ... switch between online-tracking and ground-tracking 1 ... always online-tracking
 };
 
 struct weatherStatus{

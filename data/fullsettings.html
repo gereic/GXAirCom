@@ -9,7 +9,6 @@
  
  var url = "ws://" + window.location.host + ":1337/";
  var bHasBME = 0;
- var bHasMPU = 0;
  var bHasVario = 0;
  
 // This is called when the page finishes loading
@@ -100,11 +99,6 @@ function setVis(){
     }else{
       document.getElementById("VisVario").style.display='';
     }
-    if (bHasMPU == 0){
-      document.getElementById("VisMPUSetting").style.display='none';
-    }else{
-      document.getElementById("VisMPUSetting").style.display='';
-    }
   }
   if (document.getElementById("output").value == 1){
     document.getElementById("VisUdpIp").style.display='';
@@ -155,6 +149,7 @@ function sendValues(){
   power : document.getElementById("power").value,
   type : document.getElementById("type").value,
   mode : document.getElementById("mode").value,
+  fntMode : document.getElementById("fntMode").value,
   PilotName : document.getElementById("PilotName").value,
   save : 1
   };
@@ -206,7 +201,7 @@ function sendValues(){
   vVol : document.getElementById("vVol").value,
   vBeepFly : Number(document.getElementById("vBeepFly").checked),
   useMPU : Number(document.getElementById("useMPU").checked),
-  vTOffs : document.getElementById("vTOffs").value,
+  vTOffs : parseFloat(document.getElementById("vTOffs").value),
   save : 1
 	};
   doSend(JSON.stringify(obj));
@@ -262,7 +257,9 @@ function onMessage(evt) {
           bHasBME = myObj[key];
           continue;
         }else if (key == "bHasMPU"){
-          bHasMPU = myObj[key];
+          if (myObj[key] == 0){
+            document.getElementById("VisMPU").style.display='none';
+          }
           continue;
         }else if (key == "bHasGSM"){
           if (myObj[key] == 0){
@@ -384,6 +381,13 @@ window.addEventListener("load", init, false);
             <th>Legacy Protocol TX</th>
             <td><input type="checkbox" id="legacytx" ></td>
           </tr>	
+          <tr>
+            <th>fanet-tracking-mode</th>
+            <td><select id="fntMode">
+              <option value="0">switch between ground-/air-tracking</option>
+              <option value="1">always air-tracking</option>
+            </select></td>
+          </tr>
         </tbody>      
       </table>
     </fieldset>

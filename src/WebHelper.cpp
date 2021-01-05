@@ -75,6 +75,12 @@ void onWebSocketEvent(uint8_t client_num,
           webSocket.sendTXT(client_num, msg_buf);
 
           doc.clear();
+          doc["wifiRssi"] = String(status.wifiRssi);
+          doc["wifiStat"] = String(status.wifiStat);
+        #ifdef GSM_MODULE
+          doc["GSMRssi"] = String(status.GSMSignalQuality);
+          doc["GSMStat"] = String(status.modemstatus);
+        #endif
           doc["climbrate"] = String(status.ClimbRate,1);
           doc["vTemp"] = String(status.varioTemp,1);
           serializeJson(doc, msg_buf);
@@ -128,6 +134,7 @@ void onWebSocketEvent(uint8_t client_num,
           doc["ognlive"] = setting.OGNLiveTracking;
           doc["traccar_live"] = setting.traccarLiveTracking;
           doc["traccarsrv"]= setting.TraccarSrv;
+          doc["fntMode"] = setting.fanetMode;
           doc["legacytx"] = setting.LegacyTxEnable;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
@@ -319,6 +326,7 @@ void onWebSocketEvent(uint8_t client_num,
         if (root.containsKey("traccar_live")) newSetting.traccarLiveTracking = doc["traccar_live"].as<uint8_t>();
         if (root.containsKey("traccarsrv")) newSetting.TraccarSrv = doc["traccarsrv"].as<String>();
         if (root.containsKey("legacytx")) newSetting.LegacyTxEnable = doc["legacytx"].as<uint8_t>();
+        if (root.containsKey("fntMode")) newSetting.fanetMode = doc["fntMode"].as<uint8_t>();        
         //weatherdata
         if (root.containsKey("sFWD")) newSetting.wd.sendFanet = doc["sFWD"].as<uint8_t>();
         if (root.containsKey("wdTempOffset")) newSetting.wd.tempOffset = doc["wdTempOffset"].as<float>();

@@ -126,6 +126,18 @@ void Ogn::setGPS(float lat,float lon,float alt,float speed,float heading){
     GPSOK = 1;
 }
 
+uint8_t Ogn::getAddressType(String devId){
+    if (devId.startsWith("08") || devId.startsWith("11") || devId.startsWith("20") || devId.startsWith("DD") || devId.startsWith("DE") || devId.startsWith("DF")){
+    //if (devId.startsWith("11") || devId.startsWith("20") || devId.startsWith("DD") || devId.startsWith("DE") || devId.startsWith("DF")){
+        return 2; //address type FLARM
+        //log_i("address=%s Flarm",devId.c_str());
+    }else{
+        return 3; //address type OGN        
+        //log_i("address=%s OGN",devId.c_str());
+    }
+
+}
+
 uint8_t Ogn::getSenderDetails(aircraft_t aircraftType,String devId){
     uint8_t type = 0;
     switch (aircraftType)
@@ -159,15 +171,92 @@ uint8_t Ogn::getSenderDetails(aircraft_t aircraftType,String devId){
     //	ICAO(1)
     //	FLARM(2)  FLARM HW
     //	OGN(3)    OGN tracker HW
+    
+    type += getAddressType(devId);
+    /*
     if (devId.startsWith("08") || devId.startsWith("11") || devId.startsWith("20") || devId.startsWith("DD") || devId.startsWith("DE") || devId.startsWith("DF")){
+    //if (devId.startsWith("11") || devId.startsWith("20") || devId.startsWith("DD") || devId.startsWith("DE") || devId.startsWith("DF")){
         type += 2; //address type FLARM
         //log_i("address=%s Flarm",devId.c_str());
     }else{
         type += 3; //address type OGN        
         //log_i("address=%s OGN",devId.c_str());
     }
+    */
     
     return type;
+}
+
+String Ogn::getOrigin(String devId){
+    if (getAddressType(devId) == 2){
+        return "FLR";
+    }else{
+        return "FNT";
+    }
+}
+
+void Ogn::sendNameData(String devId,String name,float snr){
+    if (initOk < 10) return; //nothing todo
+    String sTime = getActTimeString();
+    if (sTime.length() <= 0) return;
+    char buff[200];
+    sprintf (buff,"%s%s>OGNFNT,qAS,%s:>%sh Name=\"%s\" %0.1fdB\r\n"
+    ,getOrigin(devId).c_str(),devId.c_str(),_user.c_str(),sTime.c_str(),name.c_str(),snr);
+    xSemaphoreTake( *xMutex, portMAX_DELAY );
+    client->print(buff);                
+    xSemaphoreGive( *xMutex );
+    //log_i("%s",buff);
+
+}
+
+void Ogn::sendWeatherData(float lat,float lon,String devId,float wDir,float wSpeed,float wGust,float temp,float rain1h, float rain24h,float hum,float press,float snr){
+    if (initOk < 10) return; //nothing todo
+    float lLat = abs(lat);
+    float lLon = abs(lon);
+    int latDeg = int(lLat);
+    int latMin = (roundf((lLat - int(lLat)) * 60 * 1000));
+    int lonDeg = int(lLon);
+    int lonMin = (roundf((lLon - int(lLon)) * 60 * 1000));
+    int mHum = (int)hum;
+    if (mHum >= 100){ //humidity 100% --> 00
+        mHum = 0;
+    }else if (mHum == 0){
+        mHum = 1;
+    }
+    String sTime = getActTimeString();
+    if (sTime.length() <= 0) return;
+    char buff[200];
+    sprintf (buff,"%s%s>OGNFNT,qAS,%s:/%sh%02d%02d.%02d%c/%03d%02d.%02d%c_%03d/%03dg%03dt%03dr%03dp%03dh%02db%05d %0.1fdB\r\n"
+    ,getOrigin(devId).c_str(),devId.c_str(),_user.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,(lat < 0)?'S':'N',lonDeg,lonMin/1000,lonMin/10 %100,(lon < 0)?'W':'E',
+    int(wDir),int(kmh2mph(wSpeed)),int(kmh2mph(wGust)),int(deg2f(temp)),int(rain1h * 10),int(rain24h * 10),mHum,int(press * 10),snr);
+    xSemaphoreTake( *xMutex, portMAX_DELAY );
+    client->print(buff);                
+    xSemaphoreGive( *xMutex );
+    //log_i("%s",buff);
+
+}
+
+void Ogn::sendGroundTrackingData(float lat,float lon,String devId,aircraft_t aircraftType,uint8_t state,float snr){
+    if (initOk < 10) return; //nothing todo
+    char buff[200];
+    float lLat = abs(lat);
+    float lLon = abs(lon);
+    int latDeg = int(lLat);
+    int latMin = (roundf((lLat - int(lLat)) * 60 * 1000));
+    int lonDeg = int(lLon);
+    int lonMin = (roundf((lLon - int(lLon)) * 60 * 1000));
+    String sTime = getActTimeString();
+    if (sTime.length() <= 0) return;
+
+    //sprintf (buff,"%s%s>APRS,qAR:/%sh%02d%02d.%02d%c\\%03d%02d.%02d%cn !W%01d%01d! id%02X%s FNT%d %0.1fdB\r\n"
+    //            ,getOrigin(devId).c_str(),devId.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,(lat < 0)?'S':'N',lonDeg,lonMin/1000,lonMin/10 %100,(lon < 0)?'W':'E',int(latMin %10),int(latMin %10),getSenderDetails(aircraftType,devId),devId.c_str(),state,snr);
+    sprintf (buff,"%s%s>OGNFNT,qAS,%s:/%sh%02d%02d.%02d%c\\%03d%02d.%02d%cn !W%01d%01d! id%02X%s FNT%d %0.1fdB\r\n"
+    ,getOrigin(devId).c_str(),devId.c_str(),_user.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,(lat < 0)?'S':'N',lonDeg,lonMin/1000,lonMin/10 %100,(lon < 0)?'W':'E',int(latMin %10),int(latMin %10),getSenderDetails(aircraftType,devId),devId.c_str(),state,snr);
+    xSemaphoreTake( *xMutex, portMAX_DELAY );
+    client->print(buff);                
+    xSemaphoreGive( *xMutex );
+    //log_i("%s",buff);
+
 }
 
 void Ogn::sendTrackingData(float lat,float lon,float alt,float speed,float heading,float climb,String devId,aircraft_t aircraftType,float snr){
@@ -183,12 +272,10 @@ void Ogn::sendTrackingData(float lat,float lon,float alt,float speed,float headi
     String sTime = getActTimeString();
     if (sTime.length() <= 0) return;
 
-    //sprintf (buff,"FLR%s>APRS,TCPIP*,qAS,%s:/%sh%02d%02d.%02d%c/%03d%02d.%02d%cg%03d/%03d/A=%06d !W%01d%01d! id%02X%s %+04.ffpm\r\n"
-    //            ,devId.c_str(),_servername.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,(lat < 0)?'S':'N',lonDeg,lonMin/1000,lonMin/10 %100,(lon < 0)?'W':'E',int(heading),int(speed * 0.53996),int(alt * 3.28084),int(latMin %10),int(latMin %10),getSenderDetails(aircraftType,devId),devId.c_str(),climb*196.85f);
-    //sprintf (buff,"FLR%s>APRS,qAR:/%sh%02d%02d.%02d%c/%03d%02d.%02d%cg%03d/%03d/A=%06d !W%01d%01d! id%02X%s %+04.ffpm %0.1fdB\r\n"
-    //            ,devId.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,(lat < 0)?'S':'N',lonDeg,lonMin/1000,lonMin/10 %100,(lon < 0)?'W':'E',int(heading),int(speed * 0.53996),int(alt * 3.28084),int(latMin %10),int(latMin %10),getSenderDetails(aircraftType,devId),devId.c_str(),climb*196.85f,snr);
-    sprintf (buff,"FNT%s>APRS,qAR:/%sh%02d%02d.%02d%c/%03d%02d.%02d%cg%03d/%03d/A=%06d !W%01d%01d! id%02X%s %+04.ffpm %0.1fdB\r\n"
-                ,devId.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,(lat < 0)?'S':'N',lonDeg,lonMin/1000,lonMin/10 %100,(lon < 0)?'W':'E',int(heading),int(speed * 0.53996),int(alt * 3.28084),int(latMin %10),int(latMin %10),getSenderDetails(aircraftType,devId),devId.c_str(),climb*196.85f,snr);
+    //sprintf (buff,"%s%s>APRS,qAR:/%sh%02d%02d.%02d%c/%03d%02d.%02d%cg%03d/%03d/A=%06d !W%01d%01d! id%02X%s %+04.ffpm FNT11 %0.1fdB\r\n"
+    //            ,getOrigin(devId).c_str(),devId.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,(lat < 0)?'S':'N',lonDeg,lonMin/1000,lonMin/10 %100,(lon < 0)?'W':'E',int(heading),int(speed * 0.53996),int(alt * 3.28084),int(latMin %10),int(latMin %10),getSenderDetails(aircraftType,devId),devId.c_str(),climb*196.85f,snr);
+    sprintf (buff,"%s%s>OGNFNT,qAS,%s:/%sh%02d%02d.%02d%c/%03d%02d.%02d%cg%03d/%03d/A=%06d !W%01d%01d! id%02X%s %+04.ffpm FNT11 %0.1fdB\r\n"
+                ,getOrigin(devId).c_str(),devId.c_str(),_user.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,(lat < 0)?'S':'N',lonDeg,lonMin/1000,lonMin/10 %100,(lon < 0)?'W':'E',int(heading),int(speed * 0.53996),int(alt * 3.28084),int(latMin %10),int(latMin %10),getSenderDetails(aircraftType,devId),devId.c_str(),climb*196.85f,snr);
     xSemaphoreTake( *xMutex, portMAX_DELAY );
     client->print(buff);                
     xSemaphoreGive( *xMutex );
@@ -197,7 +284,7 @@ void Ogn::sendTrackingData(float lat,float lon,float alt,float speed,float headi
 
 void Ogn::sendReceiverStatus(String sTime){
     //String sStatus = _user + ">APRS,TCPIP*,qAC," + _servername + ":>" + sTime + "h h00 " + _version + "\r\n";
-    String sStatus = _user + ">APRS,TCPIP*,qAC," + _servername + ":>" + sTime + "h " + _version + "\r\n";
+    String sStatus = _user + ">OGNFNT,TCPIP*,qAC," + _servername + ":>" + sTime + "h " + _version + "\r\n";
     xSemaphoreTake( *xMutex, portMAX_DELAY );
     client->print(sStatus);
     xSemaphoreGive( *xMutex );
@@ -214,10 +301,10 @@ void Ogn::sendReceiverBeacon(String sTime){
     int lonMin = (roundf((lLon - int(lLon)) * 60 * 1000));
 
     if (AirMode){
-        sprintf (buff,"%s>APRS,TCPIP*,qAC,%s:/%sh%02d%02d.%02d%cI%03d%02d.%02d%c&%03d/%03d/A=%06d !W%01d%01d!\r\n"
+        sprintf (buff,"%s>OGNFNT,TCPIP*,qAC,%s:/%sh%02d%02d.%02d%cI%03d%02d.%02d%c&%03d/%03d/A=%06d !W%01d%01d!\r\n"
                     ,_user.c_str(),_servername.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,(_lat < 0)?'S':'N',lonDeg,lonMin/1000,lonMin/10 %100,(_lon < 0)?'W':'E',int(_heading),int(_speed * 0.53996),int(_alt * 3.28084),int(latMin %10),int(latMin %10));
     }else{
-        sprintf (buff,"%s>APRS,TCPIP*,qAC,%s:/%sh%02d%02d.%02d%cI%03d%02d.%02d%c&/A=%06d\r\n"
+        sprintf (buff,"%s>OGNFNT,TCPIP*,qAC,%s:/%sh%02d%02d.%02d%cI%03d%02d.%02d%c&/A=%06d\r\n"
                     ,_user.c_str(),_servername.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,(_lat < 0)?'S':'N',lonDeg,lonMin/1000,lonMin/10 %100,(_lon < 0)?'W':'E',int(_alt * 3.28084));
     }
     //sprintf (buff,"%s>APRS,TCPIP*,qAC,%s:/%sh%02d%02d.%02d%cI%03d%02d.%02d%c&%03d/%03d/A=%06d !W%01d%01d!\r\n"

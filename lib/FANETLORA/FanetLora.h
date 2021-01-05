@@ -103,6 +103,7 @@ public:
       distressCallAuto = 15,				//max number
     };
   typedef struct {
+    uint8_t type; //tracking-type (11... online tracking 7X .... ground tracking)
     uint32_t devId;
     float lat; //latitude
     float lon; //longitude
@@ -114,6 +115,13 @@ public:
     int rssi; //rssi
     int snr; //signal to noise ratio
   } trackingData;
+
+  typedef struct {
+    uint32_t devId;
+    String name;
+    int rssi; //rssi
+    int snr; //signal to noise ratio
+  } nameData;
 
   typedef struct {
     float lat; //latitude
@@ -185,6 +193,7 @@ public:
   String getactMsg(); 
   bool getTrackingData(trackingData *tData);
   bool getMyTrackingData(trackingData *tData);
+  bool getNameData(nameData *nameData);
   void printFanetData(trackingData tData);
   void sendTracking(trackingData *tData);
   void sendName(String name);
@@ -227,7 +236,12 @@ private:
   String getHexFromWord(uint16_t val,bool leadingZero = false);
   trackingData actTrackingData;
   bool newData = false;
+  nameData lastNameData;
+  bool newName = false;
+  weatherData lastWeatherData;
+  bool newWData = false;
   void getTrackingInfo(String line,uint16_t length);
+  void getGroundTrackingInfo(String line,uint16_t length);  
   void printAircraftType(aircraft_t type);
   String CreateFNFMSG(Frame *frm);
   int16_t getneighbourIndex(uint32_t devId,bool getEmptyEntry);

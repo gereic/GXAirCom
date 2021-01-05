@@ -25,6 +25,7 @@ void load_configFile(SettingsData* pSetting){
   pSetting->UDPSendPort = preferences.getUInt("UDP_PORT",10110); //Port of udp-server
   pSetting->outputMode = preferences.getUChar("OutputMode",OUTPUT_SERIAL); //output-mode
   pSetting->Mode = preferences.getUChar("Mode",0);
+  pSetting->fanetMode = preferences.getUChar("fntMode",0);  
   
   //gs settings
   pSetting->gs.lat = preferences.getFloat("GSLAT",0.0);
@@ -106,6 +107,7 @@ void write_configFile(SettingsData* pSetting){
   preferences.putUInt("UDP_PORT",pSetting->UDPSendPort); //Port of udp-server
   preferences.putUChar("OutputMode",pSetting->outputMode);
   preferences.putUChar("Mode",pSetting->Mode);
+  preferences.putUChar("fntMode",pSetting->fanetMode);
 
   //GS Settings
   preferences.putFloat("GSLAT",pSetting->gs.lat);

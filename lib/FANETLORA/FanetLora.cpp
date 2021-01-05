@@ -390,6 +390,39 @@ String FanetLora::CreateFNFMSG(Frame *frm){
   return msg;  
 }
 
+void FanetLora::getGroundTrackingInfo(String line,uint16_t length){
+    char arPayload[23];
+    
+    line.toCharArray(arPayload,sizeof(arPayload));
+
+    // integer values /
+    int32_t lati = getByteFromHex(&arPayload[4])<<16 | getByteFromHex(&arPayload[2])<<8 | getByteFromHex(&arPayload[0]);
+    if(lati & 0x00800000)
+      lati |= 0xFF000000;
+    int32_t loni = getByteFromHex(&arPayload[10])<<16 | getByteFromHex(&arPayload[8])<<8 | getByteFromHex(&arPayload[6]);
+    if(loni & 0x00800000)
+      loni |= 0xFF000000;
+    actTrackingData.lat = (float)lati / 93206.0f;
+    actTrackingData.lon = (float)loni / 46603.0f;
+    //Serial.print("FANETlat=");Serial.println(actTrackingData.lat);
+    //Serial.print("FANETlon=");Serial.println(actTrackingData.lon);
+
+    uint8_t type = uint8_t(getByteFromHex(&arPayload[12]));
+    actTrackingData.type = 70 + (type >> 4);
+    //log_i("type=%d,groundType=%d",type,actTrackingData.type);
+    newData = true;
+
+}
+
+bool FanetLora::getNameData(nameData *nameData){
+    bool bRet = newName;
+    *nameData = lastNameData; //copy tracking-data
+    memset(&lastNameData,0,sizeof(lastNameData));
+    newName = false; //clear new Data flag
+    return bRet;
+
+}
+
 void FanetLora::handle_frame(Frame *frm){
   //log_i("Handle Frame %d",frm->rssi);
   String s = "";
@@ -411,14 +444,27 @@ void FanetLora::handle_frame(Frame *frm){
 	}
   uint32_t devId = getDevIdFromMac(&frm->src);
   if (frm->type == 1){
-      actTrackingData.devId = ((uint32_t)frm->src.manufacturer << 16) + (uint32_t)frm->src.id;
-      actTrackingData.rssi = frm->rssi;
-      actTrackingData.snr = frm->snr;
-      getTrackingInfo(payload,frm->payload_length);
-      insertDataToNeighbour(actTrackingData.devId,&actTrackingData);
+    //online-tracking
+    actTrackingData.devId = ((uint32_t)frm->src.manufacturer << 16) + (uint32_t)frm->src.id;
+    actTrackingData.rssi = frm->rssi;
+    actTrackingData.snr = frm->snr;
+    actTrackingData.type = 11;
+    getTrackingInfo(payload,frm->payload_length);
+    insertDataToNeighbour(actTrackingData.devId,&actTrackingData);
   }else if (frm->type == 2){      
       //log_i("name=%s",msg2.c_str());
+      lastNameData.devId = ((uint32_t)frm->src.manufacturer << 16) + (uint32_t)frm->src.id;
+      lastNameData.rssi = frm->rssi;
+      lastNameData.snr = frm->snr;
+      lastNameData.name = msg2;
+      newName = true;
       insertNameToNeighbour(devId,msg2);
+  }else if (frm->type == 7){      
+    //ground-tracking
+    actTrackingData.devId = ((uint32_t)frm->src.manufacturer << 16) + (uint32_t)frm->src.id;
+    actTrackingData.rssi = frm->rssi;
+    actTrackingData.snr = frm->snr;
+    getGroundTrackingInfo(payload,frm->payload_length);
   }
   actMsg = msg;
   //log_i("%s",msg.c_str());
@@ -587,6 +633,7 @@ int FanetLora::getByteFromHex(char in[]){
 bool FanetLora::getTrackingData(trackingData *tData){
     bool bRet = newData;
     *tData = actTrackingData; //copy tracking-data
+    memset(&actTrackingData,0,sizeof(actTrackingData)); //clear tracking-data
     newData = false; //clear new Data flag
     return bRet;
 }

@@ -538,7 +538,7 @@ void checkFlyingState(uint32_t tAct){
     }
   }else{
     //on ground
-    if ((status.GPS_Fix) && (status.GPS_speed > MIN_FLIGHT_SPEED)){
+    if ((status.GPS_Fix) && (status.GPS_NumSat >= 4) && (status.GPS_speed > MIN_FLIGHT_SPEED)){ //minimum 4 satelites to get accurade position and speed
       if (timeOver(tAct,tOk,MIN_FLIGHT_TIME)){
         tFlightTime = tAct;
         status.flightTime = 0;
@@ -1180,6 +1180,7 @@ void printSettings(){
   log_i("BAND=%d",setting.band);
   log_i("LORA_POWER=%d",setting.LoraPower);
   log_i("Mode=%d",setting.Mode);
+  log_i("Fanet-Mode=%d",setting.fanetMode);
 
 
   log_i("Serial-output=%d",setting.bOutputSerial);
@@ -1436,7 +1437,7 @@ void setup() {
     
     PinUserLed = 4;
 
-    #ifdef EXT_POWER_ON_OFF
+    #ifndef EINK
       PinBuzzer = 2;
     #else
       PinBuzzer = 0;    
@@ -2925,6 +2926,9 @@ void taskStandard(void *pvParameters){
     if (sendWeatherData){ //we have to send weatherdata
       log_i("sending weatherdata");
       fanet.writeMsgType4(&testWeatherData);
+      if (setting.OGNLiveTracking){
+        ogn.sendWeatherData(status.GPS_Lat,status.GPS_Lon,fanet.getMyDevId(),status.weather.WindDir,status.weather.WindSpeed,status.weather.WindGust,status.weather.temp,status.weather.rain1h,status.weather.rain1d,status.weather.Humidity,status.weather.Pressure,70); //set to 70 db
+      }      
       sendWeatherData = false;
     }
     pSerialLine = readSerial();
@@ -2937,6 +2941,11 @@ void taskStandard(void *pvParameters){
         checkReceivedLine(pSerialLine);
       }
     }    
+    if ((setting.fanetMode == FN_AIR_TRACKING) || (status.flying)){
+      fanet.onGround = false; //online-tracking
+    }else{
+      fanet.onGround = true; //ground-tracking
+    }
     fanet.run();
     status.fanetRx = fanet.rxCount;
     status.fanetTx = fanet.txCount;
@@ -2945,13 +2954,25 @@ void taskStandard(void *pvParameters){
       String msg = fanet.getactMsg() + "\n";
       if (setting.outputFANET) sendData2Client(msg);
     }
+    FanetLora::nameData nameData;
+    if (fanet.getNameData(&nameData)){
+      if (setting.OGNLiveTracking){
+        ogn.sendNameData(fanet.getDevId(nameData.devId),nameData.name,(float)nameData.snr / 10.0);
+      }
+    }
     if (fanet.getTrackingData(&tFanetData)){
         //log_i("new Tracking-Data");
-        if (setting.OGNLiveTracking){
-          ogn.sendTrackingData(tFanetData.lat ,tFanetData.lon,tFanetData.altitude,tFanetData.speed,tFanetData.heading,tFanetData.climb,fanet.getDevId(tFanetData.devId) ,(Ogn::aircraft_t)tFanetData.aircraftType,(float)tFanetData.snr / 10.0);
-        } 
-        sendAWTrackingdata(&tFanetData);
-        sendTraccarTrackingdata(&tFanetData);
+        if (tFanetData.type == 11){ //online-tracking
+          if (setting.OGNLiveTracking){
+            ogn.sendTrackingData(tFanetData.lat ,tFanetData.lon,tFanetData.altitude,tFanetData.speed,tFanetData.heading,tFanetData.climb,fanet.getDevId(tFanetData.devId) ,(Ogn::aircraft_t)tFanetData.aircraftType,(float)tFanetData.snr / 10.0);
+          } 
+          sendAWTrackingdata(&tFanetData);
+          sendTraccarTrackingdata(&tFanetData);
+        }else if (tFanetData.type >= 70){ //ground-tracking
+          if (setting.OGNLiveTracking){
+            ogn.sendGroundTrackingData(tFanetData.lat,tFanetData.lon,fanet.getDevId(tFanetData.devId),(Ogn::aircraft_t)tFanetData.aircraftType,tFanetData.type,(float)tFanetData.snr / 10.0);
+          } 
+        }
         
        
         //if (nmea.isValid()){
@@ -3007,7 +3028,12 @@ void taskStandard(void *pvParameters){
         }        
         if (setting.OGNLiveTracking){
           ogn.setGPS(status.GPS_Lat,status.GPS_Lon,status.GPS_alt,status.GPS_speed,MyFanetData.heading);
-          ogn.sendTrackingData(status.GPS_Lat,status.GPS_Lon,status.GPS_alt,status.GPS_speed,MyFanetData.heading,status.ClimbRate,fanet.getMyDevId() ,(Ogn::aircraft_t)fanet.getAircraftType(),0.0);
+          if (fanet.onGround){
+            ogn.sendGroundTrackingData(status.GPS_Lat,status.GPS_Lon,fanet.getDevId(tFanetData.devId),(Ogn::aircraft_t)fanet.getAircraftType(),fanet.state,0.0);
+          }else{
+            ogn.sendTrackingData(status.GPS_Lat,status.GPS_Lon,status.GPS_alt,status.GPS_speed,MyFanetData.heading,status.ClimbRate,fanet.getMyDevId() ,(Ogn::aircraft_t)fanet.getAircraftType(),0.0);
+          }
+          
         } 
 
         fanet.setMyTrackingData(&MyFanetData); //set Data on fanet
