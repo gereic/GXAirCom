@@ -39,8 +39,6 @@
 #define SENSORTYPE_MS5611 1
 #define SENSORTYPE_BME280 2
 
-#define MPU6050_2G_SENSITIVITY 		16384.0f 	// lsb per g
-
 class Baro {
     struct udpData{
     float temp;
@@ -62,6 +60,9 @@ class Baro {
     uint8_t mpuCount;
     int16_t accel[3];
     int16_t gyro[3];
+    int16_t aaWorld[3];
+    int16_t aaReal[3];
+    float gravity[3];
     };    
 public:
     Baro(); //constructor
@@ -74,6 +75,9 @@ public:
     float getHeading(void);
     float getAlt(void);
     bool isNewVAlues();
+    bool calibGyro(void);
+    bool calibAcc(void);
+    bool calibration(void);
 
 protected:
 private:
@@ -87,6 +91,7 @@ private:
     bool mpuDrdy(void);
     float getGravityCompensatedAccel(void);
     void scaleAccel(VectorInt16 *accel);
+    void meansensors(void);
     uint8_t sensorType;
     uint8_t sensorAdr;
     bool bNewValues;
@@ -111,6 +116,7 @@ private:
     bool bUseAcc = false;
     int pinDRDYInt = 2;
     uint8_t fifoBuffer[64]; // FIFO storage buffer
+    int mean_ax, mean_ay, mean_az, mean_gx, mean_gy, mean_gz = 0;    
 };
 
 

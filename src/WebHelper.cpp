@@ -75,6 +75,12 @@ void onWebSocketEvent(uint8_t client_num,
           webSocket.sendTXT(client_num, msg_buf);
 
           doc.clear();
+          doc["climbrate"] = String(status.ClimbRate,1);
+          doc["vTemp"] = String(status.varioTemp,1);
+          serializeJson(doc, msg_buf);
+          webSocket.sendTXT(client_num, msg_buf);
+
+          doc.clear();
           doc["vBatt"] = String((float)status.vBatt/1000.,2);
           #ifdef AIRMODULE
           doc["gpsFix"] = status.GPS_Fix;
@@ -128,6 +134,7 @@ void onWebSocketEvent(uint8_t client_num,
 
           doc.clear();
           doc["output"] = setting.outputMode;
+          doc["oSERIAL"] = setting.bOutputSerial;
           doc["oGPS"] = setting.outputGPS;
           doc["oFlarm"] = setting.outputFLARM;
           doc["oFanet"] = setting.outputFANET;
@@ -156,11 +163,22 @@ void onWebSocketEvent(uint8_t client_num,
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
 
+
           doc.clear();
-          
+          doc["axOffset"] = setting.vario.accel[0];
+          doc["ayOffset"] = setting.vario.accel[1];
+          doc["azOffset"] = setting.vario.accel[2];
+          doc["gxOffset"] = setting.vario.gyro[0];
+          doc["gyOffset"] = setting.vario.gyro[1];
+          doc["gzOffset"] = setting.vario.gyro[2];
+          serializeJson(doc, msg_buf);
+          webSocket.sendTXT(client_num, msg_buf);
+
+
+
+          doc.clear();
           doc["sFWD"] = setting.wd.sendFanet;
           doc["wdTempOffset"] = setting.wd.tempOffset;
-
           doc["bHasVario"] = (uint8_t)status.vario.bHasVario;
           doc["bHasMPU"] = (uint8_t)status.vario.bHasMPU;
           doc["vSinkTh"] = serialized(String(setting.vario.sinkingThreshold,2));
@@ -169,6 +187,7 @@ void onWebSocketEvent(uint8_t client_num,
           doc["vVol"] = setting.vario.volume;
           doc["vBeepFly"] = setting.vario.BeepOnlyWhenFlying;
           doc["useMPU"] = (uint8_t)setting.vario.useMPU;
+          doc["vTOffs"] = serialized(String(setting.vario.tempOffset,2));
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
 
@@ -256,6 +275,12 @@ void onWebSocketEvent(uint8_t client_num,
           webSocket.sendTXT(client_num, msg_buf);
 
         }
+      }else if (root.containsKey("configGPS")){
+        setting.bConfigGPS = true; //setup GPS
+      }else if (root.containsKey("calibGyro")){
+        setting.vario.bCalibGyro = true; //calibrate Gyro
+      }else if (root.containsKey("calibAcc")){
+        setting.vario.bCalibAcc = true; //calibrate accelerometer
       }else if (root.containsKey("save")){
         //save settings-page
         value = doc["save"];
@@ -272,6 +297,7 @@ void onWebSocketEvent(uint8_t client_num,
         if (root.containsKey("type")) newSetting.AircraftType = (FanetLora::aircraft_t)doc["type"].as<uint8_t>();
         if (root.containsKey("PilotName")) newSetting.PilotName = doc["PilotName"].as<String>();
         if (root.containsKey("output")) newSetting.outputMode = doc["output"].as<uint8_t>();
+        if (root.containsKey("oSERIAL")) newSetting.bOutputSerial = doc["oSERIAL"].as<uint8_t>();
         if (root.containsKey("oGPS")) newSetting.outputGPS = doc["oGPS"].as<uint8_t>();
         if (root.containsKey("oFlarm")) newSetting.outputFLARM = doc["oFlarm"].as<uint8_t>();
         if (root.containsKey("oFanet")) newSetting.outputFANET = doc["oFanet"].as<uint8_t>();
@@ -303,6 +329,14 @@ void onWebSocketEvent(uint8_t client_num,
         if (root.containsKey("vVol")) newSetting.vario.volume = doc["vVol"].as<uint8_t>();
         if (root.containsKey("vBeepFly")) newSetting.vario.BeepOnlyWhenFlying = doc["vBeepFly"].as<uint8_t>();
         if (root.containsKey("useMPU")) newSetting.vario.useMPU = doc["useMPU"].as<uint8_t>();        
+        if (root.containsKey("vTOffs")) newSetting.vario.tempOffset = doc["vTOffs"].as<float>();        
+        if (root.containsKey("axOffset")) newSetting.vario.accel[0] = doc["axOffset"].as<int16_t>();
+        if (root.containsKey("ayOffset")) newSetting.vario.accel[1] = doc["ayOffset"].as<int16_t>();
+        if (root.containsKey("azOffset")) newSetting.vario.accel[2] = doc["azOffset"].as<int16_t>();
+        if (root.containsKey("gxOffset")) newSetting.vario.gyro[0] = doc["gxOffset"].as<int16_t>();
+        if (root.containsKey("gyOffset")) newSetting.vario.gyro[1] = doc["gyOffset"].as<int16_t>();
+        if (root.containsKey("gzOffset")) newSetting.vario.gyro[2] = doc["gzOffset"].as<int16_t>();
+
         //weather-underground upload
         if (root.containsKey("WUUlEnable")) newSetting.WUUpload.enable = doc["WUUlEnable"].as<bool>();
         if (root.containsKey("WUUlID")) newSetting.WUUpload.ID = doc["WUUlID"].as<String>();
@@ -587,6 +621,11 @@ void Web_loop(void){
         bSend = true;
         mStatus.ClimbRate = status.ClimbRate;
         doc["climbrate"] = String(status.ClimbRate,1);
+      }    
+      if (mStatus.varioTemp != status.varioTemp){
+        bSend = true;
+        mStatus.varioTemp = status.varioTemp;
+        doc["vTemp"] = String(status.varioTemp,1);
       }    
       if (status.vario.bHasMPU){
         char buff[10];

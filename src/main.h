@@ -209,8 +209,8 @@ SCL 14
 #define LONGPRESSTIME 250
 
 #define LOWVOLUME 50
-#define MIDVOLUME 100
-#define HIGHVOLUME 250
+#define MIDVOLUME 80
+#define HIGHVOLUME 127
 
 #define DISPLAY_UPDATE_RATE 500
 #define DISPLAY_UPDATE_RATE2 2000
@@ -220,8 +220,9 @@ SCL 14
 #define FLARM_UPDATE_STATE 60000
 
 //defines for display
-#define OLED0_96 0
-#define EINK2_9  1
+#define NO_DISPLAY 0
+#define OLED0_96 1
+#define EINK2_9  2
 
 //defines for Mode
 #define MODE_AIR_MODULE 0
@@ -275,6 +276,9 @@ struct VarioSettings{
   bool useMPU;
   int16_t accel[3];
   int16_t gyro[3];
+  bool bCalibGyro;
+  bool bCalibAcc;
+  float tempOffset;
 };
 
 struct VarioStatus{
@@ -326,6 +330,7 @@ struct SettingsData{
   uint8_t outputFLARM;
   uint8_t outputGPS;
   uint8_t outputFANET;
+  bool bOutputSerial; //additional output over serial-interface
   uint8_t awLiveTracking; //airwhere live-tracking
   WifiSettings wifi;
   String PilotName; //Pilotname
@@ -344,6 +349,7 @@ struct SettingsData{
   weatherupload WUUpload; //weather-underground upload-settings
   weatherupload WindyUpload; //weather-underground upload-settings
   GsmSettings gsm; //settings for GSM
+  bool bConfigGPS;
 };
 
 struct weatherStatus{

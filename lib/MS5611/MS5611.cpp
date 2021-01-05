@@ -256,12 +256,16 @@ int32_t MS5611::readPressure(bool compensation)
     return P;
 }
 
-double MS5611::readTemperature(bool compensation)
+uint32_t MS5611::getRawTemperature(void){
+    return D2;  
+}
+
+float MS5611::readTemperature(bool compensation)
 {
     //uint32_t D2 = readRawTemperature();
     int32_t dT = D2 - (uint32_t)fc[4] * 256;
 
-    int32_t TEMP = 2000 + ((int64_t) dT * fc[5]) / 8388608;
+    int32_t TEMP = (int64_t)2000 + ((int64_t) dT * (int64_t)fc[5]) / (int64_t)8388608;
 
     TEMP2 = 0;
 
@@ -275,7 +279,7 @@ double MS5611::readTemperature(bool compensation)
 
     TEMP = TEMP - TEMP2;
 
-    return ((double)TEMP/100);
+    return (float(TEMP)/100.0);
 }
 
 // Calculate altitude from Pressure & Sea level pressure

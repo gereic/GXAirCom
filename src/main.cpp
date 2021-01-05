@@ -218,6 +218,9 @@ int8_t PinWindDir = -1;
 int8_t PinWindSpeed = -1;
 int8_t PinRainGauge = -1;
 
+//external Power on/off
+int8_t PinExtPowerOnOff = -1;
+
 float adcVoltageMultiplier = 0.0;
 
 
@@ -359,6 +362,10 @@ void checkReceivedLine(char *ch_str);
 void serialBtCallBack(esp_spp_cb_event_t event, esp_spp_cb_param_t *param);
 void printChipInfo(void);
 void setAllTime(tm &timeinfo);
+void checkExtPowerOff(uint32_t tAct);
+#ifdef AIRMODULE
+bool setupUbloxConfig(void);
+#endif
 
 void setAllTime(tm &timeinfo){
   tmElements_t tm;          // a cache of time elements
@@ -455,11 +462,13 @@ void handleButton(uint32_t tAct){
 		}
   }else{
     //Button released
-		if (buttonActive == true) {
+		#ifndef EXT_POWER_ON_OFF //no muting when in kobo (for the moment)
+    if (buttonActive == true) {
 			if (longPressActive == false) {
 				status.bMuting = !status.bMuting; //toggle muting
       }
-		}    
+		}
+    #endif    
 		buttonActive = false;
 		longPressActive = false;
   }
@@ -922,16 +931,19 @@ void sendData2Client(String data){
       udp.write((uint8_t *)data.c_str(),data.length());
       udp.endPacket();    
     }
-  }else if (setting.outputMode == OUTPUT_SERIAL){//output over serial-connection
+  }
+  if ((setting.outputMode == OUTPUT_SERIAL) || (setting.bOutputSerial)){//output over serial-connection
     Serial.print(data); 
-  }else if (setting.outputMode == OUTPUT_BLUETOOTH){//output over bluetooth serial
+  }
+  if (setting.outputMode == OUTPUT_BLUETOOTH){//output over bluetooth serial
     if (status.bluetoothStat == 2){
       //if (SerialBT.hasClient()){
         //log_i("sending to bt-device %s",data.c_str());
       SerialBT.print(data);
       //}    
     }
-  }else if (setting.outputMode == OUTPUT_BLE){ //output over ble-connection
+  }
+  if (setting.outputMode == OUTPUT_BLE){ //output over ble-connection
     if (xHandleBluetooth){
       if ((ble_data.length() + data.length()) <512){
         while(ble_mutex){
@@ -1168,10 +1180,14 @@ void printSettings(){
   log_i("BAND=%d",setting.band);
   log_i("LORA_POWER=%d",setting.LoraPower);
   log_i("Mode=%d",setting.Mode);
+
+
+  log_i("Serial-output=%d",setting.bOutputSerial);
   log_i("OUTPUT LK8EX1=%d",setting.outputLK8EX1);
   log_i("OUTPUT FLARM=%d",setting.outputFLARM);
   log_i("OUTPUT GPS=%d",setting.outputGPS);
   log_i("OUTPUT FANET=%d",setting.outputFANET);
+  
   log_i("WIFI connect=%d",setting.wifi.connect);
   log_i("WIFI SSID=%s",setting.wifi.ssid.c_str());
   log_i("WIFI PW=%s",setting.wifi.password.c_str());
@@ -1204,6 +1220,7 @@ void printSettings(){
   log_i("VarioNearClimbingSensitivity=%0.2f",setting.vario.nearClimbingSensitivity);
   log_i("VarioVolume=%d",setting.vario.volume);
   log_i("Vario use MPU=%d",setting.vario.useMPU);
+  log_i("Vario temp offset=%.02f",setting.vario.tempOffset);
 
   //weather-data
   log_i("WD Fanet-Weatherdata=%d",setting.wd.sendFanet);
@@ -1288,6 +1305,7 @@ void setup() {
   status.bInternetConnected = false;
   status.bTimeOk = false;
   status.modemstatus = MODEM_DISCONNECTED;
+  setting.bConfigGPS = false;
 
   //log_e("error");
   
@@ -1326,6 +1344,13 @@ void setup() {
 
   //listSpiffsFiles();
   load_configFile(&setting); //load configuration
+  #ifdef OLED
+  setting.displayType = OLED0_96;
+  #elif EINK
+  setting.displayType = EINK2_9;
+  #else
+  setting.displayType = NO_DISPLAY;
+  #endif
   #ifdef GSMODULE
     setting.Mode = MODE_GROUND_STATION;
   #endif
@@ -1408,11 +1433,23 @@ void setup() {
     PinBaroSDA = 13;
     PinBaroSCL = 14;
 
+    
+    PinUserLed = 4;
+
+    #ifdef EXT_POWER_ON_OFF
+      PinBuzzer = 2;
+    #else
+      PinBuzzer = 0;    
+    #endif
+    /*
     #ifdef EINK
-      PinUserLed = 4;
-      PinBuzzer = 0;
     #else
       PinBuzzer = 4;
+    #endif
+    */
+
+    #ifdef EXT_POWER_ON_OFF
+    PinExtPowerOnOff = 36;
     #endif
 
     i2cOLED.begin(PinOledSDA, PinOledSCL);
@@ -1559,6 +1596,10 @@ void setup() {
   if (PinUserLed >= 0){
     pinMode(PinUserLed, OUTPUT);
     digitalWrite(PinUserLed,HIGH); 
+  }
+  if (PinExtPowerOnOff >= 0){
+    pinMode(PinExtPowerOnOff, INPUT);
+    log_i("ext power-state=%d",digitalRead(PinExtPowerOnOff));
   }
 
   #ifdef OLED
@@ -1730,13 +1771,13 @@ void taskWeather(void *pvParameters){
   Weather weather;
   weather.setTempOffset(setting.wd.tempOffset);
   if (weather.begin(&i2cWeather,setting.gs.alt,PinOneWire,PinWindDir,PinWindSpeed,PinRainGauge)){
-    status.bHasBME = true; //we have a bme-sensor
+    status.vario.bHasBME = true; //we have a bme-sensor
   }
-  if ((setting.WUUpload.enable) && (!status.bHasBME)){
+  if ((setting.WUUpload.enable) && (!status.vario.bHasBME)){
     status.bWUBroadCast = true;
     log_i("wu broadcast enabled");
   }
-  if ((!status.bHasBME) && (!status.bWUBroadCast)){
+  if ((!status.vario.bHasBME) && (!status.bWUBroadCast)){
     log_i("stopping task");
     vTaskDelete(xHandleWeather);
     return;    
@@ -1751,7 +1792,7 @@ void taskWeather(void *pvParameters){
         tUploadData = tAct - WEATHER_UNDERGROUND_UPDATE_RATE + 2000;
       }
     }
-    if (status.bHasBME){
+    if (status.vario.bHasBME){
       //station has BME --> we are a weather-station
       weather.run();
       weather.getValues(&wData);
@@ -1931,6 +1972,14 @@ void taskBaro(void *pvParameters){
   if (status.vario.bHasVario){
     xLastWakeTime = xTaskGetTickCount ();
     while (1){      
+      if (setting.vario.bCalibGyro){
+        baro.calibGyro();
+        setting.vario.bCalibGyro = false;
+      }
+      if (setting.vario.bCalibAcc){
+        baro.calibAcc();
+        setting.vario.bCalibAcc = false;
+      }
       if (((!status.flying) && (setting.vario.BeepOnlyWhenFlying)) || (status.bMuting)){
         Beeper.setVolume(0);
       }else{
@@ -1942,6 +1991,7 @@ void taskBaro(void *pvParameters){
       }
       if (baro.isNewVAlues()){
         baro.getValues(&status.pressure,&status.varioAlt,&status.ClimbRate,&status.varioTemp);
+        status.varioTemp = status.varioTemp + setting.vario.tempOffset;
         status.varioHeading = baro.getHeading();
         #ifdef USE_BEEPER
         Beeper.setVelocity(status.ClimbRate);
@@ -2092,7 +2142,7 @@ void printBattVoltage(uint32_t tAct){
       if (axp.isBatteryConnect()) {
         status.vBatt = (uint16_t)axp.getBattVoltage();
       }else{
-        log_w("no Batt");
+        //log_w("no Batt");
         status.vBatt = 0;
       }
     }else{
@@ -2449,6 +2499,7 @@ void checkReceivedLine(char *ch_str){
   //log_i("new serial msg=%s",ch_str);
   if(!strncmp(ch_str, FANET_CMD_TRANSMIT, 4)){
     fanet.fanet_cmd_transmit(ch_str+4);
+  }/*
   }else if(!strncmp(ch_str, "@", 1)){
     char *ptr = strchr(ch_str, '\r');
     if(ptr == nullptr)
@@ -2467,7 +2518,7 @@ void checkReceivedLine(char *ch_str){
     log_i("broadcast-msg %s",ch_str);
     String msg = ch_str;
     fanet.writeMsgType3(0,msg);
-  }
+  }*/
 }
 
 char* readBtSerial(){
@@ -2608,6 +2659,62 @@ void sendLK8EX(uint32_t tAct){
   }
 }
 
+#ifdef AIRMODULE
+bool setupUbloxConfig(){
+  SFE_UBLOX_GPS ublox;
+  ublox.begin(NMeaSerial);
+  ublox.factoryReset();
+  delay(2000); //wait for hardware again !!
+  for (int i = 0; i < 3; i++){
+    if (!ublox.isConnected()){
+      log_e("ublox: GPS not connected");
+      continue;
+    }
+    if (!ublox.setUART1Output(COM_TYPE_NMEA)){
+      log_e("ublox: error setting uart1 output");
+      continue;
+    }
+    //disable nmea sentencess
+    if (!ublox.disableNMEAMessage(UBX_NMEA_GLL,COM_PORT_UART1)){
+      log_e("ublox: error setting parameter %d",UBX_NMEA_GLL);
+      continue;
+    }
+    if (!ublox.disableNMEAMessage(UBX_NMEA_GSV,COM_PORT_UART1)){
+      log_e("ublox: error setting parameter %d",UBX_NMEA_GSV);
+      continue;
+    }
+    if (!ublox.disableNMEAMessage(UBX_NMEA_VTG,COM_PORT_UART1)){
+      log_e("ublox: error setting parameter %d",UBX_NMEA_VTG);
+      continue;
+    }
+    //xcguide uses GSA für GPS-Fix
+    if (!ublox.disableNMEAMessage(UBX_NMEA_GSA,COM_PORT_UART1)){
+      log_e("ublox: error setting parameter %d",UBX_NMEA_GSA);
+      continue;
+    }
+
+    //enable nmea-sentences
+    if (!ublox.enableNMEAMessage(UBX_NMEA_GGA,COM_PORT_UART1)){
+      log_e("ublox: error setting parameter %d",UBX_NMEA_GGA);
+      continue;
+    }
+    if (!ublox.enableNMEAMessage(UBX_NMEA_RMC,COM_PORT_UART1)){
+      log_e("ublox: error setting parameter %d",UBX_NMEA_RMC);
+      continue;
+    }
+    if (!ublox.saveConfiguration(3000)){
+      log_e("ublox: error saving config");
+      continue;
+    }else{
+      log_i("!!! setup ublox successfully");
+      return true;
+      break;      
+    }
+  }
+  return false;
+
+}
+#endif
 
 
 void taskStandard(void *pvParameters){
@@ -2635,36 +2742,16 @@ void taskStandard(void *pvParameters){
     log_i("GPS Baud=9600,8N1,RX=12,TX=15");
   }
   
-  SFE_UBLOX_GPS ublox;
-  bool isConnected = false;
-  for (int i = 0; i < 3; i++){
-    if (ublox.begin(NMeaSerial)){
-      isConnected = true;
-      break;
-    }
-    delay(500);
-  }
-  if (isConnected){
-    log_i("Connected to UBLOX GPS successfully\n");
-    ublox.setUART1Output(COM_TYPE_NMEA, 1000);
-  }else{
-    log_i("UBLOX GPS not connected\n");
-  }
+  //setupUbloxConfig();
 
   // Change the echoing messages to the ones recognized by the MicroNMEA library
-  MicroNMEA::sendSentence(NMeaSerial, "$PSTMSETPAR,1201,0x00000042");
-  MicroNMEA::sendSentence(NMeaSerial, "$PSTMSAVEPAR");
+  //MicroNMEA::sendSentence(NMeaSerial, "$PSTMSETPAR,1201,0x00000042");
+  //MicroNMEA::sendSentence(NMeaSerial, "$PSTMSETPAR,1201,0x00000041"); //enable only $GPGGA and $GPRMC
+  //MicroNMEA::sendSentence(NMeaSerial, "$PSTMSAVEPAR");
 
   //Reset the device so that the changes could take plaace
-  MicroNMEA::sendSentence(NMeaSerial, "$PSTMSRR");
+  //MicroNMEA::sendSentence(NMeaSerial, "$PSTMSRR");
 
-
-  /*
-  host_name = APPNAME "-"; //String((ESP32_getChipId() & 0xFFFFFF), HEX);
-  while(1){
-    delay(1);
-  }
-  */
 
   delay(1000);
   //clear serial buffer
@@ -2745,7 +2832,13 @@ void taskStandard(void *pvParameters){
     status.tLoop = tAct - tLoop;
     tLoop = tAct;
     if (status.tMaxLoop < status.tLoop) status.tMaxLoop = status.tLoop;
-    
+
+    #ifdef AIRMODULE    
+    if (setting.bConfigGPS){
+      setupUbloxConfig();
+      setting.bConfigGPS = false;
+    }
+    #endif
     handleButton(tAct);
 
     if (setting.OGNLiveTracking) ogn.run(status.bInternetConnected);
@@ -3085,6 +3178,14 @@ void powerOff(){
     delay(20);
     esp_sleep_enable_ext0_wakeup((gpio_num_t) AXP_IRQ, 0); // 1 = High, 0 = Low
   }
+  if (PinExtPowerOnOff > 0){
+    if (!digitalRead(PinExtPowerOnOff)){
+      //pin has to be low, if not, somebody switched off with button !!
+      uint64_t mask = uint64_t(1) << uint64_t(PinExtPowerOnOff);
+      //uint64_t mask = 0x1000000000;
+      esp_sleep_enable_ext1_wakeup(mask,ESP_EXT1_WAKEUP_ANY_HIGH); //wait until power is back again
+    }
+  }
   //Serial.end();
   esp_wifi_stop();
   esp_bluedroid_disable();
@@ -3121,6 +3222,20 @@ void taskEInk(void *pvParameters){
 }
 #endif
 
+void checkExtPowerOff(uint32_t tAct){
+  static uint32_t tPowerOff = millis();
+  if (PinExtPowerOnOff > 0){
+    if (!digitalRead(PinExtPowerOnOff)){
+      if (timeOver(tAct,tPowerOff,500)){
+        log_i("no external Power --> power-off");
+        status.bPowerOff = true;
+      }
+    }else{
+      tPowerOff = tAct;
+    }
+  }
+}
+
 void taskBackGround(void *pvParameters){
   static uint32_t tWifiCheck = millis();
   static uint32_t warning_time=0;
@@ -3128,7 +3243,7 @@ void taskBackGround(void *pvParameters){
   static uint32_t tGetTime = millis();
   uint32_t tBattEmpty = millis();
   uint32_t tRuntime = millis();
-  uint32_t tGetWifiRssi = millis();
+  uint32_t tGetWifiRssi = millis();  
   bool bPowersaveOk = false;
   #ifdef GSMODULE
   static uint32_t tCheckDayTime = millis();
@@ -3326,6 +3441,7 @@ void taskBackGround(void *pvParameters){
     }else{
       tBattEmpty = millis();
     }
+    checkExtPowerOff(tAct);
     delay(1);
 	}
 }

@@ -58,8 +58,9 @@ class MS5611
 	void finishReadTemp(void);
 	void finishReadPressure(void);
 	uint32_t readRawTemperature(void);
+	uint32_t getRawTemperature(void);
 	uint32_t readRawPressure(void);
-	double readTemperature(bool compensation = false);
+	float readTemperature(bool compensation = false);
 	int32_t readPressure(bool compensation = false);
 	double getAltitude(double pressure, double seaLevelPressure = 101325);
 	double getSeaLevel(double pressure, double altitude);

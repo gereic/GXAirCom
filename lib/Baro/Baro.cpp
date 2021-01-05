@@ -1,6 +1,13 @@
 #include <Baro.h>
 //#include <MPU6050.h>
-#include "MPU6050_6Axis_MotionApps20.h"
+//#include "MPU6050_6Axis_MotionApps20.h"
+#include "MPU6050_6Axis_MotionApps_V6_12.h"
+
+//#define MAX2G 32768
+#define MPU6050_2G_SENSITIVITY 		32768.0f 	// lsb per g
+#define MAX2G 16384
+//#define MPU6050_2G_SENSITIVITY 		16384.0f 	// lsb per g
+
 
 
 MPU6050 mpu;
@@ -55,6 +62,260 @@ void Baro::getMPUValues(int16_t accel[3],int16_t gyro[3],float *acc_Z){
   *acc_Z = logData.acc;
 }
 
+void Baro::meansensors() {
+	long i, buff_ax, buff_ay, buff_az, buff_gx, buff_gy, buff_gz;
+  int16_t ax, ay, az, gx, gy, gz;
+	const int buffersize = 1000;     //Amount of readings used to average, make it higher to get more precision but sketch will be slower  (default:1000)
+  int16_t az_values[buffersize];
+
+	buff_ax = 0; buff_ay = 0; buff_az = 0; buff_gx = 0; buff_gy = 0; buff_gz = 0;
+	i = 0;
+
+	while (i < (buffersize)) {
+		// read raw accel/gyro measurements from device
+		mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+		//Serial.printf("az raw value %d\r\n", az);
+		buff_ax += ax;
+		buff_ay += ay;
+		buff_az += az;
+		az_values[i] = az;
+		buff_gx += gx;
+		buff_gy += gy;
+		buff_gz += gz;
+
+		i++;
+		delay(2); //Needed so we don't get repeated measures
+	}
+	mean_ax = buff_ax / buffersize;
+	mean_ay = buff_ay / buffersize;
+	mean_az = buff_az / buffersize;
+	mean_gx = buff_gx / buffersize;
+	mean_gy = buff_gy / buffersize;
+	mean_gz = buff_gz / buffersize;
+
+	Serial.println(mean_ax);
+	Serial.println(mean_ay);
+	Serial.println(mean_az);
+	Serial.println(mean_gx);
+	Serial.println(mean_gx);
+	Serial.println(mean_gx);
+}
+
+
+bool Baro::calibration() {
+
+  int acel_deadzone = 8;			 //Acelerometer error allowed, make it lower to get more precision, but sketch may not converge  (default:8)
+  int giro_deadzone = 1;           //Giro error allowed, make it lower to get more precision, but sketch may not converge  (default:1)
+	int numtries = 0;
+  int16_t ax, ay, az, gx, gy, gz;
+	mpu.setDMPEnabled(false);
+  mpu.setXAccelOffset(0);
+	mpu.setYAccelOffset(0);
+	mpu.setZAccelOffset(0);
+	mpu.setXGyroOffset(0);
+	mpu.setYGyroOffset(0);
+	mpu.setZGyroOffset(0);
+
+	//First 100 measures are discarded
+	for (int j = 0; j < 100; j++) {
+		mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+		delay(2);
+	}
+
+	//The mpu6050 yaw figues drift and takes a little time to stablize ~15 secs with reading settling after ~30s
+
+	meansensors();
+	delay(1000);
+
+	ax_offset = -mean_ax / 8;
+	ay_offset = -mean_ay / 8;
+	az_offset = (MAX2G - mean_az) / 8;
+
+	gx_offset = -mean_gx / 4;
+	gy_offset = -mean_gy / 4;
+	gz_offset = -mean_gz / 4;
+
+	while (1) {
+		int ready = 0;
+		mpu.setXAccelOffset(ax_offset);
+		mpu.setYAccelOffset(ay_offset);
+		mpu.setZAccelOffset(az_offset);
+
+		mpu.setXGyroOffset(gx_offset);
+		mpu.setYGyroOffset(gy_offset);
+		mpu.setZGyroOffset(gz_offset);
+
+		meansensors();
+		Serial.printf("...\r\n");
+
+		if (abs(mean_ax) <= acel_deadzone) ready++;
+		else ax_offset = ax_offset - mean_ax / acel_deadzone;
+
+		if (abs(mean_ay) <= acel_deadzone) ready++;
+		else ay_offset = ay_offset - mean_ay / acel_deadzone;
+
+		if (abs(MAX2G - mean_az) <= acel_deadzone) ready++;
+		else az_offset = az_offset + (MAX2G - mean_az) / acel_deadzone;
+
+		if (abs(mean_gx) <= giro_deadzone) ready++;
+		else gx_offset = gx_offset - mean_gx / (giro_deadzone + 1);
+
+		if (abs(mean_gy) <= giro_deadzone) ready++;
+		else gy_offset = gy_offset - mean_gy / (giro_deadzone + 1);
+
+		if (abs(mean_gz) <= giro_deadzone) ready++;
+		else gz_offset = gz_offset - mean_gz / (giro_deadzone + 1);
+
+		numtries++;
+
+		if (ready == 6) {
+      log_i("write new offsets");
+      Preferences preferences;
+      preferences.begin("fastvario", false);
+      preferences.putInt("axOffset", ax_offset);
+      preferences.putInt("ayOffset", ay_offset);
+      preferences.putInt("azOffset", az_offset);
+      preferences.putInt("gxOffset", gx_offset);
+      preferences.putInt("gyOffset", gy_offset);
+      preferences.putInt("gzOffset", gz_offset);
+      preferences.end();
+      log_i("reboot");
+      ESP.restart();      
+			return true;
+		}
+
+		if (numtries > 20) return false;
+	}
+
+}
+
+
+bool Baro::calibGyro(void){
+  if (sensorType != SENSORTYPE_MS5611) return false; //sensortype different
+  int giro_deadzone = 1;           //Giro error allowed, make it lower to get more precision, but sketch may not converge  (default:1)
+	int numtries = 0;
+  int16_t ax, ay, az, gx, gy, gz;
+	mpu.setDMPEnabled(false);
+	mpu.setXGyroOffset(0);
+	mpu.setYGyroOffset(0);
+	mpu.setZGyroOffset(0);
+
+	//First 100 measures are discarded
+	for (int j = 0; j < 100; j++) {
+		mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+		delay(2);
+	}
+
+	//The mpu6050 yaw figues drift and takes a little time to stablize ~15 secs with reading settling after ~30s
+
+	meansensors();
+	delay(1000);
+
+	gx_offset = -mean_gx / 4;
+	gy_offset = -mean_gy / 4;
+	gz_offset = -mean_gz / 4;
+
+	while (1) {
+		int ready = 0;
+		mpu.setXGyroOffset(gx_offset);
+		mpu.setYGyroOffset(gy_offset);
+		mpu.setZGyroOffset(gz_offset);
+
+		meansensors();
+		Serial.printf("...\r\n");
+
+		if (abs(mean_gx) <= giro_deadzone) ready++;
+		else gx_offset = gx_offset - mean_gx / (giro_deadzone + 1);
+
+		if (abs(mean_gy) <= giro_deadzone) ready++;
+		else gy_offset = gy_offset - mean_gy / (giro_deadzone + 1);
+
+		if (abs(mean_gz) <= giro_deadzone) ready++;
+		else gz_offset = gz_offset - mean_gz / (giro_deadzone + 1);
+
+		numtries++;
+
+		if (ready == 3) {
+      log_i("write new offsets");
+      Preferences preferences;
+      preferences.begin("fastvario", false);
+      preferences.putInt("gxOffset", gx_offset);
+      preferences.putInt("gyOffset", gy_offset);
+      preferences.putInt("gzOffset", gz_offset);
+      preferences.end();
+      log_i("reboot");
+      ESP.restart();      
+			return true;
+		}
+
+		if (numtries > 20) return false;
+	}
+  return true;
+}
+
+bool Baro::calibAcc(void){
+  if (sensorType != SENSORTYPE_MS5611) return false; //sensortype different
+  int acel_deadzone = 8;			 //Acelerometer error allowed, make it lower to get more precision, but sketch may not converge  (default:8)
+	int numtries = 0;
+  int16_t ax, ay, az, gx, gy, gz;
+	mpu.setDMPEnabled(false);
+  mpu.setXAccelOffset(0);
+	mpu.setYAccelOffset(0);
+	mpu.setZAccelOffset(0);
+
+	//First 100 measures are discarded
+	for (int j = 0; j < 100; j++) {
+		mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+		delay(2);
+	}
+
+	//The mpu6050 yaw figues drift and takes a little time to stablize ~15 secs with reading settling after ~30s
+
+	meansensors();
+	delay(1000);
+
+	ax_offset = -mean_ax / 8;
+	ay_offset = -mean_ay / 8;
+  az_offset = (MAX2G - mean_az) / 8;
+
+	while (1) {
+		int ready = 0;
+		mpu.setXAccelOffset(ax_offset);
+		mpu.setYAccelOffset(ay_offset);
+		mpu.setZAccelOffset(az_offset);
+
+		meansensors();
+		Serial.printf("...\r\n");
+
+		if (abs(mean_ax) <= acel_deadzone) ready++;
+		else ax_offset = ax_offset - mean_ax / acel_deadzone;
+
+		if (abs(mean_ay) <= acel_deadzone) ready++;
+		else ay_offset = ay_offset - mean_ay / acel_deadzone;
+
+		if (abs(MAX2G - mean_az) <= acel_deadzone) ready++;
+		else az_offset = az_offset + (MAX2G - mean_az) / acel_deadzone;
+
+		numtries++;
+
+		if (ready == 3) {
+      log_i("write new offsets");
+      Preferences preferences;
+      preferences.begin("fastvario", false);
+      preferences.putInt("axOffset", ax_offset);
+      preferences.putInt("ayOffset", ay_offset);
+      preferences.putInt("azOffset", az_offset);
+      preferences.end();
+      log_i("reboot");
+      ESP.restart();      
+			return true;
+		}
+
+		if (numtries > 20) return false;
+	}
+  return true;
+}
+
 
 bool Baro::initMS5611(void){
   // Initialize MS5611 sensor
@@ -92,9 +353,9 @@ bool Baro::initMS5611(void){
 	ax_offset = preferences.getInt("axOffset", 0);
 	ay_offset = preferences.getInt("ayOffset", 0);
 	az_offset = preferences.getInt("azOffset", 0);
-	ax_scale = preferences.getFloat("axScale", 0);
-	ay_scale = preferences.getFloat("ayScale", 0);
-	az_scale = preferences.getFloat("azScale", 0);
+	//ax_scale = preferences.getFloat("axScale", 0);
+	//ay_scale = preferences.getFloat("ayScale", 0);
+	//az_scale = preferences.getFloat("azScale", 0);
 	gx_offset = preferences.getInt("gxOffset", 0);
 	gy_offset = preferences.getInt("gyOffset", 0);
 	gz_offset = preferences.getInt("gzOffset", 0);
@@ -117,7 +378,19 @@ bool Baro::initMS5611(void){
     mpu.setZGyroOffset(gz_offset);
   }
 
-  log_i("scale ax_scale=%.02f,ay_scale=%.02f,az_scale=%.02f,",ax_scale,ay_scale,az_scale);
+  if ((ax_offset == 0) && (ay_offset == 0) && (az_offset == 0)){
+    //bUseAcc = false;
+    ax_offset = mpu.getXAccelOffset();
+    ay_offset = mpu.getYAccelOffset();
+    az_offset = mpu.getZAccelOffset();
+    log_i("accelerometer not calibrated");
+  }else{
+    mpu.setXAccelOffset(ax_offset);
+    mpu.setYAccelOffset(ay_offset);
+    mpu.setZAccelOffset(az_offset);
+  }
+
+  //log_i("scale ax_scale=%.02f,ay_scale=%.02f,az_scale=%.02f,",ax_scale,ay_scale,az_scale);
   log_i("acc offsets ax_offset=%d,ay_offset=%d,az_offset=%d",ax_offset,ay_offset,az_offset);
   log_i("gyro offsets gx_offset=%d,gy_offset=%d,gz_offset=%d",gx_offset,gy_offset,gz_offset);
 
@@ -300,6 +573,8 @@ void Baro::scaleAccel(VectorInt16 *accel){
   z1=-1606,632 z2=159,373 z3=-556,161 z4=-1123,953 = -781,843
 
   */
+  
+  /*
   scale_x = 1.0079;
   scale_y = 1.0076;
   scale_z = 0.9879;
@@ -307,6 +582,7 @@ void Baro::scaleAccel(VectorInt16 *accel){
   offset_x = -165.07225;
   offset_y = 2.275;
   offset_z = 581.843;
+  */
 
 
   accel->x = (int16_t)round(scale_x * (float)accel->x + offset_x);//(offset_x * scale_x));
@@ -355,6 +631,15 @@ float Baro::getGravityCompensatedAccel(void){
     mpu.dmpGetGravity(&gravity, &q);
     mpu.dmpGetLinearAccel(&aaReal, &aa, &gravity);
     mpu.dmpGetLinearAccelInWorld(&aaWorld, &aaReal, &q);
+    logData.gravity[0] = gravity.x;
+    logData.gravity[1] = gravity.y;
+    logData.gravity[2] = gravity.z;
+    logData.aaReal[0] = aaReal.x;
+    logData.aaReal[1] = aaReal.y;
+    logData.aaReal[2] = aaReal.z;
+    logData.aaWorld[0] = aaWorld.x;
+    logData.aaWorld[1] = aaWorld.y;
+    logData.aaWorld[2] = aaWorld.z;
     return float(aaWorld.z*(9.80665 / MPU6050_2G_SENSITIVITY)); //to get m/s
 
 }
@@ -373,6 +658,7 @@ void Baro::runMS5611(uint32_t tAct){
   if (ms5611.convFinished()){
     press += ms5611.readPressure(true);
     temp += ms5611.readTemperature(true);
+    //log_i("rawTemp=%d,Temp=%.02f",ms5611.getRawTemperature(),ms5611.readTemperature(true));
     baroCount++;
   }
   bool bReady = mpuDrdy();

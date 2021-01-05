@@ -225,8 +225,9 @@ window.addEventListener("load", init, false);
           <tr>
             <th>Display Type</th>
             <td><select name="disp" id="disp" disabled>
-              <option value="0">0.96' OLED</option>
-              <option value="1">2.9' E-Ink</option>
+              <option value="0">no display</option>
+              <option value="1">0.96' OLED</option>
+              <option value="2">2.9' E-Ink</option>              
             </select></td>
           </tr>
           <tr>
@@ -355,6 +356,10 @@ window.addEventListener("load", init, false);
           <tr>
             <th>climbrate [m/s]</th>
             <td><input type="text" id="climbrate" disabled></td>
+          </tr>
+          <tr>
+            <th>temperature [°C]</th>
+            <td><input type="text" id="vTemp" disabled></td>
           </tr>
         </tbody>      
       </table>

@@ -144,5 +144,10 @@ changed ble MTU-Size to 256
 changed gateway 192.168.4.250 -> 192.168.4.1
 
 V2.1.0
-New Fanet-manufacturer-id 0x07 (softrf) --> 0x08 GXAircom
+added accelerometer for better vario
+added temp-offset for vario
+added config-button for ublox-GPS --> only GPGGA and GPRMC will sent --> much less traffic
+added new configuration extpw (external power switch on Pin 36) --> to use directly in kobo (without display)
+added new setting "additional output over serial" to send data to serial and  2.device (ble, ...) so if installed on kobo, you can connect with bluetooth at same time (running xctrack or xcguide)
+
 

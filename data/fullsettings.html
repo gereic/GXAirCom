@@ -138,6 +138,14 @@ function calibAcc(){
   doSend(JSON.stringify(obj));
 }
 
+function sendUbloxConfig(){
+  var obj = {
+  configGPS : 1
+  };
+  doSend(JSON.stringify(obj));
+
+}
+
 //this function sends all values
 function sendValues(){  
   var obj = {
@@ -174,6 +182,7 @@ function sendValues(){
   
   var obj = {  
   output : document.getElementById("output").value,
+  oSERIAL : Number(document.getElementById("oSERIAL").checked),
   oGPS : Number(document.getElementById("oGPS").checked),
   oFlarm : Number(document.getElementById("oFlarm").checked),
   oFanet : Number(document.getElementById("oFanet").checked),
@@ -197,6 +206,19 @@ function sendValues(){
   vVol : document.getElementById("vVol").value,
   vBeepFly : Number(document.getElementById("vBeepFly").checked),
   useMPU : Number(document.getElementById("useMPU").checked),
+  vTOffs : document.getElementById("vTOffs").value,
+  save : 1
+	};
+  doSend(JSON.stringify(obj));
+
+  axOffset
+  var obj = {  
+  axOffset : document.getElementById("axOffset").value,
+  ayOffset : document.getElementById("ayOffset").value,
+  azOffset : document.getElementById("azOffset").value,
+  gxOffset : document.getElementById("gxOffset").value,
+  gyOffset : document.getElementById("gyOffset").value,
+  gzOffset : document.getElementById("gzOffset").value,
   save : 1
 	};
   doSend(JSON.stringify(obj));
@@ -312,8 +334,9 @@ window.addEventListener("load", init, false);
           <tr>
             <th>Display Type</th>
             <td><select id="disp" disabled>
-              <option value="0">0.96' OLED</option>
-              <option value="1">2.9' E-Ink</option>
+              <option value="0">no display</option>
+              <option value="1">0.96' OLED</option>
+              <option value="2">2.9' E-Ink</option>              
             </select></td>
           </tr>
           <tr>
@@ -409,8 +432,15 @@ window.addEventListener("load", init, false);
             </select></td>
           </tr>
           <tr>
+            <th>additional output over serial</th>
+            <td><input type="checkbox" id="oSERIAL" ></td>
+          </tr>
+          <tr>
             <th>output GPS</th>
             <td><input type="checkbox" id="oGPS" ></td>
+            <td>   
+              <button type="button"  onclick="sendUbloxConfig()" class="button byel" style="line-height: 1.7rem;">config GPS</button>
+            </td>
           </tr>
           <tr>
             <th>output FLARM</th>
@@ -598,40 +628,48 @@ window.addEventListener("load", init, false);
             <th>volume</th>
             <td><select id="vVol">
               <option value="50">Low</option>
-              <option value="100">MID</option>
-              <option value="250">HIGH</option>
+              <option value="80">MID</option>
+              <option value="127">HIGH</option>
             </select></td>
           </tr>
           <tr>
             <th>beep only when flying</th>
             <td><input type="checkbox" id="vBeepFly"></td>
           </tr>
+          <tr>
+            <th>offset Temperature [K]</th>
+            <td><input type="number" id="vTOffs" step=".5"></td>
+          </tr>
       </table>
     </fieldset>
     <p></p>
     <p></p>
-    <!--
     <fieldset id="VisMPU">
       <legend><b>accelerometer settings</b></legend>
       <table style="width:100&#37;">
         <tbody>
           <tr>
-            <th>gyro-sensor</th>
+            <th>acc-sensor</th>
+            <td><input type="number" id="axOffset" step="1"></td>
+            <td><input type="number" id="ayOffset" step="1"></td>
+            <td><input type="number" id="azOffset" step="1"></td>
             <td>
-              <button type="button" onClick="calibGyro()" class="button byel" style="line-height: 1.7rem;">calib</button>
+              <button type="button" onClick="calibAcc()" class="button byel" style="line-height: 1.7rem;">calib</button>
             </td>
           </tr>
           <tr>
-            <th>acc-sensor</th>
+            <th>gyro-sensor</th>
+            <td><input type="number" id="gxOffset" step="1"></td>
+            <td><input type="number" id="gyOffset" step="1"></td>
+            <td><input type="number" id="gzOffset" step="1"></td>
             <td>
-              <button type="button" onClick="calibAcc()" class="button byel" style="line-height: 1.7rem;">calib</button>
+              <button type="button" onClick="calibGyro()" class="button byel" style="line-height: 1.7rem;">calib</button>
             </td>
           </tr>
       </table>
     </fieldset>
     <p></p>
     <p></p>
-    -->
     <fieldset id="VisGSM">
       <legend><b>GSM settings</b></legend>
       <table style="width:100&#37;">

@@ -64,12 +64,12 @@ THE SOFTWARE.
         typedef void prog_void;
         typedef char prog_char;
         typedef unsigned char prog_uchar;
-        typedef int8_t prog_int8_t;
+        //typedef int8_t prog_int8_t;
         typedef uint8_t prog_uint8_t;
         typedef int16_t prog_int16_t;
         typedef uint16_t prog_uint16_t;
-        typedef int32_t prog_int32_t;
-        typedef uint32_t prog_uint32_t;
+        //typedef int32_t prog_int32_t;
+        //typedef uint32_t prog_uint32_t;
         
         #define strcpy_P(dest, src) strcpy((dest), (src))
         #define strcat_P(dest, src) strcat((dest), (src))
@@ -494,9 +494,13 @@ uint8_t MPU6050::dmpGetGyro(VectorInt16 *v, const uint8_t* packet) {
 // uint8_t MPU6050::dmpGetLinearAccel(long *data, const uint8_t* packet);
 uint8_t MPU6050::dmpGetLinearAccel(VectorInt16 *v, VectorInt16 *vRaw, VectorFloat *gravity) {
     // get rid of the gravity component (+1g = +8192 in standard DMP FIFO packet, sensitivity is 2g)
-    v -> x = vRaw -> x - gravity -> x*8192;
-    v -> y = vRaw -> y - gravity -> y*8192;
-    v -> z = vRaw -> z - gravity -> z*8192;
+    // GE !!
+    //v -> x = vRaw -> x - gravity -> x*8192;
+    //v -> y = vRaw -> y - gravity -> y*8192;
+    //v -> z = vRaw -> z - gravity -> z*8192;
+    v -> x = vRaw -> x - gravity -> x*16384;
+    v -> y = vRaw -> y - gravity -> y*16384;
+    v -> z = vRaw -> z - gravity -> z*16384;
     return 0;
 }
 // uint8_t MPU6050::dmpGetLinearAccelInWorld(long *data, const uint8_t* packet);
