@@ -126,25 +126,29 @@ void FanetLora::fanet_cmd_transmit(char *ch_str)
 			continue;
 
 		/* not allowed char */
-		log_e("frm broken");
+		//log_e("frm broken");
+    add2ActMsg("#FNR ERR,34,frm broken");
 		return;
 	}
   if (lastChar == ','){
-		log_e("frm broken");
+		//log_e("frm broken");
+    add2ActMsg("#FNR ERR,34,frm broken");
 		return;
   }
 
 	/* w/o an address we can not tx */
 	if(fmac.myAddr == MacAddr())
 	{
-		log_e("no source address");
+		//log_e("no source address");
+    add2ActMsg("#FNR ERR,10,no source address");
 		return;
 	}
 
 	/* no need to generate a package. tx queue is full */
 	if(!fmac.txQueueHasFreeSlots())
 	{
-		log_e("tx buffer full");
+		//log_e("tx buffer full");
+    add2ActMsg("#FNR ERR,14,tx buffer full");
 		return;
 	}
 
@@ -178,7 +182,8 @@ void FanetLora::fanet_cmd_transmit(char *ch_str)
 	if(frm->payload_length >= 128)
 	{
 		delete frm;
-		log_e("frm too long");
+		//log_e("frm too long");
+    add2ActMsg("#FNR ERR,33,frm too long");
 		return;
 	}
 	frm->payload = new uint8_t[frm->payload_length];
@@ -189,7 +194,8 @@ void FanetLora::fanet_cmd_transmit(char *ch_str)
 		char sstr[3] = {p[i*2], p[i*2+1], '\0'};
 		if(strlen(sstr) != 2)
 		{
-			log_e("too short");
+			//log_e("too short");      
+      add2ActMsg("#FNR ERR,30,too short");
 			delete frm;
 			return;
 		}
@@ -201,7 +207,10 @@ void FanetLora::fanet_cmd_transmit(char *ch_str)
 		frm->signature = ((uint32_t)strtoll(++p, NULL, 16));
 
 	/* pass to mac */
-  if (frm2txBuffer(frm)) log_i("#FNR OK");
+  if (frm2txBuffer(frm)){
+    //log_i("%s",actMsg.c_str());
+    add2ActMsg("#FNR OK");    
+  } 
 	/*
   if(fmac.transmit(frm) == 0)
 	{
@@ -327,7 +336,9 @@ uint8_t FanetLora::getNeighboursCount(void){
 }
 
 String FanetLora::getactMsg(){
-    return actMsg;
+    String ret = actMsg;
+    actMsg = "";
+    return ret;
 }
 
 bool FanetLora::isNewMsg(){
@@ -375,7 +386,12 @@ Frame *FanetLora::get_frame()
 
 void FanetLora::handle_acked(bool ack, MacAddr &addr) 
 { 
-	log_i("Handle ACK");
+	//log_i("Handle ACK");
+	char buf[64];
+	snprintf(buf, sizeof(buf), "%s,%X,%X", ack?"#FNR ACK":"#FNR NACK", addr.manufacturer, addr.id);
+  //log_i("%s",buf);
+  add2ActMsg(buf);
+  rxCount++;
 }
 
 String FanetLora::CreateFNFMSG(Frame *frm){
@@ -389,6 +405,81 @@ String FanetLora::CreateFNFMSG(Frame *frm){
   msg += payload;
   return msg;  
 }
+
+float FanetLora::getSpeedFromByte(uint8_t speed){
+  if (speed & 0x80){
+    return float(speed & 0x7F);
+  }else{
+    return float(speed) / 5.0;
+  }
+}
+
+void FanetLora::getWeatherinfo(uint8_t *buffer,uint16_t length){
+  uint8_t index = 0;
+  uint8_t header = buffer[index];
+  //log_i("header=%d",header);
+  index ++;
+  if (header & 0x01) index ++; //additional header direct after first byte
+  // integer values /
+  int32_t lati = int32_t(buffer[index+2])<<16 | int32_t(buffer[index+1])<<8 | int32_t(buffer[index]);
+  index += 3;
+  if(lati & 0x00800000)
+    lati |= 0xFF000000;
+  int32_t loni = int32_t(buffer[index+2])<<16 | int32_t(buffer[index+1])<<8 | int32_t(buffer[index]);
+  index += 3;
+  if(loni & 0x00800000)
+    loni |= 0xFF000000;    
+  lastWeatherData.lat = (float)lati / 93206.0f;
+  lastWeatherData.lon = (float)loni / 46603.0f;
+  //log_i("lat=%.6f;lon=%.6f",lastWeatherData.lat,lastWeatherData.lon);
+  if (header & 0x40){ //temp
+    int8_t temp = (int8_t)buffer[index];
+    lastWeatherData.bTemp = true;
+    lastWeatherData.temp = float(temp) / 2;
+    index ++;
+    //log_i("temp=%.1f",lastWeatherData.temp);
+  }else{
+    lastWeatherData.bTemp = false;
+    lastWeatherData.temp = NAN;
+  }
+  if (header & 0x20){ //wind
+    lastWeatherData.bWind = true;
+    lastWeatherData.wHeading = float(buffer[index]) * 360 / 256;
+    index ++;
+    lastWeatherData.wSpeed = getSpeedFromByte(buffer[index]);
+    index ++;
+    lastWeatherData.wGust = getSpeedFromByte(buffer[index]);
+    index ++;
+    //log_i("wdir=%.1f,wspeed=%.1f,wgust=%.1f",lastWeatherData.wHeading,lastWeatherData.wSpeed,lastWeatherData.wGust);    
+  }else{
+    lastWeatherData.bWind = false;
+    lastWeatherData.wHeading = NAN;
+    lastWeatherData.wSpeed = NAN;
+    lastWeatherData.wGust = NAN;
+  }
+  if (header & 0x10){ //humiditiy
+    lastWeatherData.bHumidity = true;
+    lastWeatherData.Humidity = float(buffer[index]) * 4 / 10;
+    index ++;
+    //log_i("%d,hum=%.1f",index,lastWeatherData.Humidity);
+  }else{
+    lastWeatherData.Humidity = NAN;
+    lastWeatherData.bHumidity = false;
+  }
+  if (header & 0x8){ //pressure
+    uint16_t press = uint16_t(buffer[index+1])<<8 | uint16_t(buffer[index]);
+    index +=2;
+    lastWeatherData.bBaro = true;
+    lastWeatherData.Baro = (float(press) / 10) + 430;
+    //log_i("baro=%.1f",lastWeatherData.Baro);
+  }else{
+    lastWeatherData.bBaro = false;
+    lastWeatherData.Baro = NAN;
+  }
+  newWData = true;
+}
+
+
 
 void FanetLora::getGroundTrackingInfo(String line,uint16_t length){
     char arPayload[23];
@@ -420,7 +511,14 @@ bool FanetLora::getNameData(nameData *nameData){
     memset(&lastNameData,0,sizeof(lastNameData));
     newName = false; //clear new Data flag
     return bRet;
+}
 
+bool FanetLora::getWeatherData(weatherData *weather){
+    bool bRet = newWData;
+    *weather = lastWeatherData; //copy tracking-data
+    memset(&lastWeatherData,0,sizeof(lastWeatherData));
+    newWData = false; //clear new Data flag
+    return bRet;
 }
 
 void FanetLora::handle_frame(Frame *frm){
@@ -459,6 +557,12 @@ void FanetLora::handle_frame(Frame *frm){
       lastNameData.name = msg2;
       newName = true;
       insertNameToNeighbour(devId,msg2);
+  }else if (frm->type == 4){   
+    //weather-data   
+      lastWeatherData.devId = ((uint32_t)frm->src.manufacturer << 16) + (uint32_t)frm->src.id;
+      lastWeatherData.rssi = frm->rssi;
+      lastWeatherData.snr = frm->snr;
+      getWeatherinfo(frm->payload,frm->payload_length);      
   }else if (frm->type == 7){      
     //ground-tracking
     actTrackingData.devId = ((uint32_t)frm->src.manufacturer << 16) + (uint32_t)frm->src.id;
@@ -466,10 +570,17 @@ void FanetLora::handle_frame(Frame *frm){
     actTrackingData.snr = frm->snr;
     getGroundTrackingInfo(payload,frm->payload_length);
   }
-  actMsg = msg;
   //log_i("%s",msg.c_str());
-  newMsg = true;
+  add2ActMsg(msg);
   rxCount++;
+}
+
+void FanetLora::add2ActMsg(String s){
+  if (actMsg != ""){
+    actMsg += "\n";
+  }
+  actMsg += s;
+  newMsg = true;
 }
 
 uint32_t FanetLora::getDevIdFromMac(MacAddr *adr){

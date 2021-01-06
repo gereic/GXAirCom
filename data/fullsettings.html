@@ -86,6 +86,8 @@ function setVis(){
     document.getElementById("tName").innerHTML='Ground Station name';
     document.getElementById("VisGS").style.display=''; //set GS visible
     document.getElementById("VisVario").style.display='none';
+    document.getElementById("VisFanetTracking").style.display='none'; //fanet-tracking mode in ground-station is important 
+    document.getElementById("VisOutputSettings").style.display='none'; //output-settings are not usefull in ground-station
   }else{
     document.getElementById("VisLegacy").style.display='';
     document.getElementById("VisAirCraftType").style.display='';
@@ -140,8 +142,28 @@ function sendUbloxConfig(){
 
 }
 
+function onlyLetters(str) {
+   return str.match("^[A-Za-z0-9]+$");
+ }
+
+function checkValues(){
+  if (document.getElementById("mode").value == 1){ //mode ground-station
+   var gsname =  document.getElementById("PilotName").value;
+   if ((gsname.length < 3) || (gsname.length > 9) || (!onlyLetters(gsname))){
+    window.alert("Error Ground Station name\r\nMinimum length for name is 3 characters\r\nMaximum length for name is 9 characters\r\nUse chars and numbers only (A-Z, a-z and 0-9)");
+    return false;
+   }
+  }
+  return true;
+}
+
 //this function sends all values
 function sendValues(){  
+  if (!checkValues()){
+    return;
+  }
+  
+  
   var obj = {
   board : document.getElementById("board").value,
   disp : document.getElementById("disp").value,
@@ -381,7 +403,7 @@ window.addEventListener("load", init, false);
             <th>Legacy Protocol TX</th>
             <td><input type="checkbox" id="legacytx" ></td>
           </tr>	
-          <tr>
+          <tr id="VisFanetTracking">
             <th>fanet-tracking-mode</th>
             <td><select id="fntMode">
               <option value="0">switch between ground-/air-tracking</option>
@@ -422,7 +444,7 @@ window.addEventListener("load", init, false);
     </fieldset>
     <p></p>
     <p></p>
-    <fieldset>
+    <fieldset id="VisOutputSettings">
       <legend><b>Output settings</b></legend>
       <table style="width:100&#37;">
         <tbody>

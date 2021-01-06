@@ -34,7 +34,7 @@ extern struct statusData status;
 //#define EINK_DC       23
 #define EINK_DC       32
 #define EINK_CS       15
-#define EINK_CLK      25
+#define EINK_CLK      0
 #define EINK_DIN      2
 
 class Screen {

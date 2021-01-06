@@ -489,7 +489,7 @@ static void handle_update_progress_cb(AsyncWebServerRequest *request, String fil
     WebUpdateRunning = true;
     delay(500); //wait 1 second until tasks are stopped
     //Update.runAsync(true);
-    if (filename == "spiffs.bin"){
+    if (filename.startsWith("spiffs")){
       if (!Update.begin(0x30000,U_SPIFFS)) {
         Update.printError(Serial);
       }
@@ -608,6 +608,7 @@ void Web_stop(void){
 
 void Web_loop(void){
   static uint32_t tLife = millis();
+  static uint32_t tCounter = millis();
   static uint16_t counter = 0;
   static uint32_t tRestart = millis();
   uint32_t tAct = millis();
@@ -671,8 +672,12 @@ void Web_loop(void){
 
     doc.clear();
     bSend = false;
-    doc["counter"] = counter;
-    bSend = true;
+    if ((tAct - tCounter) >= 1000){
+      tCounter = tAct;
+      counter++;
+      doc["counter"] = counter;
+      bSend = true;
+    }
     if (mStatus.vBatt != status.vBatt){
       bSend = true;
       mStatus.vBatt = status.vBatt;
@@ -831,8 +836,6 @@ void Web_loop(void){
       }
     }
     #endif
-
-    counter++;
   }
   if (restartNow){
     if ((tAct - tRestart) >= 1000){

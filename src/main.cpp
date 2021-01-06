@@ -1437,17 +1437,8 @@ void setup() {
     
     PinUserLed = 4;
 
-    #ifndef EINK
-      PinBuzzer = 2;
-    #else
-      PinBuzzer = 0;    
-    #endif
-    /*
-    #ifdef EINK
-    #else
-      PinBuzzer = 4;
-    #endif
-    */
+    //V3.0.0 changed from PIN 0 to PIN 25
+    PinBuzzer = 25;
 
     #ifdef EXT_POWER_ON_OFF
     PinExtPowerOnOff = 36;
@@ -2927,7 +2918,7 @@ void taskStandard(void *pvParameters){
       log_i("sending weatherdata");
       fanet.writeMsgType4(&testWeatherData);
       if (setting.OGNLiveTracking){
-        ogn.sendWeatherData(status.GPS_Lat,status.GPS_Lon,fanet.getMyDevId(),status.weather.WindDir,status.weather.WindSpeed,status.weather.WindGust,status.weather.temp,status.weather.rain1h,status.weather.rain1d,status.weather.Humidity,status.weather.Pressure,70); //set to 70 db
+        ogn.sendWeatherData(status.GPS_Lat,status.GPS_Lon,fanet.getMyDevId(),status.weather.WindDir,status.weather.WindSpeed,status.weather.WindGust,status.weather.temp,status.weather.rain1h,status.weather.rain1d,status.weather.Humidity,status.weather.Pressure,0);
       }      
       sendWeatherData = false;
     }
@@ -2960,6 +2951,12 @@ void taskStandard(void *pvParameters){
         ogn.sendNameData(fanet.getDevId(nameData.devId),nameData.name,(float)nameData.snr / 10.0);
       }
     }
+    FanetLora::weatherData weatherData;
+    if (fanet.getWeatherData(&weatherData)){
+      if (setting.OGNLiveTracking){
+        ogn.sendWeatherData(weatherData.lat,weatherData.lon,fanet.getDevId(weatherData.devId),weatherData.wHeading,weatherData.wSpeed,weatherData.wGust,weatherData.temp,NAN,NAN,weatherData.Humidity,weatherData.Baro,(float)weatherData.snr / 10.0); //set to 70 db
+      }
+    }    
     if (fanet.getTrackingData(&tFanetData)){
         //log_i("new Tracking-Data");
         if (tFanetData.type == 11){ //online-tracking

@@ -226,13 +226,31 @@ void Ogn::sendWeatherData(float lat,float lon,String devId,float wDir,float wSpe
     String sTime = getActTimeString();
     if (sTime.length() <= 0) return;
     char buff[200];
-    sprintf (buff,"%s%s>OGNFNT,qAS,%s:/%sh%02d%02d.%02d%c/%03d%02d.%02d%c_%03d/%03dg%03dt%03dr%03dp%03dh%02db%05d %0.1fdB\r\n"
-    ,getOrigin(devId).c_str(),devId.c_str(),_user.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,(lat < 0)?'S':'N',lonDeg,lonMin/1000,lonMin/10 %100,(lon < 0)?'W':'E',
-    int(wDir),int(kmh2mph(wSpeed)),int(kmh2mph(wGust)),int(deg2f(temp)),int(rain1h * 10),int(rain24h * 10),mHum,int(press * 10),snr);
+    //sprintf (buff,"%s%s>OGNFNT,qAS,%s:/%sh%02d%02d.%02d%c/%03d%02d.%02d%c_%03d/%03dg%03dt%03dr%03dp%03dh%02db%05d %0.1fdB\r\n"
+    //,getOrigin(devId).c_str(),devId.c_str(),_user.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,(lat < 0)?'S':'N',lonDeg,lonMin/1000,lonMin/10 %100,(lon < 0)?'W':'E',
+    //int(wDir),int(kmh2mph(wSpeed)),int(kmh2mph(wGust)),int(deg2f(temp)),int(rain1h * 10),int(rain24h * 10),mHum,int(press * 10),snr);
+    String send = "";
+
+    //sprintf (buff,"%s%s>OGNFNT,qAS,%s:/%sh%02d%02d.%02d%c/%03d%02d.%02d%c_%03d/%03dg%03dt%03d"
+    //,getOrigin(devId).c_str(),devId.c_str(),_user.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,(lat < 0)?'S':'N',lonDeg,lonMin/1000,lonMin/10 %100,(lon < 0)?'W':'E',
+    sprintf (buff,"FNT%s>OGNFNT,qAS,%s:/%sh%02d%02d.%02d%c/%03d%02d.%02d%c_%03d/%03dg%03dt%03d"
+    ,devId.c_str(),_user.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,(lat < 0)?'S':'N',lonDeg,lonMin/1000,lonMin/10 %100,(lon < 0)?'W':'E',
+    int(wDir),int(kmh2mph(wSpeed)),int(kmh2mph(wGust)),int(deg2f(temp)));
+    send += buff;
+    if (rain1h != NAN){
+        sprintf (buff,"r%03dp%03d"
+        ,int(rain1h * 10),int(rain24h * 10));
+        send += buff;
+    }
+    sprintf (buff,"h%02db%05d %0.1fdB\r\n"
+    ,mHum,int(press * 10),snr);
+    send += buff;
+
+
     xSemaphoreTake( *xMutex, portMAX_DELAY );
-    client->print(buff);                
+    client->print(send.c_str());                
     xSemaphoreGive( *xMutex );
-    //log_i("%s",buff);
+    //log_i("%s",send.c_str());
 
 }
 

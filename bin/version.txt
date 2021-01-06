@@ -157,4 +157,10 @@ sending weather-data to OGN
 forward ground-tracking-data to OGN
 forward fanet-name to OGN
 
+V3.0.0
+!!!! ATTENTION !!!
+PIN Buzzer changed from 0 to 25
+added restriction for ground-station name in webinterface
+fanet-weather-data will also be forwarded to OGN. --> https://www.gliderradar.com/
+
 

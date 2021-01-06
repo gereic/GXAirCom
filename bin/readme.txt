@@ -19,7 +19,7 @@ BUSY     33
 RST      4
 DC       32
 CS       15
-CLK      25
+CLK      0
 DIN      2
 
 ******** BARO *********
@@ -31,7 +31,7 @@ TXD 34
 RXD 12
 
 ******** BUZZER *******
-BUZZER 0
+BUZZER 25
 
 
 ************* Pins for TTGO-TBeam V07 ***************
@@ -60,7 +60,7 @@ SDA 13
 SCL 14 
 
 ******** BUZZER *******
-BUZZER 0
+BUZZER 25
 
 
 ************* Pins for TTGO Lora32 ***************

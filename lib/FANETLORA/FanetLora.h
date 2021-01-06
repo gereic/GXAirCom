@@ -154,6 +154,9 @@ public:
   } neighbour;
 
   typedef struct {
+    uint32_t devId; //devId
+    int rssi; //rssi
+    int snr; //signal to noise ratio
     float lat; //latitude
     float lon; //longitude
     bool bTemp;
@@ -194,6 +197,7 @@ public:
   bool getTrackingData(trackingData *tData);
   bool getMyTrackingData(trackingData *tData);
   bool getNameData(nameData *nameData);
+  bool getWeatherData(weatherData *weather);
   void printFanetData(trackingData tData);
   void sendTracking(trackingData *tData);
   void sendName(String name);
@@ -242,6 +246,8 @@ private:
   bool newWData = false;
   void getTrackingInfo(String line,uint16_t length);
   void getGroundTrackingInfo(String line,uint16_t length);  
+  void getWeatherinfo(uint8_t *buffer,uint16_t length);  
+  float getSpeedFromByte(uint8_t speed);
   void printAircraftType(aircraft_t type);
   String CreateFNFMSG(Frame *frm);
   int16_t getneighbourIndex(uint32_t devId,bool getEmptyEntry);
@@ -256,6 +262,7 @@ private:
   int serialize_tracking(trackingData *Data,uint8_t*& buffer);
   int serialize_GroundTracking(trackingData *Data,uint8_t*& buffer);
   bool frm2txBuffer(Frame *frm);
+  void add2ActMsg(String s);
   int actrssi;
 	/* determines the tx rate */
 	unsigned long last_tx = 0;
