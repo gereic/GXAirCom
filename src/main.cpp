@@ -1309,11 +1309,18 @@ void setup() {
   setting.bConfigGPS = false;
 
   //log_e("error");
-  
+
+  /*
+  while(1){
+    delay(10);
+  }
+  */
+
   log_i("SDK-Version=%s",ESP.getSdkVersion());
   log_i("CPU-Speed=%d",ESP.getCpuFreqMHz());
   log_i("Total heap: %d", ESP.getHeapSize());
   log_i("Free heap: %d", ESP.getFreeHeap());
+
   #ifdef BOARD_HAS_PSRAM
   if (psramFound()){
     psRamSize = ESP.getPsramSize();
@@ -2961,13 +2968,13 @@ void taskStandard(void *pvParameters){
         //log_i("new Tracking-Data");
         if (tFanetData.type == 11){ //online-tracking
           if (setting.OGNLiveTracking){
-            ogn.sendTrackingData(tFanetData.lat ,tFanetData.lon,tFanetData.altitude,tFanetData.speed,tFanetData.heading,tFanetData.climb,fanet.getDevId(tFanetData.devId) ,(Ogn::aircraft_t)tFanetData.aircraftType,(float)tFanetData.snr / 10.0);
+            ogn.sendTrackingData(tFanetData.lat ,tFanetData.lon,tFanetData.altitude,tFanetData.speed,tFanetData.heading,tFanetData.climb,fanet.getDevId(tFanetData.devId) ,(Ogn::aircraft_t)tFanetData.aircraftType,tFanetData.OnlineTracking,(float)tFanetData.snr / 10.0);
           } 
           sendAWTrackingdata(&tFanetData);
           sendTraccarTrackingdata(&tFanetData);
         }else if (tFanetData.type >= 70){ //ground-tracking
           if (setting.OGNLiveTracking){
-            ogn.sendGroundTrackingData(tFanetData.lat,tFanetData.lon,fanet.getDevId(tFanetData.devId),(Ogn::aircraft_t)tFanetData.aircraftType,tFanetData.type,(float)tFanetData.snr / 10.0);
+            ogn.sendGroundTrackingData(tFanetData.lat,tFanetData.lon,fanet.getDevId(tFanetData.devId),tFanetData.type,(float)tFanetData.snr / 10.0);
           } 
         }
         
@@ -3026,9 +3033,9 @@ void taskStandard(void *pvParameters){
         if (setting.OGNLiveTracking){
           ogn.setGPS(status.GPS_Lat,status.GPS_Lon,status.GPS_alt,status.GPS_speed,MyFanetData.heading);
           if (fanet.onGround){
-            ogn.sendGroundTrackingData(status.GPS_Lat,status.GPS_Lon,fanet.getDevId(tFanetData.devId),(Ogn::aircraft_t)fanet.getAircraftType(),fanet.state,0.0);
+            ogn.sendGroundTrackingData(status.GPS_Lat,status.GPS_Lon,fanet.getDevId(tFanetData.devId),fanet.state,0.0);
           }else{
-            ogn.sendTrackingData(status.GPS_Lat,status.GPS_Lon,status.GPS_alt,status.GPS_speed,MyFanetData.heading,status.ClimbRate,fanet.getMyDevId() ,(Ogn::aircraft_t)fanet.getAircraftType(),0.0);
+            ogn.sendTrackingData(status.GPS_Lat,status.GPS_Lon,status.GPS_alt,status.GPS_speed,MyFanetData.heading,status.ClimbRate,fanet.getMyDevId() ,(Ogn::aircraft_t)fanet.getAircraftType(),fanet.doOnlineTracking,0.0);
           }
           
         } 

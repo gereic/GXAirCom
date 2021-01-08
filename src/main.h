@@ -279,6 +279,8 @@ struct VarioSettings{
   bool useMPU;
   int16_t accel[3];
   int16_t gyro[3];
+  float tValues[2];
+  float zValues[2];
   bool bCalibGyro;
   bool bCalibAcc;
   float tempOffset;

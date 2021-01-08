@@ -481,24 +481,30 @@ void FanetLora::getWeatherinfo(uint8_t *buffer,uint16_t length){
 
 
 
-void FanetLora::getGroundTrackingInfo(String line,uint16_t length){
+void FanetLora::getGroundTrackingInfo(uint8_t *buffer,uint16_t length){
     char arPayload[23];
-    
-    line.toCharArray(arPayload,sizeof(arPayload));
-
-    // integer values /
-    int32_t lati = getByteFromHex(&arPayload[4])<<16 | getByteFromHex(&arPayload[2])<<8 | getByteFromHex(&arPayload[0]);
+    uint8_t index = 0;
+      // integer values /
+    int32_t lati = int32_t(buffer[index+2])<<16 | int32_t(buffer[index+1])<<8 | int32_t(buffer[index]);
+    index += 3;
     if(lati & 0x00800000)
       lati |= 0xFF000000;
-    int32_t loni = getByteFromHex(&arPayload[10])<<16 | getByteFromHex(&arPayload[8])<<8 | getByteFromHex(&arPayload[6]);
+    int32_t loni = int32_t(buffer[index+2])<<16 | int32_t(buffer[index+1])<<8 | int32_t(buffer[index]);
+    index += 3;
     if(loni & 0x00800000)
-      loni |= 0xFF000000;
+      loni |= 0xFF000000;    
     actTrackingData.lat = (float)lati / 93206.0f;
     actTrackingData.lon = (float)loni / 46603.0f;
     //Serial.print("FANETlat=");Serial.println(actTrackingData.lat);
     //Serial.print("FANETlon=");Serial.println(actTrackingData.lon);
 
-    uint8_t type = uint8_t(getByteFromHex(&arPayload[12]));
+    uint8_t type = buffer[index];
+    if (type & 0x01){
+      actTrackingData.OnlineTracking = true;  
+    }else{
+      actTrackingData.OnlineTracking = false;
+    }
+    //log_i("online-tracking=%d",actTrackingData.OnlineTracking);
     actTrackingData.type = 70 + (type >> 4);
     //log_i("type=%d,groundType=%d",type,actTrackingData.type);
     newData = true;
@@ -568,7 +574,7 @@ void FanetLora::handle_frame(Frame *frm){
     actTrackingData.devId = ((uint32_t)frm->src.manufacturer << 16) + (uint32_t)frm->src.id;
     actTrackingData.rssi = frm->rssi;
     actTrackingData.snr = frm->snr;
-    getGroundTrackingInfo(payload,frm->payload_length);
+    getGroundTrackingInfo(frm->payload,frm->payload_length);
   }
   //log_i("%s",msg.c_str());
   add2ActMsg(msg);
@@ -751,7 +757,8 @@ bool FanetLora::getTrackingData(trackingData *tData){
 
 void FanetLora::getTrackingInfo(String line,uint16_t length){
     char arPayload[23];
-    
+
+    //log_i("getTrackingInfo");
     line.toCharArray(arPayload,sizeof(arPayload));
 
     // integer values /
@@ -763,11 +770,15 @@ void FanetLora::getTrackingInfo(String line,uint16_t length){
       loni |= 0xFF000000;
     actTrackingData.lat = (float)lati / 93206.0f;
     actTrackingData.lon = (float)loni / 46603.0f;
-    //Serial.print("FANETlat=");Serial.println(actTrackingData.lat);
-    //Serial.print("FANETlon=");Serial.println(actTrackingData.lon);
 
     uint16_t Type = (uint16_t(getByteFromHex(&arPayload[14])) << 8) + uint16_t(getByteFromHex(&arPayload[12]));
     uint16_t altitude = Type & 0x7FF;
+    if (Type & 0x8000){
+      actTrackingData.OnlineTracking = true;      
+    }else{
+      actTrackingData.OnlineTracking = false;
+    }
+    //log_i("online-tracking=%d",actTrackingData.OnlineTracking);
     if  (Type & 0x0800){
         altitude *= 4;
     } 

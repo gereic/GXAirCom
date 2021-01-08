@@ -28,6 +28,7 @@ public:
     poweredAircraft = 5,
     helicopter = 6,
     uav = 7,
+    unknown = 15,
   };
   Ogn(); //constructor
   bool begin(String user,String version);
@@ -35,8 +36,8 @@ public:
   void run(bool bNetworkOk); //has to be called cyclic
   void setAirMode(bool _AirMode); //sets the mode (for sending heading and speed only if Air-Module)
   void setGPS(float lat,float lon,float alt,float speed,float heading);
-  void sendTrackingData(float lat,float lon,float alt,float speed,float heading,float climb,String devId,aircraft_t aircraftType,float snr);
-  void sendGroundTrackingData(float lat,float lon,String devId,aircraft_t aircraftType,uint8_t state,float snr);
+  void sendTrackingData(float lat,float lon,float alt,float speed,float heading,float climb,String devId,aircraft_t aircraftType,bool Onlinetracking,float snr);
+  void sendGroundTrackingData(float lat,float lon,String devId,uint8_t state,float snr);
   void sendNameData(String devId,String name,float snr);
   void sendWeatherData(float lat,float lon,String devId,float wDir,float wSpeed,float wGust,float temp,float rain1h, float rain24h,float hum,float press,float snr);
   void setClient(Client *_client);
@@ -53,7 +54,7 @@ private:
     void sendReceiverStatus(String sTime);    
     void sendReceiverBeacon(String sTime);
     String getActTimeString();
-    uint8_t getSenderDetails(aircraft_t aircraftType,String devId);
+    uint8_t getSenderDetails(bool onlinetracking,aircraft_t aircraftType,String devId);
     uint8_t getAddressType(String devId);
     String getOrigin(String devId);
     bool connected = false;

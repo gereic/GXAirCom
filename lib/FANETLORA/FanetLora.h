@@ -112,6 +112,7 @@ public:
     float speed; //km/h
     float climb; //m/s
     float heading; //deg
+    bool OnlineTracking;
     int rssi; //rssi
     int snr; //signal to noise ratio
   } trackingData;
@@ -245,7 +246,7 @@ private:
   weatherData lastWeatherData;
   bool newWData = false;
   void getTrackingInfo(String line,uint16_t length);
-  void getGroundTrackingInfo(String line,uint16_t length);  
+  void getGroundTrackingInfo(uint8_t *buffer,uint16_t length);  
   void getWeatherinfo(uint8_t *buffer,uint16_t length);  
   float getSpeedFromByte(uint8_t speed);
   void printAircraftType(aircraft_t type);

@@ -353,15 +353,18 @@ bool Baro::initMS5611(void){
 	ax_offset = preferences.getInt("axOffset", 0);
 	ay_offset = preferences.getInt("ayOffset", 0);
 	az_offset = preferences.getInt("azOffset", 0);
-	//ax_scale = preferences.getFloat("axScale", 0);
-	//ay_scale = preferences.getFloat("ayScale", 0);
-	//az_scale = preferences.getFloat("azScale", 0);
 	gx_offset = preferences.getInt("gxOffset", 0);
 	gy_offset = preferences.getInt("gyOffset", 0);
 	gz_offset = preferences.getInt("gzOffset", 0);
+  tValues[0] = preferences.getFloat("t[0]",20.0);
+  tValues[1] = preferences.getFloat("t[1]",0.0);
+  zValues[0] = preferences.getFloat("z[0]",0.0);
+  zValues[1] = preferences.getFloat("z[1]",0.0);
   preferences.end();
   // initialize device
   mpu.initialize();
+
+  log_i("tempcorrection: t0=%.2f z0=%.2f t1=%.2f z1=%.2f",tValues[0],zValues[0],tValues[1],zValues[1]);
 
 	log_i("Initializing DMP...");
 	devStatus = mpu.dmpInitialize();
@@ -550,7 +553,8 @@ bool Baro::mpuDrdy(void){
 
 }
 void Baro::scaleAccel(VectorInt16 *accel){
-  //y=mx+b; //linear function
+  //static uint32_t tLog = millis();
+  //y=mx+b; //linear function  
   float scale_x,scale_y,scale_z;
   float offset_x,offset_y,offset_z;
   scale_x = 1;
@@ -583,10 +587,16 @@ void Baro::scaleAccel(VectorInt16 *accel){
   offset_y = 2.275;
   offset_z = 581.843;
   */
-
-
+  float temp = getMpuTemp();
   accel->x = (int16_t)round(scale_x * (float)accel->x + offset_x);//(offset_x * scale_x));
   accel->y = (int16_t)round(scale_y * (float)accel->y + offset_y);//(offset_y * scale_y));
+  offset_z = interpolate.Linear(tValues,zValues,2,temp,false);
+  /*
+  if ((millis() - tLog) >= 1000){
+    tLog = millis();
+    log_i("t=%.2f,offset_z=%.2f",temp,offset_z);
+  }
+  */
   accel->z = (int16_t)round(scale_z * (float)accel->z + offset_z);//(offset_z * scale_z));
 }
 
@@ -644,34 +654,46 @@ float Baro::getGravityCompensatedAccel(void){
 
 }
 
-
+float Baro::getMpuTemp(void){
+  return (float(mpu.getTemperature()) / 340) + 36.53;
+}
 
 void Baro::runMS5611(uint32_t tAct){
   static uint32_t tOld;
   static float press = 0.0f;
   static float temp = 0.0f;
   static uint8_t baroCount = 0;
+  //static uint32_t tTemp = millis();
 
   static float acc = 0.0f;
   static uint8_t mpuCount = 0;
   ms5611.run();
   if (ms5611.convFinished()){
     press += ms5611.readPressure(true);
-    temp += ms5611.readTemperature(true);
+    //temp += ms5611.readTemperature(true);
     //log_i("rawTemp=%d,Temp=%.02f",ms5611.getRawTemperature(),ms5611.readTemperature(true));
     baroCount++;
   }
   bool bReady = mpuDrdy();
   if (bReady){
     acc += getGravityCompensatedAccel();
+    temp += getMpuTemp();
 		mpuCount++;
   }
+  /*
+  if ((tAct - tTemp) >= 1000){
+    int16_t t1 = mpu.getTemperature();
+    log_i("%d,%.2f",t1,(float(t1)/340.0)+36.53);
+    tTemp = tAct;
+  }
+  */
 
   if ((baroCount > 0) && (mpuCount > 0)){
     
     press = press / float(baroCount);
-    temp = temp / float(baroCount);
+    //temp = temp / float(baroCount);
     acc = acc / float(mpuCount);
+    temp = temp / float(mpuCount);
     logData.acc = acc;
     logData.baroCount = baroCount;
     logData.mpuCount = mpuCount;

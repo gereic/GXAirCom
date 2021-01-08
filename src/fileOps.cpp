@@ -80,6 +80,10 @@ void load_configFile(SettingsData* pSetting){
   pSetting->vario.gyro[0] = preferences.getInt("gxOffset", 0);
   pSetting->vario.gyro[1] = preferences.getInt("gyOffset", 0);
   pSetting->vario.gyro[2] = preferences.getInt("gzOffset", 0);
+  pSetting->vario.tValues[0] = preferences.getFloat("t[0]",20.0);
+  pSetting->vario.tValues[1] = preferences.getFloat("t[1]",0.0);
+  pSetting->vario.zValues[0] = preferences.getFloat("z[0]",0.0);
+  pSetting->vario.zValues[1] = preferences.getFloat("z[1]",0.0);
   preferences.end();
 
 }
@@ -164,6 +168,10 @@ void write_configFile(SettingsData* pSetting){
     preferences.putInt("gyOffset", pSetting->vario.gyro[1]);
     preferences.putInt("gzOffset", pSetting->vario.gyro[2]);
   }
+  preferences.putFloat("t[0]",pSetting->vario.tValues[0]);
+  preferences.putFloat("t[1]",pSetting->vario.tValues[1]);
+  preferences.putFloat("z[0]",pSetting->vario.zValues[0]);
+  preferences.putFloat("z[1]",pSetting->vario.zValues[1]);
   preferences.end();
 
 }

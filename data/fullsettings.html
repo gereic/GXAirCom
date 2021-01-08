@@ -236,6 +236,10 @@ function sendValues(){
   gxOffset : document.getElementById("gxOffset").value,
   gyOffset : document.getElementById("gyOffset").value,
   gzOffset : document.getElementById("gzOffset").value,
+  "t[0]" : parseFloat(document.getElementById("t[0]").value),
+  "t[1]" : parseFloat(document.getElementById("t[1]").value),
+  "z[0]" : parseFloat(document.getElementById("z[0]").value),
+  "z[1]" : parseFloat(document.getElementById("z[1]").value),
   save : 1
 	};
   doSend(JSON.stringify(obj));
@@ -682,6 +686,16 @@ window.addEventListener("load", init, false);
             <td>
               <button type="button" onClick="calibAcc()" class="button byel" style="line-height: 1.7rem;">calib</button>
             </td>
+          </tr>
+          <tr>
+            <th>acc-sensor Temp [°C]</th>
+            <td><input type="number" id="t[0]" step="0.1"></td>
+            <td><input type="number" id="t[1]" step="0.1"></td>
+          </tr>
+          <tr>
+            <th>acc-sensor Z-Offset</th>
+            <td><input type="number" id="z[0]" step="1"></td>
+            <td><input type="number" id="z[1]" step="1"></td>
           </tr>
           <tr>
             <th>gyro-sensor</th>

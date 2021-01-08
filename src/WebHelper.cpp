@@ -178,6 +178,10 @@ void onWebSocketEvent(uint8_t client_num,
           doc["gxOffset"] = setting.vario.gyro[0];
           doc["gyOffset"] = setting.vario.gyro[1];
           doc["gzOffset"] = setting.vario.gyro[2];
+          doc["t[0]"] = setting.vario.tValues[0];
+          doc["t[1]"] = setting.vario.tValues[1];
+          doc["z[0]"] = setting.vario.zValues[0];
+          doc["z[1]"] = setting.vario.zValues[1];
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
 
@@ -344,6 +348,10 @@ void onWebSocketEvent(uint8_t client_num,
         if (root.containsKey("gxOffset")) newSetting.vario.gyro[0] = doc["gxOffset"].as<int16_t>();
         if (root.containsKey("gyOffset")) newSetting.vario.gyro[1] = doc["gyOffset"].as<int16_t>();
         if (root.containsKey("gzOffset")) newSetting.vario.gyro[2] = doc["gzOffset"].as<int16_t>();
+        if (root.containsKey("t[0]")) newSetting.vario.tValues[0] = doc["t[0]"].as<float>();
+        if (root.containsKey("t[1]")) newSetting.vario.tValues[1] = doc["t[1]"].as<float>();
+        if (root.containsKey("z[0]")) newSetting.vario.zValues[0] = doc["z[0]"].as<float>();
+        if (root.containsKey("z[1]")) newSetting.vario.zValues[1] = doc["z[1]"].as<float>();
 
         //weather-underground upload
         if (root.containsKey("WUUlEnable")) newSetting.WUUpload.enable = doc["WUUlEnable"].as<bool>();

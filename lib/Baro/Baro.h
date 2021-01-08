@@ -23,6 +23,7 @@
 #include <Adafruit_BME280.h>
 #include <Preferences.h>
 #include "helper_3dmath.h"
+#include "InterpolationLib.h"
 
 //#define BARO_DEBUG
 #define BARO_DEBUG_IP "192.168.0.178"
@@ -92,6 +93,7 @@ private:
     float getGravityCompensatedAccel(void);
     void scaleAccel(VectorInt16 *accel);
     void meansensors(void);
+    float getMpuTemp(void);
     uint8_t sensorType;
     uint8_t sensorAdr;
     bool bNewValues;
@@ -117,6 +119,9 @@ private:
     int pinDRDYInt = 2;
     uint8_t fifoBuffer[64]; // FIFO storage buffer
     int mean_ax, mean_ay, mean_az, mean_gx, mean_gy, mean_gz = 0;    
+    Interpolation interpolate;
+    double tValues[2] = { 29.4, 15.5 };
+    double zValues[2] = {   0,  -90 };
 };
 
 
