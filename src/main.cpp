@@ -27,6 +27,7 @@
 #include "esp_bt_main.h"
 #include "driver/adc.h"
 
+//#define TEST
 
 #ifdef GSM_MODULE
 
@@ -2722,6 +2723,9 @@ void taskStandard(void *pvParameters){
   static uint32_t tOldPPS = millis();
   static uint32_t tLastPPS = millis();
   static uint32_t tDisplay = millis();
+  #ifdef TEST
+  static uint32_t tSend = millis();
+  #endif
   char * pSerialLine = NULL;
   String sSerial = "";
   String s = "";
@@ -2828,6 +2832,16 @@ void taskStandard(void *pvParameters){
   while(1){    
     // put your main code here, to run repeatedly:
     uint32_t tAct = millis();
+    #ifdef TEST
+    if (timeOver(tAct,tSend,1000)){
+      tSend = tSend;
+      sendData2Client("$GPGGA,161640.00,4804.36384,N,01444.09266,E,1,04,11.84,320.6,M,43.5,M,,*69\n");
+      sendData2Client("$GPRMC,161640.00,A,4804.36384,N,01444.09266,E,0.867,,090121,,,A*7A\n");
+      sendData2Client("#FNF 8,C3CC,1,0,1,B,F33344467E0A0A12397CB8\n");
+      sendData2Client("#FNF 8,C3CC,1,0,2,13,416E64726561732048696E74657265636B6572\n");
+    }
+    #endif
+
     status.tLoop = tAct - tLoop;
     tLoop = tAct;
     if (status.tMaxLoop < status.tLoop) status.tMaxLoop = status.tLoop;

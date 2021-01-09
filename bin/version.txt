@@ -168,3 +168,6 @@ fixed bug of psram
 fixed bug OGN-Tracking
 Add temp-compensation Z-Axis for MPU6050
 
+V3.1.1
+new Lib for bluetooth-Le
+
