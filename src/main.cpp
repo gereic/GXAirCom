@@ -94,7 +94,12 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &i2cOLED);
 
 #endif
 
+#ifdef BLUETOOTHSERIAL
+
 #include <BluetoothSerial.h>
+BluetoothSerial SerialBT;
+
+#endif
 
 #ifdef AIRMODULE
 #include <MicroNMEA.h>
@@ -166,7 +171,7 @@ volatile float BattCurrent = 0.0;
 #define AIRWHERE_UDP_PORT 5555
 String airwhere_web_ip = "37.128.187.9";
 
-BluetoothSerial SerialBT;
+
 
  unsigned long ble_low_heap_timer=0;
  String ble_data="";
@@ -358,9 +363,11 @@ void checkFlyingState(uint32_t tAct);
 void sendFlarmData(uint32_t tAct);
 void handleButton(uint32_t tAct);
 char* readSerial();
-char* readBtSerial();
 void checkReceivedLine(char *ch_str);
+#ifdef BLUETOOTHSERIAL
 void serialBtCallBack(esp_spp_cb_event_t event, esp_spp_cb_param_t *param);
+char* readBtSerial();
+#endif
 void printChipInfo(void);
 void setAllTime(tm &timeinfo);
 void checkExtPowerOff(uint32_t tAct);
@@ -428,6 +435,7 @@ bool printLocalTime()
   */
 }
 
+#ifdef BLUETOOTHSERIAL
 void serialBtCallBack(esp_spp_cb_event_t event, esp_spp_cb_param_t *param){
   if (event == ESP_SPP_SRV_OPEN_EVT){
     status.bluetoothStat = 2; //client connected
@@ -436,6 +444,7 @@ void serialBtCallBack(esp_spp_cb_event_t event, esp_spp_cb_param_t *param){
   }
   //log_i("Event=%d",event);
 }
+#endif
 
 void handleButton(uint32_t tAct){
   static uint32_t buttonTimer = millis();
@@ -936,6 +945,7 @@ void sendData2Client(String data){
   if ((setting.outputMode == OUTPUT_SERIAL) || (setting.bOutputSerial)){//output over serial-connection
     Serial.print(data); 
   }
+  #ifdef BLUETOOTHSERIAL
   if (setting.outputMode == OUTPUT_BLUETOOTH){//output over bluetooth serial
     if (status.bluetoothStat == 2){
       //if (SerialBT.hasClient()){
@@ -944,6 +954,7 @@ void sendData2Client(String data){
       //}    
     }
   }
+  #endif
   if (setting.outputMode == OUTPUT_BLE){ //output over ble-connection
     if (xHandleBluetooth){
       if ((ble_data.length() + data.length()) <512){
@@ -2087,14 +2098,16 @@ void taskBluetooth(void *pvParameters) {
 	   vTaskDelay(100);
 	 }
   }else if (setting.outputMode == OUTPUT_BLUETOOTH){
+  #ifdef BLUETOOTHSERIAL 
     //esp_bt_controller_config_t cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
     //esp_bt_controller_init(&cfg);
     esp_bt_controller_enable(ESP_BT_MODE_CLASSIC_BT);
-    esp_bt_controller_mem_release(ESP_BT_MODE_BLE);
+    esp_bt_controller_mem_release(ESP_BT_MODE_BLE);    
     log_i("starting bluetooth_serial %s",host_name.c_str());
     SerialBT.begin(host_name.c_str()); //Bluetooth device name
     SerialBT.register_callback(&serialBtCallBack);
     log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
+  #endif
     status.bluetoothStat = 1; //client disconnected
     while (1)
     {
@@ -2521,6 +2534,7 @@ void checkReceivedLine(char *ch_str){
   }*/
 }
 
+#ifdef BLUETOOTHSERIAL 
 char* readBtSerial(){
   static char lineBuffer[512];
   static uint16_t recBufferIndex = 0;
@@ -2546,6 +2560,7 @@ char* readBtSerial(){
   }
   return NULL;
 }
+#endif
 
 char* readSerial(){
   static char lineBuffer[512];
@@ -2947,12 +2962,14 @@ void taskStandard(void *pvParameters){
     if (pSerialLine != NULL){
       checkReceivedLine(pSerialLine);
     }
+    #ifdef BLUETOOTHSERIAL 
     if (setting.outputMode == OUTPUT_BLUETOOTH){
       pSerialLine = readBtSerial();
       if (pSerialLine != NULL){
         checkReceivedLine(pSerialLine);
       }
-    }    
+    }
+    #endif    
     if ((setting.fanetMode == FN_AIR_TRACKING) || (status.flying)){
       fanet.onGround = false; //online-tracking
     }else{
