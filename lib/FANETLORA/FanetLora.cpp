@@ -460,9 +460,14 @@ void FanetLora::handle_frame(Frame *frm){
       newName = true; 
       insertNameToNeighbour(devId,msg2);
   }else if (frm->type == 4){ 
-    lastWeatherData.devId = ((uint32_t)frm->src.manufacturer << 16) + (uint32_t)frm->src.id;
-    lastWeatherData.rssi = frm->rssi;
-    lastWeatherData.snr  = frm->snr;
+    weathercount++;
+    if (weathercount > MAXWEATHERDATAS){
+      weathercount = 0;
+    }
+    weatherDatas[weathercount].devId = ((uint32_t)frm->src.manufacturer << 16) + (uint32_t)frm->src.id;
+    weatherDatas[weathercount].rssi = frm->rssi;
+    weatherDatas[weathercount].snr  = frm->snr;
+    weatherDatas[weathercount].tLastMsg = millis();
     getWeatherInfo(payload,frm->payload_length);
   }else if (frm->type == 7){      
     //ground-tracking
@@ -699,8 +704,8 @@ void FanetLora::getWeatherInfo(String line,uint16_t length){
     int32_t loni = getByteFromHex(&arPayload[10])<<16 | getByteFromHex(&arPayload[8])<<8 | getByteFromHex(&arPayload[6]);
     if(loni & 0x00800000)
       loni |= 0xFF000000;
-    lastWeatherData.lat = (float)lati / 93206.0f;
-    lastWeatherData.lon = (float)loni / 46603.0f;
+    weatherDatas[weathercount].lat = (float)lati / 93206.0f;
+    weatherDatas[weathercount].lon = (float)loni / 46603.0f;
     //Serial.print("FANETlat=");Serial.println(actTrackingData.lat);
     //Serial.print("FANETlon=");Serial.println(actTrackingData.lon);
 }

@@ -36,6 +36,8 @@
 
 
 #define MAXNEIGHBOURS 64
+#define MAXWEATHERDATAS 10
+
 #define NEIGHBOURSLIFETIME 240000ul //4min
 #define SENDNAMEINTERVAL 240000ul //every 4min
 //#define NEIGHBOURSLIFETIME 60000 //4min
@@ -206,6 +208,8 @@ public:
   uint16_t txCount;
   uint16_t rxCount;
   neighbour neighbours[MAXNEIGHBOURS];
+  weatherData weatherDatas[MAXWEATHERDATAS];
+  uint16_t weathercount;
   trackingData _myData;
   bool autobroadcast = false; //autobroadcast
   bool doOnlineTracking = true; //online-tracking
