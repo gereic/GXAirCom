@@ -153,6 +153,7 @@ public:
     int rssi; //rssi
   } neighbour;
 
+
   typedef struct {
     float lat; //latitude
     float lon; //longitude
@@ -168,7 +169,9 @@ public:
     float Baro;
     bool bStateOfCharge;
     uint8_t Charge; //+1byte lower 4 bits: 0x00 = 0%, 0x01 = 6.666%, .. 0x0F = 100%
-  } weatherData;
+    int rssi; //rssi
+    uint32_t tLastMsg; //timestamp of neighbour (if 0 --> empty slot)
+ } weatherData;
 
   FanetLora(); //constructor
   bool begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset, int dio0,long frequency,uint8_t outputPower);
