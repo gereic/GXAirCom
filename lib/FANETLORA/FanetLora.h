@@ -164,13 +164,15 @@ public:
     float wSpeed; //km/h
     float wGust; //km/h
     bool bHumidity;
-    float Humidity;
+    float Humidity;    
     bool bBaro;
     float Baro;
     bool bStateOfCharge;
     uint8_t Charge; //+1byte lower 4 bits: 0x00 = 0%, 0x01 = 6.666%, .. 0x0F = 100%
     int rssi; //rssi
     uint32_t tLastMsg; //timestamp of neighbour (if 0 --> empty slot)
+    int snr; //signal to noise ratio
+    uint32_t devId; //devId
  } weatherData;
 
   FanetLora(); //constructor
@@ -244,6 +246,7 @@ private:
   weatherData lastWeatherData;
   bool newWData = false;
   void getTrackingInfo(String line,uint16_t length);
+  void getWeatherInfo(String line,uint16_t length);
   void getGroundTrackingInfo(String line,uint16_t length);  
   void printAircraftType(aircraft_t type);
   String CreateFNFMSG(Frame *frm);
