@@ -575,6 +575,9 @@ void Web_setup(void){
   server.on("/msgtype5.html", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, request->url(), "text/html",false,processor);
   });
+  server.on("/weather.html", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(SPIFFS, request->url(), "text/html",false,processor);
+  });
   server.on("/msgtype7.html", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, request->url(), "text/html",false,processor);
   });
@@ -793,10 +796,7 @@ void Web_loop(void){
     }    
     if (mStatus.weather.Pressure != status.weather.Pressure){
       bSend = true;
-      mStatus.weather.Pressure = status.weather.Pressure;
-      doc["wsPress"] = String(status.weather.Pressure,2);
-    }    
-    if (mStatus.weather.WindDir != status.weather.WindDir){
+      mStatus.weather.Pressure = status.weather.Pressure;weather
       bSend = true;
       mStatus.weather.WindDir = status.weather.WindDir;
       doc["wsWDir"] = String(status.weather.WindDir,1);
