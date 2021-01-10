@@ -459,6 +459,7 @@ void FanetLora::handle_frame(Frame *frm){
       lastNameData.name = msg2;
       newName = true;
       insertNameToNeighbour(devId,msg2);
+  }else if (frm->type == 4){ 
   }else if (frm->type == 7){      
     //ground-tracking
     actTrackingData.devId = ((uint32_t)frm->src.manufacturer << 16) + (uint32_t)frm->src.id;
