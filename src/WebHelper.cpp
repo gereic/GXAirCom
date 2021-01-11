@@ -463,9 +463,9 @@ String processor(const String& var){
       }
     }
     }else if (var == "WEATHERLIST"){
-    sRet = "";
+    sRet = "WEATHERLIST";
     for (int i = 0; i < MAXWEATHERDATAS; i++){
-      if (fanet.neighbours[i].devId){
+      if (fanet.weatherDatas[i].devId){
         sRet += "<tr><th><a href=\"https://www.google.com/maps/search/?api=1&query=" + String(fanet.weatherDatas[i].lat,6) + "," + String(fanet.weatherDatas[i].lon,6)+ "\"  target=\"_blank\">" +  " [" + fanet.getDevId(fanet.weatherDatas[i].devId) + "]</a></th>" + 
         "<td>lat: " + String(fanet.weatherDatas[i].lat,6) + "</td>" + 
         "<td>lon: " + String(fanet.weatherDatas[i].lon,6) + "</td>" + 
