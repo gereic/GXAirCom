@@ -98,7 +98,7 @@ BUZZER 17
 ******** BATTERY-Voltate *******
                        ____           ____
 BATT_VOLT_PIN 34   ---|____|----|----|____|-----
-                  GND  100K   GPIO34   27K     3.3V
+                  GND  100K   GPIO34   27K     4.2V
 
 ******** Temperature-sensor DS18B20 for Ground-station *********
 TEMP_PIN 22

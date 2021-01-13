@@ -42,6 +42,8 @@ public:
   void sendWeatherData(float lat,float lon,String devId,float wDir,float wSpeed,float wGust,float temp,float rain1h, float rain24h,float hum,float press,float snr);
   void setClient(Client *_client);
   void setMutex(SemaphoreHandle_t *_xMutex);
+  void setBattVoltage(float battVoltage);
+  void setStatusData(float pressure, float temp,float hum, float battVoltage);
 
 private:
     void checkClientConnected(uint32_t tAct);
@@ -68,6 +70,10 @@ private:
     float _alt = NAN;
     float _speed = NAN;
     float _heading = NAN;
+    float _BattVoltage = NAN;
+    float _Pressure = NAN;
+    float _Temp = NAN;
+    float _Hum = NAN;
     uint32_t tStatus;
     uint32_t tRecBaecon;
     uint8_t initOk;

@@ -71,18 +71,15 @@ class MyCallbacks : public NimBLECharacteristicCallbacks {
 			//memcpy(cstr, rxValue.data(), valueLength);
 			//cstr[valueLength] = 0; //zero-termination !!
 			//log_i("received:%s,%d",rxValue.c_str(),valueLength);
-			checkReceivedLine((char *)rxValue.c_str());
-			/*
+			//checkReceivedLine((char *)rxValue.c_str());						
 			sLine += rxValue.c_str();
 			if (sLine.endsWith("\n")){
 				checkReceivedLine((char *)sLine.c_str());
 				sLine = "";
 			}
-			if (sLine.length() > 256){
+			if (sLine.length() > 512){
 				sLine = "";
 			}
-			*/
-			
 		}
 	}
 

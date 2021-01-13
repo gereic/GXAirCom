@@ -172,3 +172,9 @@ V3.1.1
 new Lib for bluetooth-Le
 removed bluetooth-serial saving space
 
+V3.2.1
+added FANET-Pin (for further control of device over FANET-MSG's)
+added more data for OGN (batt-voltage, pressure, temp, humidity)
+added "#FNG (0..F)\n" message for setting Ground-tracking type
+
+

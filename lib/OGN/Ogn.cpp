@@ -295,13 +295,39 @@ void Ogn::sendTrackingData(float lat,float lon,float alt,float speed,float headi
     //log_i("%s",buff);
 }
 
+void Ogn::setStatusData(float pressure, float temp,float hum, float battVoltage){
+    _Pressure = pressure;
+    _Temp = temp;
+    _Hum = hum;
+    _BattVoltage = battVoltage;
+}
+
 void Ogn::sendReceiverStatus(String sTime){
     //String sStatus = _user + ">APRS,TCPIP*,qAC," + _servername + ":>" + sTime + "h h00 " + _version + "\r\n";
-    String sStatus = _user + ">OGNFNT,TCPIP*,qAC," + _servername + ":>" + sTime + "h " + _version + "\r\n";
+    String sStatus = _user + ">OGNFNT,TCPIP*,qAC," + _servername + ":>" + sTime + "h " + _version + " ";
+    if (!isnan(_alt)){
+        sStatus += String(_alt,0) + "m "; //send altitude
+    }
+    if (!isnan(_Pressure)){
+        sStatus += String(_Pressure,1) + "hPa "; //send pressure
+    }
+    if (!isnan(_Temp)){
+        if (_Temp >= 0){
+            sStatus += "+";
+        }
+        sStatus += String(_Temp,1) + "C "; //send Temp
+    }
+    if (!isnan(_Hum)){
+        sStatus += String(_Hum,0) + "% "; //send humidity
+    }
+    if (!isnan(_BattVoltage)){
+        sStatus += String(_BattVoltage,2) + "V "; //send batt-voltage
+    }
+    sStatus += "\r\n";
     xSemaphoreTake( *xMutex, portMAX_DELAY );
     client->print(sStatus);
     xSemaphoreGive( *xMutex );
-    //log_i("%s",sStatus.c_str());
+    log_i("%s",sStatus.c_str());
 }
 
 void Ogn::sendReceiverBeacon(String sTime){

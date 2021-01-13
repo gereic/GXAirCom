@@ -28,7 +28,7 @@ bool WeatherUnderground::getData(String ID,String KEY,wData *data){ //get Data f
           ID.c_str(),
           KEY.c_str()
           );
-  log_i("%s len=%d",msg,strlen(msg));
+  //log_i("%s len=%d",msg,strlen(msg));
   String payload = ""; //http.getString();
   if (client == NULL){    
     client = new WiFiClient();
@@ -59,12 +59,12 @@ bool WeatherUnderground::getData(String ID,String KEY,wData *data){ //get Data f
   if (!bRet){
     return bRet;
   }
-  log_i("%s",payload.c_str());
+  //log_i("%s",payload.c_str());
   DynamicJsonDocument doc(2048);
   deserializeJson(doc, payload);
   String stationID = doc["observations"][0]["stationID"].as<String>();
   if (stationID != ID){
-    log_i("stationid not equal %s != %s",ID.c_str(),stationID.c_str());
+    log_e("stationid not equal %s != %s",ID.c_str(),stationID.c_str());
     return false;
   }
   //if (doc["observations"][0]["stationID"]) log_i("%s",doc["observations"][0]["stationID"].as<String>().c_str());
@@ -153,7 +153,7 @@ bool  WeatherUnderground::sendData(String ID,String KEY,wData *data){ //send Dat
           );
   strcat(msg,msg2);
   //log_i("T1=%f h=%f p1=%f dp=%f",temp,humidity,baro,dewpoint);
-  log_i("%s len=%d",msg,strlen(msg));
+  //log_i("%s len=%d",msg,strlen(msg));
   if (client == NULL){    
     client = new WiFiClient();
   }

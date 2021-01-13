@@ -32,16 +32,16 @@ class Weather {
 public:
     typedef struct {
         bool bTemp; //temp exists
-        float temp; //temp [°C]
+        float temp = NAN; //temp [°C]
         bool bHumidity; //humidity exists
-        float Humidity; // [%rH]
+        float Humidity = NAN; // [%rH]
         bool bPressure; // pressure exists
-        float Pressure; // [hPa]
+        float Pressure = NAN; // [hPa]
         bool bWindDir; //winddir exists
-        float WindDir; //[Deg]
+        float WindDir = NAN; //[Deg]
         bool bWindSpeed; //windspeed exists
-        float WindSpeed; //[km/h]
-        float WindGust; //[km/h]
+        float WindSpeed = NAN; //[km/h]
+        float WindGust = NAN; //[km/h]
         bool bRain; //rain-sensor exists
         float rain1h; // rain this hour [l/h]
         float rain1d; // rain this day [l/h]

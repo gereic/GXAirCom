@@ -94,6 +94,23 @@ void FanetLora::fanet_sendMsg(char *ch_str){
 }
 */
 
+// set groundtrackingtype 
+// #FNG groundType ( 0 . . F i n hex )\r\n
+void FanetLora::fanet_cmd_setGroundTrackingType(char *ch_str){
+	/* remove \r\n and any spaces */
+	char *ptr = strchr(ch_str, '\r');
+	if(ptr == nullptr)
+		ptr = strchr(ch_str, '\n');
+	if(ptr != nullptr)
+		*ptr = '\0';
+	while(*ch_str == ' ')
+		ch_str++;
+
+	char *p = (char *)ch_str;
+	state = (status_t)strtol(p, NULL, 16);
+  add2ActMsg("#FNR OK");
+}
+
 /* Transmit: #FNT type,dest_manufacturer,dest_id,forward,ack_required,length,length*2hex[,signature] */
 //note: all in HEX
 void FanetLora::fanet_cmd_transmit(char *ch_str)
@@ -529,14 +546,17 @@ bool FanetLora::getWeatherData(weatherData *weather){
 
 void FanetLora::handle_frame(Frame *frm){
   //log_i("Handle Frame %d",frm->rssi);
+  /*
   String s = "";
   uint8_t* c = frm->payload;
   for (int i = 0; i < frm->payload_length;i++){
     s += getHexFromByte(*c) + ":";
     c++;
   }
-  //log_i("payload=%s",s.c_str());
+  log_i("payload=%s",s.c_str());
+  */
   //frm->payload
+
 
 	String msg = CreateFNFMSG(frm);
   String payload = ""; 
@@ -563,6 +583,9 @@ void FanetLora::handle_frame(Frame *frm){
       lastNameData.name = msg2;
       newName = true;
       insertNameToNeighbour(devId,msg2);
+  }else if (frm->type == 3){
+    //msg-data --> check if msg is explicit for us.
+    //if (frm->dest)
   }else if (frm->type == 4){   
     //weather-data   
       lastWeatherData.devId = ((uint32_t)frm->src.manufacturer << 16) + (uint32_t)frm->src.id;

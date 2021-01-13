@@ -172,6 +172,7 @@ function sendValues(){
   type : document.getElementById("type").value,
   mode : document.getElementById("mode").value,
   fntMode : document.getElementById("fntMode").value,
+  fntPin : document.getElementById("fntPin").value,
   PilotName : document.getElementById("PilotName").value,
   save : 1
   };
@@ -413,6 +414,10 @@ window.addEventListener("load", init, false);
               <option value="0">switch between ground-/air-tracking</option>
               <option value="1">always air-tracking</option>
             </select></td>
+          </tr>
+          <tr>
+            <th>fanet Pin for fanet-commands</th>
+            <td><input type="number" id="fntPin" min="0000" max="9999" step="1"></td>
           </tr>
         </tbody>      
       </table>

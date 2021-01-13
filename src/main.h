@@ -237,6 +237,7 @@ SCL 14
 
 #define FANET_CMD_START			"#FN"
 #define FANET_CMD_TRANSMIT	"#FNT"
+#define FANET_CMD_GROUND_TYPE	"#FNG"
 
 #define MODE_WIFI_DISABLED 0
 #define MODE_WIFI_STA 1
@@ -356,17 +357,18 @@ struct SettingsData{
   GsmSettings gsm; //settings for GSM
   bool bConfigGPS;
   uint8_t fanetMode; //fanet tracking-mode 0 ... switch between online-tracking and ground-tracking 1 ... always online-tracking
+  uint16_t fanetpin; //pin for fanet (4 signs)
 };
 
 struct weatherStatus{
-  float temp; //temp [°C]
-  float Humidity; // [%rH]
-  float Pressure; // [hPa]
-  float WindDir; //[Deg]
-  float WindSpeed; //[km/h]
-  float WindGust; //[km/h]
-  float rain1h; // rain this hour [l/h]
-  float rain1d; // rain this day [l/h]
+  float temp = NAN; //temp [°C]
+  float Humidity = NAN; // [%rH]
+  float Pressure = NAN; // [hPa]
+  float WindDir = NAN; //[Deg]
+  float WindSpeed = NAN; //[km/h]
+  float WindGust = NAN; //[km/h]
+  float rain1h = NAN; // rain this hour [l/h]
+  float rain1d = NAN; // rain this day [l/h]
 };
 
 struct statusData{
@@ -380,9 +382,9 @@ struct statusData{
   float GPS_alt;
   float GPS_speed;
   float GPS_course;
-  float pressure;
+  float pressure = NAN;
   float varioAlt;
-  float varioTemp;
+  float varioTemp = NAN;
   float varioHeading;
   uint8_t GPS_NumSat;
   float ClimbRate;

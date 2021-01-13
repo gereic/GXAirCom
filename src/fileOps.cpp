@@ -26,6 +26,7 @@ void load_configFile(SettingsData* pSetting){
   pSetting->outputMode = preferences.getUChar("OutputMode",OUTPUT_SERIAL); //output-mode
   pSetting->Mode = preferences.getUChar("Mode",0);
   pSetting->fanetMode = preferences.getUChar("fntMode",0);  
+  pSetting->fanetpin = preferences.getUInt("fntPin",1234);
   
   //gs settings
   pSetting->gs.lat = preferences.getFloat("GSLAT",0.0);
@@ -112,6 +113,7 @@ void write_configFile(SettingsData* pSetting){
   preferences.putUChar("OutputMode",pSetting->outputMode);
   preferences.putUChar("Mode",pSetting->Mode);
   preferences.putUChar("fntMode",pSetting->fanetMode);
+  preferences.putUInt("fntPin",pSetting->fanetpin);
 
   //GS Settings
   preferences.putFloat("GSLAT",pSetting->gs.lat);

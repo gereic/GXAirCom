@@ -135,6 +135,7 @@ void onWebSocketEvent(uint8_t client_num,
           doc["traccar_live"] = setting.traccarLiveTracking;
           doc["traccarsrv"]= setting.TraccarSrv;
           doc["fntMode"] = setting.fanetMode;
+          doc["fntPin"] = setting.fanetpin;
           doc["legacytx"] = setting.LegacyTxEnable;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
@@ -330,7 +331,8 @@ void onWebSocketEvent(uint8_t client_num,
         if (root.containsKey("traccar_live")) newSetting.traccarLiveTracking = doc["traccar_live"].as<uint8_t>();
         if (root.containsKey("traccarsrv")) newSetting.TraccarSrv = doc["traccarsrv"].as<String>();
         if (root.containsKey("legacytx")) newSetting.LegacyTxEnable = doc["legacytx"].as<uint8_t>();
-        if (root.containsKey("fntMode")) newSetting.fanetMode = doc["fntMode"].as<uint8_t>();        
+        if (root.containsKey("fntMode")) newSetting.fanetMode = doc["fntMode"].as<uint8_t>();
+        if (root.containsKey("fntPin")) newSetting.fanetpin = doc["fntPin"].as<uint16_t>();
         //weatherdata
         if (root.containsKey("sFWD")) newSetting.wd.sendFanet = doc["sFWD"].as<uint8_t>();
         if (root.containsKey("wdTempOffset")) newSetting.wd.tempOffset = doc["wdTempOffset"].as<float>();

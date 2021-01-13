@@ -1193,6 +1193,7 @@ void printSettings(){
   log_i("LORA_POWER=%d",setting.LoraPower);
   log_i("Mode=%d",setting.Mode);
   log_i("Fanet-Mode=%d",setting.fanetMode);
+  log_i("Fanet-Pin=%d",setting.fanetpin);
 
 
   log_i("Serial-output=%d",setting.bOutputSerial);
@@ -1666,9 +1667,11 @@ bool initModem(){
     digitalWrite(PinGsmRst,LOW);
     delay(500); //wait200ms
     digitalWrite(PinGsmRst,HIGH);
-    delay(3000); //wait until modem is ok now
+    delay(6000); //wait until modem is ok now
   }  
-  log_i("restarting modem...");
+  log_i("test modem-connection");
+  if (!modem.testAT()) return false;
+  log_i("restarting modem...");  
   if (!modem.restart()) return false;
   #ifdef TINY_GSM_MODEM_SIM7000
     modem.disableGPS();
@@ -1903,28 +1906,32 @@ void taskWeather(void *pvParameters){
           }
         #endif
         bDataOk = wu.getData(setting.WUUpload.ID,setting.WUUpload.KEY,&wuData);
-        status.weather.temp = wuData.temp;
-        status.weather.Humidity = wuData.humidity;
-        status.weather.Pressure = wuData.pressure;
-        status.weather.WindDir = wuData.winddir;
-        status.weather.WindSpeed = wuData.windspeed;
-        status.weather.WindGust = wuData.windgust;
-        status.weather.rain1h = wuData.rain1h;
-        status.weather.rain1d = wuData.raindaily;
-        testWeatherData.lat = wuData.lat;
-        testWeatherData.lon = wuData.lon;
-        testWeatherData.bWind = true;
-        testWeatherData.wHeading = wuData.winddir;
-        testWeatherData.wSpeed = wuData.windspeed;
-        testWeatherData.wGust = wuData.windgust;      
-        testWeatherData.bTemp = true;
-        testWeatherData.bHumidity = true;
-        testWeatherData.bBaro = true;
-        testWeatherData.temp = wuData.temp;
-        testWeatherData.Humidity = wuData.humidity;
-        testWeatherData.Baro = wuData.pressure;      
-        testWeatherData.bStateOfCharge = true;  
-        log_i("winddir=%.1f speed=%.1f gust=%.1f temp=%.1f hum=%.1f press=%.1f",testWeatherData.wHeading,testWeatherData.wSpeed,testWeatherData.wGust,testWeatherData.temp,testWeatherData.Humidity,testWeatherData.Baro);
+        if (bDataOk){
+          status.weather.temp = wuData.temp;
+          status.weather.Humidity = wuData.humidity;
+          status.weather.Pressure = wuData.pressure;
+          status.weather.WindDir = wuData.winddir;
+          status.weather.WindSpeed = wuData.windspeed;
+          status.weather.WindGust = wuData.windgust;
+          status.weather.rain1h = wuData.rain1h;
+          status.weather.rain1d = wuData.raindaily;
+          testWeatherData.lat = wuData.lat;
+          testWeatherData.lon = wuData.lon;
+          testWeatherData.bWind = true;
+          testWeatherData.wHeading = wuData.winddir;
+          testWeatherData.wSpeed = wuData.windspeed;
+          testWeatherData.wGust = wuData.windgust;      
+          testWeatherData.bTemp = true;
+          testWeatherData.bHumidity = true;
+          testWeatherData.bBaro = true;
+          testWeatherData.temp = wuData.temp;
+          testWeatherData.Humidity = wuData.humidity;
+          testWeatherData.Baro = wuData.pressure;      
+          testWeatherData.bStateOfCharge = true;  
+          log_i("winddir=%.1f speed=%.1f gust=%.1f temp=%.1f hum=%.1f press=%.1f",testWeatherData.wHeading,testWeatherData.wSpeed,testWeatherData.wGust,testWeatherData.temp,testWeatherData.Humidity,testWeatherData.Baro);          
+        }else{
+          log_e("no Data from WU");
+        }
       }
       if (timeOver(tAct,tSendData,WEATHER_UPDATE_RATE)){
         tSendData = tAct;
@@ -2512,7 +2519,10 @@ void checkReceivedLine(char *ch_str){
   //log_i("new serial msg=%s",ch_str);
   if(!strncmp(ch_str, FANET_CMD_TRANSMIT, 4)){
     fanet.fanet_cmd_transmit(ch_str+4);
-  }/*
+  }else if(!strncmp(ch_str, FANET_CMD_GROUND_TYPE, 4)){
+    fanet.fanet_cmd_setGroundTrackingType(ch_str+4);
+  }
+  /*
   }else if(!strncmp(ch_str, "@", 1)){
     char *ptr = strchr(ch_str, '\r');
     if(ptr == nullptr)
@@ -2869,7 +2879,16 @@ void taskStandard(void *pvParameters){
     #endif
     handleButton(tAct);
 
-    if (setting.OGNLiveTracking) ogn.run(status.bInternetConnected);
+    if (setting.OGNLiveTracking){
+      if (status.vario.bHasVario){
+        ogn.setStatusData(status.pressure ,status.varioTemp,NAN,status.vBatt);
+      }else if ((status.vario.bHasBME) || (status.bWUBroadCast)){
+        ogn.setStatusData(status.weather.Pressure ,status.weather.temp,status.weather.Humidity,status.vBatt);
+      }else{
+        ogn.setStatusData(NAN ,NAN, NAN, status.vBatt);
+      }
+      ogn.run(status.bInternetConnected);
+    } 
     checkFlyingState(tAct);
     printBattVoltage(tAct);
     #ifdef AIRMODULE
@@ -2951,7 +2970,7 @@ void taskStandard(void *pvParameters){
       sendTestData = 0;
     }
     if (sendWeatherData){ //we have to send weatherdata
-      log_i("sending weatherdata");
+      //log_i("sending weatherdata");
       fanet.writeMsgType4(&testWeatherData);
       if (setting.OGNLiveTracking){
         ogn.sendWeatherData(status.GPS_Lat,status.GPS_Lon,fanet.getMyDevId(),status.weather.WindDir,status.weather.WindSpeed,status.weather.WindGust,status.weather.temp,status.weather.rain1h,status.weather.rain1d,status.weather.Humidity,status.weather.Pressure,0);
