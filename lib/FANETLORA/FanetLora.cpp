@@ -693,21 +693,72 @@ void FanetLora::getTrackingInfo(String line,uint16_t length){
 }
 
 void FanetLora::getWeatherInfo(String line,uint16_t length){
-    char arPayload[23];
+    char arPayload[40];
     
     line.toCharArray(arPayload,sizeof(arPayload));
-
+    int16_t  Type4Header         = getByteFromHex(&arPayload[0]);
+    int16_t  Type4HeaderInternetGateway        = ( Type4Header  >> 7 ) & ( 1 <<  1 ) - 1;  
+    weatherDatas[weathercount].bTemp           = ( Type4Header  >> 6 ) & ( 1 <<  1 ) - 1;
+    weatherDatas[weathercount].bWind           = ( Type4Header  >> 5 ) & ( 1 <<  1 ) - 1;
+    weatherDatas[weathercount].bHumidity       = ( Type4Header  >> 4 ) & ( 1 <<  1 ) - 1;
+    weatherDatas[weathercount].bBaro           = ( Type4Header  >> 3 ) & ( 1 <<  1 ) - 1;
+    int16_t  Type4HeaderSupport                = ( Type4Header  >> 2 ) & ( 1 <<  1 ) - 1;
+    weatherDatas[weathercount].bStateOfCharge  = ( Type4Header  >> 1 ) & ( 1 <<  1 ) - 1;
+    int16_t  Type4HeaderExtendedHeader         = ( Type4Header  >> 0 ) & ( 1 <<  1 ) - 1;
+    int16_t  startmsg = 14;
     // integer values /
-    int32_t lati = getByteFromHex(&arPayload[4])<<16 | getByteFromHex(&arPayload[2])<<8 | getByteFromHex(&arPayload[0]);
+    int32_t lati = getByteFromHex(&arPayload[6])<<16 | getByteFromHex(&arPayload[4])<<8 | getByteFromHex(&arPayload[2]);
     if(lati & 0x00800000)
       lati |= 0xFF000000;
-    int32_t loni = getByteFromHex(&arPayload[10])<<16 | getByteFromHex(&arPayload[8])<<8 | getByteFromHex(&arPayload[6]);
+    int32_t loni = getByteFromHex(&arPayload[12])<<16 | getByteFromHex(&arPayload[10])<<8 | getByteFromHex(&arPayload[8]);
     if(loni & 0x00800000)
       loni |= 0xFF000000;
     weatherDatas[weathercount].lat = (float)lati / 93206.0f;
     weatherDatas[weathercount].lon = (float)loni / 46603.0f;
     //Serial.print("FANETlat=");Serial.println(actTrackingData.lat);
     //Serial.print("FANETlon=");Serial.println(actTrackingData.lon);
+    if (weatherDatas[weathercount].bTemp        == 1){
+      int16_t temp_int8 = getByteFromHex(&arPayload[startmsg]);
+      startmsg += 2;
+    //int16_t Type4Temperature2comp = ( Type4TemperatureByte >> 7 ) & ( 1 << 1 ) - 1;
+    weatherDatas[weathercount].temp =  ((float) temp_int8) / 2;
+    }
+    if (weatherDatas[weathercount].bWind        == 1){
+      uint8_t wind_heading_uint8  = getByteFromHex(&arPayload[startmsg]);
+     weatherDatas[weathercount].wHeading =  ((float) wind_heading_uint8)*360/256;
+     startmsg += 2;
+     if (((getByteFromHex(&arPayload[startmsg])  >> 7 ) & ( 1 << 1 ) - 1  ) == 0 ) { 
+           weatherDatas[weathercount].wSpeed   = ((float) getByteFromHex(&arPayload[startmsg]))/5;
+     } else {
+            weatherDatas[weathercount].wSpeed   = getByteFromHex(&arPayload[startmsg]);
+     }
+      startmsg += 2;
+     if (((getByteFromHex(&arPayload[startmsg])  >> 7 ) & ( 1 << 1 ) - 1  ) == 0 ) { 
+     weatherDatas[weathercount].wGust   = getByteFromHex(&arPayload[startmsg])/5;
+     } else {
+       weatherDatas[weathercount].wGust   = getByteFromHex(&arPayload[startmsg]);
+     }
+     startmsg += 2;
+   }
+   if (weatherDatas[weathercount].bHumidity   == 1) {
+      uint8_t Humidity_uint8;
+      Humidity_uint8     = getByteFromHex(&arPayload[startmsg]);
+      weatherDatas[weathercount].Humidity         = ((float) Humidity_uint8) *4/10;
+      startmsg += 2;
+    }
+    if (weatherDatas[weathercount].bBaro   == 1) {
+      uint16_t Barometric_uint16;
+      Barometric_uint16  = getByteFromHex(&arPayload[startmsg]) <<8 | getByteFromHex(&arPayload[startmsg]);
+      weatherDatas[weathercount].Baro         = ((float) Barometric_uint16) *10+430;
+     startmsg += 4;
+    }
+      if (weatherDatas[weathercount].bStateOfCharge  == 1) {
+      uint8_t StateCharge_uint8;
+      StateCharge_uint8     = getByteFromHex(&arPayload[startmsg]);
+      weatherDatas[weathercount].Charge = ((float) StateCharge_uint8) /256*100;
+      startmsg += 2;
+    }
+
 }
 void FanetLora::coord2payload_absolut(float lat, float lon, uint8_t *buf)
 {
@@ -797,7 +848,7 @@ int FanetLora::serialize_GroundTracking(trackingData *Data,uint8_t*& buffer){
 }
 
 int FanetLora::serialize_tracking(trackingData *Data,uint8_t*& buffer){
-  int msgSize = sizeof(fanet_packet_t1);
+ int msgSize = sizeof(fanet_packet_t1);
   buffer = new uint8_t[msgSize];
   coord2payload_absolut(Data->lat,Data->lon, &buffer[0]);
 

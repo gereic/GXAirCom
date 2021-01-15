@@ -463,21 +463,52 @@ String processor(const String& var){
       }
     }
     }else if (var == "WEATHERLIST"){
-    sRet = "WEATHERLIST";
+    sRet =  "<tr><th>ID</th><td>lat</td> <td>lon</td><td>temp</td> <td>wHeading</td> <td>wSpeed</td> <td>wGust</td> <td>Humidity</td> <td>Baro</td><td>Charge</td> <td>rssi</td><td>snr</td> <td>last seen</td></th>\r\n";    
     for (int i = 0; i < MAXWEATHERDATAS; i++){
       if (fanet.weatherDatas[i].devId){
-        sRet += "<tr><th><a href=\"https://www.google.com/maps/search/?api=1&query=" + String(fanet.weatherDatas[i].lat,6) + "," + String(fanet.weatherDatas[i].lon,6)+ "\"  target=\"_blank\">" +  " [" + fanet.getDevId(fanet.weatherDatas[i].devId) + "]</a></th>" + 
-        "<td>lat: " + String(fanet.weatherDatas[i].lat,6) + "</td>" + 
-        "<td>lon: " + String(fanet.weatherDatas[i].lon,6) + "</td>" + 
-        "<td>temp: " + String(fanet.weatherDatas[i].temp,0) + "m</td>" +
-        "<td>wHeading: " + String(fanet.weatherDatas[i].wHeading,0) + "km/h</td>" +
-        "<td>wSpeed: " + String(fanet.weatherDatas[i].wSpeed,0) + "m/s</td>" +
-        "<td>Humidity: " + String(fanet.weatherDatas[i].Humidity,0) + "m/s</td>" +
-        "<td>Baro: " + String(fanet.weatherDatas[i].Baro,0) + "m/s</td>" +
-        "<td>Charge: " + String(fanet.weatherDatas[i].Charge,0) + "Â°</td>" +
-        "<td>rssi: " + String(fanet.weatherDatas[i].rssi) + "dB</td>" +
-        "<td>snr: " + String(fanet.weatherDatas[i].snr) + "dB</td>" +
-        "<td>last seen: " + String((millis() - fanet.weatherDatas[i].tLastMsg) / 1000) + "seconds</td>" +
+        sRet += "<tr><th><a href=\"https://www.google.com/maps/search/?api=1&query=" + String(fanet.weatherDatas[i].lat,6) + "," + String(fanet.weatherDatas[i].lon,6)+ "\"  target=\"_blank\">" +  " [" + fanet.getDevId(fanet.weatherDatas[i].devId) + "]</a></th>" +
+        "<td>" + String(fanet.weatherDatas[i].lat,6) + "</td>" + 
+        "<td>" + String(fanet.weatherDatas[i].lon,6) + "</td>" ;
+        if (fanet.weatherDatas[i].bTemp == 1 ) {
+          sRet +=  "<td>" + String(fanet.weatherDatas[i].temp,0) + "°C</td>" ;
+        }
+        else
+        {
+          sRet +=  "<td></td>";
+        }
+        if (fanet.weatherDatas[i].bWind == 1 ) {
+          sRet += "<td>" + String(fanet.weatherDatas[i].wHeading,0) + "degree</td>" +
+        "<td>" + String(fanet.weatherDatas[i].wSpeed,0) + "km/h</td>" +
+        "<td>" + String(fanet.weatherDatas[i].wGust,0) + "km/h</td>" ;
+        }
+        else
+        {
+          sRet +=  "<td></td><td></td><td></td>";
+        }
+       if (fanet.weatherDatas[i].bHumidity == 1 ) {
+          sRet +=  "<td>" + String(fanet.weatherDatas[i].Humidity,0) + "</td>" ;
+        }
+        else
+        {
+          sRet +=  "<td></td>";
+        }
+       if (fanet.weatherDatas[i].bBaro == 1 ) {
+          sRet +=  "<td>" + String(fanet.weatherDatas[i].Baro,0) + "</td>" ;
+        }
+        else
+        {
+          sRet +=  "<td></td>";
+        }
+         if (fanet.weatherDatas[i].bStateOfCharge == 1 ) {
+          sRet +=  "<td>" + String(fanet.weatherDatas[i].Charge,0) + "</td>" ;
+        }
+        else
+        {
+          sRet +=  "<td></td>";
+        }
+        sRet +=  "<td>" + String(fanet.weatherDatas[i].rssi) + "dB</td>" +
+        "<td>" + String(fanet.weatherDatas[i].snr) + "</td>" +
+        "<td>" + String((millis() - fanet.weatherDatas[i].tLastMsg) / 1000) + "seconds</td>" +
         "</th>" +
         "\r\n";
       }
