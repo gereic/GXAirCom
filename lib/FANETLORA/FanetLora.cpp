@@ -699,21 +699,21 @@ void FanetLora::getWeatherInfo(String line,uint16_t length){
     Serial.print("arPayload=");
     Serial.println(arPayload);
     int16_t  Type4Header         = getByteFromHex(&arPayload[0]);
-    int16_t  Type4HeaderInternetGateway        = ( Type4Header  >> 7 ) & ( 1 <<  1 ) - 1;  
+    int16_t  Type4HeaderInternetGateway        = ( Type4Header  >> 7 ) & 1U;  
   
-    weatherDatas[weathercount].bTemp           = ( Type4Header  >> 6 ) & ( 1 <<  1 ) - 1;
+    weatherDatas[weathercount].bTemp           = ( Type4Header  >> 6 ) & 1U;
       
-    weatherDatas[weathercount].bWind           = ( Type4Header  >> 5 ) & ( 1 <<  1 ) - 1;
+    weatherDatas[weathercount].bWind           = ( Type4Header  >> 5 ) & 1U;
        
-    weatherDatas[weathercount].bHumidity       = ( Type4Header  >> 4 ) & ( 1 <<  1 ) - 1;
+    weatherDatas[weathercount].bHumidity       = ( Type4Header  >> 4 ) & 1U;
          
-    weatherDatas[weathercount].bBaro           = ( Type4Header  >> 3 ) & ( 1 <<  1 ) - 1;
+    weatherDatas[weathercount].bBaro           = ( Type4Header  >> 3 ) & 1U;
          
-    int16_t  Type4HeaderSupport                = ( Type4Header  >> 2 ) & ( 1 <<  1 ) - 1;
+    int16_t  Type4HeaderSupport                = ( Type4Header  >> 2 ) & 1U;
           
-    weatherDatas[weathercount].bStateOfCharge  = ( Type4Header  >> 1 ) & ( 1 <<  1 ) - 1;
+    weatherDatas[weathercount].bStateOfCharge  = ( Type4Header  >> 1 ) & 1U;
           
-    int16_t  Type4HeaderExtendedHeader         = ( Type4Header  >> 0 ) & ( 1 <<  1 ) - 1;
+    int16_t  Type4HeaderExtendedHeader         = ( Type4Header  >> 0 ) & 1U;
           
     int16_t  startmsg = 14;
     // integer values /
@@ -737,13 +737,13 @@ void FanetLora::getWeatherInfo(String line,uint16_t length){
       uint8_t wind_heading_uint8  = getByteFromHex(&arPayload[startmsg]);
      weatherDatas[weathercount].wHeading =  ((float) wind_heading_uint8)*360/256;
      startmsg += 2;
-     if (((getByteFromHex(&arPayload[startmsg])  >> 7 ) & ( 1 << 1 ) - 1  ) == 0 ) { 
+     if (((getByteFromHex(&arPayload[startmsg])  >> 7 ) & 1U) == 0 ) { 
            weatherDatas[weathercount].wSpeed   = ((float) getByteFromHex(&arPayload[startmsg]))/5;
      } else {
             weatherDatas[weathercount].wSpeed   = getByteFromHex(&arPayload[startmsg]);
      }
       startmsg += 2;
-     if (((getByteFromHex(&arPayload[startmsg])  >> 7 ) & ( 1 << 1 ) - 1  ) == 0 ) { 
+     if (((getByteFromHex(&arPayload[startmsg])  >> 7 ) & 1U  ) == 0 ) { 
      weatherDatas[weathercount].wGust   = getByteFromHex(&arPayload[startmsg])/5;
      } else {
        weatherDatas[weathercount].wGust   = getByteFromHex(&arPayload[startmsg]);
