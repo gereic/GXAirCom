@@ -500,7 +500,7 @@ String processor(const String& var){
           sRet +=  "<td></td>";
         }
          if (fanet.weatherDatas[i].bStateOfCharge == 1 ) {
-          sRet +=  "<td>" + String(fanet.weatherDatas[i].Charge,0) + "</td>" ;
+          sRet +=  "<td>" + String((float) fanet.weatherDatas[i].Charge/256*100,0) + "</td>" ;
         }
         else
         {

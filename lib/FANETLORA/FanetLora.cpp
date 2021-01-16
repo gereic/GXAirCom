@@ -696,15 +696,25 @@ void FanetLora::getWeatherInfo(String line,uint16_t length){
     char arPayload[40];
     
     line.toCharArray(arPayload,sizeof(arPayload));
+    Serial.print("arPayload=");
+    Serial.println(arPayload);
     int16_t  Type4Header         = getByteFromHex(&arPayload[0]);
     int16_t  Type4HeaderInternetGateway        = ( Type4Header  >> 7 ) & ( 1 <<  1 ) - 1;  
+  
     weatherDatas[weathercount].bTemp           = ( Type4Header  >> 6 ) & ( 1 <<  1 ) - 1;
+      
     weatherDatas[weathercount].bWind           = ( Type4Header  >> 5 ) & ( 1 <<  1 ) - 1;
+       
     weatherDatas[weathercount].bHumidity       = ( Type4Header  >> 4 ) & ( 1 <<  1 ) - 1;
+         
     weatherDatas[weathercount].bBaro           = ( Type4Header  >> 3 ) & ( 1 <<  1 ) - 1;
+         
     int16_t  Type4HeaderSupport                = ( Type4Header  >> 2 ) & ( 1 <<  1 ) - 1;
+          
     weatherDatas[weathercount].bStateOfCharge  = ( Type4Header  >> 1 ) & ( 1 <<  1 ) - 1;
+          
     int16_t  Type4HeaderExtendedHeader         = ( Type4Header  >> 0 ) & ( 1 <<  1 ) - 1;
+          
     int16_t  startmsg = 14;
     // integer values /
     int32_t lati = getByteFromHex(&arPayload[6])<<16 | getByteFromHex(&arPayload[4])<<8 | getByteFromHex(&arPayload[2]);
@@ -742,20 +752,25 @@ void FanetLora::getWeatherInfo(String line,uint16_t length){
    }
    if (weatherDatas[weathercount].bHumidity   == 1) {
       uint8_t Humidity_uint8;
+       
       Humidity_uint8     = getByteFromHex(&arPayload[startmsg]);
       weatherDatas[weathercount].Humidity         = ((float) Humidity_uint8) *4/10;
       startmsg += 2;
     }
     if (weatherDatas[weathercount].bBaro   == 1) {
       uint16_t Barometric_uint16;
-      Barometric_uint16  = getByteFromHex(&arPayload[startmsg]) <<8 | getByteFromHex(&arPayload[startmsg]);
+        
+      Barometric_uint16  = getByteFromHex(&arPayload[startmsg+2]) <<8 | getByteFromHex(&arPayload[startmsg]);
       weatherDatas[weathercount].Baro         = ((float) Barometric_uint16) *10+430;
      startmsg += 4;
     }
       if (weatherDatas[weathercount].bStateOfCharge  == 1) {
       uint8_t StateCharge_uint8;
+   
       StateCharge_uint8     = getByteFromHex(&arPayload[startmsg]);
-      weatherDatas[weathercount].Charge = ((float) StateCharge_uint8) /256*100;
+     
+      weatherDatas[weathercount].Charge = ((float) StateCharge_uint8);// /256*100;
+    
       startmsg += 2;
     }
 
