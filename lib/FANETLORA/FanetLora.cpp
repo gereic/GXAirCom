@@ -108,6 +108,7 @@ void FanetLora::fanet_cmd_setGroundTrackingType(char *ch_str){
 
 	char *p = (char *)ch_str;
 	state = (status_t)strtol(p, NULL, 16);
+  //log_i("set ground-tracking-status:%d",(uint8_t)state);
   add2ActMsg("#FNR OK");
 }
 
@@ -227,6 +228,8 @@ void FanetLora::fanet_cmd_transmit(char *ch_str)
   if (frm2txBuffer(frm)){
     //log_i("%s",actMsg.c_str());
     add2ActMsg("#FNR OK");    
+  }else{
+    add2ActMsg("#FNR ERR,14,tx buffer full");
   } 
 	/*
   if(fmac.transmit(frm) == 0)
@@ -605,7 +608,7 @@ void FanetLora::handle_frame(Frame *frm){
 }
 
 void FanetLora::add2ActMsg(String s){
-  if (actMsg != ""){
+  if (actMsg.length() != 0){
     actMsg += "\n";
   }
   actMsg += s;

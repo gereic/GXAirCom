@@ -46,6 +46,7 @@ void load_configFile(SettingsData* pSetting){
   //weathersettings
   pSetting->wd.sendFanet = preferences.getUChar("FanetWeather",0);
   pSetting->wd.tempOffset = preferences.getFloat("wdTempOffset",0.0);
+  pSetting->wd.windDirOffset = preferences.getInt("wdWDirOffset",0);
 
 
   //vario
@@ -142,6 +143,7 @@ void write_configFile(SettingsData* pSetting){
   //weathersettings
   preferences.putUChar("FanetWeather",pSetting->wd.sendFanet);
   preferences.putFloat("wdTempOffset",pSetting->wd.tempOffset);
+  preferences.putInt("wdWDirOffset",pSetting->wd.windDirOffset);
   
   //wu-upload
   preferences.putUChar("WUUlEnable",pSetting->WUUpload.enable);

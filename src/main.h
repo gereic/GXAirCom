@@ -238,6 +238,7 @@ SCL 14
 #define FANET_CMD_START			"#FN"
 #define FANET_CMD_TRANSMIT	"#FNT"
 #define FANET_CMD_GROUND_TYPE	"#FNG"
+#define SYSTEM_CMD	"#SYC"
 
 #define MODE_WIFI_DISABLED 0
 #define MODE_WIFI_STA 1
@@ -306,6 +307,7 @@ struct GSSettings{
 
 struct WeatherSettings{
   float tempOffset;
+  int16_t windDirOffset;
   uint8_t sendFanet;  
 };
 

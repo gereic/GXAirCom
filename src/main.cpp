@@ -53,9 +53,6 @@
 
 #ifdef EINK
 #include <Screen.h>
-
-Screen screen;
-
 #endif
 
 #ifdef GSMODULE
@@ -364,6 +361,7 @@ void sendFlarmData(uint32_t tAct);
 void handleButton(uint32_t tAct);
 char* readSerial();
 void checkReceivedLine(char *ch_str);
+void checkSystemCmd(char *ch_str);
 #ifdef BLUETOOTHSERIAL
 void serialBtCallBack(esp_spp_cb_event_t event, esp_spp_cb_param_t *param);
 char* readBtSerial();
@@ -893,13 +891,17 @@ void sendAWTrackingdata(FanetLora::trackingData *FanetData){
   char chs[20];
   String msg;
   #ifdef GSMODULE
-    msg = "000000,";
+    if (setting.Mode == MODE_GROUND_STATION){
+      msg = "000000,";
+    }
   #endif
   #ifdef AIRMODULE
-  if (nmea.getFixTime().length() == 0){
-    msg = "000000,";
-  }else{
-    msg = nmea.getFixTime() + ",";
+  if (setting.Mode == MODE_AIR_MODULE){
+    if (nmea.getFixTime().length() == 0){
+      msg = "000000,";
+    }else{
+      msg = nmea.getFixTime() + ",";
+    }
   }
   #endif
   msg += setting.myDevId + ","
@@ -1239,6 +1241,7 @@ void printSettings(){
   //weather-data
   log_i("WD Fanet-Weatherdata=%d",setting.wd.sendFanet);
   log_i("WD tempoffset=%.1f",setting.wd.tempOffset);
+  log_i("WD windDirOffset=%.1f",setting.wd.windDirOffset);
   log_i("WUUlEnable=%d",setting.WUUpload.enable);
   log_i("WUUlID=%s",setting.WUUpload.ID.c_str());
   log_i("WUUlKEY=%s",setting.WUUpload.KEY.c_str());
@@ -1365,17 +1368,17 @@ void setup() {
 
   //listSpiffsFiles();
   load_configFile(&setting); //load configuration
-  #ifdef OLED
+  #ifdef OLED && !EINK
   setting.displayType = OLED0_96;
-  #elif EINK
+  #elif EINK && !OLED
   setting.displayType = EINK2_9;
-  #else
+  #elif !OLED && !EINK
   setting.displayType = NO_DISPLAY;
   #endif
-  #ifdef GSMODULE
+  #ifdef GSMODULE && !AIRMODULE    
     setting.Mode = MODE_GROUND_STATION;
   #endif
-  #ifdef AIRMODULE
+  #ifdef AIRMODULE && !GSMODULE
     setting.Mode = MODE_AIR_MODULE;
   #endif
   status.bHasGSM = false;
@@ -1408,23 +1411,25 @@ void setup() {
 
 
   #ifdef GSMODULE
-  if ((setting.gs.PowerSave == GS_POWER_SAFE) && (reason2 == ESP_SLEEP_WAKEUP_TIMER)){
-    printLocalTime();
-    if (isDayTime() == 0){
-      log_i("not day --> enter deep-sleep");
-      uint32_t tSleep = calcSleepTime();
-      //log_i("time to sleep = %d",tSleep);
-      log_i("time to sleep = %d --> %02d:%02d:%02d",tSleep,tSleep/60/60,(tSleep/60)%60,(tSleep)%60);
-      esp_sleep_enable_timer_wakeup((uint64_t)tSleep * uS_TO_S_FACTOR); //set Timer for wakeup      
-      //esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR); //set Timer for wakeup
-      esp_wifi_stop();
-      esp_bluedroid_disable();
-      esp_bluedroid_deinit();
-      esp_bt_controller_disable();
-      esp_bt_controller_deinit();
-      esp_bt_mem_release(ESP_BT_MODE_BTDM);
-      adc_power_off();
-      esp_deep_sleep_start();
+  if (setting.Mode == MODE_GROUND_STATION){
+    if ((setting.gs.PowerSave == GS_POWER_SAFE) && (reason2 == ESP_SLEEP_WAKEUP_TIMER)){
+      printLocalTime();
+      if (isDayTime() == 0){
+        log_i("not day --> enter deep-sleep");
+        uint32_t tSleep = calcSleepTime();
+        //log_i("time to sleep = %d",tSleep);
+        log_i("time to sleep = %d --> %02d:%02d:%02d",tSleep,tSleep/60/60,(tSleep/60)%60,(tSleep)%60);
+        esp_sleep_enable_timer_wakeup((uint64_t)tSleep * uS_TO_S_FACTOR); //set Timer for wakeup      
+        //esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR); //set Timer for wakeup
+        esp_wifi_stop();
+        esp_bluedroid_disable();
+        esp_bluedroid_deinit();
+        esp_bt_controller_disable();
+        esp_bt_controller_deinit();
+        esp_bt_mem_release(ESP_BT_MODE_BTDM);
+        adc_power_off();
+        esp_deep_sleep_start();
+      }
     }
   }
   #endif
@@ -1615,7 +1620,9 @@ void setup() {
   }
 
   #ifdef OLED
-  startOLED();  
+  if (setting.displayType == OLED0_96){
+    startOLED();  
+  }
   #endif
   setting.myDevId = "";
 #ifdef GSM_MODULE
@@ -1624,7 +1631,9 @@ xGsmMutex = xSemaphoreCreateMutex();
 
   //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
 #ifdef AIRMODULE
-  xTaskCreatePinnedToCore(taskBaro, "taskBaro", 6500, NULL, 100, &xHandleBaro, ARDUINO_RUNNING_CORE1); //high priority task
+  if (setting.Mode == MODE_AIR_MODULE){
+    xTaskCreatePinnedToCore(taskBaro, "taskBaro", 6500, NULL, 100, &xHandleBaro, ARDUINO_RUNNING_CORE1); //high priority task
+  }
 #endif  
   //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
   xTaskCreatePinnedToCore(taskStandard, "taskStandard", 6500, NULL, 10, &xHandleStandard, ARDUINO_RUNNING_CORE1); //standard task
@@ -1640,8 +1649,10 @@ xGsmMutex = xSemaphoreCreateMutex();
   xTaskCreatePinnedToCore(taskBluetooth, "taskBluetooth", 4096, NULL, 7, &xHandleBluetooth, ARDUINO_RUNNING_CORE1);
 
 #ifdef GSMODULE  
-  //start weather-task
-  xTaskCreatePinnedToCore(taskWeather, "taskWeather", 4096, NULL, 8, &xHandleWeather, ARDUINO_RUNNING_CORE1);
+  if (setting.Mode == MODE_GROUND_STATION){
+    //start weather-task
+    xTaskCreatePinnedToCore(taskWeather, "taskWeather", 4096, NULL, 8, &xHandleWeather, ARDUINO_RUNNING_CORE1);
+  }
 #endif  
 #ifdef GSM_MODULE
   //start Gsm-task
@@ -1784,6 +1795,7 @@ void taskWeather(void *pvParameters){
   i2cWeather.begin(PinBaroSDA,PinBaroSCL,400000); //init i2cBaro for Baro
   Weather weather;
   weather.setTempOffset(setting.wd.tempOffset);
+  weather.setWindDirOffset(setting.wd.windDirOffset);
   if (weather.begin(&i2cWeather,setting.gs.alt,PinOneWire,PinWindDir,PinWindSpeed,PinRainGauge)){
     status.vario.bHasBME = true; //we have a bme-sensor
   }
@@ -2515,12 +2527,52 @@ void printGPSData(uint32_t tAct){
 }
 #endif
 
+void checkSystemCmd(char *ch_str){
+	/* remove \r\n and any spaces */
+	String line = ch_str;
+  log_i("systemcmd=%s",line.c_str());
+  String sRet = "";
+  int32_t iPos = getStringValue(line,"WIFI=","\r",0,&sRet);
+  if (iPos > 0){
+    uint8_t u8 = atoi(sRet.c_str());
+    if (u8 == 1){
+      log_i("switch WIFI ACCESS-POINT ON");
+      WiFi.disconnect();
+      WiFi.mode(WIFI_OFF);
+      WiFi.persistent(false);
+      WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE); // call is only a workaround for bug in WiFi class
+      WiFi.mode(WIFI_MODE_AP);
+      WiFi.softAP(host_name.c_str(), setting.wifi.appw.c_str());
+      WiFi.softAPConfig(local_IP, gateway, subnet);
+      WiFi.setHostname(host_name.c_str());
+      Web_setup();
+      status.wifiStat = 1;      
+    }else{
+      log_i("switch WIFI OFF");
+      Web_stop();
+      WiFi.softAPdisconnect(true);
+      WiFi.disconnect();
+      WiFi.mode(WIFI_MODE_NULL);
+      setting.wifi.tWifiStop=0;
+      status.wifiStat=0;
+    }
+    
+  }
+	//char *p = (char *)ch_str;
+	//state = (status_t)strtol(p, NULL, 16);
+  //log_i("set ground-tracking-status:%d",(uint8_t)state);
+  //add2ActMsg("#FNR OK");
+}
+
+
 void checkReceivedLine(char *ch_str){
   //log_i("new serial msg=%s",ch_str);
   if(!strncmp(ch_str, FANET_CMD_TRANSMIT, 4)){
     fanet.fanet_cmd_transmit(ch_str+4);
   }else if(!strncmp(ch_str, FANET_CMD_GROUND_TYPE, 4)){
     fanet.fanet_cmd_setGroundTrackingType(ch_str+4);
+  }else if (!strncmp(ch_str,SYSTEM_CMD,4)){
+    checkSystemCmd(ch_str+4);
   }
   /*
   }else if(!strncmp(ch_str, "@", 1)){
@@ -2792,10 +2844,12 @@ void taskStandard(void *pvParameters){
   }
   #endif
   #ifdef GSMODULE
-  //mode ground-station
-  status.GPS_Lat = setting.gs.lat;
-  status.GPS_Lon = setting.gs.lon;  
-  status.GPS_alt = setting.gs.alt;
+  if (setting.Mode == MODE_GROUND_STATION){
+    //mode ground-station
+    status.GPS_Lat = setting.gs.lat;
+    status.GPS_Lon = setting.gs.lon;  
+    status.GPS_alt = setting.gs.alt;
+  }
   #endif
 
 
@@ -2815,40 +2869,48 @@ void taskStandard(void *pvParameters){
   setting.myDevId = fanet.getMyDevId();
   host_name = APPNAME "-" + setting.myDevId; //String((ESP32_getChipId() & 0xFFFFFF), HEX);
   #ifdef AIRMODULE
-  flarm.begin();
+  if (setting.Mode == MODE_AIR_MODULE){
+    flarm.begin();
+  }
   #endif
   if (setting.OGNLiveTracking){
     #ifdef GSMODULE
-      ogn.setAirMode(false); //set airmode
-      #ifdef GSM_MODULE
-        if (setting.wifi.connect == MODE_WIFI_DISABLED){
-          ogn.setClient(&GsmOGNClient);
-          ogn.setMutex(&xGsmMutex);
-        }
-      #endif
-      if (setting.PilotName.length() > 0){
-        ogn.begin(setting.PilotName,VERSION "." APPNAME);
-      }else{
-        ogn.begin("FNB" + setting.myDevId,VERSION "." APPNAME);
-      }      
-      ogn.setGPS(setting.gs.lat,setting.gs.lon,setting.gs.alt,0.0,0.0);
+      if (setting.Mode == MODE_GROUND_STATION){
+        ogn.setAirMode(false); //set airmode
+        #ifdef GSM_MODULE
+          if (setting.wifi.connect == MODE_WIFI_DISABLED){
+            ogn.setClient(&GsmOGNClient);
+            ogn.setMutex(&xGsmMutex);
+          }
+        #endif
+        if (setting.PilotName.length() > 0){
+          ogn.begin(setting.PilotName,VERSION "." APPNAME);
+        }else{
+          ogn.begin("FNB" + setting.myDevId,VERSION "." APPNAME);
+        }      
+        ogn.setGPS(setting.gs.lat,setting.gs.lon,setting.gs.alt,0.0,0.0);
+      }
     #endif
     #ifdef AIRMODULE
-      ogn.setAirMode(true); //set airmode
-      ogn.begin("FNB" + setting.myDevId,VERSION "." APPNAME);
+      if (setting.Mode == MODE_AIR_MODULE){
+        ogn.setAirMode(true); //set airmode
+        ogn.begin("FNB" + setting.myDevId,VERSION "." APPNAME);
+      }
     #endif
   } 
 
 
 #ifdef OLED
-  display.setTextColor(WHITE);
-  display.setTextSize(1);
-  display.setCursor(0,55);
-  display.print(setting.myDevId);
-  display.display();
-  delay(3000);
-  if (setting.gs.SreenOption == SCREEN_ALWAYS_OFF){
-    oledPowerOff();
+  if (setting.displayType == OLED0_96){
+    display.setTextColor(WHITE);
+    display.setTextSize(1);
+    display.setCursor(0,55);
+    display.print(setting.myDevId);
+    display.display();
+    delay(3000);
+    if (setting.gs.SreenOption == SCREEN_ALWAYS_OFF){
+      oledPowerOff();
+    }
   }
 #endif
 
@@ -2892,57 +2954,65 @@ void taskStandard(void *pvParameters){
     checkFlyingState(tAct);
     printBattVoltage(tAct);
     #ifdef AIRMODULE
-    readGPS();
+    if (setting.Mode == MODE_AIR_MODULE){
+      readGPS();
+    }
     #endif
     sendFlarmData(tAct);
     #ifdef OLED
+    if (setting.displayType == OLED0_96){
     #ifdef GSMODULE
-      if (setting.gs.SreenOption != SCREEN_ALWAYS_OFF){
-        if (fanet.getNeighboursCount() == 0){
-          if (timeOver(tAct,tDisplay,500)){
-            tDisplay = tAct;
-            printScanning(tAct);
-          }
-        }else{
-          if (timeOver(tAct,tDisplay,DISPLAY_UPDATE_RATE_GS)){
-            tDisplay = tAct;
-            printGSData(tAct);
+      if (setting.Mode == MODE_GROUND_STATION){
+        if (setting.gs.SreenOption != SCREEN_ALWAYS_OFF){
+          if (fanet.getNeighboursCount() == 0){
+            if (timeOver(tAct,tDisplay,500)){
+              tDisplay = tAct;
+              printScanning(tAct);
+            }
+          }else{
+            if (timeOver(tAct,tDisplay,DISPLAY_UPDATE_RATE_GS)){
+              tDisplay = tAct;
+              printGSData(tAct);
+            }
           }
         }
       }
     #endif
     #ifdef AIRMODULE
-      switch (setting.screenNumber)
-      {
-      case 0: //main-Display
-        if ((timeOver(tAct,tDisplay,DISPLAY_UPDATE_RATE)) || (oldScreenNumber != setting.screenNumber)){
-          tDisplay = tAct;
-          printGPSData(tAct);          
+      if (setting.Mode == MODE_AIR_MODULE){
+        switch (setting.screenNumber)
+        {
+        case 0: //main-Display
+          if ((timeOver(tAct,tDisplay,DISPLAY_UPDATE_RATE)) || (oldScreenNumber != setting.screenNumber)){
+            tDisplay = tAct;
+            printGPSData(tAct);          
+          }
+          break;
+        case 1: //radar-screen with list
+          if ((timeOver(tAct,tDisplay,DISPLAY_UPDATE_RATE2)) || (oldScreenNumber != setting.screenNumber)){
+            tDisplay = tAct;              
+            DrawRadarScreen(tAct,RADAR_LIST);
+          }
+          break;
+        case 2: //radar-screen with closest
+          if ((timeOver(tAct,tDisplay,DISPLAY_UPDATE_RATE)) || (oldScreenNumber != setting.screenNumber)){
+            tDisplay = tAct;
+            DrawRadarScreen(tAct,RADAR_CLOSEST);
+          }
+          break;
+        case 3: //list aircrafts
+          if ((timeOver(tAct,tDisplay,DISPLAY_UPDATE_RATE)) || (oldScreenNumber != setting.screenNumber)){
+            tDisplay = tAct;
+            //DrawAircraftList();
+          }
+          break;
+        default:
+          break;
         }
-        break;
-      case 1: //radar-screen with list
-        if ((timeOver(tAct,tDisplay,DISPLAY_UPDATE_RATE2)) || (oldScreenNumber != setting.screenNumber)){
-          tDisplay = tAct;              
-          DrawRadarScreen(tAct,RADAR_LIST);
-        }
-        break;
-      case 2: //radar-screen with closest
-        if ((timeOver(tAct,tDisplay,DISPLAY_UPDATE_RATE)) || (oldScreenNumber != setting.screenNumber)){
-          tDisplay = tAct;
-          DrawRadarScreen(tAct,RADAR_CLOSEST);
-        }
-        break;
-      case 3: //list aircrafts
-        if ((timeOver(tAct,tDisplay,DISPLAY_UPDATE_RATE)) || (oldScreenNumber != setting.screenNumber)){
-          tDisplay = tAct;
-          //DrawAircraftList();
-        }
-        break;
-      default:
-        break;
+        oldScreenNumber = setting.screenNumber;
       }
-      oldScreenNumber = setting.screenNumber;
     #endif
+    }
     #endif
     if (sendTestData == 1){
       log_i("sending msgtype 1");
@@ -3036,64 +3106,79 @@ void taskStandard(void *pvParameters){
     flarm.run();
     sendLK8EX(tAct);
     #ifdef AIRMODULE
-    if (!status.bHasAXP192){
-      if ((tAct - tOldPPS) >= 1000){
-        ppsTriggered = true;
-      }
-    }
-    if (ppsTriggered){
-      ppsTriggered = false;
-      tLastPPS = tAct;
-      log_v("PPS-Triggered t=%d",status.tGPSCycle);
-      //log_e("GPS-FixTime=%s",nmea.getFixTime().c_str());
-      status.tGPSCycle = tAct - tOldPPS;
-      if (nmea.isValid()){
-        long alt = 0;
-        nmea.getAltitude(alt);
-        #ifdef AIRMODULE
-        status.GPS_NumSat = nmea.getNumSatellites();
-        #else
-        status.GPS_NumSat = 0;
-        #endif
-        status.GPS_Fix = 1;
-        if (status.GPS_NumSat < 4){ //we need at least 4 satellites to get accurate position !!
-          status.GPS_speed = 0;
-          status.GPS_course = 0;
-        }else{
-          status.GPS_speed = nmea.getSpeed()*1.852/1000.; //speed in cm/s --> we need km/h
-          status.GPS_course = nmea.getCourse()/1000.;
+    if (setting.Mode == MODE_AIR_MODULE){
+      if (!status.bHasAXP192){
+        if ((tAct - tOldPPS) >= 1000){
+          ppsTriggered = true;
         }
-        status.GPS_Lat = nmea.getLatitude() / 1000000.;
-        status.GPS_Lon = nmea.getLongitude() / 1000000.;  
-        status.GPS_alt = alt/1000.;
-        setTime(nmea.getHour(), nmea.getMinute(), nmea.getSecond(), nmea.getDay(), nmea.getMonth(), nmea.getYear());
-        if (oldAlt == 0) oldAlt = status.GPS_alt;        
-        if (!status.vario.bHasVario) status.ClimbRate = (status.GPS_alt - oldAlt) / (float(status.tGPSCycle) / 1000.0);        
-        oldAlt = status.GPS_alt;
-        MyFanetData.climb = status.ClimbRate;
-        MyFanetData.lat = status.GPS_Lat;
-        MyFanetData.lon = status.GPS_Lon;
-        MyFanetData.altitude = status.GPS_alt;
-        MyFanetData.speed = status.GPS_speed; //speed in cm/s --> we need km/h
-        if ((status.GPS_speed <= 5.0) && (status.vario.bHasVario)){
-          MyFanetData.heading = status.varioHeading;
-        }else{
-          MyFanetData.heading = status.GPS_course;
-        }        
-        if (setting.OGNLiveTracking){
-          ogn.setGPS(status.GPS_Lat,status.GPS_Lon,status.GPS_alt,status.GPS_speed,MyFanetData.heading);
-          if (fanet.onGround){
-            ogn.sendGroundTrackingData(status.GPS_Lat,status.GPS_Lon,fanet.getDevId(tFanetData.devId),fanet.state,0.0);
-          }else{
-            ogn.sendTrackingData(status.GPS_Lat,status.GPS_Lon,status.GPS_alt,status.GPS_speed,MyFanetData.heading,status.ClimbRate,fanet.getMyDevId() ,(Ogn::aircraft_t)fanet.getAircraftType(),fanet.doOnlineTracking,0.0);
+      }
+      if (ppsTriggered){
+        ppsTriggered = false;
+        tLastPPS = tAct;
+        log_v("PPS-Triggered t=%d",status.tGPSCycle);
+        //log_e("GPS-FixTime=%s",nmea.getFixTime().c_str());
+        status.tGPSCycle = tAct - tOldPPS;
+        if (nmea.isValid()){
+          long alt = 0;
+          nmea.getAltitude(alt);
+          #ifdef AIRMODULE
+          if (setting.Mode == MODE_AIR_MODULE){
+            status.GPS_NumSat = nmea.getNumSatellites();
           }
-          
-        } 
+          #endif
+          status.GPS_Fix = 1;
+          if (status.GPS_NumSat < 4){ //we need at least 4 satellites to get accurate position !!
+            status.GPS_speed = 0;
+            status.GPS_course = 0;
+          }else{
+            status.GPS_speed = nmea.getSpeed()*1.852/1000.; //speed in cm/s --> we need km/h
+            status.GPS_course = nmea.getCourse()/1000.;
+          }
+          status.GPS_Lat = nmea.getLatitude() / 1000000.;
+          status.GPS_Lon = nmea.getLongitude() / 1000000.;  
+          status.GPS_alt = alt/1000.;
+          setTime(nmea.getHour(), nmea.getMinute(), nmea.getSecond(), nmea.getDay(), nmea.getMonth(), nmea.getYear());
+          if (oldAlt == 0) oldAlt = status.GPS_alt;        
+          if (!status.vario.bHasVario) status.ClimbRate = (status.GPS_alt - oldAlt) / (float(status.tGPSCycle) / 1000.0);        
+          oldAlt = status.GPS_alt;
+          MyFanetData.climb = status.ClimbRate;
+          MyFanetData.lat = status.GPS_Lat;
+          MyFanetData.lon = status.GPS_Lon;
+          MyFanetData.altitude = status.GPS_alt;
+          MyFanetData.speed = status.GPS_speed; //speed in cm/s --> we need km/h
+          if ((status.GPS_speed <= 5.0) && (status.vario.bHasVario)){
+            MyFanetData.heading = status.varioHeading;
+          }else{
+            MyFanetData.heading = status.GPS_course;
+          }        
+          if (setting.OGNLiveTracking){
+            ogn.setGPS(status.GPS_Lat,status.GPS_Lon,status.GPS_alt,status.GPS_speed,MyFanetData.heading);
+            if (fanet.onGround){
+              ogn.sendGroundTrackingData(status.GPS_Lat,status.GPS_Lon,fanet.getDevId(tFanetData.devId),fanet.state,0.0);
+            }else{
+              ogn.sendTrackingData(status.GPS_Lat,status.GPS_Lon,status.GPS_alt,status.GPS_speed,MyFanetData.heading,status.ClimbRate,fanet.getMyDevId() ,(Ogn::aircraft_t)fanet.getAircraftType(),fanet.doOnlineTracking,0.0);
+            }
+            
+          } 
 
-        fanet.setMyTrackingData(&MyFanetData); //set Data on fanet
-        sendAWTrackingdata(&MyFanetData);
-        sendTraccarTrackingdata(&MyFanetData);
-      }else{
+          fanet.setMyTrackingData(&MyFanetData); //set Data on fanet
+          sendAWTrackingdata(&MyFanetData);
+          sendTraccarTrackingdata(&MyFanetData);
+        }else{
+          status.GPS_Fix = 0;
+          status.GPS_speed = 0.0;
+          status.GPS_Lat = 0.0;
+          status.GPS_Lon = 0.0;
+          status.GPS_alt = 0.0;
+          status.GPS_course = 0.0;
+          status.GPS_NumSat = 0;
+          if (!status.vario.bHasVario) status.ClimbRate = 0.0;
+          oldAlt = 0.0;
+        }
+        tOldPPS = tAct;
+      }
+      if((tAct - tLastPPS) >= 10000){
+        //no pps for more then 10sec. --> clear GPS-state
         status.GPS_Fix = 0;
         status.GPS_speed = 0.0;
         status.GPS_Lat = 0.0;
@@ -3101,25 +3186,14 @@ void taskStandard(void *pvParameters){
         status.GPS_alt = 0.0;
         status.GPS_course = 0.0;
         status.GPS_NumSat = 0;
-        if (!status.vario.bHasVario) status.ClimbRate = 0.0;
-        oldAlt = 0.0;
       }
-      tOldPPS = tAct;
-    }
-    if((tAct - tLastPPS) >= 10000){
-      //no pps for more then 10sec. --> clear GPS-state
-      status.GPS_Fix = 0;
-      status.GPS_speed = 0.0;
-      status.GPS_Lat = 0.0;
-      status.GPS_Lon = 0.0;
-      status.GPS_alt = 0.0;
-      status.GPS_course = 0.0;
-      status.GPS_NumSat = 0;
     }
     #endif
 
     #ifdef GSMODULE
-    sendAWGroundStationdata(tAct); //send ground-station-data    
+    if (setting.Mode == MODE_GROUND_STATION){
+      sendAWGroundStationdata(tAct); //send ground-station-data    
+    }
     #endif
 
     if (AXP192_Irq){
@@ -3145,14 +3219,16 @@ void taskStandard(void *pvParameters){
   }
   log_i("stop task");
   #ifdef OLED
-  if (WebUpdateRunning){
-  display.clearDisplay();
-  display.setTextSize(2);
-  display.setCursor(10,5);
-  display.print("FW-UPDATE");
-  display.setCursor(10,30);
-  display.print("wait...");
-  display.display();
+  if (setting.displayType == OLED0_96){
+    if (WebUpdateRunning){
+    display.clearDisplay();
+    display.setTextSize(2);
+    display.setCursor(10,5);
+    display.print("FW-UPDATE");
+    display.setCursor(10,30);
+    display.print("wait...");
+    display.display();
+    }
   }
   #endif
   fanet.end();
@@ -3208,28 +3284,30 @@ void powerOff(){
   #endif
 
   #ifdef OLED
-  display.setTextColor(WHITE);
-  display.clearDisplay();
-  display.drawXBitmap(0,2,G_Logo_bits,G_Logo_width,G_Logo_height,WHITE);
-  display.drawXBitmap(30,2,X_Logo_bits,X_Logo_width,X_Logo_height,WHITE);
-  display.drawXBitmap(69,2,AirCom_Logo_bits,AirCom_Logo_width,AirCom_Logo_height,WHITE);
-  display.setTextSize(1);
-  display.setCursor(85,55);
-  display.print(VERSION);
-  display.setCursor(0,55);
-  display.print(setting.myDevId);
-  display.display();
-  delay(1000);
-  display.clearDisplay();
-  display.drawXBitmap(0,2,G_Logo_bits,G_Logo_width,G_Logo_height,WHITE);
-  display.drawXBitmap(30,2,X_Logo_bits,X_Logo_width,X_Logo_height,WHITE);
-  display.display();
-  delay(1000);
-  display.clearDisplay();
-  display.drawXBitmap(0,2,G_Logo_bits,G_Logo_width,G_Logo_height,WHITE);
-  display.display();
-  delay(1000);
-  oledPowerOff();
+  if (setting.displayType == OLED0_96){
+    display.setTextColor(WHITE);
+    display.clearDisplay();
+    display.drawXBitmap(0,2,G_Logo_bits,G_Logo_width,G_Logo_height,WHITE);
+    display.drawXBitmap(30,2,X_Logo_bits,X_Logo_width,X_Logo_height,WHITE);
+    display.drawXBitmap(69,2,AirCom_Logo_bits,AirCom_Logo_width,AirCom_Logo_height,WHITE);
+    display.setTextSize(1);
+    display.setCursor(85,55);
+    display.print(VERSION);
+    display.setCursor(0,55);
+    display.print(setting.myDevId);
+    display.display();
+    delay(1000);
+    display.clearDisplay();
+    display.drawXBitmap(0,2,G_Logo_bits,G_Logo_width,G_Logo_height,WHITE);
+    display.drawXBitmap(30,2,X_Logo_bits,X_Logo_width,X_Logo_height,WHITE);
+    display.display();
+    delay(1000);
+    display.clearDisplay();
+    display.drawXBitmap(0,2,G_Logo_bits,G_Logo_width,G_Logo_height,WHITE);
+    display.display();
+    delay(1000);
+    oledPowerOff();
+  }
   #endif
   if (PinUserLed >= 0){
     pinMode(PinUserLed, OUTPUT);
@@ -3289,6 +3367,7 @@ void taskEInk(void *pvParameters){
     if (setting.myDevId.length() > 0) break; //now we are ready
     delay(100);
   }
+  Screen screen;
   screen.begin();
   while(1){
     screen.run();
@@ -3341,34 +3420,36 @@ void taskBackGround(void *pvParameters){
   while (1){
     uint32_t tAct = millis();
     #ifdef GSMODULE
-    if (setting.gs.PowerSave == GS_POWER_SAFE){
-      if (timeOver(tAct,tRuntime,180000)) bPowersaveOk = true; //after 3min. esp is allowed to go to sleep, so that anybody has a chance to change settings
-      //bPowersaveOk = true; //after 3min. esp is allowed to go to sleep, so that anybody has a chance to change settings
-      if (status.bTimeOk == true){
-        if (!bSunsetOk){
-          bSunsetOk = true;
-          /*  Time is returned in minutes elapsed since midnight. If no sunrises or
-          *  sunsets are expected, a "-1" is returned.
-          */
-          iSunRise = dusk2dawn.sunrise(year(), month(), day(), false);
-          //iSunRise = 900;
-          iSunSet = dusk2dawn.sunset(year(), month(), day(), false);
-          if (iSunRise < 0) iSunRise += 1440;
-          if (iSunSet < 0) iSunSet += 1440;
-          char time1[] = "00:00";
-          char time2[] = "00:00";
-          Dusk2Dawn::min2str(time1, iSunRise);
-          Dusk2Dawn::min2str(time2, iSunSet);
-          log_i("sunrise=%d sunset=%d",iSunRise,iSunSet);
-          log_i("sunrise=%s sunset=%s",time1,time2);
-        }else{
-          //check every 10 seconds
-          
-          if (timeOver(tAct,tCheckDayTime,10000)){
-            tCheckDayTime = tAct;
-            if (bPowersaveOk){              
-              if (isDayTime() == 0){
-                enterDeepsleep();
+    if (setting.Mode == MODE_GROUND_STATION){
+      if (setting.gs.PowerSave == GS_POWER_SAFE){
+        if (timeOver(tAct,tRuntime,180000)) bPowersaveOk = true; //after 3min. esp is allowed to go to sleep, so that anybody has a chance to change settings
+        //bPowersaveOk = true; //after 3min. esp is allowed to go to sleep, so that anybody has a chance to change settings
+        if (status.bTimeOk == true){
+          if (!bSunsetOk){
+            bSunsetOk = true;
+            /*  Time is returned in minutes elapsed since midnight. If no sunrises or
+            *  sunsets are expected, a "-1" is returned.
+            */
+            iSunRise = dusk2dawn.sunrise(year(), month(), day(), false);
+            //iSunRise = 900;
+            iSunSet = dusk2dawn.sunset(year(), month(), day(), false);
+            if (iSunRise < 0) iSunRise += 1440;
+            if (iSunSet < 0) iSunSet += 1440;
+            char time1[] = "00:00";
+            char time2[] = "00:00";
+            Dusk2Dawn::min2str(time1, iSunRise);
+            Dusk2Dawn::min2str(time2, iSunSet);
+            log_i("sunrise=%d sunset=%d",iSunRise,iSunSet);
+            log_i("sunrise=%s sunset=%s",time1,time2);
+          }else{
+            //check every 10 seconds
+            
+            if (timeOver(tAct,tCheckDayTime,10000)){
+              tCheckDayTime = tAct;
+              if (bPowersaveOk){              
+                if (isDayTime() == 0){
+                  enterDeepsleep();
+                }
               }
             }
           }

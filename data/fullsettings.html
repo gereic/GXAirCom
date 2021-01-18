@@ -87,7 +87,7 @@ function setVis(){
     document.getElementById("VisGS").style.display=''; //set GS visible
     document.getElementById("VisVario").style.display='none';
     document.getElementById("VisFanetTracking").style.display='none'; //fanet-tracking mode in ground-station is important 
-    document.getElementById("VisOutputSettings").style.display='none'; //output-settings are not usefull in ground-station
+    //document.getElementById("VisOutputSettings").style.display='none'; //output-settings are not usefull in ground-station
   }else{
     document.getElementById("VisLegacy").style.display='';
     document.getElementById("VisAirCraftType").style.display='';
@@ -248,6 +248,7 @@ function sendValues(){
   var obj = {  
   sFWD : Number(document.getElementById("sFWD").checked),
   wdTempOffset : document.getElementById("wdTempOffset").value,  
+  wdWDirOffset : document.getElementById("wdWDirOffset").value,  
 
   WUUlEnable : Number(document.getElementById("WUUlEnable").checked),
   WUUlID : document.getElementById("WUUlID").value,  
@@ -591,6 +592,10 @@ window.addEventListener("load", init, false);
           <tr>
             <th>offset Temperature [K]</th>
             <td><input type="number" id="wdTempOffset" step=".5"></td>
+          </tr>
+          <tr>
+            <th>offset wind direction [°]</th>
+            <td><input type="number" id="wdWDirOffset" step="1"></td>
           </tr>
         </tbody>      
       </table>

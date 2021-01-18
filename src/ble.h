@@ -45,13 +45,15 @@ class MyServerCallbacks : public NimBLEServerCallbacks {
 	void onConnect(NimBLEServer* pServer) {
   		//log_d("***************************** BLE CONNECTED *****************");
 		status.bluetoothStat = 2; //we have a connected client
+		NimBLEDevice::startAdvertising();
 	};
 
 	void onDisconnect(NimBLEServer* pServer) {
 		//log_d("***************************** BLE DISCONNECTED *****************");
 		status.bluetoothStat = 1; //client disconnected
 		//delay(1000);
-	//	pServer->
+		//	pServer->
+		NimBLEDevice::startAdvertising();
 	}
 
 };
