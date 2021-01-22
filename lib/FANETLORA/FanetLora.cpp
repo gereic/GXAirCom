@@ -249,7 +249,36 @@ void FanetLora::fanet_cmd_transmit(char *ch_str)
 		log_e("tx buffer full");
 	}*/
 }
-
+int16_t FanetLora::getWeatherIndex(uint32_t devId,bool getEmptyEntry){
+  int16_t iRet = -1;
+  uint32_t tElapsed = 0;
+  uint32_t tMaxElapsed = 0;
+  int16_t iOldestEntry = -1;
+  uint32_t tAct = millis();
+  for (int i = 0; i < MAXWEATHERDATAS; i++){
+    if (!weatherDatas[i].devId){
+      tElapsed = gettimeElapsed(tAct,weatherDatas[i].tLastMsg);
+      if (tElapsed > tMaxElapsed){
+        tMaxElapsed = tElapsed;
+        iOldestEntry = i;
+      }
+    }    
+    if (weatherDatas[i].devId == devId){
+      return i; //found entry
+    }
+    
+    if ((weatherDatas[i].devId == 0) && (iRet < 0)){
+      iRet = i; //found empty one
+    }
+  }
+  if (!getEmptyEntry) return -1; //not found in list
+  if (iRet >= 0){
+    memset(&weatherDatas[iRet],0,sizeof(weatherDatas[iRet])); //clear slot
+    return iRet; //we give back an empty slot
+  }else{
+    return iOldestEntry; //we tell the oldest entry to override !! (only if we to much traffic)
+  }
+}
 
 int16_t FanetLora::getneighbourIndex(uint32_t devId,bool getEmptyEntry){
   int16_t iRet = -1;
@@ -275,10 +304,20 @@ int16_t FanetLora::getneighbourIndex(uint32_t devId,bool getEmptyEntry){
   }
   if (!getEmptyEntry) return -1; //not found in list
   if (iRet >= 0){
+    memset(&neighbours[iRet],0,sizeof(neighbours[iRet])); //clear slot
     return iRet; //we give back an empty slot
   }else{
     return iOldestEntry; //we tell the oldest entry to override !! (only if we to much traffic)
   }
+}
+void FanetLora::insertNameToWeather(uint32_t devId, String name){
+  int16_t index = getWeatherIndex(devId,false);
+  //log_i("devId=%06X",devId);
+  //log_i("name=%s",name.c_str());
+  //log_i("index=%i",index);
+  if (index < 0) return;
+  weatherDatas[index].tLastMsg = millis();
+  weatherDatas[index].name = name;
 }
 
 void FanetLora::insertNameToNeighbour(uint32_t devId, String name){
@@ -287,9 +326,16 @@ void FanetLora::insertNameToNeighbour(uint32_t devId, String name){
   //log_i("name=%s",name.c_str());
   //log_i("index=%i",index);
   if (index < 0) return;
-  neighbours[index].devId = devId;
   neighbours[index].tLastMsg = millis();
   neighbours[index].name = name;
+}
+
+void FanetLora::insertDataToWeatherStation(uint32_t devId, weatherData *Data){
+  int16_t index = getWeatherIndex(devId,true);
+  if (index < 0) return;
+  Data->name = weatherDatas[index].name; // we have to use existing name !!
+  weatherDatas[index] = *Data;  
+  weatherDatas[index].tLastMsg = millis();
 }
 
 void FanetLora::insertDataToNeighbour(uint32_t devId, trackingData *Data){
@@ -309,7 +355,7 @@ void FanetLora::insertDataToNeighbour(uint32_t devId, trackingData *Data){
   neighbours[index].rssi = Data->rssi;
 }
 
-void FanetLora::clearNeighbours(uint32_t tAct){
+void FanetLora::clearNeighboursWeather(uint32_t tAct){
   static uint32_t tCheck = millis();
   if ((tAct - tCheck) >= 5000){ //check only every 5 seconds
     tCheck = tAct;
@@ -318,6 +364,14 @@ void FanetLora::clearNeighbours(uint32_t tAct){
         if ((tCheck - neighbours[i].tLastMsg) >= NEIGHBOURSLIFETIME){ //if we get no msg in 4min --> del neighbour
           //log_i("clear slot %i devId %s",i,getDevId(neighbours[i].devId).c_str());
           neighbours[i].devId = 0; //clear slot
+        }
+      }
+    }
+    for (int i = 0; i < MAXWEATHERDATAS; i++){
+      if (weatherDatas[i].devId){
+        if ((tCheck - weatherDatas[i].tLastMsg) >= NEIGHBOURSLIFETIME){ //if we get no msg in 4min --> del neighbour
+          //log_i("clear slot %i devId %s",i,getDevId(neighbours[i].devId).c_str());
+          weatherDatas[i].devId = 0; //clear slot
         }
       }
     }
@@ -369,7 +423,7 @@ bool FanetLora::isNewMsg(){
 
 void FanetLora::run(void){    
   uint32_t tAct = millis();
-  clearNeighbours(millis());
+  clearNeighboursWeather(millis());
   if (autobroadcast){
     sendPilotName(tAct);
   }
@@ -496,6 +550,15 @@ void FanetLora::getWeatherinfo(uint8_t *buffer,uint16_t length){
     lastWeatherData.bBaro = false;
     lastWeatherData.Baro = NAN;
   }
+  if (header & 0x2){ //state of charge
+    uint8_t charge = buffer[index];
+    index +=1;
+    lastWeatherData.bStateOfCharge = true;
+    lastWeatherData.Charge = float(charge) * 100 / 15; //State of Charge  (+1byte lower 4 bits: 0x00 = 0%, 0x01 = 6.666%, .. 0x0F = 100%)
+  }else{
+    lastWeatherData.bStateOfCharge = false;
+    lastWeatherData.Charge = NAN;
+  }
   newWData = true;
 }
 
@@ -585,7 +648,8 @@ void FanetLora::handle_frame(Frame *frm){
       lastNameData.snr = frm->snr;
       lastNameData.name = msg2;
       newName = true;
-      insertNameToNeighbour(devId,msg2);
+      insertNameToWeather(devId,msg2); //insert name in weather-list
+      insertNameToNeighbour(devId,msg2); //insert name in neighbour-list
   }else if (frm->type == 3){
     //msg-data --> check if msg is explicit for us.
     //if (frm->dest)
@@ -594,7 +658,8 @@ void FanetLora::handle_frame(Frame *frm){
       lastWeatherData.devId = ((uint32_t)frm->src.manufacturer << 16) + (uint32_t)frm->src.id;
       lastWeatherData.rssi = frm->rssi;
       lastWeatherData.snr = frm->snr;
-      getWeatherinfo(frm->payload,frm->payload_length);      
+      getWeatherinfo(frm->payload,frm->payload_length);    
+      insertDataToWeatherStation(devId,&lastWeatherData);
   }else if (frm->type == 7){      
     //ground-tracking
     actTrackingData.devId = ((uint32_t)frm->src.manufacturer << 16) + (uint32_t)frm->src.id;

@@ -7,6 +7,7 @@ void load_configFile(SettingsData* pSetting){
   preferences.begin("settings", false);                         //Ordner settings anlegen/verwenden
   pSetting->wifi.appw = preferences.getString("APPW","12345678");
   pSetting->boardType = preferences.getUChar("BOARDTYPE",BOARD_T_BEAM); //
+  pSetting->BattType = preferences.getUChar("BATT_TYPE",BATT_TYPE_1S_LIPO); //
   pSetting->band = preferences.getUChar("BAND",BAND868); //
   pSetting->LoraPower = preferences.getUChar("LORA_POWER",10);//
   pSetting->awLiveTracking = preferences.getUChar("AWLIVE",0); //
@@ -95,6 +96,7 @@ void write_configFile(SettingsData* pSetting){
   preferences.begin("settings", false);                         //Ordner settings anlegen/verwenden
   preferences.putString("APPW",pSetting->wifi.appw);
   preferences.putUChar("BOARDTYPE",pSetting->boardType); //
+  preferences.putUChar("BATT_TYPE",pSetting->BattType); //battery-type
   preferences.putUChar("BAND",pSetting->band); //
   preferences.putUChar("LORA_POWER",pSetting->LoraPower);//
   preferences.putUChar("AWLIVE",pSetting->awLiveTracking); //

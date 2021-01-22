@@ -32,7 +32,7 @@
 #ifdef GSM_MODULE
 
 // Set serial for debug console (to the SerialMon Monitor, default speed 115200)
-//#define MODEMDEBUG
+#define MODEMDEBUG
 
 #include <TinyGsmClient.h>
   HardwareSerial GsmSerial(2);
@@ -139,6 +139,9 @@ Flarm flarm;
 HardwareSerial NMeaSerial(2);
 #endif
 //MicroNMEA library structures
+
+uint16_t battFull = 4050;
+uint16_t battEmpty = 3300;
 
 Ogn ogn;
 
@@ -265,9 +268,11 @@ void DrawRadarPilot(uint8_t neighborIndex);
 void printGSData(uint32_t tAct);
 void printBattVoltage(uint32_t tAct);
 void printScanning(uint32_t tAct);
+void printWeather(uint32_t tAct);
 void printGPSData(uint32_t tAct);
 void DrawAngleLine(int16_t x,int16_t y,int16_t length,float deg);
 void drawBatt(int16_t x, int16_t y,uint8_t value);
+void drawSignal(int16_t x, int16_t y,uint8_t strength);
 void drawflying(int16_t x, int16_t y, bool flying);
 void drawAircraftType(int16_t x, int16_t y, FanetLora::aircraft_t AircraftType);
 void drawSatCount(int16_t x, int16_t y,uint8_t value);
@@ -1184,6 +1189,7 @@ void printSettings(){
   log_i("**** SETTINGS ****");
   log_i("Access-point password=%s",setting.wifi.appw.c_str());
   log_i("Board-Type=%d",setting.boardType);
+  log_i("batt-type=%d",setting.BattType);
   log_i("Display-Type=%d",setting.displayType);
   //log_i("AXP192=%d",uint8_t(status.bHasAXP192));
   if (setting.band == 0){
@@ -1441,6 +1447,7 @@ void setup() {
 
   printSettings();
   analogReadResolution(10); // Default of 12 is not very linear. Recommended to use 10 or 11 depending on needed resolution.
+  status.bHasAXP192 = false;    
   switch (setting.boardType)
   {
   case BOARD_T_BEAM: 
@@ -1495,7 +1502,6 @@ void setup() {
     PinBuzzer = 0;
 
     i2cOLED.begin(PinOledSDA, PinOledSCL);
-    status.bHasAXP192 = false;    
     // voltage-divier 100kOhm and 100kOhm
     // vIn = (R1+R2)/R2 * VOut
     adcVoltageMultiplier = 2.0f * 3.76f; // not sure if it is ok ?? don't have this kind of board
@@ -1522,7 +1528,6 @@ void setup() {
     PinBuzzer = 0;
 
     i2cOLED.begin(PinOledSDA, PinOledSCL);
-    status.bHasAXP192 = false;
     // voltage-divier 100kOhm and 100kOhm
     // vIn = (R1+R2)/R2 * VOut
     adcVoltageMultiplier = 2.0f * 3.76f; // not sure if it is ok ?? don't have this kind of board
@@ -1558,10 +1563,16 @@ void setup() {
     PinBuzzer = 17;
 
     i2cOLED.begin(PinOledSDA, PinOledSCL);
-    status.bHasAXP192 = false;
     // voltage-divier 27kOhm and 100kOhm
     // vIn = (R1+R2)/R2 * VOut
-    adcVoltageMultiplier = (100000.0f + 27000.0f) / 100000.0f * 3.3;
+    if (setting.BattType == BATT_TYPE_12V_LEAD){
+      battFull = 12500;
+      battEmpty = 10800;
+      adcVoltageMultiplier = (100000.0f + 24000.0f) / 100000.0f * 15.6;
+    }else{
+      //1S LiPo
+      adcVoltageMultiplier = (100000.0f + 27000.0f) / 100000.0f * 3.3;
+    }
     pinMode(PinADCVoltage, INPUT); //input-Voltage on GPIO34
     break;
   case BOARD_TTGO_TSIM_7000:
@@ -1599,7 +1610,6 @@ void setup() {
     
     PinBuzzer = 0;
 
-    status.bHasAXP192 = false;       
     // voltage-divier 100kOhm and 100kOhm
     // vIn = (R1+R2)/R2 * VOut
     adcVoltageMultiplier = 2.0f * 3.76f; // not sure if it is ok ?? don't have this kind of board
@@ -1698,9 +1708,9 @@ bool initModem(){
 
 void taskGsm(void *pvParameters){  
   if (setting.wifi.connect != MODE_WIFI_DISABLED){
-    if (PinGsmRst >= 0){
-      digitalWrite(PinGsmRst,LOW);
-    }
+    //if (PinGsmRst >= 0){
+    //  digitalWrite(PinGsmRst,LOW);
+    //}
     log_i("stop task");
     vTaskDelete(xHandleGsm); //delete weather-task
     return;
@@ -1720,11 +1730,14 @@ void taskGsm(void *pvParameters){
     digitalWrite(PinGsmRst,HIGH);
     delay(3000); //wait until modem is ok now
   } 
-#ifdef TINY_GSM_MODEM_SIM7000
+  /*
+  #ifdef TINY_GSM_MODEM_SIM7000
     GsmSerial.begin(115200,SERIAL_8N1,PinGsmRx,PinGsmTx,false); //baud, config, rx, tx, invert
   #else
-    GsmSerial.begin(9600,SERIAL_8N1,PinGsmRx,PinGsmTx,false); //baud, config, rx, tx, invert
+    //GsmSerial.begin(9600,SERIAL_8N1,PinGsmRx,PinGsmTx,false); //baud, config, rx, tx, invert
   #endif
+  */
+  GsmSerial.begin(115200,SERIAL_8N1,PinGsmRx,PinGsmTx,false); //baud, config, rx, tx, invert
   const TickType_t xDelay = 5000 / portTICK_PERIOD_MS;   //only every 1sek.
   TickType_t xLastWakeTime = xTaskGetTickCount (); //get actual tick-count
   //bool status;
@@ -1757,6 +1770,7 @@ void taskGsm(void *pvParameters){
     vTaskDelayUntil( &xLastWakeTime, xDelay); //wait until next cycle
   }
   //modem.stop(15000L);
+  status.modemstatus = MODEM_DISCONNECTED;
   xSemaphoreTake( xGsmMutex, portMAX_DELAY );
   
   log_i("stop gprs connection");
@@ -1767,17 +1781,27 @@ void taskGsm(void *pvParameters){
   #ifdef TINY_GSM_MODEM_SIM7000
     digitalWrite(5,HIGH);
   #endif
-  digitalWrite(PinGsmRst,HIGH);
-  for (int i = 0; i < 10;i++){
-    log_i("power off modem");
-    if (modem.poweroff()) break;
+  //digitalWrite(PinGsmRst,HIGH);
+  
+  #ifdef TINY_GSM_MODEM_SIM7000
+    //Power-off SIM7000-module
+    for (int i = 0; i < 10;i++){
+      log_i("power off modem");
+      if (modem.poweroff()) break;
+      delay(1000);
+    }
+  #else
+    //on SIM800L we can't complete power down the module
+    //it restarts itself all the time --> we set the module to sleep-mode
+    log_i("set modem to sleep-mode");
+    modem.sendAT(GF("+CSCLK=2"));
     delay(1000);
-  }
+  #endif
   xSemaphoreGive( xGsmMutex );
   //GsmSerial.end();
-  if (PinGsmRst >= 0){
-    digitalWrite(PinGsmRst,LOW);
-  }
+  //if (PinGsmRst >= 0){
+  //  digitalWrite(PinGsmRst,LOW);
+  //}
   log_i("stop task");
   vTaskDelete(xHandleGsm); //delete weather-task
 }
@@ -1792,7 +1816,7 @@ void taskWeather(void *pvParameters){
   log_i("starting weather-task ");  
   Weather::weatherData wData;
   TwoWire i2cWeather = TwoWire(0);
-  i2cWeather.begin(PinBaroSDA,PinBaroSCL,400000); //init i2cBaro for Baro
+  i2cWeather.begin(PinBaroSDA,PinBaroSCL,200000); //init i2cBaro for Baro
   Weather weather;
   weather.setTempOffset(setting.wd.tempOffset);
   weather.setWindDirOffset(setting.wd.windDirOffset);
@@ -2181,12 +2205,93 @@ void printBattVoltage(uint32_t tAct){
       status.vBatt = uint16_t(readBattvoltage()*1000);      
     }
     //log_i("Batt =%dV",status.vBatt);
-    status.BattPerc = scale(status.vBatt,BATTEMPTY,BATTFULL,0,100);
+    status.BattPerc = scale(status.vBatt,battEmpty,battFull,0,100);
     //log_i("Batt =%d%%",status.BattPerc);
   }
 }
 
 #ifdef OLED
+
+void drawSignal(int16_t x, int16_t y,uint8_t strength) {
+  if ((strength <= 9) && (strength >= 3)){
+      display.drawBitmap(x,y,signal_1, SIGNALWIDTH, SIGNALHEIGHT, BLACK,WHITE);
+  }else if ((strength >= 10) && (strength <= 14)){
+      display.drawBitmap(x,y,signal_2, SIGNALWIDTH, SIGNALHEIGHT, BLACK,WHITE);
+  }else if ((strength >= 15) && (strength <= 19)){
+      display.drawBitmap(x,y,signal_3, SIGNALWIDTH, SIGNALHEIGHT, BLACK,WHITE);
+  }else if ((strength >= 19) && (strength <= 30)){
+      display.drawBitmap(x,y,signal_4, SIGNALWIDTH, SIGNALHEIGHT, BLACK,WHITE);
+  }else{
+      display.drawBitmap(x,y,signal_0, SIGNALWIDTH, SIGNALHEIGHT, BLACK,WHITE);
+  }
+  /*
+  display.setTextSize(1); //set textsize
+  display.setTextColor(WHITE,BLACK); //Draw white text Background Black
+  display.setCursor(x+22,y+2);
+  if (strength == 0){
+      display.print("  ");
+  }else{
+      if (strength < 10) display.print(" ");
+      display.print(strength);
+  }
+  display.display();
+  */
+}
+
+
+void printWeather(uint32_t tAct){
+  static uint32_t tRefresh = millis();
+  static uint8_t screen = 0;
+  if (timeOver(tAct,tRefresh,3000)){
+    tRefresh = tAct;
+    String s = "";
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setCursor(0,0);
+    display.print(setting.PilotName);
+    drawWifiStat(status.wifiStat);
+    drawBluetoothstat(101,0);
+    drawBatt(111, 0,(status.BattCharging) ? 255 : status.BattPerc);
+    if (status.bHasGSM){
+      drawSignal(60,0,status.GSMSignalQuality);
+    }    
+    display.setTextSize(3); //set Textsize
+    display.setCursor(0,21);
+    switch(screen)
+    {
+      case 0: //battery-voltage
+        s = String(status.vBatt / 1000.,2) + "V";
+        break;
+      case 1: //wind dir
+        s = "  " + getWDir(status.weather.WindDir);
+        break;
+      case 2: //speed and gust
+        s = String(round(status.weather.WindSpeed),0) + "|" + String(round(status.weather.WindGust),0); // + "kh";
+        break;
+      case 3: //temp
+        s = " " + String(status.weather.temp,1) + "C";
+        break;
+      case 4: //pressure
+        display.setCursor(0,26);
+        display.setTextSize(2); //set Textsize
+        s = " " + String(status.weather.Pressure,1) + "hPa";
+        break;
+      case 5: //humidity
+        s = " " + String(status.weather.Humidity,0) + "%";
+        break;
+    }
+    screen++;
+    if (screen > 5) screen = 0;
+    display.print(s);
+    display.setTextSize(1);
+    display.setCursor(0,55);
+    display.print(setting.myDevId);
+    display.setCursor(85,55);
+    display.print(VERSION);
+    display.display();
+  }
+}
+
 void printScanning(uint32_t tAct){
   static uint8_t icon = 0;
   if (setting.gs.SreenOption == SCREEN_ON_WHEN_TRAFFIC){
@@ -2943,11 +3048,11 @@ void taskStandard(void *pvParameters){
 
     if (setting.OGNLiveTracking){
       if (status.vario.bHasVario){
-        ogn.setStatusData(status.pressure ,status.varioTemp,NAN,status.vBatt);
+        ogn.setStatusData(status.pressure ,status.varioTemp,NAN,(float)status.vBatt / 1000.);
       }else if ((status.vario.bHasBME) || (status.bWUBroadCast)){
-        ogn.setStatusData(status.weather.Pressure ,status.weather.temp,status.weather.Humidity,status.vBatt);
+        ogn.setStatusData(status.weather.Pressure ,status.weather.temp,status.weather.Humidity,(float)status.vBatt / 1000.);
       }else{
-        ogn.setStatusData(NAN ,NAN, NAN, status.vBatt);
+        ogn.setStatusData(NAN ,NAN, NAN, (float)status.vBatt / 1000.);
       }
       ogn.run(status.bInternetConnected);
     } 
@@ -2963,7 +3068,9 @@ void taskStandard(void *pvParameters){
     if (setting.displayType == OLED0_96){
     #ifdef GSMODULE
       if (setting.Mode == MODE_GROUND_STATION){
-        if (setting.gs.SreenOption != SCREEN_ALWAYS_OFF){
+        if (setting.gs.SreenOption == SCREEN_WEATHER_DATA){
+          printWeather(tAct);
+        }else if (setting.gs.SreenOption != SCREEN_ALWAYS_OFF){
           if (fanet.getNeighboursCount() == 0){
             if (timeOver(tAct,tDisplay,500)){
               tDisplay = tAct;
@@ -3594,13 +3701,15 @@ void taskBackGround(void *pvParameters){
     if (status.bPowerOff){
       powerOff(); //power off, when battery is empty !!
     }
-    if ((status.vBatt < BATTEMPTY) && (status.vBatt >= BATTPINOK)) { // if Batt-voltage is below 1V, maybe the resistor is missing.
-      if (timeOver(tAct,tBattEmpty,60000)){ //min 60sek. below
-        log_i("Batt empty voltage=%d.%dV",status.vBatt/1000,status.vBatt%1000);
-        powerOff(); //power off, when battery is empty !!
+    if (status.bHasAXP192){ //power off only if we have an AXP192, otherwise, we can't switch on again.
+      if ((status.vBatt < battEmpty) && (status.vBatt >= BATTPINOK)) { // if Batt-voltage is below 1V, maybe the resistor is missing.
+        if (timeOver(tAct,tBattEmpty,60000)){ //min 60sek. below
+          log_i("Batt empty voltage=%d.%dV",status.vBatt/1000,status.vBatt%1000);
+          powerOff(); //power off, when battery is empty !!
+        }
+      }else{
+        tBattEmpty = millis();
       }
-    }else{
-      tBattEmpty = millis();
     }
     checkExtPowerOff(tAct);
     delay(1);

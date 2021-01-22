@@ -179,6 +179,8 @@ added "#FNG (0..F)\n" message for setting Ground-tracking type
 
 V3.2.2
 added multi-ble-support (for example, connect with XCTrack and at same time also with XCGuide)
+added Battery-Type 12V-lead for ground-station
+added weather-data to webinterface to display up to 10 received fanet-weather-stations
 
 
 

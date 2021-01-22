@@ -17,6 +17,7 @@ int32_t getStringValue(String s,String begin,String end,int32_t fromIndex,String
 String urldecode(String str);
 String urlencode(String str);
 unsigned char h2int(char c);
+String getWDir(float dir);
 float kmh2mph(float f);
 float deg2f(float f);
 double dewPointFast(double celsius, double humidity);

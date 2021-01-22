@@ -327,7 +327,7 @@ void Ogn::sendReceiverStatus(String sTime){
     xSemaphoreTake( *xMutex, portMAX_DELAY );
     client->print(sStatus);
     xSemaphoreGive( *xMutex );
-    log_i("%s",sStatus.c_str());
+    //log_i("%s",sStatus.c_str());
 }
 
 void Ogn::sendReceiverBeacon(String sTime){
@@ -423,6 +423,7 @@ void Ogn::readClient(){
 void Ogn::checkClientConnected(uint32_t tAct){
     static uint32_t tCheck = tAct;
     if ((tAct - tCheck) >= 10000){
+        tCheck = tAct;
         xSemaphoreTake( *xMutex, portMAX_DELAY );
         if (!client->connected()){
             connected = false;        

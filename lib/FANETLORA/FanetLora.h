@@ -36,6 +36,8 @@
 
 
 #define MAXNEIGHBOURS 64
+#define MAXWEATHERDATAS 10
+
 #define NEIGHBOURSLIFETIME 240000ul //4min
 #define SENDNAMEINTERVAL 240000ul //every 4min
 //#define NEIGHBOURSLIFETIME 60000 //4min
@@ -155,7 +157,9 @@ public:
   } neighbour;
 
   typedef struct {
+    uint32_t tLastMsg; //timestamp of neighbour (if 0 --> empty slot)
     uint32_t devId; //devId
+    String name; //name of neughbour
     int rssi; //rssi
     int snr; //signal to noise ratio
     float lat; //latitude
@@ -171,7 +175,7 @@ public:
     bool bBaro;
     float Baro;
     bool bStateOfCharge;
-    uint8_t Charge; //+1byte lower 4 bits: 0x00 = 0%, 0x01 = 6.666%, .. 0x0F = 100%
+    float Charge; //+1byte lower 4 bits: 0x00 = 0%, 0x01 = 6.666%, .. 0x0F = 100%
   } weatherData;
 
   FanetLora(); //constructor
@@ -206,6 +210,8 @@ public:
   uint16_t txCount;
   uint16_t rxCount;
   neighbour neighbours[MAXNEIGHBOURS];
+  weatherData weatherDatas[MAXWEATHERDATAS];
+  uint8_t weathercount;
   trackingData _myData;
   bool autobroadcast = false; //autobroadcast
   bool doOnlineTracking = true; //online-tracking
@@ -255,7 +261,10 @@ private:
   int16_t getneighbourIndex(uint32_t devId,bool getEmptyEntry);
   void insertNameToNeighbour(uint32_t devId, String name);
   void insertDataToNeighbour(uint32_t devId, trackingData *Data);
-  void clearNeighbours(uint32_t tAct);
+  void insertNameToWeather(uint32_t devId, String name);
+  int16_t getWeatherIndex(uint32_t devId,bool getEmptyEntry);
+  void insertDataToWeatherStation(uint32_t devId, weatherData *Data);
+  void clearNeighboursWeather(uint32_t tAct);
   uint32_t getDevIdFromMac(MacAddr *adr);
   MacAddr getMacFromDevId(uint32_t devId);
   int serialize_name(String name,uint8_t*& buffer);

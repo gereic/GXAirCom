@@ -129,6 +129,7 @@ void onWebSocketEvent(uint8_t client_num,
         }else if (clientPages[client_num] == 10){ //full settings
           doc.clear();
           doc["board"] = setting.boardType;
+          doc["bType"] = setting.BattType;
           doc["disp"] = setting.displayType;
           doc["band"] = setting.band;
           doc["power"] = setting.LoraPower;
@@ -308,6 +309,7 @@ void onWebSocketEvent(uint8_t client_num,
         if (root.containsKey("ssid")) newSetting.wifi.ssid = doc["ssid"].as<String>();
         if (root.containsKey("password")) newSetting.wifi.password = doc["password"].as<String>();
         if (root.containsKey("board")) newSetting.boardType = doc["board"].as<uint8_t>();          
+        if (root.containsKey("bType")) newSetting.BattType = doc["bType"].as<uint8_t>();          
         if (root.containsKey("disp")) newSetting.displayType = doc["disp"].as<uint8_t>();          
         if (root.containsKey("power")) newSetting.LoraPower = constrain(doc["power"].as<uint8_t>(),0,20);          
         if (root.containsKey("band")) newSetting.band = doc["band"].as<uint8_t>();          
@@ -341,7 +343,7 @@ void onWebSocketEvent(uint8_t client_num,
         //weatherdata
         if (root.containsKey("sFWD")) newSetting.wd.sendFanet = doc["sFWD"].as<uint8_t>();
         if (root.containsKey("wdTempOffset")) newSetting.wd.tempOffset = doc["wdTempOffset"].as<float>();
-        if (root.containsKey("wdWDirOffset")) newSetting.wd.windDirOffset = doc["wdWDirOffset"].as<float>();
+        if (root.containsKey("wdWDirOffset")) newSetting.wd.windDirOffset = doc["wdWDirOffset"].as<int16_t>();
         //vario
         if (root.containsKey("vSinkTh")) newSetting.vario.sinkingThreshold = doc["vSinkTh"].as<float>();
         if (root.containsKey("vClimbTh")) newSetting.vario.climbingThreshold = doc["vClimbTh"].as<float>();
@@ -478,6 +480,50 @@ String processor(const String& var){
         "\r\n";
       }
     }
+  }else if (var == "WEATHERLIST"){
+    sRet =  "<tr><th>ID</th><td>lat</td><td>lon</td><td>temperature</td><td>wind direction</td><td>wind speed</td><td>wind gust</td><td>Humidity</td><td>barometric pressure</td><td>state of charge</td><td>rssi</td><td>last seen</td></tr>\r\n";    
+    for (int i = 0; i < MAXWEATHERDATAS; i++){
+      if (fanet.weatherDatas[i].devId){
+        sRet += "<tr><th><a href=\"https://www.google.com/maps/search/?api=1&query=" + String(fanet.weatherDatas[i].lat,6) + "," + String(fanet.weatherDatas[i].lon,6)+ "\"  target=\"_blank\">";
+        if (fanet.weatherDatas[i].name.length() > 0){
+          sRet += fanet.weatherDatas[i].name;
+        }
+        sRet += " [" + fanet.getDevId(fanet.weatherDatas[i].devId) + "]</a></th>" +
+        "<td>" + String(fanet.weatherDatas[i].lat,6) + "</td>" + 
+        "<td>" + String(fanet.weatherDatas[i].lon,6) + "</td>" ;
+        if (fanet.weatherDatas[i].bTemp == 1 ) {
+          sRet +=  "<td>" + String(fanet.weatherDatas[i].temp,0) + "&deg;C</td>" ;
+        }else{
+          sRet +=  "<td></td>";
+        }
+        if (fanet.weatherDatas[i].bWind == 1 ) {
+          sRet += "<td>" + getWDir(fanet.weatherDatas[i].wHeading) + " " + String(fanet.weatherDatas[i].wHeading,0) + "&deg;</td>" +
+        "<td>" + String(fanet.weatherDatas[i].wSpeed,0) + "km/h</td>" +
+        "<td>" + String(fanet.weatherDatas[i].wGust,0) + "km/h</td>" ;
+        }else{
+          sRet +=  "<td></td><td></td><td></td>";
+        }
+        if (fanet.weatherDatas[i].bHumidity == 1 ) {
+          sRet +=  "<td>" + String(fanet.weatherDatas[i].Humidity,0) + "&#37;</td>" ;
+        }else{
+          sRet +=  "<td></td>";
+        }
+        if (fanet.weatherDatas[i].bBaro == 1 ) {
+          sRet +=  "<td>" + String(fanet.weatherDatas[i].Baro,0) + "hPa</td>" ;
+        }else{
+          sRet +=  "<td></td>";
+        }
+        if (fanet.weatherDatas[i].bStateOfCharge == 1 ) {
+          sRet +=  "<td>" + String(fanet.weatherDatas[i].Charge,1) + "&#37;</td>" ;
+        }else{
+          sRet +=  "<td></td>";
+        }
+        sRet +=  "<td>" + String(fanet.weatherDatas[i].rssi) + "dB</td>" +
+        "<td>" + String((millis() - fanet.weatherDatas[i].tLastMsg) / 1000) + " sec.</td>" +
+        "</tr>" +
+        "\r\n";
+      }
+    }
     return sRet;
   }
     
@@ -594,7 +640,10 @@ void Web_setup(void){
   server.on("/msgtype7.html", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, request->url(), "text/html",false,processor);
   });
-
+  server.on("/weather.html", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(SPIFFS, request->url(), "text/html",false,processor);
+  });
+  
   server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, request->url(), "text/css");
   });

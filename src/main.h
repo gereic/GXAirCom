@@ -187,8 +187,6 @@ SCL 14
 #define BAND868 0
 #define BAND915 1
 
-#define BATTFULL 4050
-#define BATTEMPTY 3300
 #define BATTPINOK 1000 //1 Volt for Batt-pinOK
 
 #define MAXSCREENS 2
@@ -235,6 +233,11 @@ SCL 14
 #define WIFI_CONNECT_ONCE 1
 #define WIFI_CONNECT_ALWAYS 2
 
+//defines for battery
+#define BATT_TYPE_1S_LIPO 0
+#define BATT_TYPE_12V_LEAD 1
+
+
 #define FANET_CMD_START			"#FN"
 #define FANET_CMD_TRANSMIT	"#FNT"
 #define FANET_CMD_GROUND_TYPE	"#FNG"
@@ -254,6 +257,7 @@ SCL 14
 #define SCREEN_ALWAYS_ON 0
 #define SCREEN_ON_WHEN_TRAFFIC 1
 #define SCREEN_ALWAYS_OFF 2
+#define SCREEN_WEATHER_DATA 3
 
 #define DISPLAY_STAT_OFF 0
 #define DISPLAY_STAT_ON 1
@@ -331,6 +335,7 @@ struct SettingsData{
   uint8_t boardType;
   uint8_t Mode; //Air-Module, GS-Station,
   uint8_t displayType;
+  uint8_t BattType; //type of battery
   String myDevId; //my device-ID
   uint8_t band;
   uint8_t LoraPower; //output-Power 5-20db

@@ -88,6 +88,11 @@ function setVis(){
     document.getElementById("VisVario").style.display='none';
     document.getElementById("VisFanetTracking").style.display='none'; //fanet-tracking mode in ground-station is important 
     //document.getElementById("VisOutputSettings").style.display='none'; //output-settings are not usefull in ground-station
+    if (document.getElementById("board").value == 1){ //only on HELTEC and TTGO-Board
+      document.getElementById("VisBattType").style.display = '';
+    }else{
+      document.getElementById("VisBattType").style.display = 'none';
+    }    
   }else{
     document.getElementById("VisLegacy").style.display='';
     document.getElementById("VisAirCraftType").style.display='';
@@ -101,6 +106,7 @@ function setVis(){
     }else{
       document.getElementById("VisVario").style.display='';
     }
+    document.getElementById("VisBattType").style.display = 'none';
   }
   if (document.getElementById("output").value == 1){
     document.getElementById("VisUdpIp").style.display='';
@@ -166,6 +172,7 @@ function sendValues(){
   
   var obj = {
   board : document.getElementById("board").value,
+  bType : document.getElementById("bType").value,
   disp : document.getElementById("disp").value,
   band : document.getElementById("band").value,
   power : document.getElementById("power").value,
@@ -392,6 +399,13 @@ window.addEventListener("load", init, false);
             <th id="tName">PilotName</th>
             <td><input type="text" id="PilotName"></td>
           </tr>
+          <tr id="VisBattType">
+            <th>Battery Type</th>
+            <td><select id="bType">
+              <option value="0">1S Lipo</option>
+              <option value="1">12V lead battery</option>
+            </select></td>
+          </tr>
           <tr id="VisAirCraftType">
             <th>Aircraft Type</th>
             <td><select id="type">
@@ -567,6 +581,7 @@ window.addEventListener("load", init, false);
               <option value="0">always on</option>
               <option value="1">only on when traffic</option>
               <option value="2">always off</option>
+              <option value="3">weather-data</option>
             </select></td>
           </tr>
           <tr>
