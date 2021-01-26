@@ -6,9 +6,10 @@ void load_configFile(SettingsData* pSetting){
   log_i("LOAD CONFIG FILE");
   preferences.begin("settings", false);                         //Ordner settings anlegen/verwenden
   pSetting->wifi.appw = preferences.getString("APPW","12345678");
-  pSetting->boardType = preferences.getUChar("BOARDTYPE",BOARD_T_BEAM); //
+  pSetting->boardType = preferences.getUChar("BOARDTYPE",BOARD_UNKNOWN); //
   pSetting->BattType = preferences.getUChar("BATT_TYPE",BATT_TYPE_1S_LIPO); //
   pSetting->band = preferences.getUChar("BAND",BAND868); //
+  pSetting->bHasExtPowerSw = preferences.getUChar("EXTPWSW",0); //external power-switch
   pSetting->LoraPower = preferences.getUChar("LORA_POWER",10);//
   pSetting->awLiveTracking = preferences.getUChar("AWLIVE",0); //
   pSetting->bOutputSerial = preferences.getUChar("OSerial",0); //
@@ -20,13 +21,13 @@ void load_configFile(SettingsData* pSetting){
   pSetting->wifi.connect = preferences.getUChar("WIFI_CONNECT",0); //
   pSetting->wifi.ssid = preferences.getString("WIFI_SSID","");
   pSetting->wifi.password = preferences.getString("WIFI_PW","");
-  pSetting->wifi.tWifiStop = preferences.getUInt("Time_WIFI_Stop",0);
+  pSetting->wifi.tWifiStop = preferences.getUInt("Time_WIFI_Stop",180); //stop wifi after 3min.
   pSetting->AircraftType = (FanetLora::aircraft_t)preferences.getUChar("AIRCRAFTTYPE",1);
   pSetting->UDPServerIP = preferences.getString("UDP_SERVER","192.168.4.2"); //UDP-IP-Adress to match connected device
   pSetting->UDPSendPort = preferences.getUInt("UDP_PORT",10110); //Port of udp-server
-  pSetting->outputMode = preferences.getUChar("OutputMode",OUTPUT_SERIAL); //output-mode
-  pSetting->Mode = preferences.getUChar("Mode",0);
-  pSetting->fanetMode = preferences.getUChar("fntMode",0);  
+  pSetting->outputMode = preferences.getUChar("OutputMode",OUTPUT_BLE); //output-mode default ble
+  pSetting->Mode = preferences.getUChar("Mode",MODE_AIR_MODULE);
+  pSetting->fanetMode = preferences.getUChar("fntMode",FN_GROUNT_AIR_TRACKING);  
   pSetting->fanetpin = preferences.getUInt("fntPin",1234);
   
   //gs settings
@@ -98,6 +99,7 @@ void write_configFile(SettingsData* pSetting){
   preferences.putUChar("BOARDTYPE",pSetting->boardType); //
   preferences.putUChar("BATT_TYPE",pSetting->BattType); //battery-type
   preferences.putUChar("BAND",pSetting->band); //
+  preferences.putUChar("EXTPWSW",pSetting->bHasExtPowerSw); //
   preferences.putUChar("LORA_POWER",pSetting->LoraPower);//
   preferences.putUChar("AWLIVE",pSetting->awLiveTracking); //
   preferences.putUChar("OSerial",pSetting->bOutputSerial); //
@@ -193,5 +195,34 @@ void write_Volume(void){
   //log_i("WRITE vario volume");
   preferences.begin("settings", false);
   preferences.putUChar("VarioVolume",setting.vario.volume);
+  preferences.end();
+}
+
+void write_PilotName(void){
+  preferences.begin("settings", false);
+  preferences.putString("PILOTNAME",setting.PilotName);
+  preferences.end();
+}
+void write_AircraftType(void){
+  preferences.begin("settings", false);
+  preferences.putUChar("AIRCRAFTTYPE",uint8_t(setting.AircraftType));
+  preferences.end();
+}
+
+void write_AirMode(void){
+  preferences.begin("settings", false);
+  preferences.putUChar("fntMode",setting.fanetMode);
+  preferences.end();
+}
+
+void write_Mode(void){
+  preferences.begin("settings", false);
+  preferences.putUChar("Mode",setting.Mode);
+  preferences.end();
+}
+
+void write_OutputMode(void){
+  preferences.begin("settings", false);
+  preferences.putUChar("OutputMode",setting.outputMode);
   preferences.end();
 }

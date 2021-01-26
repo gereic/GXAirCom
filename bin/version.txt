@@ -182,5 +182,23 @@ added multi-ble-support (for example, connect with XCTrack and at same time also
 added Battery-Type 12V-lead for ground-station
 added weather-data to webinterface to display up to 10 received fanet-weather-stations
 
+V4.0.0
+only 4 different Firmwares anymore, cause of new bluetooth-lib, it can do all variations in one Firmwares
+added system-commands for changing mode, name, type, read Version via serial, and bluetooth
+automatic-board-detection implemented.
+#SYC VER?   get Version
+#SYC NAME?  get Pilot/Ground-station name
+#SYC NAME=TEST  set Pilot/Ground-station name
+#SYC TYPE?  get AircraftType (0..7)
+#SYC TYPE=1 set AircraftType
+#SYC AIRMODE? get fanet-mode (0,1) 0... automatic switch between ground-tracking and air-tracking, 1... always air-tracking
+#SYC AIRMODE=1 set fanet-mode to send always air-tracking-data
+#SYC MODE? get mode of operation (0,1)
+#SYC MODE=1 set mode of operation to ground-station 0...Air-Module 1...Ground-station
+#SYC OUTMODE? get output-mode
+#SYC OUTMODE=3 set output-mode to bluetooth 0...Serial, 1...UDP, 3...bluetooth
+
+
+
 
 

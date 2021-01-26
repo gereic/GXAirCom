@@ -166,6 +166,8 @@ SCL 14
 #define BLE_LOW_HEAP 10000
 #define MAX_BLE_LOW_HEAP_TIME 30000
 
+#define OLED_SLAVE_ADDRESS (0x3C)
+
 
 #define ARDUINO_RUNNING_CORE0 0
 #define ARDUINO_RUNNING_CORE1 1
@@ -181,8 +183,8 @@ SCL 14
 #define BOARD_T_BEAM 0
 #define BOARD_HELTEC_LORA 1
 #define BOARD_T_BEAM_V07 2
-#define BOARD_TTGO_T3_V1_6 3
 #define BOARD_TTGO_TSIM_7000 4
+#define BOARD_UNKNOWN 255
 
 #define BAND868 0
 #define BAND915 1
@@ -242,6 +244,7 @@ SCL 14
 #define FANET_CMD_TRANSMIT	"#FNT"
 #define FANET_CMD_GROUND_TYPE	"#FNG"
 #define SYSTEM_CMD	"#SYC"
+#define GPS_STATE	"$G"
 
 #define MODE_WIFI_DISABLED 0
 #define MODE_WIFI_STA 1
@@ -365,6 +368,7 @@ struct SettingsData{
   bool bConfigGPS;
   uint8_t fanetMode; //fanet tracking-mode 0 ... switch between online-tracking and ground-tracking 1 ... always online-tracking
   uint16_t fanetpin; //pin for fanet (4 signs)
+  bool bHasExtPowerSw; //has external power-switch
 };
 
 struct weatherStatus{
@@ -417,6 +421,7 @@ struct statusData{
   bool bHasGSM;
   int16_t GSMSignalQuality;
   uint8_t displayStat; //stat of display
+  bool bHasGPS;
 };
 
 #endif

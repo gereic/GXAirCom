@@ -92,7 +92,8 @@ function setVis(){
       document.getElementById("VisBattType").style.display = '';
     }else{
       document.getElementById("VisBattType").style.display = 'none';
-    }    
+    } 
+    document.getElementById("VisExtPowerSw").style.display = 'none';
   }else{
     document.getElementById("VisLegacy").style.display='';
     document.getElementById("VisAirCraftType").style.display='';
@@ -121,6 +122,7 @@ function setVis(){
   }else{
     document.getElementById("VisWifiSsid").style.display='';
     document.getElementById("VisWifiPwd").style.display='';
+    document.getElementById("VisExtPowerSw").style.display = '';
   }
 }
 
@@ -181,6 +183,7 @@ function sendValues(){
   fntMode : document.getElementById("fntMode").value,
   fntPin : document.getElementById("fntPin").value,
   PilotName : document.getElementById("PilotName").value,
+  expwsw : Number(document.getElementById("expwsw").checked),
   save : 1
   };
   doSend(JSON.stringify(obj));
@@ -357,15 +360,15 @@ window.addEventListener("load", init, false);
             <th>Board Type</th>
             <td><select id="board">
               <option value="0">TTGO T-Beam T22_V1.0 / T22_V1.1</option>
-              <option value="2">TTGO T-Beam T22_V07</option>
+              <option value="2">TTGO T-Beam T22_V07/TTGO LORA T3_V1.6 (V2 1.6)</option>
               <option value="1">HELTEC / TTGO LORA</option>
-              <option value="3">TTGO LORA T3_V1.6 (V2 1.6)</option>
               <option value="4">TTGO T-SIM7000G</option>
+              <option value="255">unknown</option>
             </select></td>
           </tr>
           <tr>
             <th>Display Type</th>
-            <td><select id="disp" disabled>
+            <td><select id="disp">
               <option value="0">no display</option>
               <option value="1">0.96' OLED</option>
               <option value="2">2.9' E-Ink</option>              
@@ -389,10 +392,10 @@ window.addEventListener("load", init, false);
           </tr>
           <tr>
             <th>operating-mode</th>
-            <td><select onchange="setVis()" id="mode" disabled>
+            <td><select onchange="setVis()" id="mode">
               <option value="0">AIR-Module</option>
               <option value="1">Ground-Station</option>
-              <option value="100">Developer-mode</option>
+              <!--<option value="100">Developer-mode</option>-->
             </select></td>
           </tr>
           <tr>
@@ -433,6 +436,10 @@ window.addEventListener("load", init, false);
           <tr>
             <th>fanet Pin for fanet-commands</th>
             <td><input type="number" id="fntPin" min="0000" max="9999" step="1"></td>
+          </tr>
+          <tr id="VisExtPowerSw">
+            <th>external power swtich (pin36) only for kobo</th>
+            <td><input type="checkbox" id="expwsw"></td>
           </tr>
         </tbody>      
       </table>

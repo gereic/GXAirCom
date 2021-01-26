@@ -115,6 +115,7 @@ beeper Beeper(BEEP_VELOCITY_DEFAULT_SINKING_THRESHOLD,BEEP_VELOCITY_DEFAULT_CLIM
 int freq = 2000;
 int channel = 0;
 int resolution = 8;
+uint8_t wifiCMD = 0;
 
 
 #endif
@@ -179,6 +180,7 @@ String airwhere_web_ip = "37.128.187.9";
 
 
 static RTC_NOINIT_ATTR uint8_t startOption;
+static RTC_NOINIT_ATTR uint8_t detectOption;
 uint32_t psRamSize = 0;
 
 
@@ -228,6 +230,7 @@ int8_t PinRainGauge = -1;
 int8_t PinExtPowerOnOff = -1;
 
 float adcVoltageMultiplier = 0.0;
+String sNmeaIn = "";
 
 
 
@@ -238,6 +241,10 @@ TaskHandle_t xHandleBluetooth = NULL;
 TaskHandle_t xHandleMemory = NULL;
 TaskHandle_t xHandleEInk = NULL;
 TaskHandle_t xHandleWeather = NULL;
+
+SemaphoreHandle_t xOutputMutex;
+String sOutputData;
+
 #ifdef GSM_MODULE
 TaskHandle_t xHandleGsm = NULL;
 SemaphoreHandle_t xGsmMutex;
@@ -263,6 +270,7 @@ void taskGsm(void *pvParameters);
 #endif
 #ifdef OLED
 void startOLED();
+void add2OutputString(String s);
 void DrawRadarScreen(uint32_t tAct,uint8_t mode);
 void DrawRadarPilot(uint8_t neighborIndex);
 void printGSData(uint32_t tAct);
@@ -281,6 +289,78 @@ void drawBluetoothstat(int16_t x, int16_t y);
 void drawWifiStat(int wifiStat);
 void oledPowerOff();
 void oledPowerOn();
+void checkBoardType();
+
+void checkBoardType(){
+  log_i("start checking if board is T-Beam");
+  PinOledSDA = 21;
+  PinOledSCL = 22;
+  i2cOLED.begin(PinOledSDA, PinOledSCL);
+  log_i("init i2c %d,%d OK",PinOledSDA,PinOledSCL);
+  i2cOLED.beginTransmission(AXP192_SLAVE_ADDRESS);
+  if (i2cOLED.endTransmission() == 0) {
+    //ok we have a T-Beam !! 
+    //check, if we have an OLED
+    setting.boardType = BOARD_T_BEAM;
+    log_i("AXP192 found");
+    i2cOLED.beginTransmission(OLED_SLAVE_ADDRESS);
+    if (i2cOLED.endTransmission() == 0) {
+      //we have found also the OLED
+      setting.displayType = OLED0_96;
+      log_i("OLED found");
+      write_configFile(&setting);
+      delay(1000);
+      esp_restart(); //we need to restart
+    }else{
+      setting.displayType = NO_DISPLAY;
+      log_i("no OLED found");
+      write_configFile(&setting);
+      delay(1000);
+      esp_restart(); //we need to restart
+    }
+  }else{
+    //no AXP192 --> maybe T-Beam V07 or T3 V1.6
+    i2cOLED.beginTransmission(OLED_SLAVE_ADDRESS);
+    if (i2cOLED.endTransmission() == 0) {
+      //we have found the OLED
+      setting.boardType = BOARD_T_BEAM_V07;
+      setting.displayType = OLED0_96;
+      log_i("OLED found");
+      write_configFile(&setting);
+      delay(1000);
+      esp_restart(); //we need to restart
+    }
+  }
+
+  log_i("start checking if board is HELTEC/TTGO");
+  PinOledSDA = 4;
+  PinOledSCL = 15;
+  PinOledRst = 16;
+  i2cOLED.begin(PinOledSDA, PinOledSCL);
+  log_i("init i2c %d,%d OK",PinOledSDA,PinOledSCL);
+  pinMode(PinOledRst, OUTPUT);
+  digitalWrite(PinOledRst, LOW);
+  delay(100);
+  digitalWrite(PinOledRst, HIGH);
+  delay(100);
+  i2cOLED.beginTransmission(OLED_SLAVE_ADDRESS);
+  if (i2cOLED.endTransmission() == 0) {
+    //we have found also the OLED
+    setting.boardType = BOARD_HELTEC_LORA;
+    setting.displayType = OLED0_96;
+    log_i("OLED found");
+    write_configFile(&setting);
+    delay(1000);
+    esp_restart(); //we need to restart
+  }
+
+}
+
+void add2OutputString(String s){
+  xSemaphoreTake( xOutputMutex, portMAX_DELAY );
+  sOutputData += s;
+  xSemaphoreGive(xOutputMutex);
+}
 
 void oledPowerOn(){
   if (status.displayStat == DISPLAY_STAT_ON){
@@ -297,7 +377,7 @@ void oledPowerOn(){
   }
 
   //initialize OLED
-  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3c, false, false)) { // Address 0x3C for 128x32
+  if(!display.begin(SSD1306_SWITCHCAPVCC, OLED_SLAVE_ADDRESS, false, false)) { // Address 0x3C for 128x32
     log_e("SSD1306 allocation failed");
     for(;;); // Don't proceed, loop forever
   }
@@ -367,6 +447,7 @@ void handleButton(uint32_t tAct);
 char* readSerial();
 void checkReceivedLine(char *ch_str);
 void checkSystemCmd(char *ch_str);
+void setWifi(bool on);
 #ifdef BLUETOOTHSERIAL
 void serialBtCallBack(esp_spp_cb_event_t event, esp_spp_cb_param_t *param);
 char* readBtSerial();
@@ -475,13 +556,13 @@ void handleButton(uint32_t tAct){
 		}
   }else{
     //Button released
-		#ifndef EXT_POWER_ON_OFF //no muting when in kobo (for the moment)
-    if (buttonActive == true) {
-			if (longPressActive == false) {
-				status.bMuting = !status.bMuting; //toggle muting
+		if (!setting.bHasExtPowerSw){ //no muting when in kobo (for the moment)
+      if (buttonActive == true) {
+        if (longPressActive == false) {
+          status.bMuting = !status.bMuting; //toggle muting
+        }
       }
-		}
-    #endif    
+    }
 		buttonActive = false;
 		longPressActive = false;
   }
@@ -1202,6 +1283,7 @@ void printSettings(){
   log_i("Mode=%d",setting.Mode);
   log_i("Fanet-Mode=%d",setting.fanetMode);
   log_i("Fanet-Pin=%d",setting.fanetpin);
+  log_i("external power switch=%d",setting.bHasExtPowerSw);
 
 
   log_i("Serial-output=%d",setting.bOutputSerial);
@@ -1329,6 +1411,7 @@ void setup() {
   status.bTimeOk = false;
   status.modemstatus = MODEM_DISCONNECTED;
   setting.bConfigGPS = false;
+  status.bHasGPS = true; //we have our own GPS-Module
 
   //log_e("error");
 
@@ -1362,6 +1445,7 @@ void setup() {
   esp_reset_reason_t reason = esp_reset_reason();
   if (reason != ESP_RST_SW) {
     startOption = 0;
+    detectOption = 0;
   }
   log_i("startOption=%d",startOption);
 
@@ -1374,6 +1458,9 @@ void setup() {
 
   //listSpiffsFiles();
   load_configFile(&setting); //load configuration
+  if (setting.boardType == BOARD_UNKNOWN){
+    checkBoardType();
+  }  
   #ifdef OLED && !EINK
   setting.displayType = OLED0_96;
   #elif EINK && !OLED
@@ -1381,10 +1468,12 @@ void setup() {
   #elif !OLED && !EINK
   setting.displayType = NO_DISPLAY;
   #endif
-  #ifdef GSMODULE && !AIRMODULE    
+  #if defined(GSMODULE)  && ! defined(AIRMODULE)
+    log_i("only GS-Mode compiled");
     setting.Mode = MODE_GROUND_STATION;
   #endif
-  #ifdef AIRMODULE && !GSMODULE
+  #if defined(AIRMODULE) && ! defined(GSMODULE)
+    log_i("only Air-Mode compiled");
     setting.Mode = MODE_AIR_MODULE;
   #endif
   status.bHasGSM = false;
@@ -1472,9 +1561,9 @@ void setup() {
     //V3.0.0 changed from PIN 0 to PIN 25
     PinBuzzer = 25;
 
-    #ifdef EXT_POWER_ON_OFF
-    PinExtPowerOnOff = 36;
-    #endif
+    if (setting.bHasExtPowerSw){
+      PinExtPowerOnOff = 36;
+    }
 
     i2cOLED.begin(PinOledSDA, PinOledSCL);
     setupAXP192();
@@ -1482,7 +1571,7 @@ void setup() {
 
     break;
   case BOARD_T_BEAM_V07:
-    log_i("Board=T_BEAM_V07");
+    log_i("Board=T_BEAM_V07/TTGO_T3_V1_6");
     PinLoraRst = 23;
     PinLoraDI0 = 26;
     PinLora_SS = 18;
@@ -1507,6 +1596,7 @@ void setup() {
     adcVoltageMultiplier = 2.0f * 3.76f; // not sure if it is ok ?? don't have this kind of board
     pinMode(PinADCVoltage, INPUT);
     break;
+  /*
   case BOARD_TTGO_T3_V1_6:
     log_i("Board=TTGO_T3_V1_6");
     PinLoraRst = 23;
@@ -1533,6 +1623,7 @@ void setup() {
     adcVoltageMultiplier = 2.0f * 3.76f; // not sure if it is ok ?? don't have this kind of board
     pinMode(PinADCVoltage, INPUT);
     break;
+  */
   case BOARD_HELTEC_LORA:
     log_i("Board=HELTEC_LORA");
     PinLoraRst = 14;
@@ -1616,9 +1707,15 @@ void setup() {
     pinMode(PinADCVoltage, INPUT);
 
     break;
-  default:
-    log_e("wrong-board-definition --> please correct");
+  case BOARD_UNKNOWN:
+    log_e("unknown Board --> please correct");
     break;
+  default:
+    log_e("wrong-board-definition --> restart");
+    setting.boardType = BOARD_UNKNOWN;    
+    write_configFile(&setting);
+    delay(1000);
+    esp_restart(); //we need to restart    break;
   }
   if (PinUserLed >= 0){
     pinMode(PinUserLed, OUTPUT);
@@ -1638,6 +1735,8 @@ void setup() {
 #ifdef GSM_MODULE
 xGsmMutex = xSemaphoreCreateMutex();
 #endif
+
+xOutputMutex = xSemaphoreCreateMutex();
 
   //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
 #ifdef AIRMODULE
@@ -2074,11 +2173,14 @@ void loop() {
 
 void taskMemory(void *pvParameters) {
 
-	 while (1)
-	 {
-     log_i("current free heap: %d, minimum ever free heap: %d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
-     vTaskDelay(1000 / portTICK_PERIOD_MS);
-   }
+	while (1){
+    uint32_t freeHeap = xPortGetFreeHeapSize();
+    if (freeHeap < 50000){
+      log_i("current free heap: %d, minimum ever free heap: %d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
+      vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
+    vTaskDelay(1 / portTICK_PERIOD_MS); 
+  }
 }
 
 void taskBluetooth(void *pvParameters) {
@@ -2093,6 +2195,7 @@ void taskBluetooth(void *pvParameters) {
     delay(100); //wait until we have the devid
   }
   if ((setting.outputMode == OUTPUT_BLE) || (setting.outputMode == OUTPUT_BLUETOOTH)){
+    /*
     if ((psRamSize > 0) || (startOption == 1)){
       //startBluetooth(); //start bluetooth
     }else{
@@ -2100,6 +2203,7 @@ void taskBluetooth(void *pvParameters) {
       vTaskDelete(xHandleBluetooth);
       return;    
     }
+    */
   }else{
     //stop bluetooth-controller --> save some memory
     esp_bt_controller_disable();
@@ -2632,41 +2736,127 @@ void printGPSData(uint32_t tAct){
 }
 #endif
 
+void setWifi(bool on){
+  if ((on) && (status.wifiStat == 0)){
+    log_i("switch WIFI ACCESS-POINT ON");
+    WiFi.disconnect();
+    WiFi.mode(WIFI_OFF);
+    WiFi.persistent(false);
+    WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE); // call is only a workaround for bug in WiFi class
+    WiFi.mode(WIFI_MODE_AP);
+    WiFi.softAP(host_name.c_str(), setting.wifi.appw.c_str());
+    WiFi.softAPConfig(local_IP, gateway, subnet);
+    WiFi.setHostname(host_name.c_str());
+    Web_setup();
+    status.wifiStat = 1;      
+  }
+  if ((!on) && (status.wifiStat != 0)){
+    log_i("switch WIFI OFF");
+    Web_stop();
+    WiFi.softAPdisconnect(true);
+    WiFi.disconnect();
+    WiFi.mode(WIFI_MODE_NULL);
+    esp_wifi_set_mode(WIFI_MODE_NULL);
+    esp_wifi_stop();
+    setting.wifi.tWifiStop=0;
+    status.wifiStat=0;
+  }
+  wifiCMD = 0;
+}
+
 void checkSystemCmd(char *ch_str){
 	/* remove \r\n and any spaces */
 	String line = ch_str;
-  log_i("systemcmd=%s",line.c_str());
+  //log_i("systemcmd=%s",line.c_str());
   String sRet = "";
-  int32_t iPos = getStringValue(line,"WIFI=","\r",0,&sRet);
+  int32_t iPos;
+  iPos = getStringValue(line,"#SYC WIFI=","\r",0,&sRet);
   if (iPos > 0){
     uint8_t u8 = atoi(sRet.c_str());
     if (u8 == 1){
-      log_i("switch WIFI ACCESS-POINT ON");
-      WiFi.disconnect();
-      WiFi.mode(WIFI_OFF);
-      WiFi.persistent(false);
-      WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE); // call is only a workaround for bug in WiFi class
-      WiFi.mode(WIFI_MODE_AP);
-      WiFi.softAP(host_name.c_str(), setting.wifi.appw.c_str());
-      WiFi.softAPConfig(local_IP, gateway, subnet);
-      WiFi.setHostname(host_name.c_str());
-      Web_setup();
-      status.wifiStat = 1;      
+      wifiCMD = 11;
     }else{
-      log_i("switch WIFI OFF");
-      Web_stop();
-      WiFi.softAPdisconnect(true);
-      WiFi.disconnect();
-      WiFi.mode(WIFI_MODE_NULL);
-      setting.wifi.tWifiStop=0;
-      status.wifiStat=0;
+      wifiCMD = 10;
     }
-    
+    add2OutputString("#SYC OK\r\n");
   }
-	//char *p = (char *)ch_str;
-	//state = (status_t)strtol(p, NULL, 16);
-  //log_i("set ground-tracking-status:%d",(uint8_t)state);
-  //add2ActMsg("#FNR OK");
+  if (line.indexOf("#SYC /?") >= 0){
+    add2OutputString("VER\r\nNAME\r\nTYPE\r\nAIRMODE\r\nMODE\r\nOUTMODE\r\n");
+  }
+  if (line.indexOf("#SYC VER?") >= 0){
+    //log_i("sending 2 client");
+    add2OutputString("#SYC VER=" VERSION "\r\n");
+  }
+  if (line.indexOf("#SYC NAME?") >= 0){
+    //log_i("sending 2 client");
+    add2OutputString("#SYC NAME=" + setting.PilotName + "\r\n");
+  }
+  iPos = getStringValue(line,"#SYC NAME=","\r",0,&sRet);
+  if (iPos > 0){
+    if (setting.PilotName != sRet){
+      setting.PilotName = sRet;
+      write_PilotName();      
+    }
+    add2OutputString("#SYC OK\r\n");
+  }
+  if (line.indexOf("#SYC TYPE?") >= 0){
+    //log_i("sending 2 client");
+    add2OutputString("#SYC TYPE=" + String(setting.AircraftType) + "\r\n");
+  }
+  iPos = getStringValue(line,"#SYC TYPE=","\r",0,&sRet);
+  if (iPos > 0){
+    uint8_t u8 = atoi(sRet.c_str());
+    if (u8 != (uint8_t)setting.AircraftType){
+      setting.AircraftType = FanetLora::aircraft_t(u8);
+      write_AircraftType();
+    }
+    add2OutputString("#SYC OK\r\n");
+  }
+  if (line.indexOf("#SYC AIRMODE?") >= 0){
+    //log_i("sending 2 client");
+    add2OutputString("#SYC AIRMODE=" + String(setting.fanetMode) + "\r\n");
+  }
+  iPos = getStringValue(line,"#SYC AIRMODE=","\r",0,&sRet);
+  if (iPos > 0){
+    uint8_t u8 = atoi(sRet.c_str());
+    if (u8 != setting.fanetMode){
+      setting.fanetMode = u8;
+      write_AirMode();
+    }
+    add2OutputString("#SYC OK\r\n");
+  }
+  if (line.indexOf("#SYC MODE?") >= 0){
+    //log_i("sending 2 client");
+    add2OutputString("#SYC MODE=" + String(setting.Mode) + "\r\n");
+  }
+  iPos = getStringValue(line,"#SYC MODE=","\r",0,&sRet);
+  if (iPos > 0){
+    uint8_t u8 = atoi(sRet.c_str());
+    add2OutputString("#SYC OK\r\n");
+    if (u8 != setting.Mode){
+      setting.Mode = u8;
+      write_Mode();
+      delay(500); //we have to restart in case, the mode is changed
+      log_e("ESP Restarting !");
+      esp_restart();
+    }
+  }
+  if (line.indexOf("#SYC OUTMODE?") >= 0){
+    //log_i("sending 2 client");
+    add2OutputString("#SYC OUTMODE=" + String(setting.outputMode) + "\r\n");
+  }
+  iPos = getStringValue(line,"#SYC OUTMODE=","\r",0,&sRet);
+  if (iPos > 0){
+    uint8_t u8 = atoi(sRet.c_str());
+    add2OutputString("#SYC OK\r\n");
+    if (u8 != setting.outputMode){
+      setting.outputMode = u8;
+      write_OutputMode();
+      delay(500); //we have to restart in case, the mode is changed
+      log_e("ESP Restarting !");
+      esp_restart();
+    }
+  }
 }
 
 
@@ -2677,7 +2867,12 @@ void checkReceivedLine(char *ch_str){
   }else if(!strncmp(ch_str, FANET_CMD_GROUND_TYPE, 4)){
     fanet.fanet_cmd_setGroundTrackingType(ch_str+4);
   }else if (!strncmp(ch_str,SYSTEM_CMD,4)){
-    checkSystemCmd(ch_str+4);
+    checkSystemCmd(ch_str);
+  }else if (!strncmp(ch_str,GPS_STATE,2)){
+    //got GPS-Info
+    if (sNmeaIn.length() == 0){
+      sNmeaIn = String(ch_str);
+    }
   }
   /*
   }else if(!strncmp(ch_str, "@", 1)){
@@ -2752,9 +2947,38 @@ char* readSerial(){
 void readGPS(){
   static char lineBuffer[255];
   static uint16_t recBufferIndex = 0;
+  static uint32_t tGpsOk = millis();
   
+  if (sNmeaIn.length() > 0){
+    if (!status.bHasGPS){
+      char * cstr = new char [sNmeaIn.length()+1];
+      strcpy (cstr, sNmeaIn.c_str());
+      log_i("process GPS-String:%s",cstr);
+      uint16_t i = 0;
+      //char c;
+      //Serial.println();
+      //Serial.print("s=");
+      while (true){
+        //Serial.print(cstr[i]);
+        nmea.process(cstr[i]);
+        if (cstr[i] == 0){
+          log_i("break %d",i);
+          break;
+        }
+        if (i >= 255){
+          log_i("i >= 255 %d",i);
+          break;
+        }
+        i++;
+      }
+      delete cstr; //delete allocated String
+      if (setting.outputGPS) sendData2Client(sNmeaIn);
+      sNmeaIn = "";
+    }else{
+      sNmeaIn = ""; //we have a gps --> don't take data from external GPS
+    }
+  }
   while(NMeaSerial.available()){
-    
     if (recBufferIndex >= 255) recBufferIndex = 0; //Buffer overrun
     lineBuffer[recBufferIndex] = NMeaSerial.read();
     //log_i("GPS %c",lineBuffer[recBufferIndex]);
@@ -2768,11 +2992,16 @@ void readGPS(){
       String s = lineBuffer;
       if (setting.outputGPS) sendData2Client(s);
       recBufferIndex = 0;
+      tGpsOk = millis();
+      status.bHasGPS = true;
     }else{
       if (lineBuffer[recBufferIndex] != '\r'){
         recBufferIndex++;
       }
     }  
+  }
+  if (timeOver(millis(),tGpsOk,10000)){
+    status.bHasGPS = false;
   }
 }
 #endif
@@ -3058,11 +3287,21 @@ void taskStandard(void *pvParameters){
     } 
     checkFlyingState(tAct);
     printBattVoltage(tAct);
+    if (sOutputData.length() > 0){
+      String s;
+      xSemaphoreTake( xOutputMutex, portMAX_DELAY );
+      s = sOutputData;
+      sOutputData = "";
+      xSemaphoreGive(xOutputMutex);
+      //log_i("sending 2 client %s",s.c_str());
+      sendData2Client(s);
+    }
+
     #ifdef AIRMODULE
     if (setting.Mode == MODE_AIR_MODULE){
       readGPS();
     }
-    #endif
+    #endif    
     sendFlarmData(tAct);
     #ifdef OLED
     if (setting.displayType == OLED0_96){
@@ -3222,10 +3461,11 @@ void taskStandard(void *pvParameters){
       if (ppsTriggered){
         ppsTriggered = false;
         tLastPPS = tAct;
-        log_v("PPS-Triggered t=%d",status.tGPSCycle);
+        //log_i("PPS-Triggered t=%d",status.tGPSCycle);
         //log_e("GPS-FixTime=%s",nmea.getFixTime().c_str());
         status.tGPSCycle = tAct - tOldPPS;
         if (nmea.isValid()){
+          //log_i("nmea is valid");
           long alt = 0;
           nmea.getAltitude(alt);
           #ifdef AIRMODULE
@@ -3658,44 +3898,43 @@ void taskBackGround(void *pvParameters){
         WiFi.setHostname(host_name.c_str());
       }
     }
-    if (xPortGetMinimumEverFreeHeapSize()<100000)
-    {
+    /*
+    uint32_t freeHeap = xPortGetFreeHeapSize();
+    if (freeHeap<30000){
       if (millis()>warning_time)
       {
-        //log_w( "*****LOOP current free heap: %d, minimum ever free heap: %d ******", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
+        log_w( "*****LOOP current free heap: %d, minimum ever free heap: %d ******", freeHeap, xPortGetMinimumEverFreeHeapSize());
         warning_time=millis()+1000;
       }
     }
-	if (xPortGetMinimumEverFreeHeapSize()<5000)
-	{
-    log_e( "*****LOOP current free heap: %d, minimum ever free heap: %d ******", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
-		log_e("System Low on Memory - xPortGetMinimumEverFreeHeapSize < 2KB");
-		log_e("ESP Restarting !");
-		esp_restart();
-	}
+    if (freeHeap<10000)
+    {
+      log_e( "*****LOOP current free heap: %d, minimum ever free heap: %d ******", freeHeap, xPortGetMinimumEverFreeHeapSize());
+      log_e("System Low on Memory - xPortGetMinimumEverFreeHeapSize < 2KB");
+      //log_e("ESP Restarting !");
+      //esp_restart();
+    }
+    */
 
     if  (status.wifiStat){
       Web_loop();
     }
+    if (wifiCMD == 11) setWifi(true); //switch wifi on
+    if (wifiCMD == 10) setWifi(false); //switch wifi off
     if (( tAct > (setting.wifi.tWifiStop * 1000)) && (setting.wifi.tWifiStop!=0) && (!WebUpdateRunning)){
-      log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
-      Web_stop();
-      WiFi.softAPdisconnect(true);
-      WiFi.disconnect();
-      WiFi.mode(WIFI_MODE_NULL);
-      //WiFi.forceSleepBegin(); //This also works
-      setting.wifi.tWifiStop=0;
-      status.wifiStat=0;
-      esp_wifi_set_mode(WIFI_MODE_NULL);
-      esp_wifi_stop();
       log_i("******************WEBCONFIG Setting - WIFI STOPPING*************************");
       log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
+      setWifi(false);
+      //delay(3000);
+      //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
+      /*
       if ((setting.outputMode == OUTPUT_BLE) || (setting.outputMode == OUTPUT_BLUETOOTH)){
         if (psRamSize == 0){
           startOption = 1; //start without wifi, but with bluetooth enabled
           ESP.restart(); //we restart without wifi
         }
       }
+      */
     }
     //yield();
     if (status.bPowerOff){

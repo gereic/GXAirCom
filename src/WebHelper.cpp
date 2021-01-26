@@ -132,6 +132,7 @@ void onWebSocketEvent(uint8_t client_num,
           doc["bType"] = setting.BattType;
           doc["disp"] = setting.displayType;
           doc["band"] = setting.band;
+          doc["expwsw"] = setting.bHasExtPowerSw;
           doc["power"] = setting.LoraPower;
           doc["mode"] = setting.Mode;
           doc["type"] = (uint8_t)setting.AircraftType;
@@ -313,6 +314,7 @@ void onWebSocketEvent(uint8_t client_num,
         if (root.containsKey("disp")) newSetting.displayType = doc["disp"].as<uint8_t>();          
         if (root.containsKey("power")) newSetting.LoraPower = constrain(doc["power"].as<uint8_t>(),0,20);          
         if (root.containsKey("band")) newSetting.band = doc["band"].as<uint8_t>();          
+        if (root.containsKey("expwsw")) newSetting.bHasExtPowerSw = doc["expwsw"].as<uint8_t>();
         if (root.containsKey("type")) newSetting.AircraftType = (FanetLora::aircraft_t)doc["type"].as<uint8_t>();
         if (root.containsKey("PilotName")) newSetting.PilotName = doc["PilotName"].as<String>();
         if (root.containsKey("output")) newSetting.outputMode = doc["output"].as<uint8_t>();
@@ -672,6 +674,7 @@ void Web_stop(void){
 }
 
 void Web_loop(void){
+  
   static uint32_t tLife = millis();
   static uint32_t tCounter = millis();
   static uint16_t counter = 0;
@@ -682,7 +685,6 @@ void Web_loop(void){
   StaticJsonDocument<300> doc; //Memory pool
   // Look for and handle WebSocket data
   webSocket.loop();
-
 
 
   if ((tAct - tLife) >= 100){
@@ -740,6 +742,8 @@ void Web_loop(void){
     if ((tAct - tCounter) >= 1000){
       tCounter = tAct;
       counter++;
+      doc["freeHeap"] = xPortGetFreeHeapSize();
+      doc["fHeapMin"] = xPortGetMinimumEverFreeHeapSize();
       doc["counter"] = counter;
       bSend = true;
     }
@@ -802,8 +806,6 @@ void Web_loop(void){
       mStatus.tMaxLoop = status.tMaxLoop;
       doc["tMaxLoop"] = status.tMaxLoop;
     }    
-    //doc["freeHeap"] = xPortGetFreeHeapSize();
-    //doc["fHeapMin"] = xPortGetMinimumEverFreeHeapSize();
     if (bSend){
       serializeJson(doc, msg_buf);
       for (int i = 0;i <MAXCLIENTS;i++){

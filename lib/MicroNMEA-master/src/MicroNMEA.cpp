@@ -219,6 +219,7 @@ void MicroNMEA::clear(void)
 
 bool MicroNMEA::process(char c)
 {
+	//Serial.print(c);
 	if (_buffer == NULL || _bufferLen == 0){
 		return false;
 	}
@@ -227,6 +228,7 @@ bool MicroNMEA::process(char c)
 		
 		*_ptr = '\0';
 		_ptr = _buffer;
+		//log_i("checkBuffer");
 		if (*_buffer == '$' && testChecksum(_buffer)) {
 			// Valid message
 			const char* data;
@@ -238,12 +240,14 @@ bool MicroNMEA::process(char c)
 				_talkerID = '\0';
 				data = parseField(&_buffer[1], &_messageID[0], sizeof(_messageID));
 			}
-
-			if (strcmp(&_messageID[0], "GGA") == 0)
+			//log_i("checksum ok");
+			if (strcmp(&_messageID[0], "GGA") == 0){
+				//log_i("process GGA");
 				return processGGA(data);
-			else if (strcmp(&_messageID[0], "RMC") == 0)
+			}else if (strcmp(&_messageID[0], "RMC") == 0){
+				//log_i("process RMC");
 				return processRMC(data);
-			else if (_unknownSentenceHandler)
+			}else if (_unknownSentenceHandler)
 				(*_unknownSentenceHandler)(*this);
 		}
 		else {
