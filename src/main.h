@@ -422,6 +422,9 @@ struct statusData{
   int16_t GSMSignalQuality;
   uint8_t displayStat; //stat of display
   bool bHasGPS;
+  uint8_t updateState; //state of update
+  String sNewVersion;
+  uint32_t tRestart;
 };
 
 #endif

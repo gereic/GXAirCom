@@ -16,4 +16,5 @@ void write_AircraftType(void);
 void write_AirMode(void);
 void write_Mode(void);
 void write_OutputMode(void);
+void write_LoraPower(void);
 #endif

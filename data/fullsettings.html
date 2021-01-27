@@ -181,7 +181,7 @@ function sendValues(){
   type : document.getElementById("type").value,
   mode : document.getElementById("mode").value,
   fntMode : document.getElementById("fntMode").value,
-  fntPin : document.getElementById("fntPin").value,
+  //fntPin : document.getElementById("fntPin").value,
   PilotName : document.getElementById("PilotName").value,
   expwsw : Number(document.getElementById("expwsw").checked),
   save : 1
@@ -433,10 +433,12 @@ window.addEventListener("load", init, false);
               <option value="1">always air-tracking</option>
             </select></td>
           </tr>
+          <!--
           <tr>
             <th>fanet Pin for fanet-commands</th>
             <td><input type="number" id="fntPin" min="0000" max="9999" step="1"></td>
           </tr>
+          -->
           <tr id="VisExtPowerSw">
             <th>external power swtich (pin36) only for kobo</th>
             <td><input type="checkbox" id="expwsw"></td>

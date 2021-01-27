@@ -26,13 +26,15 @@
 #include "esp_spi_flash.h"
 #include "esp_bt_main.h"
 #include "driver/adc.h"
+//#include "Update.h"
+#include "gxUpdater.h"
 
 //#define TEST
 
 #ifdef GSM_MODULE
 
 // Set serial for debug console (to the SerialMon Monitor, default speed 115200)
-#define MODEMDEBUG
+//#define MODEMDEBUG
 
 #include <TinyGsmClient.h>
   HardwareSerial GsmSerial(2);
@@ -49,6 +51,7 @@
   //TinyGsm modem(GsmSerial);
   TinyGsmClient GsmOGNClient(modem,0); //client number 0 for OGN
   TinyGsmClient GsmWUClient(modem,1); //client number 1 for weather-underground
+  TinyGsmClient GsmUpdaterClient(modem,2); //client number 2 for updater
 #endif
 
 #ifdef EINK
@@ -145,6 +148,8 @@ uint16_t battFull = 4050;
 uint16_t battEmpty = 3300;
 
 Ogn ogn;
+
+gxUpdater updater;  
 
 FanetLora::trackingData MyFanetData;  
 
@@ -292,6 +297,14 @@ void oledPowerOn();
 void checkBoardType();
 
 void checkBoardType(){
+  #ifdef TINY_GSM_MODEM_SIM7000
+    setting.displayType = NO_DISPLAY;
+    setting.boardType = BOARD_TTGO_TSIM_7000;
+    log_i("TTGO-T-Sim7000 found");
+    write_configFile(&setting);
+    delay(1000);
+    esp_restart(); //we need to restart
+  #endif
   log_i("start checking if board is T-Beam");
   PinOledSDA = 21;
   PinOledSCL = 22;
@@ -448,6 +461,7 @@ char* readSerial();
 void checkReceivedLine(char *ch_str);
 void checkSystemCmd(char *ch_str);
 void setWifi(bool on);
+void handleUpdate(uint32_t tAct);
 #ifdef BLUETOOTHSERIAL
 void serialBtCallBack(esp_spp_cb_event_t event, esp_spp_cb_param_t *param);
 char* readBtSerial();
@@ -1412,6 +1426,7 @@ void setup() {
   status.modemstatus = MODEM_DISCONNECTED;
   setting.bConfigGPS = false;
   status.bHasGPS = true; //we have our own GPS-Module
+  status.tRestart = 0;
 
   //log_e("error");
 
@@ -1420,6 +1435,7 @@ void setup() {
     delay(10);
   }
   */
+
 
   log_i("SDK-Version=%s",ESP.getSdkVersion());
   log_i("CPU-Speed=%d",ESP.getCpuFreqMHz());
@@ -1864,7 +1880,8 @@ void taskGsm(void *pvParameters){
       }
     }
     xSemaphoreGive( xGsmMutex );
-    if ((WebUpdateRunning) || (bGsmOff)) break;
+    //if ((WebUpdateRunning) || (bGsmOff)) break;
+    if (bGsmOff) break; //we need GSM for webupdate
     //delay(1);
     vTaskDelayUntil( &xLastWakeTime, xDelay); //wait until next cycle
   }
@@ -2773,6 +2790,7 @@ void checkSystemCmd(char *ch_str){
   iPos = getStringValue(line,"#SYC WIFI=","\r",0,&sRet);
   if (iPos > 0){
     uint8_t u8 = atoi(sRet.c_str());
+    u8 = constrain(u8,0,1);
     if (u8 == 1){
       wifiCMD = 11;
     }else{
@@ -2806,6 +2824,7 @@ void checkSystemCmd(char *ch_str){
   iPos = getStringValue(line,"#SYC TYPE=","\r",0,&sRet);
   if (iPos > 0){
     uint8_t u8 = atoi(sRet.c_str());
+    u8 = constrain(u8,0,7);
     if (u8 != (uint8_t)setting.AircraftType){
       setting.AircraftType = FanetLora::aircraft_t(u8);
       write_AircraftType();
@@ -2819,6 +2838,7 @@ void checkSystemCmd(char *ch_str){
   iPos = getStringValue(line,"#SYC AIRMODE=","\r",0,&sRet);
   if (iPos > 0){
     uint8_t u8 = atoi(sRet.c_str());
+    u8 = constrain(u8,0,1);
     if (u8 != setting.fanetMode){
       setting.fanetMode = u8;
       write_AirMode();
@@ -2832,6 +2852,7 @@ void checkSystemCmd(char *ch_str){
   iPos = getStringValue(line,"#SYC MODE=","\r",0,&sRet);
   if (iPos > 0){
     uint8_t u8 = atoi(sRet.c_str());
+    u8 = constrain(u8,0,1);
     add2OutputString("#SYC OK\r\n");
     if (u8 != setting.Mode){
       setting.Mode = u8;
@@ -2848,6 +2869,7 @@ void checkSystemCmd(char *ch_str){
   iPos = getStringValue(line,"#SYC OUTMODE=","\r",0,&sRet);
   if (iPos > 0){
     uint8_t u8 = atoi(sRet.c_str());
+    u8 = constrain(u8,0,3);
     add2OutputString("#SYC OK\r\n");
     if (u8 != setting.outputMode){
       setting.outputMode = u8;
@@ -2857,11 +2879,26 @@ void checkSystemCmd(char *ch_str){
       esp_restart();
     }
   }
+  if (line.indexOf("#SYC FNTPWR?") >= 0){
+    //log_i("sending 2 client");
+    add2OutputString("#SYC FNTPWR=" + String(setting.LoraPower) + "\r\n");
+  }
+  iPos = getStringValue(line,"#SYC FNTPWR=","\r",0,&sRet);
+  if (iPos > 0){
+    uint8_t u8 = atoi(sRet.c_str());
+    u8 = constrain(u8,0,14);
+    add2OutputString("#SYC OK\r\n");
+    if (u8 != setting.LoraPower){
+      setting.LoraPower = u8;
+      LoRa.setTxPower(setting.LoraPower);
+      write_LoraPower();
+    }
+  }
 }
 
 
 void checkReceivedLine(char *ch_str){
-  //log_i("new serial msg=%s",ch_str);
+  log_i("new serial msg=%s",ch_str);
   if(!strncmp(ch_str, FANET_CMD_TRANSMIT, 4)){
     fanet.fanet_cmd_transmit(ch_str+4);
   }else if(!strncmp(ch_str, FANET_CMD_GROUND_TYPE, 4)){
@@ -2953,7 +2990,7 @@ void readGPS(){
     if (!status.bHasGPS){
       char * cstr = new char [sNmeaIn.length()+1];
       strcpy (cstr, sNmeaIn.c_str());
-      log_i("process GPS-String:%s",cstr);
+      //log_i("process GPS-String:%s",cstr);
       uint16_t i = 0;
       //char c;
       //Serial.println();
@@ -2962,11 +2999,11 @@ void readGPS(){
         //Serial.print(cstr[i]);
         nmea.process(cstr[i]);
         if (cstr[i] == 0){
-          log_i("break %d",i);
+          //log_i("break %d",i);
           break;
         }
         if (i >= 255){
-          log_i("i >= 255 %d",i);
+          //log_i("i >= 255 %d",i);
           break;
         }
         i++;
@@ -3742,6 +3779,35 @@ void checkExtPowerOff(uint32_t tAct){
   }
 }
 
+void handleUpdate(uint32_t tAct){
+  if (status.tRestart != 0){
+    if (timeOver(tAct,status.tRestart,5000)){
+      esp_restart();
+    }
+  }
+  if (status.updateState == 1){
+    status.updateState = 2;      
+    if (updater.checkVersion()){
+      status.sNewVersion = updater.getVersion();
+      if (updater.checkVersionNewer()){
+        status.updateState = 10; //we can update --> newer Version
+      }
+    }
+  }else if (status.updateState == 100){
+    status.updateState = 110;
+    WebUpdateRunning = true;
+    delay(500); //wait 1 second until tasks are stopped
+    if (updater.updateVersion()){ //update to newest version  
+      status.updateState = 200; //send status update complete
+      status.tRestart = millis();
+    }else{
+      status.updateState = 255; //update failed
+      status.tRestart = millis();
+    }
+    
+  }
+}
+
 void taskBackGround(void *pvParameters){
   static uint32_t tWifiCheck = millis();
   static uint32_t warning_time=0;
@@ -3749,7 +3815,7 @@ void taskBackGround(void *pvParameters){
   static uint32_t tGetTime = millis();
   uint32_t tBattEmpty = millis();
   uint32_t tRuntime = millis();
-  uint32_t tGetWifiRssi = millis();  
+  uint32_t tGetWifiRssi = millis();    
   bool bPowersaveOk = false;
   #ifdef GSMODULE
   static uint32_t tCheckDayTime = millis();
@@ -3764,8 +3830,16 @@ void taskBackGround(void *pvParameters){
   }
 
   setupWifi();
+  #ifdef GSM_MODULE
+    if (setting.wifi.connect == MODE_WIFI_DISABLED){      
+      updater.setClient(&GsmUpdaterClient);
+      updater.setMutex(&xGsmMutex);
+    }
+  #endif
+
   while (1){
     uint32_t tAct = millis();
+    handleUpdate(tAct);
     #ifdef GSMODULE
     if (setting.Mode == MODE_GROUND_STATION){
       if (setting.gs.PowerSave == GS_POWER_SAFE){

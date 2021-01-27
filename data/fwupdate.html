@@ -6,7 +6,153 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
 <title>GXAirCom</title>
 <script src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>
-</head>
+<script language="javascript" type="text/javascript">
+ 
+  var url = "ws://" + window.location.host + ":1337/";
+  var UpdState = 0;
+  var newVersion = "";
+  
+ // This is called when the page finishes loading
+ function init() {
+  
+     // Connect to WebSocket server
+     wsConnect(url);
+ }
+  
+ // Call this to connect to the WebSocket server
+ function wsConnect(url) {
+     
+     // Connect to WebSocket server
+     websocket = new WebSocket(url);
+     
+     // Assign callbacks
+     websocket.onopen = function(evt) { onOpen(evt) };
+     websocket.onclose = function(evt) { onClose(evt) };
+     websocket.onmessage = function(evt) { onMessage(evt) };
+     websocket.onerror = function(evt) { onError(evt) };
+ }
+  
+ // Called when a WebSocket connection is established with the server
+ function onOpen(evt) {
+  
+     // Log connection state
+     console.log("Connected");
+     
+     // write page-number --> then we get all values for page
+     doSend(JSON.stringify({ page : 5 }));//send page-number Firmware-update
+ }
+  
+ // Called when the WebSocket connection is closed
+ function onClose(evt) {
+  
+     // Log disconnection state
+     console.log("Disconnected");
+     
+     // Try to reconnect after a few seconds
+     setTimeout(function() { wsConnect(url) }, 2000);
+ }
+ // Called when a message is received from the server
+function onMessage(evt) {
+ 
+ // Print out our received message
+ console.log("Received: " + evt.data);
+ 
+ // Update circle graphic with LED state
+ var myObj = JSON.parse(evt.data);
+ for (var key of Object.keys(myObj)) {
+    console.log(key + " -> " + myObj[key])
+    if (key == "updateState"){
+      UpdState = myObj[key];
+      continue;
+    }else if (key == "nVers"){
+      newVersion = myObj[key];
+      continue;
+    }
+    var e = document.getElementById(key);
+    if (e instanceof HTMLSelectElement) {     // <select>
+      document.getElementById(key).value = myObj[key];
+    }else if ((e instanceof HTMLInputElement ) && (e.getAttribute('type') == 'checkbox')){     // <input checkbox>
+      if (myObj[key] == 1){
+        document.getElementById(key).checked = true;
+      }else{
+        document.getElementById(key).checked = false;
+      }
+    }else{
+      document.getElementById(key).textContent = myObj[key];
+      document.getElementById(key).value = myObj[key];
+    }
+  }
+  setUpdateState();
+}
+
+function setUpdateState(){
+  e = document.getElementById("updstate");
+  switch(UpdState){
+    case 0:
+      e.value = "";
+      break;
+    case 1:
+      e.value = "checking for new Version";
+      break;
+    case 2:
+      e.value = "no new Version avaiable.";
+      break;
+    case 10:
+      document.getElementById("btnOnlineUpdate").innerText = "update";
+      e.value = "new Version: " + newVersion;
+      break;
+    case 200:
+      document.getElementById("btnOnlineUpdate").innerText = "ready";
+      e.value = "update completed";
+      document.getElementById("btnUpdate").innerText  = "rebooting ..."
+      var delay = 5000; //wait 5 seconds until reconnect
+      setTimeout( callMainPage, delay )
+      break;
+    case 255:
+      document.getElementById("btnOnlineUpdate").innerText = "Check for new Version";
+      e.value = "update error";
+      document.getElementById("btnUpdate").innerText  = "rebooting ..."
+      var delay = 5000; //wait 5 seconds until reconnect
+      setTimeout( callMainPage, delay )
+      break;
+    default:
+      break;
+  }
+}
+
+// Called when a WebSocket error occurs
+function onError(evt) {
+ console.log("ERROR: " + evt.data);
+}
+
+// Sends a message to the server (and prints it to the console)
+function doSend(message) {
+ console.log("Sending: " + message);
+ websocket.send(message);
+}
+
+// Call the init function as soon as the page loads
+window.addEventListener("load", init, false);
+
+function btnUpdClick(){
+  if (UpdState == 10){
+    UpdState = 100; //we want to update version
+    document.getElementById("updstate").value = "update is running, please wait";
+    document.getElementById("btnOnlineUpdate").innerText = "updating";
+  }else{
+    UpdState = 1;
+  }
+  var obj = {
+  updateState : UpdState
+  };
+  doSend(JSON.stringify(obj));
+  setUpdateState();
+
+}
+
+</script>
+
+ </head>
 <body>
   <div style="text-align:left;display:inline-block;color:#eaeaea;min-width:340px;">
     <div style='text-align:center;color:#eaeaea;'>
@@ -31,6 +177,21 @@
         <!--<input type='submit' value='Update'>-->
       </form>
       <div id='prg'>progress: 0&#37;</div>
+    </fieldset>
+    <p></p>
+    <p></p>
+    <fieldset>
+      <legend><b>upgrade directly from internet</b></legend>
+      <table style="width:100&#37;">
+        <tbody>
+          <tr>
+            <th>update-state:</th>
+            <td><input type="text" id="updstate" disabled></td>
+            <td>
+              <button type="button" id="btnOnlineUpdate" onClick="btnUpdClick()" class="button byel" style="line-height: 1.7rem;">Check for new Version</button>
+            </td>
+          </tr>
+      </table>
     </fieldset>
     <p></p>
     <p></p>

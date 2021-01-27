@@ -126,6 +126,12 @@ void onWebSocketEvent(uint8_t client_num,
 
         }else if (clientPages[client_num] == 2){ //sendmessage
 
+        }else if (clientPages[client_num] == 5){ //FW-Update
+          doc.clear();
+          doc["updateState"] = status.updateState;
+          serializeJson(doc, msg_buf);
+          webSocket.sendTXT(client_num, msg_buf);
+
         }else if (clientPages[client_num] == 10){ //full settings
           doc.clear();
           doc["board"] = setting.boardType;
@@ -300,6 +306,8 @@ void onWebSocketEvent(uint8_t client_num,
         setting.vario.bCalibGyro = true; //calibrate Gyro
       }else if (root.containsKey("calibAcc")){
         setting.vario.bCalibAcc = true; //calibrate accelerometer
+      }else if (root.containsKey("updateState")){
+        status.updateState = doc["updateState"].as<uint8_t>();
       }else if (root.containsKey("save")){
         //save settings-page
         value = doc["save"];
@@ -563,7 +571,7 @@ static void handle_update_progress_cb(AsyncWebServerRequest *request, String fil
       }
     }
   }
-
+  //log_i("l=%d",len);
   if (Update.write(data, len) != len) {
     Update.printError(Serial);
   }
@@ -689,6 +697,27 @@ void Web_loop(void){
 
   if ((tAct - tLife) >= 100){
     tLife = tAct;
+    doc.clear();
+    bSend = false;
+    if (mStatus.updateState != status.updateState){
+      bSend = true;
+      mStatus.updateState = status.updateState;
+      doc["updateState"] = status.updateState;
+      if (status.updateState == 10){
+        doc["nVers"] = status.sNewVersion;
+      }
+    }    
+    if (bSend){
+      serializeJson(doc, msg_buf);
+      for (int i = 0;i <MAXCLIENTS;i++){
+        if (clientPages[i] == 5){
+          log_d("Sending to [%u]: %s", i, msg_buf);
+          webSocket.sendTXT(i, msg_buf);
+        }
+      }
+    }
+
+
     //vario
     if (status.vario.bHasVario){
       doc.clear();

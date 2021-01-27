@@ -226,3 +226,9 @@ void write_OutputMode(void){
   preferences.putUChar("OutputMode",setting.outputMode);
   preferences.end();
 }
+
+void write_LoraPower(void){
+  preferences.begin("settings", false);
+  preferences.putUChar("LORA_POWER",setting.LoraPower);//
+  preferences.end();
+}

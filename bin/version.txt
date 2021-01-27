@@ -198,6 +198,10 @@ automatic-board-detection implemented.
 #SYC OUTMODE? get output-mode
 #SYC OUTMODE=3 set output-mode to bluetooth 0...Serial, 1...UDP, 3...bluetooth
 
+V4.1.0
+added support for update module directly without download firmware and spiffs on firmware update-page
+#SYC NAME?  get Pilot/Ground-station name
+#SYC NAME=TEST  set Pilot/Ground-station name
 
 
 

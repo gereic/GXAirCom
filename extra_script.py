@@ -28,6 +28,9 @@ def copy_file(*args, **kwargs):
         savefile = 'bin/{}'.format(filename)
     print("********  copy file " + target + " to " + savefile + " *******")
     copyfile(target, savefile)
+    f = open("bin/_version.txt", "w")
+    f.write(version)
+    f.close()
     print("Done.")
 
 env.AddPostAction("$BUILD_DIR/partitions.bin", copy_file)
