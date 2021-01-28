@@ -1479,11 +1479,11 @@ void setup() {
   if (setting.boardType == BOARD_UNKNOWN){
     checkBoardType();
   }  
-  #ifdef OLED && !EINK
+  #if defined(OLED) && !defined(EINK)
   setting.displayType = OLED0_96;
-  #elif EINK && !OLED
+  #elif defined(EINK) && !defined(OLED)
   setting.displayType = EINK2_9;
-  #elif !OLED && !EINK
+  #elif !defined(OLED) && !defined(EINK)
   setting.displayType = NO_DISPLAY;
   #endif
   #if defined(GSMODULE)  && ! defined(AIRMODULE)

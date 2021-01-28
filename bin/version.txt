@@ -209,5 +209,7 @@ msg hat following format:
 PXXXX#SYC ....     XXXX ... fanet-pin from settings after that send normal #SYC-msg
 useful, to switch on WIFI or to get Version.
 
+V4.2.1
+Bugfix: display-type was not changeable in settings
 
 

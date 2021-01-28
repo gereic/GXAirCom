@@ -2210,3 +2210,282 @@
 . 2021-01-27 20:44:41.282 Copying finished: Transferred: 1.442.000, Elapsed: 0:00:01, CPS: 1.072.698/s
 . 2021-01-27 20:44:41.282 Script: Exit code: 0
 . 2021-01-27 20:44:41.283 Verbindung zum entferneten Rechner abgebrochen
+. 2021-01-28 10:56:05.453 --------------------------------------------------------------------------
+. 2021-01-28 10:56:05.481 WinSCP Version 5.17.5 (Build 10414) (OS 10.0.18363 - Windows 10 Enterprise)
+. 2021-01-28 10:56:05.481 Configuration: HKCU\Software\Martin Prikryl\WinSCP 2\
+. 2021-01-28 10:56:05.481 Log level: Normal
+. 2021-01-28 10:56:05.481 Local account: GETRONIX-LP1\gereic
+. 2021-01-28 10:56:05.481 Working directory: D:\_privat\arduino\GXAirCom\bin
+. 2021-01-28 10:56:05.481 Process ID: 680
+. 2021-01-28 10:56:05.482 Command-line: "C:\Program Files (x86)\WinSCP\WinSCP.exe"  /log=scplog.txt /script=ftpscript.txt
+. 2021-01-28 10:56:05.482 Time zone: Current: GMT+1, Standard: GMT+1 (Mitteleuropäische Zeit), DST: GMT+2 (Mitteleuropäische Sommerzeit), DST Start: 28.03.2021, DST End: 31.10.2021
+. 2021-01-28 10:56:05.482 Login time: Donnerstag, 28. Jänner 2021 10:56:05
+. 2021-01-28 10:56:05.482 --------------------------------------------------------------------------
+. 2021-01-28 10:56:05.482 Script: Retrospectively logging previous script records:
+> 2021-01-28 10:56:05.482 Script: open ftp://w017300b:***@w017300b.kasserver.com/
+. 2021-01-28 10:56:05.482 --------------------------------------------------------------------------
+. 2021-01-28 10:56:05.483 Session name: w017300b@w017300b.kasserver.com (Ad-Hoc site)
+. 2021-01-28 10:56:05.483 Host name: w017300b.kasserver.com (Port: 21)
+. 2021-01-28 10:56:05.483 User name: w017300b (Password: Yes, Key file: No, Passphrase: No)
+. 2021-01-28 10:56:05.483 Transfer Protocol: FTP
+. 2021-01-28 10:56:05.483 Ping type: Dummy, Ping interval: 30 sec; Timeout: 15 sec
+. 2021-01-28 10:56:05.483 Disable Nagle: No
+. 2021-01-28 10:56:05.483 Proxy: None
+. 2021-01-28 10:56:05.483 Send buffer: 262144
+. 2021-01-28 10:56:05.483 UTF: Auto
+. 2021-01-28 10:56:05.483 FTPS: None [Client certificate: No]
+. 2021-01-28 10:56:05.483 FTP: Passive: Yes [Force IP: Auto]; MLSD: Auto [List all: Auto]; HOST: Auto
+. 2021-01-28 10:56:05.483 Local directory: default, Remote directory: home, Update: Yes, Cache: Yes
+. 2021-01-28 10:56:05.483 Cache directory changes: Yes, Permanent: Yes
+. 2021-01-28 10:56:05.483 Recycle bin: Delete to: No, Overwritten to: No, Bin path: 
+. 2021-01-28 10:56:05.483 Timezone offset: 0h 0m
+. 2021-01-28 10:56:05.483 --------------------------------------------------------------------------
+. 2021-01-28 10:56:05.492 Verbinde mit w017300b.kasserver.com ...
+. 2021-01-28 10:56:05.630 Verbunden mit w017300b.kasserver.com. erwarte Willkommensnachricht ...
+< 2021-01-28 10:56:05.706 220 FTP on dd17832.kasserver.com ready
+> 2021-01-28 10:56:05.707 USER w017300b
+< 2021-01-28 10:56:05.771 331 Password required for w017300b
+> 2021-01-28 10:56:05.771 PASS ****************
+< 2021-01-28 10:56:05.835 230 User w017300b logged in
+> 2021-01-28 10:56:05.835 SYST
+< 2021-01-28 10:56:05.892 215 UNIX Type: L8
+> 2021-01-28 10:56:05.892 FEAT
+< 2021-01-28 10:56:05.951 211-Features:
+< 2021-01-28 10:56:05.951  PBSZ
+< 2021-01-28 10:56:05.951  AUTH TLS
+< 2021-01-28 10:56:05.951  MFF modify;UNIX.group;UNIX.mode;
+< 2021-01-28 10:56:05.951  REST STREAM
+< 2021-01-28 10:56:05.951  MLST modify*;perm*;size*;type*;unique*;UNIX.group*;UNIX.mode*;UNIX.owner*;
+< 2021-01-28 10:56:05.951  UTF8
+< 2021-01-28 10:56:05.951  EPRT
+< 2021-01-28 10:56:05.951  EPSV
+< 2021-01-28 10:56:05.951  LANG zh-TW;bg-BG;ja-JP;es-ES;en-US;it-IT;zh-CN;ko-KR;fr-FR;ru-RU
+< 2021-01-28 10:56:05.951  MDTM
+< 2021-01-28 10:56:05.951  SSCN
+< 2021-01-28 10:56:05.951  TVFS
+< 2021-01-28 10:56:05.951  MFMT
+< 2021-01-28 10:56:05.951  SIZE
+< 2021-01-28 10:56:05.951  PROT
+< 2021-01-28 10:56:05.951  CCC
+< 2021-01-28 10:56:05.951 211 End
+> 2021-01-28 10:56:05.951 OPTS UTF8 ON
+< 2021-01-28 10:56:06.008 200 UTF8 set to on
+. 2021-01-28 10:56:06.008 Verbunden
+. 2021-01-28 10:56:06.008 --------------------------------------------------------------------------
+. 2021-01-28 10:56:06.013 Using FTP protocol.
+. 2021-01-28 10:56:06.013 Doing startup conversation with host.
+> 2021-01-28 10:56:06.013 PWD
+< 2021-01-28 10:56:06.072 257 "/" is the current directory
+. 2021-01-28 10:56:06.072 Getting current directory name.
+. 2021-01-28 10:56:06.072 Startup conversation with host finished.
+< 2021-01-28 10:56:06.072 Script: Aktive Sitzung: [1] w017300b@w017300b.kasserver.com
+> 2021-01-28 10:56:06.072 Script: cd /gxaircom.getronix.at/release
+. 2021-01-28 10:56:06.072 Cached directory change via "/gxaircom.getronix.at/release" to "/gxaircom.getronix.at/release".
+. 2021-01-28 10:56:06.072 Getting current directory name.
+< 2021-01-28 10:56:06.072 Script: /gxaircom.getronix.at/release
+> 2021-01-28 10:56:06.072 Script: rm *.bin
+. 2021-01-28 10:56:06.074 Rufe Verzeichnisinhalt ab...
+> 2021-01-28 10:56:06.074 CWD /gxaircom.getronix.at/release
+< 2021-01-28 10:56:06.131 250 CWD command successful
+> 2021-01-28 10:56:06.131 PWD
+< 2021-01-28 10:56:06.204 257 "/gxaircom.getronix.at/release" is the current directory
+> 2021-01-28 10:56:06.209 TYPE A
+< 2021-01-28 10:56:06.284 200 Type set to A
+> 2021-01-28 10:56:06.291 PASV
+< 2021-01-28 10:56:06.353 227 Entering Passive Mode (85,13,138,124,195,137).
+> 2021-01-28 10:56:06.353 MLSD
+. 2021-01-28 10:56:06.353 Verbinde mit 85.13.138.124:50057 ...
+< 2021-01-28 10:56:06.471 150 Opening ASCII mode data connection for MLSD
+. 2021-01-28 10:56:06.487 Data connection closed
+. 2021-01-28 10:56:06.487 modify=20210127193753;perm=adfrw;size=1359120;type=file;unique=901U21011F0;UNIX.group=2429;UNIX.mode=0644;UNIX.owner=2534; firmware_v4.1.0_nopsRam.bin
+. 2021-01-28 10:56:06.487 modify=20210127194053;perm=adfrw;size=1371776;type=file;unique=901U21011F1;UNIX.group=2429;UNIX.mode=0644;UNIX.owner=2534; firmware_v4.1.0_sim800.bin
+. 2021-01-28 10:56:06.487 modify=20210127192723;perm=adfrw;size=196608;type=file;unique=901U21011EC;UNIX.group=2429;UNIX.mode=0644;UNIX.owner=2534; spiffs_v4.1.0.bin
+. 2021-01-28 10:56:06.487 modify=20210127194408;perm=adfrw;size=6;type=file;unique=901U21011B8;UNIX.group=2429;UNIX.mode=0644;UNIX.owner=2534; version.txt
+. 2021-01-28 10:56:06.487 modify=20210123102959;perm=flcdmpe;type=pdir;unique=901U2101162;UNIX.group=2429;UNIX.mode=0755;UNIX.owner=2534; ..
+. 2021-01-28 10:56:06.487 modify=20210127193436;perm=adfrw;size=1405776;type=file;unique=901U21011EF;UNIX.group=2429;UNIX.mode=0644;UNIX.owner=2534; firmware_v4.1.0_psRam.bin
+. 2021-01-28 10:56:06.488 modify=20210127194440;perm=flcdmpe;type=cdir;unique=901U210115D;UNIX.group=2429;UNIX.mode=0755;UNIX.owner=2534; .
+. 2021-01-28 10:56:06.488 modify=20210127194408;perm=adfrw;size=1442000;type=file;unique=901U21011F2;UNIX.group=2429;UNIX.mode=0644;UNIX.owner=2534; firmware_v4.1.0_sim7000_psRam.bin
+< 2021-01-28 10:56:06.553 226 Transfer complete
+. 2021-01-28 10:56:06.553 Verzeichnisinhalt erfolgreich abgerufen
+. 2021-01-28 10:56:06.553 ..;D;0;1899-12-30T01:00:00.000Z;0;"" [0];"" [0];---------;0
+. 2021-01-28 10:56:06.553 firmware_v4.1.0_nopsRam.bin;-;1359120;2021-01-27T19:37:53.000Z;3;"2534" [0];"2429" [0];rw-r--r--;0
+. 2021-01-28 10:56:06.553 firmware_v4.1.0_sim800.bin;-;1371776;2021-01-27T19:40:53.000Z;3;"2534" [0];"2429" [0];rw-r--r--;0
+. 2021-01-28 10:56:06.553 spiffs_v4.1.0.bin;-;196608;2021-01-27T19:27:23.000Z;3;"2534" [0];"2429" [0];rw-r--r--;0
+. 2021-01-28 10:56:06.553 version.txt;-;6;2021-01-27T19:44:08.000Z;3;"2534" [0];"2429" [0];rw-r--r--;0
+. 2021-01-28 10:56:06.553 firmware_v4.1.0_psRam.bin;-;1405776;2021-01-27T19:34:36.000Z;3;"2534" [0];"2429" [0];rw-r--r--;0
+. 2021-01-28 10:56:06.553 firmware_v4.1.0_sim7000_psRam.bin;-;1442000;2021-01-27T19:44:08.000Z;3;"2534" [0];"2429" [0];rw-r--r--;0
+. 2021-01-28 10:56:06.554 Deleting file "firmware_v4.1.0_nopsRam.bin".
+> 2021-01-28 10:56:06.555 DELE /gxaircom.getronix.at/release/firmware_v4.1.0_nopsRam.bin
+< 2021-01-28 10:56:06.620 250 DELE command successful
+< 2021-01-28 10:56:06.620 Script: firmware_v4.1.0_nopsRam.bin
+. 2021-01-28 10:56:06.620 Deleting file "firmware_v4.1.0_sim800.bin".
+> 2021-01-28 10:56:06.620 DELE /gxaircom.getronix.at/release/firmware_v4.1.0_sim800.bin
+< 2021-01-28 10:56:06.683 250 DELE command successful
+< 2021-01-28 10:56:06.683 Script: firmware_v4.1.0_sim800.bin
+. 2021-01-28 10:56:06.683 Deleting file "spiffs_v4.1.0.bin".
+> 2021-01-28 10:56:06.683 DELE /gxaircom.getronix.at/release/spiffs_v4.1.0.bin
+< 2021-01-28 10:56:06.755 250 DELE command successful
+< 2021-01-28 10:56:06.755 Script: spiffs_v4.1.0.bin
+. 2021-01-28 10:56:06.755 Deleting file "firmware_v4.1.0_psRam.bin".
+> 2021-01-28 10:56:06.755 DELE /gxaircom.getronix.at/release/firmware_v4.1.0_psRam.bin
+< 2021-01-28 10:56:06.821 250 DELE command successful
+< 2021-01-28 10:56:06.822 Script: firmware_v4.1.0_psRam.bin
+. 2021-01-28 10:56:06.822 Deleting file "firmware_v4.1.0_sim7000_psRam.bin".
+> 2021-01-28 10:56:06.822 DELE /gxaircom.getronix.at/release/firmware_v4.1.0_sim7000_psRam.bin
+< 2021-01-28 10:56:06.891 250 DELE command successful
+< 2021-01-28 10:56:06.891 Script: firmware_v4.1.0_sim7000_psRam.bin
+> 2021-01-28 10:56:06.891 Script: rm *.txt
+. 2021-01-28 10:56:06.891 Rufe Verzeichnisinhalt ab...
+> 2021-01-28 10:56:06.891 TYPE A
+< 2021-01-28 10:56:06.959 200 Type set to A
+> 2021-01-28 10:56:06.959 PASV
+< 2021-01-28 10:56:07.017 227 Entering Passive Mode (85,13,138,124,196,10).
+> 2021-01-28 10:56:07.017 MLSD
+. 2021-01-28 10:56:07.017 Verbinde mit 85.13.138.124:50186 ...
+. 2021-01-28 10:56:07.144 Data connection closed
+< 2021-01-28 10:56:07.144 150 Opening ASCII mode data connection for MLSD
+. 2021-01-28 10:56:07.144 modify=20210127194408;perm=adfrw;size=6;type=file;unique=901U21011B8;UNIX.group=2429;UNIX.mode=0644;UNIX.owner=2534; version.txt
+. 2021-01-28 10:56:07.144 modify=20210123102959;perm=flcdmpe;type=pdir;unique=901U2101162;UNIX.group=2429;UNIX.mode=0755;UNIX.owner=2534; ..
+. 2021-01-28 10:56:07.144 modify=20210128095608;perm=flcdmpe;type=cdir;unique=901U210115D;UNIX.group=2429;UNIX.mode=0755;UNIX.owner=2534; .
+< 2021-01-28 10:56:07.202 226 Transfer complete
+. 2021-01-28 10:56:07.202 Verzeichnisinhalt erfolgreich abgerufen
+. 2021-01-28 10:56:07.202 ..;D;0;1899-12-30T01:00:00.000Z;0;"" [0];"" [0];---------;0
+. 2021-01-28 10:56:07.202 version.txt;-;6;2021-01-27T19:44:08.000Z;3;"2534" [0];"2429" [0];rw-r--r--;0
+. 2021-01-28 10:56:07.202 Deleting file "version.txt".
+> 2021-01-28 10:56:07.202 DELE /gxaircom.getronix.at/release/version.txt
+< 2021-01-28 10:56:07.268 250 DELE command successful
+< 2021-01-28 10:56:07.268 Script: version.txt
+> 2021-01-28 10:56:07.268 Script: put _version.txt version.txt
+. 2021-01-28 10:56:07.273 Copying 1 files/directories to remote directory "/gxaircom.getronix.at/release" - total size: 6
+. 2021-01-28 10:56:07.274   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0100; Resume: S (102400); CalcS: No; Mask: version.txt
+. 2021-01-28 10:56:07.274   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2021-01-28 10:56:07.274   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2021-01-28 10:56:07.275 File: '_version.txt' [2021-01-28T08:20:37.935Z] [6]
+. 2021-01-28 10:56:07.275 Copying "_version.txt" to remote directory started.
+. 2021-01-28 10:56:07.275 Binary transfer mode selected.
+. 2021-01-28 10:56:07.275 Beginne D:\_privat\arduino\GXAirCom\bin\_version.txt heraufzuladen
+> 2021-01-28 10:56:07.276 TYPE I
+< 2021-01-28 10:56:07.343 200 Type set to I
+> 2021-01-28 10:56:07.343 PASV
+< 2021-01-28 10:56:07.400 227 Entering Passive Mode (85,13,138,124,197,52).
+> 2021-01-28 10:56:07.401 STOR version.txt
+. 2021-01-28 10:56:07.404 Verbinde mit 85.13.138.124:50484 ...
+< 2021-01-28 10:56:07.528 150 Opening BINARY mode data connection for version.txt
+< 2021-01-28 10:56:07.595 226 Transfer complete
+> 2021-01-28 10:56:07.595 MFMT 20210128082037 version.txt
+< 2021-01-28 10:56:07.660 213 Modify=20210128082037; version.txt
+. 2021-01-28 10:56:07.660 Heraufladen erfolgreich
+. 2021-01-28 10:56:07.660 Transfer done: '_version.txt' => '/gxaircom.getronix.at/release/version.txt' [6]
+. 2021-01-28 10:56:07.660 Copying finished: Transferred: 6, Elapsed: 0:00:00, CPS: 0/s
+> 2021-01-28 10:56:07.660 Script: put spiffs_v4.2.0.bin
+. 2021-01-28 10:56:07.661 Copying 1 files/directories to remote directory "/gxaircom.getronix.at/release" - total size: 196.608
+. 2021-01-28 10:56:07.661   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0100; Resume: S (102400); CalcS: No; Mask: 
+. 2021-01-28 10:56:07.661   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2021-01-28 10:56:07.661   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2021-01-28 10:56:07.661 File: 'spiffs_v4.2.0.bin' [2021-01-28T08:20:37.935Z] [196608]
+. 2021-01-28 10:56:07.662 Copying "spiffs_v4.2.0.bin" to remote directory started.
+. 2021-01-28 10:56:07.662 Binary transfer mode selected.
+. 2021-01-28 10:56:07.663 Beginne D:\_privat\arduino\GXAirCom\bin\spiffs_v4.2.0.bin heraufzuladen
+> 2021-01-28 10:56:07.663 TYPE I
+< 2021-01-28 10:56:07.726 200 Type set to I
+> 2021-01-28 10:56:07.726 PASV
+< 2021-01-28 10:56:07.788 227 Entering Passive Mode (85,13,138,124,195,252).
+> 2021-01-28 10:56:07.788 STOR spiffs_v4.2.0.bin
+. 2021-01-28 10:56:07.788 Verbinde mit 85.13.138.124:50172 ...
+< 2021-01-28 10:56:07.930 150 Opening BINARY mode data connection for spiffs_v4.2.0.bin
+< 2021-01-28 10:56:08.315 226 Transfer complete
+> 2021-01-28 10:56:08.316 MFMT 20210128082037 spiffs_v4.2.0.bin
+< 2021-01-28 10:56:08.373 213 Modify=20210128082037; spiffs_v4.2.0.bin
+. 2021-01-28 10:56:08.373 Heraufladen erfolgreich
+. 2021-01-28 10:56:08.373 Transfer done: 'spiffs_v4.2.0.bin' => '/gxaircom.getronix.at/release/spiffs_v4.2.0.bin' [196608]
+. 2021-01-28 10:56:08.373 Copying finished: Transferred: 196.608, Elapsed: 0:00:00, CPS: 397.845/s
+> 2021-01-28 10:56:08.373 Script: put firmware_v4.2.0_psRam.bin
+. 2021-01-28 10:56:08.373 Copying 1 files/directories to remote directory "/gxaircom.getronix.at/release" - total size: 1.407.088
+. 2021-01-28 10:56:08.373   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0100; Resume: S (102400); CalcS: No; Mask: 
+. 2021-01-28 10:56:08.373   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2021-01-28 10:56:08.373   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2021-01-28 10:56:08.374 File: 'firmware_v4.2.0_psRam.bin' [2021-01-28T07:56:54.778Z] [1407088]
+. 2021-01-28 10:56:08.374 Copying "firmware_v4.2.0_psRam.bin" to remote directory started.
+. 2021-01-28 10:56:08.374 Binary transfer mode selected.
+. 2021-01-28 10:56:08.375 Beginne D:\_privat\arduino\GXAirCom\bin\firmware_v4.2.0_psRam.bin heraufzuladen
+> 2021-01-28 10:56:08.375 TYPE I
+< 2021-01-28 10:56:08.434 200 Type set to I
+> 2021-01-28 10:56:08.434 PASV
+< 2021-01-28 10:56:08.492 227 Entering Passive Mode (85,13,138,124,196,107).
+> 2021-01-28 10:56:08.494 STOR firmware_v4.2.0_psRam.bin
+. 2021-01-28 10:56:08.494 Verbinde mit 85.13.138.124:50283 ...
+< 2021-01-28 10:56:08.629 150 Opening BINARY mode data connection for firmware_v4.2.0_psRam.bin
+< 2021-01-28 10:56:09.790 226 Transfer complete
+> 2021-01-28 10:56:09.790 MFMT 20210128075654 firmware_v4.2.0_psRam.bin
+< 2021-01-28 10:56:09.855 213 Modify=20210128075654; firmware_v4.2.0_psRam.bin
+. 2021-01-28 10:56:09.855 Heraufladen erfolgreich
+. 2021-01-28 10:56:09.855 Transfer done: 'firmware_v4.2.0_psRam.bin' => '/gxaircom.getronix.at/release/firmware_v4.2.0_psRam.bin' [1407088]
+. 2021-01-28 10:56:09.855 Copying finished: Transferred: 1.407.088, Elapsed: 0:00:01, CPS: 1.126.076/s
+> 2021-01-28 10:56:09.855 Script: put firmware_v4.2.0_nopsRam.bin
+. 2021-01-28 10:56:09.855 Copying 1 files/directories to remote directory "/gxaircom.getronix.at/release" - total size: 1.360.304
+. 2021-01-28 10:56:09.855   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0100; Resume: S (102400); CalcS: No; Mask: 
+. 2021-01-28 10:56:09.855   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2021-01-28 10:56:09.855   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2021-01-28 10:56:09.855 File: 'firmware_v4.2.0_nopsRam.bin' [2021-01-28T07:59:45.440Z] [1360304]
+. 2021-01-28 10:56:09.856 Copying "firmware_v4.2.0_nopsRam.bin" to remote directory started.
+. 2021-01-28 10:56:09.856 Binary transfer mode selected.
+. 2021-01-28 10:56:09.856 Beginne D:\_privat\arduino\GXAirCom\bin\firmware_v4.2.0_nopsRam.bin heraufzuladen
+> 2021-01-28 10:56:09.857 TYPE I
+< 2021-01-28 10:56:09.916 200 Type set to I
+> 2021-01-28 10:56:09.916 PASV
+< 2021-01-28 10:56:09.973 227 Entering Passive Mode (85,13,138,124,196,254).
+> 2021-01-28 10:56:09.975 STOR firmware_v4.2.0_nopsRam.bin
+. 2021-01-28 10:56:09.975 Verbinde mit 85.13.138.124:50430 ...
+< 2021-01-28 10:56:10.099 150 Opening BINARY mode data connection for firmware_v4.2.0_nopsRam.bin
+< 2021-01-28 10:56:10.936 226 Transfer complete
+> 2021-01-28 10:56:10.937 MFMT 20210128075945 firmware_v4.2.0_nopsRam.bin
+< 2021-01-28 10:56:10.994 213 Modify=20210128075945; firmware_v4.2.0_nopsRam.bin
+. 2021-01-28 10:56:10.995 Heraufladen erfolgreich
+. 2021-01-28 10:56:10.995 Transfer done: 'firmware_v4.2.0_nopsRam.bin' => '/gxaircom.getronix.at/release/firmware_v4.2.0_nopsRam.bin' [1360304]
+. 2021-01-28 10:56:10.995 Copying finished: Transferred: 1.360.304, Elapsed: 0:00:01, CPS: 1.483.355/s
+> 2021-01-28 10:56:10.995 Script: put firmware_v4.2.0_sim800.bin
+. 2021-01-28 10:56:10.995 Copying 1 files/directories to remote directory "/gxaircom.getronix.at/release" - total size: 1.373.088
+. 2021-01-28 10:56:10.995   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0100; Resume: S (102400); CalcS: No; Mask: 
+. 2021-01-28 10:56:10.995   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2021-01-28 10:56:10.995   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2021-01-28 10:56:10.995 File: 'firmware_v4.2.0_sim800.bin' [2021-01-28T08:02:13.612Z] [1373088]
+. 2021-01-28 10:56:10.996 Copying "firmware_v4.2.0_sim800.bin" to remote directory started.
+. 2021-01-28 10:56:10.997 Binary transfer mode selected.
+. 2021-01-28 10:56:10.997 Beginne D:\_privat\arduino\GXAirCom\bin\firmware_v4.2.0_sim800.bin heraufzuladen
+> 2021-01-28 10:56:10.997 TYPE I
+< 2021-01-28 10:56:11.066 200 Type set to I
+> 2021-01-28 10:56:11.066 PASV
+< 2021-01-28 10:56:11.128 227 Entering Passive Mode (85,13,138,124,195,145).
+> 2021-01-28 10:56:11.129 STOR firmware_v4.2.0_sim800.bin
+. 2021-01-28 10:56:11.129 Verbinde mit 85.13.138.124:50065 ...
+< 2021-01-28 10:56:11.263 150 Opening BINARY mode data connection for firmware_v4.2.0_sim800.bin
+< 2021-01-28 10:56:12.211 226 Transfer complete
+> 2021-01-28 10:56:12.212 MFMT 20210128080213 firmware_v4.2.0_sim800.bin
+< 2021-01-28 10:56:12.278 213 Modify=20210128080213; firmware_v4.2.0_sim800.bin
+. 2021-01-28 10:56:12.278 Heraufladen erfolgreich
+. 2021-01-28 10:56:12.278 Transfer done: 'firmware_v4.2.0_sim800.bin' => '/gxaircom.getronix.at/release/firmware_v4.2.0_sim800.bin' [1373088]
+. 2021-01-28 10:56:12.278 Copying finished: Transferred: 1.373.088, Elapsed: 0:00:01, CPS: 1.336.654/s
+> 2021-01-28 10:56:12.279 Script: put firmware_v4.2.0_sim7000_psRam.bin
+. 2021-01-28 10:56:12.279 Copying 1 files/directories to remote directory "/gxaircom.getronix.at/release" - total size: 1.443.360
+. 2021-01-28 10:56:12.279   PrTime: Yes; PrRO: No; Rght: rw-r--r--; PrR: No (No); FnCs: N; RIC: 0100; Resume: S (102400); CalcS: No; Mask: 
+. 2021-01-28 10:56:12.279   TM: B; ClAr: No; RemEOF: No; RemBOM: No; CPS: 0; NewerOnly: No; EncryptNewFiles: Yes; ExcludeHiddenFiles: No; ExcludeEmptyDirectories: No; InclM: ; ResumeL: 0
+. 2021-01-28 10:56:12.279   AscM: *.*html; *.htm; *.txt; *.php; *.php3; *.cgi; *.c; *.cpp; *.h; *.pas; *.bas; *.tex; *.pl; *.js; .htaccess; *.xtml; *.css; *.cfg; *.ini; *.sh; *.xml
+. 2021-01-28 10:56:12.279 File: 'firmware_v4.2.0_sim7000_psRam.bin' [2021-01-28T08:04:38.740Z] [1443360]
+. 2021-01-28 10:56:12.280 Copying "firmware_v4.2.0_sim7000_psRam.bin" to remote directory started.
+. 2021-01-28 10:56:12.280 Binary transfer mode selected.
+. 2021-01-28 10:56:12.281 Beginne D:\_privat\arduino\GXAirCom\bin\firmware_v4.2.0_sim7000_psRam.bin heraufzuladen
+> 2021-01-28 10:56:12.281 TYPE I
+< 2021-01-28 10:56:12.345 200 Type set to I
+> 2021-01-28 10:56:12.345 PASV
+< 2021-01-28 10:56:12.404 227 Entering Passive Mode (85,13,138,124,196,236).
+> 2021-01-28 10:56:12.404 STOR firmware_v4.2.0_sim7000_psRam.bin
+. 2021-01-28 10:56:12.404 Verbinde mit 85.13.138.124:50412 ...
+< 2021-01-28 10:56:12.524 150 Opening BINARY mode data connection for firmware_v4.2.0_sim7000_psRam.bin
+< 2021-01-28 10:56:13.350 226 Transfer complete
+> 2021-01-28 10:56:13.350 MFMT 20210128080438 firmware_v4.2.0_sim7000_psRam.bin
+< 2021-01-28 10:56:13.412 213 Modify=20210128080438; firmware_v4.2.0_sim7000_psRam.bin
+. 2021-01-28 10:56:13.412 Heraufladen erfolgreich
+. 2021-01-28 10:56:13.412 Transfer done: 'firmware_v4.2.0_sim7000_psRam.bin' => '/gxaircom.getronix.at/release/firmware_v4.2.0_sim7000_psRam.bin' [1443360]
+. 2021-01-28 10:56:13.412 Copying finished: Transferred: 1.443.360, Elapsed: 0:00:01, CPS: 1.603.343/s
+. 2021-01-28 10:56:13.412 Script: Exit code: 0
+. 2021-01-28 10:56:13.414 Verbindung zum entferneten Rechner abgebrochen
