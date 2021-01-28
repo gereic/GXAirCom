@@ -415,6 +415,13 @@ String FanetLora::getactMsg(){
     return ret;
 }
 
+bool FanetLora::getlastMsgData(msgData *data){
+  if (lastMsgData.srcDevId == 0) return false;
+  *data = lastMsgData;
+  lastMsgData.srcDevId = 0;
+  return true;
+}
+
 bool FanetLora::isNewMsg(){
     bool ret = newMsg;
     newMsg = false;
@@ -653,6 +660,15 @@ void FanetLora::handle_frame(Frame *frm){
   }else if (frm->type == 3){
     //msg-data --> check if msg is explicit for us.
     //if (frm->dest)
+    lastMsgData.rssi = frm->rssi;
+    lastMsgData.snr = frm->snr;
+    lastMsgData.srcDevId = ((uint32_t)frm->src.manufacturer << 16) + (uint32_t)frm->src.id;
+    lastMsgData.dstDevId = ((uint32_t)frm->dest.manufacturer << 16) + (uint32_t)frm->dest.id;
+    lastMsgData.msg = "";
+    for(int i=1; i<frm->payload_length; i++)
+    {
+      lastMsgData.msg += (char)frm->payload[i];
+    }
   }else if (frm->type == 4){   
     //weather-data   
       lastWeatherData.devId = ((uint32_t)frm->src.manufacturer << 16) + (uint32_t)frm->src.id;

@@ -203,6 +203,11 @@ added support for update module directly without download firmware and spiffs on
 #SYC NAME?  get Pilot/Ground-station name
 #SYC NAME=TEST  set Pilot/Ground-station name
 
+V4.2.0
+added support, to send system-command via FANET
+msg hat following format:
+PXXXX#SYC ....     XXXX ... fanet-pin from settings after that send normal #SYC-msg
+useful, to switch on WIFI or to get Version.
 
 
 

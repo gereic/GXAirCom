@@ -127,6 +127,14 @@ public:
   } nameData;
 
   typedef struct {
+    uint32_t srcDevId;
+    uint32_t dstDevId;
+    String msg;
+    int rssi; //rssi
+    int snr; //signal to noise ratio
+  } msgData;
+
+  typedef struct {
     float lat; //latitude
     float lon; //longitude
     float altitude; //altitude [m]
@@ -198,7 +206,8 @@ public:
   aircraft_t getAircraftType(void);
   void run(void); //has to be called cyclic
   bool isNewMsg();
-  String getactMsg(); 
+  String getactMsg();
+  bool getlastMsgData(msgData *data);
   bool getTrackingData(trackingData *tData);
   bool getMyTrackingData(trackingData *tData);
   bool getNameData(nameData *nameData);
@@ -240,6 +249,7 @@ private:
   uint32_t valid_until;
   bool newMsg;
   String actMsg;
+  msgData lastMsgData;
   void sendPilotName(uint32_t tAct);
   String uint64ToString(uint64_t input);
   void coord2payload_absolut(float lat, float lon, uint8_t *buf);

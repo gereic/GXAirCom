@@ -188,6 +188,8 @@ static RTC_NOINIT_ATTR uint8_t startOption;
 static RTC_NOINIT_ATTR uint8_t detectOption;
 uint32_t psRamSize = 0;
 
+uint32_t fanetDstId = 0;
+
 
 //PIN-Definition
 
@@ -2784,11 +2786,11 @@ void setWifi(bool on){
 void checkSystemCmd(char *ch_str){
 	/* remove \r\n and any spaces */
 	String line = ch_str;
-  //log_i("systemcmd=%s",line.c_str());
+  log_i("systemcmd=%s",line.c_str());
   String sRet = "";
   int32_t iPos;
   iPos = getStringValue(line,"#SYC WIFI=","\r",0,&sRet);
-  if (iPos > 0){
+  if (iPos >= 0){
     uint8_t u8 = atoi(sRet.c_str());
     u8 = constrain(u8,0,1);
     if (u8 == 1){
@@ -2810,7 +2812,7 @@ void checkSystemCmd(char *ch_str){
     add2OutputString("#SYC NAME=" + setting.PilotName + "\r\n");
   }
   iPos = getStringValue(line,"#SYC NAME=","\r",0,&sRet);
-  if (iPos > 0){
+  if (iPos >= 0){
     if (setting.PilotName != sRet){
       setting.PilotName = sRet;
       write_PilotName();      
@@ -2822,7 +2824,7 @@ void checkSystemCmd(char *ch_str){
     add2OutputString("#SYC TYPE=" + String(setting.AircraftType) + "\r\n");
   }
   iPos = getStringValue(line,"#SYC TYPE=","\r",0,&sRet);
-  if (iPos > 0){
+  if (iPos >= 0){
     uint8_t u8 = atoi(sRet.c_str());
     u8 = constrain(u8,0,7);
     if (u8 != (uint8_t)setting.AircraftType){
@@ -2836,7 +2838,7 @@ void checkSystemCmd(char *ch_str){
     add2OutputString("#SYC AIRMODE=" + String(setting.fanetMode) + "\r\n");
   }
   iPos = getStringValue(line,"#SYC AIRMODE=","\r",0,&sRet);
-  if (iPos > 0){
+  if (iPos >= 0){
     uint8_t u8 = atoi(sRet.c_str());
     u8 = constrain(u8,0,1);
     if (u8 != setting.fanetMode){
@@ -2850,7 +2852,7 @@ void checkSystemCmd(char *ch_str){
     add2OutputString("#SYC MODE=" + String(setting.Mode) + "\r\n");
   }
   iPos = getStringValue(line,"#SYC MODE=","\r",0,&sRet);
-  if (iPos > 0){
+  if (iPos >= 0){
     uint8_t u8 = atoi(sRet.c_str());
     u8 = constrain(u8,0,1);
     add2OutputString("#SYC OK\r\n");
@@ -2867,7 +2869,7 @@ void checkSystemCmd(char *ch_str){
     add2OutputString("#SYC OUTMODE=" + String(setting.outputMode) + "\r\n");
   }
   iPos = getStringValue(line,"#SYC OUTMODE=","\r",0,&sRet);
-  if (iPos > 0){
+  if (iPos >= 0){
     uint8_t u8 = atoi(sRet.c_str());
     u8 = constrain(u8,0,3);
     add2OutputString("#SYC OK\r\n");
@@ -2884,7 +2886,7 @@ void checkSystemCmd(char *ch_str){
     add2OutputString("#SYC FNTPWR=" + String(setting.LoraPower) + "\r\n");
   }
   iPos = getStringValue(line,"#SYC FNTPWR=","\r",0,&sRet);
-  if (iPos > 0){
+  if (iPos >= 0){
     uint8_t u8 = atoi(sRet.c_str());
     u8 = constrain(u8,0,14);
     add2OutputString("#SYC OK\r\n");
@@ -3331,6 +3333,11 @@ void taskStandard(void *pvParameters){
       sOutputData = "";
       xSemaphoreGive(xOutputMutex);
       //log_i("sending 2 client %s",s.c_str());
+      if (fanetDstId > 0){ //send msg back to dst via fanet
+        //log_i("sending back to %s:%s",fanet.getDevId(fanetDstId),s.c_str()); 
+        fanet.writeMsgType3(fanetDstId,s);
+        fanetDstId = 0;
+      }
       sendData2Client(s);
     }
 
@@ -3409,7 +3416,7 @@ void taskStandard(void *pvParameters){
       fanet.writeMsgType2(testString);
       sendTestData = 0;
     }else if (sendTestData == 3){
-      log_i("sending msgtype 3 %s",testString.c_str());
+      log_i("sending msgtype 3 to %s %s",fanet.getDevId(fanetReceiver).c_str(),testString.c_str());
       fanet.writeMsgType3(fanetReceiver,testString);
       sendTestData = 0;
     }else if (sendTestData == 4){
@@ -3459,6 +3466,22 @@ void taskStandard(void *pvParameters){
     if (fanet.getNameData(&nameData)){
       if (setting.OGNLiveTracking){
         ogn.sendNameData(fanet.getDevId(nameData.devId),nameData.name,(float)nameData.snr / 10.0);
+      }
+    }
+    FanetLora::msgData msgData;
+    if (fanet.getlastMsgData(&msgData)){
+      if (msgData.dstDevId == fanet._myData.devId){
+        String sRet = "";
+        int pos = getStringValue(msgData.msg,"P","#",0,&sRet);
+        if (pos >= 0){
+          if (atoi(sRet.c_str()) == setting.fanetpin){
+            fanetDstId = msgData.srcDevId; //we have to store the sender, to send back the value !!
+            log_i("got fanet-cmd from %s:%s",fanet.getDevId(fanetDstId),msgData.msg.c_str()); 
+            //log_i("msg=%s",msgData.msg.substring(pos).c_str());
+            String s = msgData.msg.substring(pos) + "\r\n";
+            checkReceivedLine((char *)s.c_str());
+          }
+        }
       }
     }
     FanetLora::weatherData weatherData;

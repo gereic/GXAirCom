@@ -467,6 +467,7 @@ String processor(const String& var){
     }
   }else if (var == "NEIGHBOURS"){
     sRet = "";
+    //sRet += "<option value=\"08AF88\">mytest 08AF88</option>\r\n";
     for (int i = 0; i < MAXNEIGHBOURS; i++){
       if (fanet.neighbours[i].devId){
         sRet += "<option value=\"" + fanet.getDevId(fanet.neighbours[i].devId) + "\">" + fanet.neighbours[i].name + " " + fanet.getDevId(fanet.neighbours[i].devId) + "</option>\r\n";

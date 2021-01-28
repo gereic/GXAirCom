@@ -50,8 +50,16 @@ function onClose(evt) {
 }
 
 function sendValues(){  
-  var obj = {receiver : document.getElementById("receiver").value,
-            msg : document.getElementById("msg").value,
+  var sMsg = document.getElementById("msg").value;
+  var sManuId = document.getElementById("manuId").value;
+  var sReceiver = "";
+  if (sManuId.length > 0){
+    sReceiver = sManuId;
+  }else{
+    sReceiver = document.getElementById("receiver").value;
+  }
+  var obj = {receiver : sReceiver,
+            msg : sMsg,
             sendfanet : 3 };
   doSend(JSON.stringify(obj));
 }
@@ -103,10 +111,15 @@ window.addEventListener("load", init, false);
             <th>receiver</th>
             <td><select name="receiver" id="receiver">
               %NEIGHBOURS%
-			  <option value="000000">Send to All</option>
+              <!--<option value="08C3CC">T-Beam 08C3CC</option>-->
+              <option value="000000">Send to All</option>
               <!--<option value="000000">broadcast to all</option>-->
             </select></td>
           </tr>          
+          <tr>
+            <th>manual id (only if id is not in list)</th>
+            <td><input type="text" id="manuId" name="manuId" maxlength="6"></td>
+          </tr>                    
           <tr>
             <th>message</th>
             <td><input type="text" id="msg" name="msg" maxlength="66"></td>
