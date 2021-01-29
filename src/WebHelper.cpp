@@ -491,6 +491,7 @@ String processor(const String& var){
         "\r\n";
       }
     }
+    return sRet;
   }else if (var == "WEATHERLIST"){
     sRet =  "<tr><th>ID</th><td>lat</td><td>lon</td><td>temperature</td><td>wind direction</td><td>wind speed</td><td>wind gust</td><td>Humidity</td><td>barometric pressure</td><td>state of charge</td><td>rssi</td><td>last seen</td></tr>\r\n";    
     for (int i = 0; i < MAXWEATHERDATAS; i++){

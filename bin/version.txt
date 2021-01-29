@@ -212,4 +212,6 @@ useful, to switch on WIFI or to get Version.
 V4.2.1
 Bugfix: display-type was not changeable in settings
 
+V4.2.2
+Bugfix: neighbours.html had no function anymore
 
