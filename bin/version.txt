@@ -215,3 +215,7 @@ Bugfix: display-type was not changeable in settings
 V4.2.2
 Bugfix: neighbours.html had no function anymore
 
+V4.2.3
+Bugfix: changing fanet-pilotname with #SYC -command immediately
+Bugfix: changing fanet-aircrafttye with #SYC -command immediately
+

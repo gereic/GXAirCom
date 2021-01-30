@@ -2815,6 +2815,7 @@ void checkSystemCmd(char *ch_str){
   if (iPos >= 0){
     if (setting.PilotName != sRet){
       setting.PilotName = sRet;
+      fanet.setPilotname(setting.PilotName);
       write_PilotName();      
     }
     add2OutputString("#SYC OK\r\n");
@@ -2829,6 +2830,7 @@ void checkSystemCmd(char *ch_str){
     u8 = constrain(u8,0,7);
     if (u8 != (uint8_t)setting.AircraftType){
       setting.AircraftType = FanetLora::aircraft_t(u8);
+      fanet.setAircraftType(setting.AircraftType);
       write_AircraftType();
     }
     add2OutputString("#SYC OK\r\n");
