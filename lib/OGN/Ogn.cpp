@@ -268,7 +268,7 @@ void Ogn::sendGroundTrackingData(float lat,float lon,String devId,uint8_t state,
     xSemaphoreTake( *xMutex, portMAX_DELAY );
     client->print(buff);                
     xSemaphoreGive( *xMutex );
-    log_i("%s",buff);
+    //log_i("%s",buff);
 
 }
 

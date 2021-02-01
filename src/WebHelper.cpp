@@ -488,7 +488,7 @@ String processor(const String& var){
         "<td>" + String(fanet.neighbours[i].lon,6) + "</td>" +
         "<td>" + fanet.getType(fanet.neighbours[i].type) + "</td>";
         if ((status.GPS_Lat != 0) && (status.GPS_Lon != 0 )){
-          sRet +=  "<td>" + String(distance(status.GPS_Lat,status.GPS_Lon,fanet.weatherDatas[i].lat,fanet.weatherDatas[i].lon, 'K'),1) + "km</td>" ;
+          sRet +=  "<td>" + String(distance(status.GPS_Lat,status.GPS_Lon,fanet.neighbours[i].lat,fanet.neighbours[i].lon, 'K'),1) + "km</td>" ;
         }else{
           sRet +=  "<td></td>";
         }
