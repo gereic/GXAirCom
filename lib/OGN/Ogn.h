@@ -30,6 +30,26 @@ public:
     uav = 7,
     unknown = 15,
   };
+  typedef struct {
+    String devId; //devId
+    float lat; //latitude
+    float lon; //longitude
+    bool bTemp;
+    float temp; //temp [°C]
+    float wHeading; //wind heading [°]
+    bool bWind;
+    float wSpeed; //km/h
+    float wGust; //km/h
+    bool bHumidity;
+    float Humidity;
+    bool bBaro;
+    float Baro;
+    bool bRain;
+    float rain1h;
+    float rain24h;
+    float snr; //signal to noise ratio
+  } weatherData;
+
   Ogn(); //constructor
   bool begin(String user,String version);
   void end(void);
@@ -39,7 +59,7 @@ public:
   void sendTrackingData(float lat,float lon,float alt,float speed,float heading,float climb,String devId,aircraft_t aircraftType,bool Onlinetracking,float snr);
   void sendGroundTrackingData(float lat,float lon,String devId,uint8_t state,float snr);
   void sendNameData(String devId,String name,float snr);
-  void sendWeatherData(float lat,float lon,String devId,float wDir,float wSpeed,float wGust,float temp,float rain1h, float rain24h,float hum,float press,float snr);
+  void sendWeatherData(weatherData *wData);
   void setClient(Client *_client);
   void setMutex(SemaphoreHandle_t *_xMutex);
   void setBattVoltage(float battVoltage);

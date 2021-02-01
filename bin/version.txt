@@ -222,3 +222,4 @@ Bugfix: changing fanet-aircrafttye with #SYC -command immediately
 V4.3.0
 improved neighbours.html -> shows now also ground-tracking and distance
 improved weather.html -> shows also distance
+bugfix OGN-weatherdata without rain and baro.

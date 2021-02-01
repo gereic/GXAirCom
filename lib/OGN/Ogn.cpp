@@ -204,15 +204,15 @@ void Ogn::sendNameData(String devId,String name,float snr){
 
 }
 
-void Ogn::sendWeatherData(float lat,float lon,String devId,float wDir,float wSpeed,float wGust,float temp,float rain1h, float rain24h,float hum,float press,float snr){
+void Ogn::sendWeatherData(weatherData *wData){
     if (initOk < 10) return; //nothing todo
-    float lLat = abs(lat);
-    float lLon = abs(lon);
+    float lLat = abs(wData->lat);
+    float lLon = abs(wData->lon);
     int latDeg = int(lLat);
     int latMin = (roundf((lLat - int(lLat)) * 60 * 1000));
     int lonDeg = int(lLon);
     int lonMin = (roundf((lLon - int(lLon)) * 60 * 1000));
-    int mHum = (int)hum;
+    int mHum = (int)wData->Humidity;
     if (mHum >= 100){ //humidity 100% --> 00
         mHum = 0;
     }else if (mHum == 0){
@@ -228,17 +228,28 @@ void Ogn::sendWeatherData(float lat,float lon,String devId,float wDir,float wSpe
 
     //sprintf (buff,"%s%s>OGNFNT,qAS,%s:/%sh%02d%02d.%02d%c/%03d%02d.%02d%c_%03d/%03dg%03dt%03d"
     //,getOrigin(devId).c_str(),devId.c_str(),_user.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,(lat < 0)?'S':'N',lonDeg,lonMin/1000,lonMin/10 %100,(lon < 0)?'W':'E',
-    sprintf (buff,"FNT%s>OGNFNT,qAS,%s:/%sh%02d%02d.%02d%c/%03d%02d.%02d%c_%03d/%03dg%03dt%03d"
-    ,devId.c_str(),_user.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,(lat < 0)?'S':'N',lonDeg,lonMin/1000,lonMin/10 %100,(lon < 0)?'W':'E',
-    int(wDir),int(kmh2mph(wSpeed)),int(kmh2mph(wGust)),int(deg2f(temp)));
+    sprintf (buff,"FNT%s>OGNFNT,qAS,%s:/%sh%02d%02d.%02d%c/%03d%02d.%02d%c_%03d/%03dg%03d"
+    ,wData->devId.c_str(),_user.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,(wData->lat < 0)?'S':'N',lonDeg,lonMin/1000,lonMin/10 %100,(wData->lon < 0)?'W':'E',
+    int(wData->wHeading),int(kmh2mph(wData->wSpeed)),int(kmh2mph(wData->wGust)));
     send += buff;
-    if (rain1h != NAN){
-        sprintf (buff,"r%03dp%03d"
-        ,int(rain1h * 10),int(rain24h * 10));
+    if (wData->bTemp){
+        sprintf (buff,"t%03d",int(deg2f(wData->temp)));
         send += buff;
     }
-    sprintf (buff,"h%02db%05d %0.1fdB\r\n"
-    ,mHum,int(press * 10),snr);
+    if (wData->bRain){
+        sprintf (buff,"r%03dp%03d",int(wData->rain1h * 10),int(wData->rain24h * 10));
+        send += buff;
+    }
+    if (wData->bHumidity){
+        sprintf (buff,"h%02d",mHum);
+        send += buff;
+    }
+    if (wData->bBaro){
+        sprintf (buff,"b%05d",int(wData->Baro * 10));
+        send += buff;
+    }
+    sprintf (buff," %0.1fdB\r\n"
+    ,wData->snr);
     send += buff;
 
 

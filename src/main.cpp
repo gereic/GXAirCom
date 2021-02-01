@@ -3435,7 +3435,25 @@ void taskStandard(void *pvParameters){
       //log_i("sending weatherdata");
       fanet.writeMsgType4(&testWeatherData);
       if (setting.OGNLiveTracking){
-        ogn.sendWeatherData(status.GPS_Lat,status.GPS_Lon,fanet.getMyDevId(),status.weather.WindDir,status.weather.WindSpeed,status.weather.WindGust,status.weather.temp,status.weather.rain1h,status.weather.rain1d,status.weather.Humidity,status.weather.Pressure,0);
+        Ogn::weatherData wData;
+        wData.devId = fanet.getMyDevId();
+        wData.lat = status.GPS_Lat;
+        wData.lon = status.GPS_Lon;
+        wData.bBaro = true;
+        wData.Baro = status.weather.Pressure;
+        wData.bHumidity = true;
+        wData.Humidity = status.weather.Humidity;
+        wData.bRain = true;
+        wData.rain1h = status.weather.rain1h;
+        wData.rain24h = status.weather.rain1d;
+        wData.bTemp = true;
+        wData.temp = status.weather.temp;
+        wData.bWind = true;
+        wData.wHeading = status.weather.WindDir;
+        wData.wGust = status.weather.WindGust;
+        wData.wSpeed = status.weather.WindSpeed;
+        wData.snr = 0.0;      
+        ogn.sendWeatherData(&wData);
       }      
       sendWeatherData = false;
     }
@@ -3489,7 +3507,25 @@ void taskStandard(void *pvParameters){
     FanetLora::weatherData weatherData;
     if (fanet.getWeatherData(&weatherData)){
       if (setting.OGNLiveTracking){
-        ogn.sendWeatherData(weatherData.lat,weatherData.lon,fanet.getDevId(weatherData.devId),weatherData.wHeading,weatherData.wSpeed,weatherData.wGust,weatherData.temp,NAN,NAN,weatherData.Humidity,weatherData.Baro,(float)weatherData.snr / 10.0); //set to 70 db
+        Ogn::weatherData wData;
+        wData.devId = fanet.getDevId(weatherData.devId);
+        wData.lat = weatherData.lat;
+        wData.lon = weatherData.lon;
+        wData.bBaro = weatherData.bBaro;
+        wData.Baro = weatherData.Baro;
+        wData.bHumidity = weatherData.bHumidity;
+        wData.Humidity = weatherData.Humidity;
+        wData.bRain = false;
+        wData.rain1h = 0;
+        wData.rain24h = 0;
+        wData.bTemp = weatherData.bTemp;
+        wData.temp = weatherData.temp;
+        wData.bWind = weatherData.bWind;
+        wData.wGust = weatherData.wGust;
+        wData.wHeading = weatherData.wHeading;
+        wData.wSpeed = weatherData.wSpeed;
+        wData.snr = (float)weatherData.snr / 10.0;      
+        ogn.sendWeatherData(&wData);
       }
     }    
     if (fanet.getTrackingData(&tFanetData)){
