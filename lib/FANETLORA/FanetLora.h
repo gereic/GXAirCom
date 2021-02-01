@@ -162,6 +162,7 @@ public:
     float climb; //m/s
     float heading; //deg
     int rssi; //rssi
+    uint8_t type; //tracking-type (11... online tracking 7X .... ground tracking)s
   } neighbour;
 
   typedef struct {
@@ -195,6 +196,7 @@ public:
   uint8_t getNeighboursCount(void);
   int16_t getNextNeighbor(uint8_t index);
   int16_t getNearestNeighborIndex();
+  String getType(uint8_t type);
   void setPilotname(String name);
   void setAircraftType(aircraft_t type);
   void setMyTrackingData(trackingData *tData);

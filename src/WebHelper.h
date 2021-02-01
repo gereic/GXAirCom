@@ -9,6 +9,7 @@
 #include <string>
 #include <math.h>
 #include <Update.h>
+#include <CalcTools.h>
 
 //extern WebServer server;
 extern struct SettingsData setting;

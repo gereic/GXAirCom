@@ -263,12 +263,12 @@ void Ogn::sendGroundTrackingData(float lat,float lon,String devId,uint8_t state,
 
     //sprintf (buff,"%s%s>APRS,qAR:/%sh%02d%02d.%02d%c\\%03d%02d.%02d%cn !W%01d%01d! id%02X%s FNT%d %0.1fdB\r\n"
     //            ,getOrigin(devId).c_str(),devId.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,(lat < 0)?'S':'N',lonDeg,lonMin/1000,lonMin/10 %100,(lon < 0)?'W':'E',int(latMin %10),int(latMin %10),getSenderDetails(aircraftType,devId),devId.c_str(),state,snr);
-    sprintf (buff,"%s%s>OGNFNT,qAS,%s:/%sh%02d%02d.%02d%c\\%03d%02d.%02d%cn !W%01d%01d! id%02X%s FNT%d %0.1fdB\r\n" //3F OGN-Tracker and device 15
+    sprintf (buff,"%s%s>OGNFNT,qAS,%s:/%sh%02d%02d.%02d%c\\%03d%02d.%02d%cn !W%01d%01d! id%02X%s FNT%X %0.1fdB\r\n" //3F OGN-Tracker and device 15
     ,getOrigin(devId).c_str(),devId.c_str(),_user.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,(lat < 0)?'S':'N',lonDeg,lonMin/1000,lonMin/10 %100,(lon < 0)?'W':'E',int(latMin %10),int(latMin %10),getSenderDetails(true,aircraft_t::unknown,devId),devId.c_str(),state,snr);
     xSemaphoreTake( *xMutex, portMAX_DELAY );
     client->print(buff);                
     xSemaphoreGive( *xMutex );
-    //log_i("%s",buff);
+    log_i("%s",buff);
 
 }
 

@@ -353,6 +353,7 @@ void FanetLora::insertDataToNeighbour(uint32_t devId, trackingData *Data){
   neighbours[index].climb = Data->climb;
   neighbours[index].heading = Data->heading;
   neighbours[index].rssi = Data->rssi;
+  neighbours[index].type = Data->type;
 }
 
 void FanetLora::clearNeighboursWeather(uint32_t tAct){
@@ -595,7 +596,7 @@ void FanetLora::getGroundTrackingInfo(uint8_t *buffer,uint16_t length){
       actTrackingData.OnlineTracking = false;
     }
     //log_i("online-tracking=%d",actTrackingData.OnlineTracking);
-    actTrackingData.type = 70 + (type >> 4);
+    actTrackingData.type = 0x70 + (type >> 4);
     //log_i("type=%d,groundType=%d",type,actTrackingData.type);
     newData = true;
 
@@ -615,6 +616,53 @@ bool FanetLora::getWeatherData(weatherData *weather){
     memset(&lastWeatherData,0,sizeof(lastWeatherData));
     newWData = false; //clear new Data flag
     return bRet;
+}
+
+String FanetLora::getType(uint8_t type){
+  switch (type)
+  {
+  case 0x11:
+    return "flying";
+    break;
+  case 0x70:
+    return "other";
+    break;
+  case 0x71:
+    return "walking";
+    break;
+  case 0x72:
+    return "vehicle";
+    break;
+  case 0x73:
+    return "bike";
+    break;
+  case 0x74:
+    return "boat";
+    break;
+  case 0x78:
+    return "need a ride";
+    break;
+  case 0x79:
+    return "landed well";
+    break;
+  case 0x7C:
+    return "need technical support";
+    break;
+  case 0x7D:
+    return "need medical help";
+    break;
+  case 0x7E:
+    return "distress call";
+    break;
+  case 0x7F:
+    return "distress call automatically";
+    break;
+  default:
+    char s1[20];
+    sprintf(s1,"unknown %01X",type);
+    return String(s1);
+    break;
+  }
 }
 
 void FanetLora::handle_frame(Frame *frm){
@@ -645,7 +693,7 @@ void FanetLora::handle_frame(Frame *frm){
     actTrackingData.devId = ((uint32_t)frm->src.manufacturer << 16) + (uint32_t)frm->src.id;
     actTrackingData.rssi = frm->rssi;
     actTrackingData.snr = frm->snr;
-    actTrackingData.type = 11;
+    actTrackingData.type = 0x11;
     getTrackingInfo(payload,frm->payload_length);
     insertDataToNeighbour(actTrackingData.devId,&actTrackingData);
   }else if (frm->type == 2){      
@@ -682,6 +730,7 @@ void FanetLora::handle_frame(Frame *frm){
     actTrackingData.rssi = frm->rssi;
     actTrackingData.snr = frm->snr;
     getGroundTrackingInfo(frm->payload,frm->payload_length);
+    insertDataToNeighbour(actTrackingData.devId,&actTrackingData);
   }
   //log_i("%s",msg.c_str());
   add2ActMsg(msg);
