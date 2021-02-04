@@ -223,3 +223,8 @@ V4.3.0
 improved neighbours.html -> shows now also ground-tracking and distance
 improved weather.html -> shows also distance
 bugfix OGN-weatherdata without rain and baro.
+
+V4.3.1
+bugfix sending tracking-data to OGN
+weather-data, try to read BME 5 times in case, values are not valid (outside range)
+

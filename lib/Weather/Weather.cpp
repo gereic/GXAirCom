@@ -173,11 +173,18 @@ void Weather::runBME280(uint32_t tAct){
 	float humidity = 0;
 	float rawPressure = 0;
   if ((tAct - tOld) >= WEATHER_REFRESH){
-    bme.readADCValues();
-    temp = (float)bme.getTemp() / 100.; // in °C
-    rawPressure = (float)bme.getPressure() / 100.;
-    humidity = (float)(bme.getHumidity()/ 100.); // in %
-    pressure = calcPressure(rawPressure,temp,_height); // in mbar
+    int i = 0;
+    for (i = 0;i < 5;i++){
+      if (bme.readADCValues() == 0){
+        temp = (float)bme.getTemp() / 100.; // in °C
+        rawPressure = (float)bme.getPressure() / 100.;
+        humidity = (float)(bme.getHumidity()/ 100.); // in %
+        pressure = calcPressure(rawPressure,temp,_height); // in mbar
+        break; //ready with reading
+      }
+      delay(100);
+      log_e("error reading bme280 %d",i);
+    }
     if (hasTempSensor){
       //if (sensors.getAddress(tempSensorAdr, 0)){
       //  log_i("sensor found");      
