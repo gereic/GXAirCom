@@ -480,8 +480,8 @@ String processor(const String& var){
     for (int i = 0; i < MAXNEIGHBOURS; i++){
       if (fanet.neighbours[i].devId){
         sRet += "<tr><th><a href=\"https://www.google.com/maps/search/?api=1&query=" + String(fanet.neighbours[i].lat,6) + "," + String(fanet.neighbours[i].lon,6)+ "\"  target=\"_blank\">";
-        if (fanet.weatherDatas[i].name.length() > 0){
-          sRet += fanet.weatherDatas[i].name;
+        if (fanet.neighbours[i].name.length() > 0){
+          sRet += fanet.neighbours[i].name;
         }
         sRet += " [" + fanet.getDevId(fanet.neighbours[i].devId) + "]</a></th>" + 
         "<td>" +String(fanet.neighbours[i].lat,6) + "</td>" + 

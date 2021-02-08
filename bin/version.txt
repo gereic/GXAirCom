@@ -228,3 +228,6 @@ V4.3.1
 bugfix sending tracking-data to OGN
 weather-data, try to read BME 5 times in case, values are not valid (outside range)
 
+V4.3.2
+bugfix showing name in neighbours.html was wrong (showing name of weatherstation)
+
