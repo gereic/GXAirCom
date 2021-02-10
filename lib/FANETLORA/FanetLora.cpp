@@ -53,6 +53,8 @@ bool FanetLora::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset,
 
   _PilotName = "";  
   _myData.aircraftType = FanetLora::aircraft_t::paraglider; //default Paraglider
+  _myData.lat = NAN;
+  _myData.lon = NAN;
   newMsg = false;
     for (int i = 0; i < MAXNEIGHBOURS; i++){ //clear neighbours list
     neighbours[i].devId = 0; 

@@ -231,3 +231,8 @@ weather-data, try to read BME 5 times in case, values are not valid (outside ran
 V4.3.2
 bugfix showing name in neighbours.html was wrong (showing name of weatherstation)
 
+V4.3.3
+bugfix sending fanet-position-data at startup before GPS signal is valid.
+
+V4.3.4
+bugfix when switching to OLED-Display-Type
