@@ -1346,6 +1346,7 @@ void printSettings(){
   log_i("WD Fanet-Weatherdata=%d",setting.wd.sendFanet);
   log_i("WD tempoffset=%.1f",setting.wd.tempOffset);
   log_i("WD windDirOffset=%.1f",setting.wd.windDirOffset);
+  log_i("WD windDirAvgFactor=%d",setting.wd.windDirAvgFactor);
   log_i("WUUlEnable=%d",setting.WUUpload.enable);
   log_i("WUUlID=%s",setting.WUUpload.ID.c_str());
   log_i("WUUlKEY=%s",setting.WUUpload.KEY.c_str());
