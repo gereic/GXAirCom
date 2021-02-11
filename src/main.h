@@ -315,6 +315,7 @@ struct GSSettings{
 struct WeatherSettings{
   float tempOffset;
   int16_t windDirOffset;
+  int16_t windDirAvgFactor;
   uint8_t sendFanet;  
 };
 

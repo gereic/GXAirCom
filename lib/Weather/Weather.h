@@ -49,6 +49,7 @@ public:
 
     Weather(); //constructor
     void setTempOffset(float tempOffset);
+    void setWindDirAvgFactor(int16_t winddirAvgFactor);
     void setWindDirOffset(int16_t winddirOffset);
     bool begin(TwoWire *pi2c, float height,int8_t oneWirePin, int8_t windDirPin, int8_t windSpeedPin,int8_t rainPin);
     void run(void);

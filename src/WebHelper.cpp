@@ -183,7 +183,6 @@ void onWebSocketEvent(uint8_t client_num,
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
 
-
           doc.clear();
           doc["axOffset"] = setting.vario.accel[0];
           doc["ayOffset"] = setting.vario.accel[1];
@@ -198,12 +197,11 @@ void onWebSocketEvent(uint8_t client_num,
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
 
-
-
           doc.clear();
           doc["sFWD"] = setting.wd.sendFanet;
           doc["wdTempOffset"] = setting.wd.tempOffset;
           doc["wdWDirOffset"] = setting.wd.windDirOffset;
+          doc["wdWDirAvgFactor"] = setting.wd.windDirAvgFactor;
           doc["bHasVario"] = (uint8_t)status.vario.bHasVario;
           doc["bHasMPU"] = (uint8_t)status.vario.bHasMPU;
           doc["vSinkTh"] = serialized(String(setting.vario.sinkingThreshold,2));
@@ -234,7 +232,6 @@ void onWebSocketEvent(uint8_t client_num,
           doc["GSMPWD"] = setting.gsm.pwd;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
-          
 
         }else if (clientPages[client_num] == 11){ //settings general
           doc["board"] = setting.boardType;
@@ -354,6 +351,7 @@ void onWebSocketEvent(uint8_t client_num,
         if (root.containsKey("sFWD")) newSetting.wd.sendFanet = doc["sFWD"].as<uint8_t>();
         if (root.containsKey("wdTempOffset")) newSetting.wd.tempOffset = doc["wdTempOffset"].as<float>();
         if (root.containsKey("wdWDirOffset")) newSetting.wd.windDirOffset = doc["wdWDirOffset"].as<int16_t>();
+        if (root.containsKey("wdWDirAvgFactor")) newSetting.wd.windDirAvgFactor = doc["wdWDirAvgFactor"].as<int16_t>();
         //vario
         if (root.containsKey("vSinkTh")) newSetting.vario.sinkingThreshold = doc["vSinkTh"].as<float>();
         if (root.containsKey("vClimbTh")) newSetting.vario.climbingThreshold = doc["vClimbTh"].as<float>();

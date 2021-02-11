@@ -1938,6 +1938,7 @@ void taskWeather(void *pvParameters){
   Weather weather;
   weather.setTempOffset(setting.wd.tempOffset);
   weather.setWindDirOffset(setting.wd.windDirOffset);
+  weather.setWindDirAvgFactor(setting.wd.windDirAvgFactor);
   if (weather.begin(&i2cWeather,setting.gs.alt,PinOneWire,PinWindDir,PinWindSpeed,PinRainGauge)){
     status.vario.bHasBME = true; //we have a bme-sensor
   }
@@ -3530,13 +3531,13 @@ void taskStandard(void *pvParameters){
     }    
     if (fanet.getTrackingData(&tFanetData)){
         //log_i("new Tracking-Data");
-        if (tFanetData.type == 11){ //online-tracking
+        if (tFanetData.type == 0x11){ //online-tracking
           if (setting.OGNLiveTracking){
             ogn.sendTrackingData(tFanetData.lat ,tFanetData.lon,tFanetData.altitude,tFanetData.speed,tFanetData.heading,tFanetData.climb,fanet.getDevId(tFanetData.devId) ,(Ogn::aircraft_t)tFanetData.aircraftType,tFanetData.OnlineTracking,(float)tFanetData.snr / 10.0);
           } 
           sendAWTrackingdata(&tFanetData);
           sendTraccarTrackingdata(&tFanetData);
-        }else if (tFanetData.type >= 70){ //ground-tracking
+        }else if (tFanetData.type >= 0x70){ //ground-tracking
           if (setting.OGNLiveTracking){
             ogn.sendGroundTrackingData(tFanetData.lat,tFanetData.lon,fanet.getDevId(tFanetData.devId),tFanetData.type,(float)tFanetData.snr / 10.0);
           } 
