@@ -99,7 +99,6 @@ bool Weather::begin(TwoWire *pi2c, float height,int8_t oneWirePin, int8_t windDi
   delay(500);
   bme.readADCValues();
   delay(500); 
-  avgFactor = 128; //factor for avg-factor 
   bFirst = false;
 
   //init-code for aneometer  
@@ -224,6 +223,10 @@ void Weather::runBME280(uint32_t tAct){
     tOld = tAct;
   }
 
+}
+
+void Weather::setWindDirAvgFactor(int16_t winddirAvgFactor){
+  avgFactor = winddirAvgFactor;
 }
 
 void Weather::setWindDirOffset(int16_t winddirOffset){

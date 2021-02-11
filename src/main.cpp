@@ -1938,6 +1938,7 @@ void taskWeather(void *pvParameters){
   Weather weather;
   weather.setTempOffset(setting.wd.tempOffset);
   weather.setWindDirOffset(setting.wd.windDirOffset);
+  weather.setWindDirAvgFactor(setting.wd.windDirAvgFactor);
   if (weather.begin(&i2cWeather,setting.gs.alt,PinOneWire,PinWindDir,PinWindSpeed,PinRainGauge)){
     status.vario.bHasBME = true; //we have a bme-sensor
   }
