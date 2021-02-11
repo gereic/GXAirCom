@@ -49,7 +49,7 @@ void load_configFile(SettingsData* pSetting){
   pSetting->wd.sendFanet = preferences.getUChar("FanetWeather",0);
   pSetting->wd.tempOffset = preferences.getFloat("wdTempOffset",0.0);
   pSetting->wd.windDirOffset = preferences.getInt("wdWDirOffset",0);
-  pSetting->wd.windDirAvgFactor = preferences.getInt("wdWDirAvgFactor",40);  // default - FANET publishing interval
+  pSetting->wd.windDirAvgFactor = preferences.getInt("wdWDirAvgFactor",17);
 
   //vario
   pSetting->vario.sinkingThreshold = preferences.getFloat("vSinkTh",-2.5);
