@@ -238,6 +238,9 @@ int8_t PinRainGauge = -1;
 //external Power on/off
 int8_t PinExtPowerOnOff = -1;
 
+//fuel-sensor
+int8_t PinFuelSensor = -1;
+
 //buttons
 struct myButtons {
   int8_t PinButton = -1;
@@ -312,6 +315,71 @@ void oledPowerOn();
 void checkBoardType();
 // Forward reference to prevent Arduino compiler becoming confused.
 void handleEvent(ace_button::AceButton*, uint8_t, uint8_t);
+void readFuelSensor(uint32_t tAct);
+void setupAXP192();
+void taskStandard(void *pvParameters);
+void taskBackGround(void *pvParameters);
+void taskBluetooth(void *pvParameters);
+void taskMemory(void *pvParameters);
+void setupWifi();
+void IRAM_ATTR ppsHandler(void);
+void printSettings();
+void listSpiffsFiles();
+String setStringSize(String s,uint8_t sLen);
+//void writeTrackingData(uint32_t tAct);
+void sendData2Client(String data);
+eFlarmAircraftType Fanet2FlarmAircraft(FanetLora::aircraft_t aircraft);
+void Fanet2FlarmData(FanetLora::trackingData *FanetData,FlarmtrackingData *FlarmDataData);
+void sendLK8EX(uint32_t tAct);
+void powerOff();
+esp_sleep_wakeup_cause_t print_wakeup_reason();
+void WiFiEvent(WiFiEvent_t event);
+//void listConnectedStations();
+float readBattvoltage();
+void sendAWTrackingdata(FanetLora::trackingData *FanetData);
+void sendTraccarTrackingdata(FanetLora::trackingData *FanetData);
+void sendAWUdp(String msg);
+void checkFlyingState(uint32_t tAct);
+void sendFlarmData(uint32_t tAct);
+//void handleButton(uint32_t tAct);
+char* readSerial();
+void checkReceivedLine(char *ch_str);
+void checkSystemCmd(char *ch_str);
+void setWifi(bool on);
+void handleUpdate(uint32_t tAct);
+#ifdef BLUETOOTHSERIAL
+void serialBtCallBack(esp_spp_cb_event_t event, esp_spp_cb_param_t *param);
+char* readBtSerial();
+#endif
+void printChipInfo(void);
+void setAllTime(tm &timeinfo);
+void checkExtPowerOff(uint32_t tAct);
+#ifdef AIRMODULE
+bool setupUbloxConfig(void);
+#endif
+
+void readFuelSensor(uint32_t tAct){
+  static uint32_t tRead = millis();
+  if (timeOver(tAct,tRead,FUELSENDINTERVALL)){
+    tRead = tAct;
+    // multisample ADC
+    const byte NO_OF_SAMPLES = 4;
+    uint32_t adc_reading = 0;
+    float fFuel = 0.0;
+
+    analogRead(PinFuelSensor); // First measurement has the biggest difference on my board, this line just skips the first measurement
+    for (int i = 0; i < NO_OF_SAMPLES; i++) {
+      uint16_t thisReading = analogRead(PinFuelSensor);
+      adc_reading += thisReading;
+    }
+    adc_reading /= NO_OF_SAMPLES;
+
+    status.fuelSensor = 3.3 * float(adc_reading) / 1023.0f;
+    //log_i("adc=%d, Fuel=%.3f",adc_reading,fFuel);
+    String s = "$FUEL," + String(status.fuelSensor,3) + "\r\n";
+    sendData2Client(s);
+  }
+}
 
 
 // The event handler for the button.
@@ -479,47 +547,7 @@ void drawWifiStat(int wifiStat)
 }
 #endif
 
-void setupAXP192();
-void taskStandard(void *pvParameters);
-void taskBackGround(void *pvParameters);
-void taskBluetooth(void *pvParameters);
-void taskMemory(void *pvParameters);
-void setupWifi();
-void IRAM_ATTR ppsHandler(void);
-void printSettings();
-void listSpiffsFiles();
-String setStringSize(String s,uint8_t sLen);
-//void writeTrackingData(uint32_t tAct);
-void sendData2Client(String data);
-eFlarmAircraftType Fanet2FlarmAircraft(FanetLora::aircraft_t aircraft);
-void Fanet2FlarmData(FanetLora::trackingData *FanetData,FlarmtrackingData *FlarmDataData);
-void sendLK8EX(uint32_t tAct);
-void powerOff();
-esp_sleep_wakeup_cause_t print_wakeup_reason();
-void WiFiEvent(WiFiEvent_t event);
-//void listConnectedStations();
-float readBattvoltage();
-void sendAWTrackingdata(FanetLora::trackingData *FanetData);
-void sendTraccarTrackingdata(FanetLora::trackingData *FanetData);
-void sendAWUdp(String msg);
-void checkFlyingState(uint32_t tAct);
-void sendFlarmData(uint32_t tAct);
-//void handleButton(uint32_t tAct);
-char* readSerial();
-void checkReceivedLine(char *ch_str);
-void checkSystemCmd(char *ch_str);
-void setWifi(bool on);
-void handleUpdate(uint32_t tAct);
-#ifdef BLUETOOTHSERIAL
-void serialBtCallBack(esp_spp_cb_event_t event, esp_spp_cb_param_t *param);
-char* readBtSerial();
-#endif
-void printChipInfo(void);
-void setAllTime(tm &timeinfo);
-void checkExtPowerOff(uint32_t tAct);
-#ifdef AIRMODULE
-bool setupUbloxConfig(void);
-#endif
+
 
 void setAllTime(tm &timeinfo){
   tmElements_t tm;          // a cache of time elements
@@ -1408,6 +1436,8 @@ void printSettings(){
   log_i("GSM PWD=%s",setting.gsm.pwd.c_str());
   #endif
 
+  log_i("fuel-sensor=%d",setting.bHasFuelSensor);
+
 }
 
 void listSpiffsFiles(){
@@ -1641,6 +1671,11 @@ void setup() {
     sButton[1].PinButton = 38;
     //PinButton[1] = 38;
 
+    if (setting.bHasFuelSensor){
+      PinFuelSensor = 39;
+      pinMode(PinFuelSensor, INPUT);
+    }      
+
     i2cOLED.begin(PinOledSDA, PinOledSCL);
     setupAXP192();
     //for new T-Beam output 4 is red led
@@ -1663,6 +1698,11 @@ void setup() {
     PinBaroSCL = 14;
 
     PinADCVoltage = 35;
+
+    if (setting.bHasFuelSensor){
+      PinFuelSensor = 39;
+      pinMode(PinFuelSensor, INPUT);
+    }    
 
     PinBuzzer = 0;
 
@@ -1716,18 +1756,26 @@ void setup() {
     PinOledSDA = 4;
     PinOledSCL = 15;
 
+    PinBuzzer = 17;
+
     PinBaroSDA = 13;
     PinBaroSCL = 23;
 
     PinOneWire = 22;    
 
+    PinADCVoltage = 34;
+
     PinWindDir = 36;
     PinWindSpeed = 37;
     PinRainGauge = 38;
 
-    PinADCVoltage = 34;
+    
+    if (setting.bHasFuelSensor){
+      PinFuelSensor = 39;
+      pinMode(PinFuelSensor, INPUT);
+    }    
 
-    PinBuzzer = 17;
+
 
     sButton[0].PinButton = 0; //pin for program-Led
     //PinButton[0] = 0; //pin for Program-Led
@@ -2933,6 +2981,25 @@ void checkSystemCmd(char *ch_str){
     }
     add2OutputString("#SYC OK\r\n");
   }
+  if (line.indexOf("#SYC FUEL_SENSOR?") >= 0){
+    //log_i("sending 2 client");
+    add2OutputString("#SYC FUEL_SENSOR=" + String((uint8_t)setting.bHasFuelSensor) + "\r\n");
+  }
+  iPos = getStringValue(line,"#SYC FUEL_SENSOR=","\r",0,&sRet);
+  if (iPos >= 0){
+    uint8_t u8 = atoi(sRet.c_str());
+    u8 = constrain(u8,0,1);
+    if (u8 != (uint8_t)setting.bHasFuelSensor){
+      if (u8 == 1){
+        setting.bHasFuelSensor = true;
+      }else{
+        setting.bHasFuelSensor = false;
+      }      
+      write_fuelsensor();
+      esp_restart();
+    }
+    add2OutputString("#SYC OK\r\n");
+  }
   if (line.indexOf("#SYC MODE?") >= 0){
     //log_i("sending 2 client");
     add2OutputString("#SYC MODE=" + String(setting.Mode) + "\r\n");
@@ -3437,6 +3504,8 @@ void taskStandard(void *pvParameters){
       status.bMuting = !status.bMuting; //toggle muting
     }
     sButton[1].state = 0;
+
+    if (setting.bHasFuelSensor) readFuelSensor(tAct);
 
     if (setting.OGNLiveTracking){
       if (status.vario.bHasVario){

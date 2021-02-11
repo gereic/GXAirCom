@@ -122,6 +122,12 @@ void onWebSocketEvent(uint8_t client_num,
             webSocket.sendTXT(client_num, msg_buf);
           }
           #endif
+          doc.clear();
+          doc["fuelSensor"] = (uint8_t)setting.bHasFuelSensor;
+          doc["fuelValue"] = String(status.fuelSensor,3);
+          serializeJson(doc, msg_buf);
+          webSocket.sendTXT(client_num, msg_buf);
+
 
 
         }else if (clientPages[client_num] == 2){ //sendmessage
@@ -232,6 +238,11 @@ void onWebSocketEvent(uint8_t client_num,
           doc["GSMAPN"] = setting.gsm.apn;
           doc["GSMUSER"] = setting.gsm.user;
           doc["GSMPWD"] = setting.gsm.pwd;
+          serializeJson(doc, msg_buf);
+          webSocket.sendTXT(client_num, msg_buf);
+
+          doc.clear();
+          doc["fuelSensor"] = (uint8_t)setting.bHasFuelSensor;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
           
@@ -385,6 +396,8 @@ void onWebSocketEvent(uint8_t client_num,
         if (root.containsKey("GSMAPN")) newSetting.gsm.apn = doc["GSMAPN"].as<String>();
         if (root.containsKey("GSMUSER")) newSetting.gsm.user = doc["GSMUSER"].as<String>();
         if (root.containsKey("GSMPWD")) newSetting.gsm.pwd = doc["GSMPWD"].as<String>();
+        //fuel-sensor
+        if (root.containsKey("fuelSensor")) newSetting.bHasFuelSensor = doc["fuelSensor"].as<uint8_t>();
 
         setting = newSetting;
         log_i("write config-to file");
@@ -888,6 +901,23 @@ void Web_loop(void){
       doc["GSMStat"] = String(status.modemstatus);
     }    
     #endif
+    if (bSend){
+      serializeJson(doc, msg_buf);
+      for (int i = 0;i <MAXCLIENTS;i++){
+        if (clientPages[i] == 1){
+          log_d("Sending to [%u]: %s", i, msg_buf);
+          webSocket.sendTXT(i, msg_buf);
+        }
+      }
+    }
+
+    doc.clear();
+    bSend = false;
+    if (mStatus.fuelSensor != status.fuelSensor){
+      bSend = true;
+      mStatus.fuelSensor = status.fuelSensor;
+      doc["fuelValue"] = String(status.fuelSensor,3);
+    }        
     if (bSend){
       serializeJson(doc, msg_buf);
       for (int i = 0;i <MAXCLIENTS;i++){

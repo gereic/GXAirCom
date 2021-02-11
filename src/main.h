@@ -272,6 +272,8 @@ SCL 14
 #define FN_GROUNT_AIR_TRACKING 0
 #define FN_AIR_TRACKING 1
 
+#define FUELSENDINTERVALL 10000
+
 
 
 struct weatherupload{
@@ -370,6 +372,7 @@ struct SettingsData{
   uint8_t fanetMode; //fanet tracking-mode 0 ... switch between online-tracking and ground-tracking 1 ... always online-tracking
   uint16_t fanetpin; //pin for fanet (4 signs)
   bool bHasExtPowerSw; //has external power-switch
+  bool bHasFuelSensor; //has fuel-Sensor
 };
 
 struct weatherStatus{
@@ -427,6 +430,7 @@ struct statusData{
   uint8_t updateState; //state of update
   String sNewVersion;
   uint32_t tRestart;
+  float fuelSensor; //ads of fuel-sensor
 };
 
 #endif

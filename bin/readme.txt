@@ -33,6 +33,9 @@ RXD 12
 ******** BUZZER *******
 BUZZER 25
 
+******** FUEL-SENSOR *******
+FUEL-SENSO 39
+
 
 ************* Pins for TTGO-TBeam V07 ***************
 ******* LORA ********
@@ -61,6 +64,9 @@ SCL 14
 
 ******** BUZZER *******
 BUZZER 25
+
+******** FUEL-SENSOR *******
+FUEL-SENSO 39
 
 
 ************* Pins for TTGO Lora32 ***************
@@ -115,6 +121,8 @@ TXD 12
 RXD 21
 RESET 25
 
+******** FUEL-SENSOR *******
+FUEL-SENSO 39
 
 
 
@@ -141,6 +149,10 @@ RXD 12
 
 ******** BUZZER *******
 BUZZER 0
+
+******** FUEL-SENSOR *******
+FUEL-SENSO 39
+
 
 ************* Pins for TTGO-TSIM7000G ***************
 ******* LORA ********

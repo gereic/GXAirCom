@@ -75,6 +75,9 @@ void load_configFile(SettingsData* pSetting){
   pSetting->gsm.user = preferences.getString("GSMUSER","");
   pSetting->gsm.pwd = preferences.getString("GSMKEY","");
 
+  //fuel-sensor
+  pSetting->bHasFuelSensor = preferences.getUChar("fuelSensor",0);
+
   preferences.end(); 
 
   preferences.begin("fastvario", false);
@@ -163,6 +166,10 @@ void write_configFile(SettingsData* pSetting){
   preferences.putString("GSMAPN",pSetting->gsm.apn);
   preferences.putString("GSMUSER",pSetting->gsm.user);
   preferences.putString("GSMKEY",pSetting->gsm.pwd);
+
+  //fuel-sensor
+  preferences.putUChar("fuelSensor",pSetting->bHasFuelSensor);
+
   preferences.end();
 
   preferences.begin("fastvario", false);
@@ -232,3 +239,10 @@ void write_LoraPower(void){
   preferences.putUChar("LORA_POWER",setting.LoraPower);//
   preferences.end();
 }
+
+void write_fuelsensor(void){
+  preferences.begin("settings", false);
+  preferences.putUChar("fuelSensor",setting.bHasFuelSensor);
+  preferences.end();
+}
+

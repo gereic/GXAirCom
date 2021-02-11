@@ -94,6 +94,7 @@ function setVis(){
       document.getElementById("VisBattType").style.display = 'none';
     } 
     document.getElementById("VisExtPowerSw").style.display = 'none';
+    document.getElementById("VisFuelSensor").style.display='none'; //set FuelSensor invisible
   }else{
     document.getElementById("VisLegacy").style.display='';
     document.getElementById("VisAirCraftType").style.display='';
@@ -108,6 +109,7 @@ function setVis(){
       document.getElementById("VisVario").style.display='';
     }
     document.getElementById("VisBattType").style.display = 'none';
+    document.getElementById("VisFuelSensor").style.display=''; //set FuelSensor visible
   }
   if (document.getElementById("output").value == 1){
     document.getElementById("VisUdpIp").style.display='';
@@ -239,7 +241,6 @@ function sendValues(){
 	};
   doSend(JSON.stringify(obj));
 
-  axOffset
   var obj = {  
   axOffset : document.getElementById("axOffset").value,
   ayOffset : document.getElementById("ayOffset").value,
@@ -254,6 +255,13 @@ function sendValues(){
   save : 1
 	};
   doSend(JSON.stringify(obj));
+
+  var obj = {  
+  fuelSensor : Number(document.getElementById("fuelSensor").checked),
+  save : 1
+	};
+  doSend(JSON.stringify(obj));
+
 
   var obj = {  
   sFWD : Number(document.getElementById("sFWD").checked),
@@ -441,6 +449,10 @@ window.addEventListener("load", init, false);
             <th>external power swtich (pin36) only for kobo</th>
             <td><input type="checkbox" id="expwsw"></td>
           </tr>
+          <tr id="VisFuelSensor">
+            <th>Fuel-sensor available</th>
+            <td><input type="checkbox" id="fuelSensor" ></td>
+          </tr>	
         </tbody>      
       </table>
     </fieldset>

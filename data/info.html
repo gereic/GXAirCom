@@ -105,6 +105,11 @@ function onMessage(evt) {
             document.getElementById("VisMPU").style.display='none';
           }
           continue;
+        }else if (key == "fuelSensor"){
+          if (myObj[key] == 0){
+            document.getElementById("VisFuelSensor").style.display='none';
+          }
+          continue;
         }else if (key == "GSMStat"){
           var value = parseInt(myObj[key]);
           var text = "";
@@ -294,6 +299,19 @@ window.addEventListener("load", init, false);
             <th>Live-Counter</th>
             <td><input type="text" id="counter" disabled></td>
           </tr>
+        </tbody>      
+      </table>
+    </fieldset>
+    <p></p>
+    <p></p>
+    <fieldset id="VisFuelSensor">
+      <legend><b>Fuel-sensor</b></legend>
+      <table style="width:100&#37;">
+        <tbody>
+          <tr>
+            <th>Fuel-sensor [V]</th>
+            <td><input type="text" id="fuelValue" disabled></td>
+          </tr>	
         </tbody>      
       </table>
     </fieldset>

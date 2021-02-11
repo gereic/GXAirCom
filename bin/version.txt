@@ -241,3 +241,6 @@ v4.4.0
 added new lib acebutton for using buttons of boards (click and long-press)
 new Feature, prg-Button used on Heltec-Board for Power-Off and screen-switch
 
+v4.5.0
+added fuel-sensor (only measure voltage on pin39) and send it as "$FUEL,1.234\r\n"
+
