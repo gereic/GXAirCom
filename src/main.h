@@ -384,6 +384,7 @@ struct weatherStatus{
 };
 
 struct statusData{
+  uint8_t displayType;
   String myIP; //my IP-Adress
   uint16_t vBatt; //battery-voltage 1/1000V
   uint8_t BattPerc; //battery-percent

@@ -223,3 +223,16 @@ V4.3.0
 improved neighbours.html -> shows now also ground-tracking and distance
 improved weather.html -> shows also distance
 bugfix OGN-weatherdata without rain and baro.
+
+V4.3.1
+bugfix sending tracking-data to OGN
+weather-data, try to read BME 5 times in case, values are not valid (outside range)
+
+V4.3.2
+bugfix showing name in neighbours.html was wrong (showing name of weatherstation)
+
+V4.3.3
+bugfix sending fanet-position-data at startup before GPS signal is valid.
+
+V4.3.4
+bugfix when switching to OLED-Display-Type

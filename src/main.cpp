@@ -1486,6 +1486,7 @@ void setup() {
   #elif !defined(OLED) && !defined(EINK)
   setting.displayType = NO_DISPLAY;
   #endif
+  status.displayType = setting.displayType; //we have to copy the display-type in case, setting is changing
   #if defined(GSMODULE)  && ! defined(AIRMODULE)
     log_i("only GS-Mode compiled");
     setting.Mode = MODE_GROUND_STATION;
@@ -1745,7 +1746,7 @@ void setup() {
   }
 
   #ifdef OLED
-  if (setting.displayType == OLED0_96){
+  if (status.displayType == OLED0_96){
     startOLED();  
   }
   #endif
@@ -3277,7 +3278,7 @@ void taskStandard(void *pvParameters){
 
 
 #ifdef OLED
-  if (setting.displayType == OLED0_96){
+  if (status.displayType == OLED0_96){
     display.setTextColor(WHITE);
     display.setTextSize(1);
     display.setCursor(0,55);
@@ -3351,7 +3352,7 @@ void taskStandard(void *pvParameters){
     #endif    
     sendFlarmData(tAct);
     #ifdef OLED
-    if (setting.displayType == OLED0_96){
+    if (status.displayType == OLED0_96){
     #ifdef GSMODULE
       if (setting.Mode == MODE_GROUND_STATION){
         if (setting.gs.SreenOption == SCREEN_WEATHER_DATA){
@@ -3665,7 +3666,7 @@ void taskStandard(void *pvParameters){
   }
   log_i("stop task");
   #ifdef OLED
-  if (setting.displayType == OLED0_96){
+  if (status.displayType == OLED0_96){
     if (WebUpdateRunning){
     display.clearDisplay();
     display.setTextSize(2);
@@ -3730,7 +3731,7 @@ void powerOff(){
   #endif
 
   #ifdef OLED
-  if (setting.displayType == OLED0_96){
+  if (status.displayType == OLED0_96){
     display.setTextColor(WHITE);
     display.clearDisplay();
     display.drawXBitmap(0,2,G_Logo_bits,G_Logo_width,G_Logo_height,WHITE);
@@ -3773,7 +3774,7 @@ void powerOff(){
     
     axp.setPowerOutPut(AXP192_DCDC2, AXP202_OFF); // NC
     axp.setPowerOutPut(AXP192_EXTEN, AXP202_OFF);
-    if (setting.displayType == OLED0_96){
+    if (status.displayType == OLED0_96){
       axp.setPowerOutPut(AXP192_DCDC1, AXP202_ON); //OLED-Display 3V3
     }else{
       axp.setPowerOutPut(AXP192_DCDC1, AXP202_OFF); //OLED-Display 3V3
@@ -3804,7 +3805,7 @@ void powerOff(){
 
 #ifdef EINK
 void taskEInk(void *pvParameters){
-  if (setting.displayType != EINK2_9){
+  if (status.displayType != EINK2_9){
     log_i("stop task");
     vTaskDelete(xHandleEInk);
     return;

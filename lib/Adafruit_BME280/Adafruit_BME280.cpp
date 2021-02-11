@@ -635,12 +635,36 @@ uint8_t Adafruit_BME280::readADCValues(void){
   }else{
 	  //all ok --> calc all values
     //Serial.print(F("6"));
-	  iTemp = calcTemperature();
+	  if (adc_T == 0x80000){
+      log_e("error reading Temp");
+      return 2; //error calc Temp
+    } 
+    iTemp = calcTemperature();
+    if ((iTemp > 8000) || (iTemp < -3500)){ // > 80degC or <-35degC
+      log_e("temp exceeding range t=%d",iTemp);
+      return 3; //error calc Temp
+    }
     //Serial.print(F("7"));
+    if (adc_P == 0x80000){
+      log_e("error reading pressure");
+      return 4; //error calc pressure
+    } 
 	  uiPressure = calcPressure();
+    if ((uiPressure > 109000) || (uiPressure < 35000)){ // >1090hPa or <350hPa
+      log_e("pressure exceeding range t=%d",uiPressure);
+      return 5; //error calc Temp
+    }
     //Serial.print(F("8"));
 	  if (isBME280){
+      if (adc_H == 0x8000){
+        log_e("error reading humidity");
+        return 6; //error calc Humidity
+      } 
       uiHumidity = calcHumidity();
+      if (uiHumidity > 11000){ // >110%rH
+        log_e("humidity exceeding range t=%d",uiHumidity);
+        return 5; //error calc Temp
+      }
     }else{
       uiHumidity = 0;
     }
