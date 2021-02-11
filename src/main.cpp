@@ -28,6 +28,8 @@
 #include "driver/adc.h"
 //#include "Update.h"
 #include "gxUpdater.h"
+#include <AceButton.h>
+
 
 //#define TEST
 
@@ -236,6 +238,17 @@ int8_t PinRainGauge = -1;
 //external Power on/off
 int8_t PinExtPowerOnOff = -1;
 
+//buttons
+struct myButtons {
+  int8_t PinButton = -1;
+  uint8_t state = 0;
+};
+
+ace_button::AceButton buttons[NUMBUTTONS];
+myButtons sButton[NUMBUTTONS];
+//int8_t PinButton[NUMBUTTONS] = {-1,-1,};
+//uint8_t buttonState[NUMBUTTONS] = {0,0,};
+
 float adcVoltageMultiplier = 0.0;
 String sNmeaIn = "";
 
@@ -297,6 +310,39 @@ void drawWifiStat(int wifiStat);
 void oledPowerOff();
 void oledPowerOn();
 void checkBoardType();
+// Forward reference to prevent Arduino compiler becoming confused.
+void handleEvent(ace_button::AceButton*, uint8_t, uint8_t);
+
+
+// The event handler for the button.
+void handleEvent(ace_button::AceButton* button, uint8_t eventType, uint8_t buttonState) {
+
+  // Print out a message for all events.
+  /*
+  Serial.print(F("handleEvent(): eventType: "));
+  Serial.print(eventType);
+  Serial.print(F("; buttonState: "));
+  Serial.println(buttonState);
+  */
+
+  // Get the LED pin
+  uint8_t id = button->getId();
+
+  // Control the LED only for the Pressed and Released events.
+  // Notice that if the MCU is rebooted while the button is pressed down, no
+  // event is triggered and the LED remains off.
+  switch (eventType) {
+    case ace_button::AceButton::kEventClicked:
+      sButton[id].state = eventType;
+      //log_i("button %d clicked",id);
+      break;
+    case ace_button::AceButton::kEventLongPressed:
+      sButton[id].state = eventType;
+      //log_i("button %d long pressed",id);
+      break;
+  }
+}
+
 
 void checkBoardType(){
   #ifdef TINY_GSM_MODEM_SIM7000
@@ -458,7 +504,7 @@ void sendTraccarTrackingdata(FanetLora::trackingData *FanetData);
 void sendAWUdp(String msg);
 void checkFlyingState(uint32_t tAct);
 void sendFlarmData(uint32_t tAct);
-void handleButton(uint32_t tAct);
+//void handleButton(uint32_t tAct);
 char* readSerial();
 void checkReceivedLine(char *ch_str);
 void checkSystemCmd(char *ch_str);
@@ -546,6 +592,7 @@ void serialBtCallBack(esp_spp_cb_event_t event, esp_spp_cb_param_t *param){
 }
 #endif
 
+/*
 void handleButton(uint32_t tAct){
   static uint32_t buttonTimer = millis();
   //static uint32_t dblClkTimer = millis();
@@ -583,6 +630,7 @@ void handleButton(uint32_t tAct){
 		longPressActive = false;
   }
 }
+*/
 
 
 void sendFlarmData(uint32_t tAct){
@@ -1551,11 +1599,17 @@ void setup() {
     setting.wifi.connect = WIFI_CONNECT_NONE; //if no pw or ssid given --> don't connecto to wifi
   }
 
-  pinMode(BUTTON2, INPUT_PULLUP);
+  //pinMode(BUTTON2, INPUT_PULLUP);
 
   printSettings();
   analogReadResolution(10); // Default of 12 is not very linear. Recommended to use 10 or 11 depending on needed resolution.
   status.bHasAXP192 = false;    
+  for (uint8_t i = 0; i < NUMBUTTONS; i++) {
+    //init buttons
+    sButton[i].PinButton = -1;
+  }
+
+
   switch (setting.boardType)
   {
   case BOARD_T_BEAM: 
@@ -1583,6 +1637,9 @@ void setup() {
     if (setting.bHasExtPowerSw){
       PinExtPowerOnOff = 36;
     }
+
+    sButton[1].PinButton = 38;
+    //PinButton[1] = 38;
 
     i2cOLED.begin(PinOledSDA, PinOledSCL);
     setupAXP192();
@@ -1672,6 +1729,9 @@ void setup() {
 
     PinBuzzer = 17;
 
+    sButton[0].PinButton = 0; //pin for program-Led
+    //PinButton[0] = 0; //pin for Program-Led
+
     i2cOLED.begin(PinOledSDA, PinOledSCL);
     // voltage-divier 27kOhm and 100kOhm
     // vIn = (R1+R2)/R2 * VOut
@@ -1736,6 +1796,29 @@ void setup() {
     delay(1000);
     esp_restart(); //we need to restart    break;
   }
+
+  for (uint8_t i = 0; i < NUMBUTTONS; i++) {
+    // initialize built-in LED as an output
+    if (sButton[i].PinButton >= 0){
+      //set pin for button as input
+      pinMode(sButton[i].PinButton, INPUT_PULLUP);
+      // initialize the corresponding AceButton
+      buttons[i].init(sButton[i].PinButton, HIGH, i);
+    }
+  }
+  // Configure the ButtonConfig with the event handler, and enable all higher
+  // level events.
+  ace_button::ButtonConfig* buttonConfig = ace_button::ButtonConfig::getSystemButtonConfig();
+  buttonConfig->setEventHandler(handleEvent);
+  buttonConfig->setFeature(ace_button::ButtonConfig::kFeatureClick);
+  buttonConfig->setFeature(ace_button::ButtonConfig::kFeatureDoubleClick);
+  buttonConfig->setFeature(ace_button::ButtonConfig::kFeatureLongPress);
+  buttonConfig->setFeature(ace_button::ButtonConfig::kFeatureRepeatPress);
+  buttonConfig->setDebounceDelay(20); //set debounce-delay to 20ms
+  buttonConfig->setLongPressDelay(1000); //set long-press-delay to 500ms
+  buttonConfig->setClickDelay(500); //set click-delay to 200ms
+
+
   if (PinUserLed >= 0){
     pinMode(PinUserLed, OUTPUT);
     digitalWrite(PinUserLed,HIGH); 
@@ -3315,7 +3398,45 @@ void taskStandard(void *pvParameters){
       setting.bConfigGPS = false;
     }
     #endif
-    handleButton(tAct);
+    //handleButton(tAct);
+    // Should be called every 4-5ms or faster, for the default debouncing time
+    // of ~20ms.
+    for (uint8_t i = 0; i < NUMBUTTONS; i++) {
+      if (sButton[i].PinButton >= 0){
+        buttons[i].check();
+      }
+    }
+    //check Button 0
+    if (sButton[0].state == ace_button::AceButton::kEventClicked){
+      log_v("Short Press IRQ");
+      setting.screenNumber ++;
+      if (setting.screenNumber > MAXSCREENS) setting.screenNumber = 0;
+      write_screenNumber(); //save screennumber in File
+      tDisplay = tAct - DISPLAY_UPDATE_RATE;
+    }else if (sButton[0].state == ace_button::AceButton::kEventLongPressed){
+      log_v("Long Press IRQ");
+      status.bPowerOff = true;
+    }
+    sButton[0].state =  0;
+    //check Button 1
+    if (sButton[1].state == ace_button::AceButton::kEventClicked){
+      if (status.bMuting){
+        status.bMuting = false; //undo muting
+      }else{
+        if (setting.vario.volume == LOWVOLUME){
+          setting.vario.volume = MIDVOLUME;  
+        }else if (setting.vario.volume == MIDVOLUME){
+          setting.vario.volume = HIGHVOLUME;  
+        }else if (setting.vario.volume == HIGHVOLUME){
+          setting.vario.volume = LOWVOLUME;  
+        }
+        write_Volume();
+      }
+      //log_i("volume=%d",setting.vario.volume);
+    }else if (sButton[1].state == ace_button::AceButton::kEventLongPressed){
+      status.bMuting = !status.bMuting; //toggle muting
+    }
+    sButton[1].state = 0;
 
     if (setting.OGNLiveTracking){
       if (status.vario.bHasVario){
@@ -3645,15 +3766,10 @@ void taskStandard(void *pvParameters){
     if (AXP192_Irq){
       if (axp.readIRQ() == AXP_PASS) {
         if (axp.isPEKLongtPressIRQ()) {
-          log_v("Long Press IRQ");
-          status.bPowerOff = true;
+          sButton[0].state = ace_button::AceButton::kEventLongPressed;
         }
         if (axp.isPEKShortPressIRQ()) {
-          log_v("Short Press IRQ");
-          setting.screenNumber ++;
-          if (setting.screenNumber > MAXSCREENS) setting.screenNumber = 0;
-          write_screenNumber(); //save screennumber in File
-          tDisplay = tAct - DISPLAY_UPDATE_RATE;
+          sButton[0].state = ace_button::AceButton::kEventClicked;
         }
         axp.clearIRQ();
       }

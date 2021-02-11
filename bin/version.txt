@@ -236,3 +236,8 @@ bugfix sending fanet-position-data at startup before GPS signal is valid.
 
 V4.3.4
 bugfix when switching to OLED-Display-Type
+
+v4.4.0
+added new lib acebutton for using buttons of boards (click and long-press)
+new Feature, prg-Button used on Heltec-Board for Power-Off and screen-switch
+
