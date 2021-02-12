@@ -376,8 +376,8 @@ void readFuelSensor(uint32_t tAct){
 
     status.fuelSensor = 3.3 * float(adc_reading) / 1023.0f;
     //log_i("adc=%d, Fuel=%.3f",adc_reading,fFuel);
-    String s = "$FUEL," + String(status.fuelSensor,3) + "\r\n";
-    sendData2Client(s);
+    String s = "$FUEL," + String(status.fuelSensor,3) + ",";    
+    sendData2Client(flarm.addChecksum(s));
   }
 }
 

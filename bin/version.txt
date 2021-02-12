@@ -244,3 +244,5 @@ new Feature, prg-Button used on Heltec-Board for Power-Off and screen-switch
 v4.5.0
 added fuel-sensor (only measure voltage on pin39) and send it as "$FUEL,1.234\r\n"
 
+v4.5.1
+added Checksum to fuel-sensor-data
