@@ -28,6 +28,8 @@
 #include "driver/adc.h"
 //#include "Update.h"
 #include "gxUpdater.h"
+#include <AceButton.h>
+
 
 //#define TEST
 
@@ -236,6 +238,20 @@ int8_t PinRainGauge = -1;
 //external Power on/off
 int8_t PinExtPowerOnOff = -1;
 
+//fuel-sensor
+int8_t PinFuelSensor = -1;
+
+//buttons
+struct myButtons {
+  int8_t PinButton = -1;
+  uint8_t state = 0;
+};
+
+ace_button::AceButton buttons[NUMBUTTONS];
+myButtons sButton[NUMBUTTONS];
+//int8_t PinButton[NUMBUTTONS] = {-1,-1,};
+//uint8_t buttonState[NUMBUTTONS] = {0,0,};
+
 float adcVoltageMultiplier = 0.0;
 String sNmeaIn = "";
 
@@ -297,6 +313,104 @@ void drawWifiStat(int wifiStat);
 void oledPowerOff();
 void oledPowerOn();
 void checkBoardType();
+// Forward reference to prevent Arduino compiler becoming confused.
+void handleEvent(ace_button::AceButton*, uint8_t, uint8_t);
+void readFuelSensor(uint32_t tAct);
+void setupAXP192();
+void taskStandard(void *pvParameters);
+void taskBackGround(void *pvParameters);
+void taskBluetooth(void *pvParameters);
+void taskMemory(void *pvParameters);
+void setupWifi();
+void IRAM_ATTR ppsHandler(void);
+void printSettings();
+void listSpiffsFiles();
+String setStringSize(String s,uint8_t sLen);
+//void writeTrackingData(uint32_t tAct);
+void sendData2Client(String data);
+eFlarmAircraftType Fanet2FlarmAircraft(FanetLora::aircraft_t aircraft);
+void Fanet2FlarmData(FanetLora::trackingData *FanetData,FlarmtrackingData *FlarmDataData);
+void sendLK8EX(uint32_t tAct);
+void powerOff();
+esp_sleep_wakeup_cause_t print_wakeup_reason();
+void WiFiEvent(WiFiEvent_t event);
+//void listConnectedStations();
+float readBattvoltage();
+void sendAWTrackingdata(FanetLora::trackingData *FanetData);
+void sendTraccarTrackingdata(FanetLora::trackingData *FanetData);
+void sendAWUdp(String msg);
+void checkFlyingState(uint32_t tAct);
+void sendFlarmData(uint32_t tAct);
+//void handleButton(uint32_t tAct);
+char* readSerial();
+void checkReceivedLine(char *ch_str);
+void checkSystemCmd(char *ch_str);
+void setWifi(bool on);
+void handleUpdate(uint32_t tAct);
+#ifdef BLUETOOTHSERIAL
+void serialBtCallBack(esp_spp_cb_event_t event, esp_spp_cb_param_t *param);
+char* readBtSerial();
+#endif
+void printChipInfo(void);
+void setAllTime(tm &timeinfo);
+void checkExtPowerOff(uint32_t tAct);
+#ifdef AIRMODULE
+bool setupUbloxConfig(void);
+#endif
+
+void readFuelSensor(uint32_t tAct){
+  static uint32_t tRead = millis();
+  if (timeOver(tAct,tRead,FUELSENDINTERVALL)){
+    tRead = tAct;
+    // multisample ADC
+    const byte NO_OF_SAMPLES = 4;
+    uint32_t adc_reading = 0;
+    float fFuel = 0.0;
+
+    analogRead(PinFuelSensor); // First measurement has the biggest difference on my board, this line just skips the first measurement
+    for (int i = 0; i < NO_OF_SAMPLES; i++) {
+      uint16_t thisReading = analogRead(PinFuelSensor);
+      adc_reading += thisReading;
+    }
+    adc_reading /= NO_OF_SAMPLES;
+
+    status.fuelSensor = 3.3 * float(adc_reading) / 1023.0f;
+    //log_i("adc=%d, Fuel=%.3f",adc_reading,fFuel);
+    String s = "$FUEL," + String(status.fuelSensor,3) + ",";    
+    sendData2Client(flarm.addChecksum(s));
+  }
+}
+
+
+// The event handler for the button.
+void handleEvent(ace_button::AceButton* button, uint8_t eventType, uint8_t buttonState) {
+
+  // Print out a message for all events.
+  /*
+  Serial.print(F("handleEvent(): eventType: "));
+  Serial.print(eventType);
+  Serial.print(F("; buttonState: "));
+  Serial.println(buttonState);
+  */
+
+  // Get the LED pin
+  uint8_t id = button->getId();
+
+  // Control the LED only for the Pressed and Released events.
+  // Notice that if the MCU is rebooted while the button is pressed down, no
+  // event is triggered and the LED remains off.
+  switch (eventType) {
+    case ace_button::AceButton::kEventClicked:
+      sButton[id].state = eventType;
+      //log_i("button %d clicked",id);
+      break;
+    case ace_button::AceButton::kEventLongPressed:
+      sButton[id].state = eventType;
+      //log_i("button %d long pressed",id);
+      break;
+  }
+}
+
 
 void checkBoardType(){
   #ifdef TINY_GSM_MODEM_SIM7000
@@ -433,47 +547,7 @@ void drawWifiStat(int wifiStat)
 }
 #endif
 
-void setupAXP192();
-void taskStandard(void *pvParameters);
-void taskBackGround(void *pvParameters);
-void taskBluetooth(void *pvParameters);
-void taskMemory(void *pvParameters);
-void setupWifi();
-void IRAM_ATTR ppsHandler(void);
-void printSettings();
-void listSpiffsFiles();
-String setStringSize(String s,uint8_t sLen);
-//void writeTrackingData(uint32_t tAct);
-void sendData2Client(String data);
-eFlarmAircraftType Fanet2FlarmAircraft(FanetLora::aircraft_t aircraft);
-void Fanet2FlarmData(FanetLora::trackingData *FanetData,FlarmtrackingData *FlarmDataData);
-void sendLK8EX(uint32_t tAct);
-void powerOff();
-esp_sleep_wakeup_cause_t print_wakeup_reason();
-void WiFiEvent(WiFiEvent_t event);
-//void listConnectedStations();
-float readBattvoltage();
-void sendAWTrackingdata(FanetLora::trackingData *FanetData);
-void sendTraccarTrackingdata(FanetLora::trackingData *FanetData);
-void sendAWUdp(String msg);
-void checkFlyingState(uint32_t tAct);
-void sendFlarmData(uint32_t tAct);
-void handleButton(uint32_t tAct);
-char* readSerial();
-void checkReceivedLine(char *ch_str);
-void checkSystemCmd(char *ch_str);
-void setWifi(bool on);
-void handleUpdate(uint32_t tAct);
-#ifdef BLUETOOTHSERIAL
-void serialBtCallBack(esp_spp_cb_event_t event, esp_spp_cb_param_t *param);
-char* readBtSerial();
-#endif
-void printChipInfo(void);
-void setAllTime(tm &timeinfo);
-void checkExtPowerOff(uint32_t tAct);
-#ifdef AIRMODULE
-bool setupUbloxConfig(void);
-#endif
+
 
 void setAllTime(tm &timeinfo){
   tmElements_t tm;          // a cache of time elements
@@ -546,6 +620,7 @@ void serialBtCallBack(esp_spp_cb_event_t event, esp_spp_cb_param_t *param){
 }
 #endif
 
+/*
 void handleButton(uint32_t tAct){
   static uint32_t buttonTimer = millis();
   //static uint32_t dblClkTimer = millis();
@@ -583,6 +658,7 @@ void handleButton(uint32_t tAct){
 		longPressActive = false;
   }
 }
+*/
 
 
 void sendFlarmData(uint32_t tAct){
@@ -1361,6 +1437,8 @@ void printSettings(){
   log_i("GSM PWD=%s",setting.gsm.pwd.c_str());
   #endif
 
+  log_i("fuel-sensor=%d",setting.bHasFuelSensor);
+
 }
 
 void listSpiffsFiles(){
@@ -1552,11 +1630,17 @@ void setup() {
     setting.wifi.connect = WIFI_CONNECT_NONE; //if no pw or ssid given --> don't connecto to wifi
   }
 
-  pinMode(BUTTON2, INPUT_PULLUP);
+  //pinMode(BUTTON2, INPUT_PULLUP);
 
   printSettings();
   analogReadResolution(10); // Default of 12 is not very linear. Recommended to use 10 or 11 depending on needed resolution.
   status.bHasAXP192 = false;    
+  for (uint8_t i = 0; i < NUMBUTTONS; i++) {
+    //init buttons
+    sButton[i].PinButton = -1;
+  }
+
+
   switch (setting.boardType)
   {
   case BOARD_T_BEAM: 
@@ -1585,6 +1669,14 @@ void setup() {
       PinExtPowerOnOff = 36;
     }
 
+    sButton[1].PinButton = 38;
+    //PinButton[1] = 38;
+
+    if (setting.bHasFuelSensor){
+      PinFuelSensor = 39;
+      pinMode(PinFuelSensor, INPUT);
+    }      
+
     i2cOLED.begin(PinOledSDA, PinOledSCL);
     setupAXP192();
     //for new T-Beam output 4 is red led
@@ -1607,6 +1699,11 @@ void setup() {
     PinBaroSCL = 14;
 
     PinADCVoltage = 35;
+
+    if (setting.bHasFuelSensor){
+      PinFuelSensor = 39;
+      pinMode(PinFuelSensor, INPUT);
+    }    
 
     PinBuzzer = 0;
 
@@ -1660,18 +1757,29 @@ void setup() {
     PinOledSDA = 4;
     PinOledSCL = 15;
 
+    PinBuzzer = 17;
+
     PinBaroSDA = 13;
     PinBaroSCL = 23;
 
     PinOneWire = 22;    
 
+    PinADCVoltage = 34;
+
     PinWindDir = 36;
     PinWindSpeed = 37;
     PinRainGauge = 38;
 
-    PinADCVoltage = 34;
+    
+    if (setting.bHasFuelSensor){
+      PinFuelSensor = 39;
+      pinMode(PinFuelSensor, INPUT);
+    }    
 
-    PinBuzzer = 17;
+
+
+    sButton[0].PinButton = 0; //pin for program-Led
+    //PinButton[0] = 0; //pin for Program-Led
 
     i2cOLED.begin(PinOledSDA, PinOledSCL);
     // voltage-divier 27kOhm and 100kOhm
@@ -1737,6 +1845,29 @@ void setup() {
     delay(1000);
     esp_restart(); //we need to restart    break;
   }
+
+  for (uint8_t i = 0; i < NUMBUTTONS; i++) {
+    // initialize built-in LED as an output
+    if (sButton[i].PinButton >= 0){
+      //set pin for button as input
+      pinMode(sButton[i].PinButton, INPUT_PULLUP);
+      // initialize the corresponding AceButton
+      buttons[i].init(sButton[i].PinButton, HIGH, i);
+    }
+  }
+  // Configure the ButtonConfig with the event handler, and enable all higher
+  // level events.
+  ace_button::ButtonConfig* buttonConfig = ace_button::ButtonConfig::getSystemButtonConfig();
+  buttonConfig->setEventHandler(handleEvent);
+  buttonConfig->setFeature(ace_button::ButtonConfig::kFeatureClick);
+  buttonConfig->setFeature(ace_button::ButtonConfig::kFeatureDoubleClick);
+  buttonConfig->setFeature(ace_button::ButtonConfig::kFeatureLongPress);
+  buttonConfig->setFeature(ace_button::ButtonConfig::kFeatureRepeatPress);
+  buttonConfig->setDebounceDelay(20); //set debounce-delay to 20ms
+  buttonConfig->setLongPressDelay(1000); //set long-press-delay to 500ms
+  buttonConfig->setClickDelay(500); //set click-delay to 200ms
+
+
   if (PinUserLed >= 0){
     pinMode(PinUserLed, OUTPUT);
     digitalWrite(PinUserLed,HIGH); 
@@ -2852,6 +2983,25 @@ void checkSystemCmd(char *ch_str){
     }
     add2OutputString("#SYC OK\r\n");
   }
+  if (line.indexOf("#SYC FUEL_SENSOR?") >= 0){
+    //log_i("sending 2 client");
+    add2OutputString("#SYC FUEL_SENSOR=" + String((uint8_t)setting.bHasFuelSensor) + "\r\n");
+  }
+  iPos = getStringValue(line,"#SYC FUEL_SENSOR=","\r",0,&sRet);
+  if (iPos >= 0){
+    uint8_t u8 = atoi(sRet.c_str());
+    u8 = constrain(u8,0,1);
+    if (u8 != (uint8_t)setting.bHasFuelSensor){
+      if (u8 == 1){
+        setting.bHasFuelSensor = true;
+      }else{
+        setting.bHasFuelSensor = false;
+      }      
+      write_fuelsensor();
+      esp_restart();
+    }
+    add2OutputString("#SYC OK\r\n");
+  }
   if (line.indexOf("#SYC MODE?") >= 0){
     //log_i("sending 2 client");
     add2OutputString("#SYC MODE=" + String(setting.Mode) + "\r\n");
@@ -3317,7 +3467,47 @@ void taskStandard(void *pvParameters){
       setting.bConfigGPS = false;
     }
     #endif
-    handleButton(tAct);
+    //handleButton(tAct);
+    // Should be called every 4-5ms or faster, for the default debouncing time
+    // of ~20ms.
+    for (uint8_t i = 0; i < NUMBUTTONS; i++) {
+      if (sButton[i].PinButton >= 0){
+        buttons[i].check();
+      }
+    }
+    //check Button 0
+    if (sButton[0].state == ace_button::AceButton::kEventClicked){
+      log_v("Short Press IRQ");
+      setting.screenNumber ++;
+      if (setting.screenNumber > MAXSCREENS) setting.screenNumber = 0;
+      write_screenNumber(); //save screennumber in File
+      tDisplay = tAct - DISPLAY_UPDATE_RATE;
+    }else if (sButton[0].state == ace_button::AceButton::kEventLongPressed){
+      log_v("Long Press IRQ");
+      status.bPowerOff = true;
+    }
+    sButton[0].state =  0;
+    //check Button 1
+    if (sButton[1].state == ace_button::AceButton::kEventClicked){
+      if (status.bMuting){
+        status.bMuting = false; //undo muting
+      }else{
+        if (setting.vario.volume == LOWVOLUME){
+          setting.vario.volume = MIDVOLUME;  
+        }else if (setting.vario.volume == MIDVOLUME){
+          setting.vario.volume = HIGHVOLUME;  
+        }else if (setting.vario.volume == HIGHVOLUME){
+          setting.vario.volume = LOWVOLUME;  
+        }
+        write_Volume();
+      }
+      //log_i("volume=%d",setting.vario.volume);
+    }else if (sButton[1].state == ace_button::AceButton::kEventLongPressed){
+      status.bMuting = !status.bMuting; //toggle muting
+    }
+    sButton[1].state = 0;
+
+    if (setting.bHasFuelSensor) readFuelSensor(tAct);
 
     if (setting.OGNLiveTracking){
       if (status.vario.bHasVario){
@@ -3647,15 +3837,10 @@ void taskStandard(void *pvParameters){
     if (AXP192_Irq){
       if (axp.readIRQ() == AXP_PASS) {
         if (axp.isPEKLongtPressIRQ()) {
-          log_v("Long Press IRQ");
-          status.bPowerOff = true;
+          sButton[0].state = ace_button::AceButton::kEventLongPressed;
         }
         if (axp.isPEKShortPressIRQ()) {
-          log_v("Short Press IRQ");
-          setting.screenNumber ++;
-          if (setting.screenNumber > MAXSCREENS) setting.screenNumber = 0;
-          write_screenNumber(); //save screennumber in File
-          tDisplay = tAct - DISPLAY_UPDATE_RATE;
+          sButton[0].state = ace_button::AceButton::kEventClicked;
         }
         axp.clearIRQ();
       }
