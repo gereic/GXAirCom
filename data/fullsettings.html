@@ -63,9 +63,11 @@ function setFts(){
 //this function sets visible depending on actual option
 function setVis(){
   //console.log("visible=" + document.getElementById("mode").style.display)
+  document.getElementById("VisAWUS").style.display='none'; //set advanced weahter upload settings invisible    
+  document.getElementById("VisAWFFNT").style.display='none'; //set advanced weahter upload settings invisible      
+  document.getElementById("VisWD").style.display='none'; //set weather-data invisible
   if (document.getElementById("mode").value == 1){ //mode ground-station
-    if (bHasBME == 0){
-      document.getElementById("VisWD").style.display='none'; //set weather-data invisible
+    if (bHasBME == 0){      
       document.getElementById("tWu").innerHTML='Broadcast weather-underground data to FANET';
       document.getElementById("tWu2").innerHTML='enable sending wu-data to FANET';
       document.getElementById("VisWU").style.display=''; //set weather-underground upload invisible
@@ -79,6 +81,10 @@ function setVis(){
       document.getElementById("tWi").innerHTML='windy Upload';
       document.getElementById("tWi2").innerHTML='enable sending weather-data to windy';
       document.getElementById("VisWI").style.display=''; //set weather-underground upload invisible
+      if (document.getElementById("setView").value > 0){ //we are advanced or expert
+        document.getElementById("VisAWUS").style.display=''; //set advanced weahter upload settings visible    
+        document.getElementById("VisAWFFNT").style.display=''; //set advanced weahter upload settings invisible      
+      }
     }
     document.getElementById("VisAirCraftType").style.display='none';
     document.getElementById("VisLegacy").style.display='none';
@@ -100,7 +106,6 @@ function setVis(){
     document.getElementById("VisAirCraftType").style.display='';
     document.getElementById("tName").innerHTML='Pilot name';
     document.getElementById("VisGS").style.display='none'; //set GS invisible
-    document.getElementById("VisWD").style.display='none'; //set weather-data invisible
     document.getElementById("VisWU").style.display='none'; //set weather-underground upload invisible
     document.getElementById("VisWI").style.display='none'; //set windy upload invisible
     if (bHasVario == 0){
@@ -175,6 +180,7 @@ function sendValues(){
   
   
   var obj = {
+  setView : document.getElementById("setView").value,
   board : document.getElementById("board").value,
   bType : document.getElementById("bType").value,
   disp : document.getElementById("disp").value,
@@ -274,6 +280,14 @@ function sendValues(){
   WIUlEnable : Number(document.getElementById("WIUlEnable").checked),
   WIUlID : document.getElementById("WIUlID").value,  
   WIUlKEY : document.getElementById("WIUlKEY").value,
+  WFFNT : document.getElementById("WFFNT").value,
+  WFWU : document.getElementById("WFWU").value,
+  WIWU : document.getElementById("WIWU").value,
+  save : 1
+	};
+  doSend(JSON.stringify(obj));
+
+  var obj = {  
   GSMAPN : document.getElementById("GSMAPN").value,  
   GSMUSER : document.getElementById("GSMUSER").value,  
   GSMPWD : document.getElementById("GSMPWD").value,    
@@ -364,6 +378,14 @@ window.addEventListener("load", init, false);
       <legend><b>General settings</b></legend>
       <table style="width:100&#37;">
         <tbody>
+          <tr>
+            <th>settings view</th>
+            <td><select onchange="setVis()" id="setView">
+              <option value="0">basic</option>
+              <option value="100">advanced</option>
+              <option value="200">expert</option>
+            </select></td>
+          </tr>
           <tr>
             <th>Board Type</th>
             <td><select id="board">
@@ -630,6 +652,27 @@ window.addEventListener("load", init, false);
           <tr>
             <th>offset wind direction [°]</th>
             <td><input type="number" id="wdWDirOffset" step="1"></td>
+          </tr>
+          <tr id="VisAWFFNT">
+            <th>average-coefficient (default 16)</th>
+            <td><input type="number" id="WFFNT" min="0.1" max="2000"></td>
+          </tr>
+        </tbody>      
+      </table>
+    </fieldset>
+    <p></p>
+    <p></p>
+    <fieldset id="VisAWUS">
+      <legend><b>Weather Upload settings</b></legend>
+      <table style="width:100&#37;">
+        <tbody>
+          <tr>
+            <th>average-coefficient (default 128)</th>
+            <td><input type="number" id="WFWU" min="0.1" max="2000"></td>
+          </tr>
+          <tr>
+            <th>upload-intervall [s] (default 300 -> 5min)</th>
+            <td><input type="number" id="WIWU" min="30" max="1800000"></td>
           </tr>
         </tbody>      
       </table>

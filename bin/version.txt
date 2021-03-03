@@ -246,3 +246,8 @@ added fuel-sensor (only measure voltage on pin39) and send it as "$FUEL,1.234\r\
 
 v4.5.1
 added Checksum to fuel-sensor-data
+
+v4.6.0
+added view for settings (basic, advanced, expert)
+added avgfactor for sending weather-data
+added adjustable intervall for upload weather-data to WU

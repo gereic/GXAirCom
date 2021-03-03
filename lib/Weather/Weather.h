@@ -32,16 +32,16 @@ class Weather {
 public:
     typedef struct {
         bool bTemp; //temp exists
-        float temp = NAN; //temp [°C]
+        float temp = 0.0; //temp [°C]
         bool bHumidity; //humidity exists
-        float Humidity = NAN; // [%rH]
+        float Humidity = 0.0; // [%rH]
         bool bPressure; // pressure exists
-        float Pressure = NAN; // [hPa]
+        float Pressure = 0.0; // [hPa]
         bool bWindDir; //winddir exists
-        float WindDir = NAN; //[Deg]
+        float WindDir = 0.0; //[Deg]
         bool bWindSpeed; //windspeed exists
-        float WindSpeed = NAN; //[km/h]
-        float WindGust = NAN; //[km/h]
+        float WindSpeed = 0.0; //[km/h]
+        float WindGust = 0.0; //[km/h]
         bool bRain; //rain-sensor exists
         float rain1h; // rain this hour [l/h]
         float rain1d; // rain this day [l/h]
@@ -52,7 +52,7 @@ public:
     void setWindDirOffset(int16_t winddirOffset);
     bool begin(TwoWire *pi2c, float height,int8_t oneWirePin, int8_t windDirPin, int8_t windSpeedPin,int8_t rainPin);
     void run(void);
-    void getValues(weatherData *weather);
+    bool getValues(weatherData *weather);
     void resetWindGust(void);
 
 protected:
@@ -60,27 +60,24 @@ private:
     TwoWire *pI2c;
     bool initBME280(void);
     void runBME280(uint32_t tAct);
-    float calcPressure(float p, float t, float h);
-    float calcExpAvgf(float oldValue, float newValue, float Factor);
+    float calcPressure(float p, float t, float h);    
     void copyValues(void);
     void checkAneometer(void);
     void checkRainSensor(void);
     float calcWindspeed(void);
     uint8_t sensorAdr;
     Adafruit_BME280 bme;
-    uint16_t avgFactor; //factor for avg-factor
+    //uint16_t avgFactor; //factor for avg-factor
     float _tempOffset = 0;
     int16_t _winddirOffset = 0;
     float dTemp = 0;
-    float dTempOld = 0;
     float dHumidity = 0;
-    float dHumidityOld = 0;
     float dPressure = 0;
-    float dPressureOld = 0;
     float _height = 0;
     uint8_t _windDirPin;
     bool bFirst;
     weatherData _weather;
+    bool bNewWeather;
     SemaphoreHandle_t xMutex;
     OneWire oneWire;
     DallasTemperature sensors;

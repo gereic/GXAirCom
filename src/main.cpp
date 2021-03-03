@@ -1910,7 +1910,7 @@ xOutputMutex = xSemaphoreCreateMutex();
 #ifdef GSMODULE  
   if (setting.Mode == MODE_GROUND_STATION){
     //start weather-task
-    xTaskCreatePinnedToCore(taskWeather, "taskWeather", 4096, NULL, 8, &xHandleWeather, ARDUINO_RUNNING_CORE1);
+    xTaskCreatePinnedToCore(taskWeather, "taskWeather", 6500, NULL, 8, &xHandleWeather, ARDUINO_RUNNING_CORE1);
   }
 #endif  
 #ifdef GSM_MODULE
@@ -2065,6 +2065,11 @@ void taskWeather(void *pvParameters){
   bool bDataOk = false;
   log_i("starting weather-task ");  
   Weather::weatherData wData;
+  Weather::weatherData wFntData;
+  WeatherUnderground::wData wuData;
+  Windy::wData wiData;
+  weatherAvg avg[2];
+  bool bFirstWData = false;
   TwoWire i2cWeather = TwoWire(0);
   i2cWeather.begin(PinBaroSDA,PinBaroSCL,200000); //init i2cBaro for Baro
   Weather weather;
@@ -2089,26 +2094,65 @@ void taskWeather(void *pvParameters){
     if (tUploadData == 0){
       //first time sending if we have internet and time is ok
       if ((status.bInternetConnected) && (status.bTimeOk)){
-        tUploadData = tAct - WEATHER_UNDERGROUND_UPDATE_RATE + 2000;
+        tUploadData = tAct - setting.wd.WUUploadIntervall + 2000;
       }
     }
     if (status.vario.bHasBME){
       //station has BME --> we are a weather-station
       weather.run();
-      weather.getValues(&wData);
-      status.weather.temp = wData.temp;
-      status.weather.Humidity = wData.Humidity;
-      status.weather.Pressure = wData.Pressure;
-      status.weather.WindDir = wData.WindDir;
-      status.weather.WindSpeed = wData.WindSpeed;
-      status.weather.WindGust = wData.WindGust;
-      status.weather.rain1h = wData.rain1h;
-      status.weather.rain1d = wData.rain1d;
-      if (timeOver(tAct,tUploadData,WEATHER_UNDERGROUND_UPDATE_RATE)){
+      if (weather.getValues(&wData)){
+        status.weather.temp = wData.temp;
+        status.weather.Humidity = wData.Humidity;
+        status.weather.Pressure = wData.Pressure;
+        status.weather.WindDir = wData.WindDir;
+        status.weather.WindSpeed = wData.WindSpeed;
+        status.weather.WindGust = wData.WindGust;
+        status.weather.rain1h = wData.rain1h;
+        status.weather.rain1d = wData.rain1d;
+        if (!bFirstWData){
+          for (int i = 0;i <2; i++){
+            avg[i].sinWinddir = sin(wData.WindDir * DEG2RAD);
+            avg[i].cosWinddir = cos(wData.WindDir * DEG2RAD);
+            avg[i].WindSpeed = wData.WindSpeed;
+            avg[i].Humidity = wData.Humidity;
+            avg[i].Pressure = wData.Pressure;
+            avg[i].temp = wData.temp;
+          }
+          bFirstWData = true;
+        }
+        //wuData.winddir calcExpAvgf
+        float fAvg = 0;
+        for (int i = 0;i <2; i++){
+          if (i == 0){
+            fAvg = setting.wd.avgFactorFanet;
+          }else{
+            fAvg = setting.wd.avgFactorWU;
+          }
+          //log_i("fAvg%d=%f",i,fAvg);
+          avg[i].sinWinddir = calcExpAvgf(avg[i].sinWinddir,sin(wData.WindDir * DEG2RAD),fAvg);
+          avg[i].cosWinddir = calcExpAvgf(avg[i].cosWinddir, cos(wData.WindDir * DEG2RAD),fAvg);
+          //log_i("%d,cos=%f,sin=%f",i,avg[i].sinWinddir,avg[i].cosWinddir);
+          avg[i].Winddir = atan2(avg[i].sinWinddir,avg[i].cosWinddir) * RAD2DEG; //get deg back vom sin and cos-value
+          //log_i("wdir%d=%f",i,avg[i].Winddir);
+          while (avg[i].Winddir < 0){
+            avg[i].Winddir += 360;
+          }
+          while (avg[i].Winddir > 360){
+            avg[i].Winddir -= 360;
+          }
+          avg[i].WindSpeed = calcExpAvgf(avg[i].WindSpeed,wData.WindSpeed,fAvg); 
+          if (avg[i].WindSpeed > avg[i].WindGust) avg[i].WindGust = avg[i].WindSpeed;
+          avg[i].Humidity = calcExpAvgf(avg[i].Humidity,wData.Humidity,fAvg);
+          avg[i].Pressure = calcExpAvgf(avg[i].Pressure,wData.Pressure,fAvg);
+          avg[i].temp = calcExpAvgf(avg[i].temp,wData.temp,fAvg);
+        }
+        //log_i("wDir=%f,wDir0=%f,wDir1=%f",wData.WindDir,avg[0].Winddir,avg[1].Winddir);
+
+      }
+      if (timeOver(tAct,tUploadData,setting.wd.WUUploadIntervall)){
         tUploadData = tAct;
         if ((status.bInternetConnected) && (status.bTimeOk)){
           if (setting.WUUpload.enable){
-            WeatherUnderground::wData wuData;
             WeatherUnderground wu;
             #ifdef GSM_MODULE
               if (setting.wifi.connect == MODE_WIFI_DISABLED){
@@ -2118,19 +2162,18 @@ void taskWeather(void *pvParameters){
             #endif
             //log_i("temp=%f,humidity=%f",testWeatherData.temp,testWeatherData.Humidity);
             wuData.bWind = true;
-            wuData.winddir = wData.WindDir;
-            wuData.windspeed = wData.WindSpeed;
-            wuData.windgust = wData.WindGust;
-            wuData.humidity = wData.Humidity;
-            wuData.temp = wData.temp;
-            wuData.pressure = wData.Pressure;
+            wuData.winddir = avg[1].Winddir;
+            wuData.windspeed = avg[1].WindSpeed;
+            wuData.windgust = avg[1].WindGust;
+            wuData.humidity = avg[1].Humidity;
+            wuData.temp = avg[1].temp;
+            wuData.pressure = avg[1].Pressure;
             wuData.bRain = true;
             wuData.rain1h = wData.rain1h ;
             wuData.raindaily = wData.rain1d;
             wu.sendData(setting.WUUpload.ID,setting.WUUpload.KEY,&wuData);
           }
           if (setting.WindyUpload.enable){
-            Windy::wData wiData;
             Windy wi;
             #ifdef GSM_MODULE
               if (setting.wifi.connect == MODE_WIFI_DISABLED){
@@ -2140,12 +2183,12 @@ void taskWeather(void *pvParameters){
             #endif
             //log_i("temp=%f,humidity=%f",testWeatherData.temp,testWeatherData.Humidity);
             wiData.bWind = true;
-            wiData.winddir = wData.WindDir;
-            wiData.windspeed = wData.WindSpeed;
-            wiData.windgust = wData.WindGust;
-            wiData.humidity = wData.Humidity;
-            wiData.temp = wData.temp;
-            wiData.pressure = wData.Pressure;
+            wiData.winddir = avg[1].Winddir;
+            wiData.windspeed = avg[1].WindSpeed;
+            wiData.windgust = avg[1].WindGust;
+            wiData.humidity = avg[1].Humidity;
+            wiData.temp = avg[1].temp;
+            wiData.pressure = avg[1].Pressure;
             wiData.bRain = true;
             wiData.rain1h = wData.rain1h ;
             wiData.raindaily = wData.rain1d;
@@ -2153,7 +2196,8 @@ void taskWeather(void *pvParameters){
           }
 
         }
-        weather.resetWindGust();
+        //weather.resetWindGust();
+        avg[1].WindGust = 0;
       }
       
       if (setting.wd.sendFanet){
@@ -2162,26 +2206,27 @@ void taskWeather(void *pvParameters){
           testWeatherData.lat = setting.gs.lat;
           testWeatherData.lon = setting.gs.lon;
           testWeatherData.bWind = true;
-          testWeatherData.wHeading = wData.WindDir;
-          testWeatherData.wSpeed = wData.WindSpeed;
-          testWeatherData.wGust = wData.WindGust;      
+          testWeatherData.wHeading = avg[0].Winddir;
+          testWeatherData.wSpeed = avg[0].WindSpeed;
+          testWeatherData.wGust = avg[0].WindGust;      
           testWeatherData.bTemp = wData.bTemp;
           testWeatherData.bHumidity = wData.bHumidity;
           testWeatherData.bBaro = wData.bPressure;
-          testWeatherData.temp = wData.temp;
-          testWeatherData.Humidity = wData.Humidity;
-          testWeatherData.Baro = wData.Pressure;      
+          testWeatherData.temp = avg[0].temp;
+          testWeatherData.Humidity = avg[0].Humidity;
+          testWeatherData.Baro = avg[0].Pressure;      
           testWeatherData.bStateOfCharge = true;
           testWeatherData.Charge = status.BattPerc;
           //testWeatherData.Charge = 44;
           sendWeatherData = true;
+          avg[0].WindGust = 0;
           tSendData = tAct;
         }
       }
     }
     if (status.bWUBroadCast){
       //station should broadcast WU-Data over Fanet
-      if (timeOver(tAct,tUploadData,WEATHER_UNDERGROUND_UPDATE_RATE)){ //get Data from WU        
+      if (timeOver(tAct,tUploadData,setting.wd.WUUploadIntervall)){ //get Data from WU        
         tUploadData = tAct;
         WeatherUnderground::wData wuData;
         WeatherUnderground wu;

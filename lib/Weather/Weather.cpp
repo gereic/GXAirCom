@@ -17,7 +17,7 @@ void IRAM_ATTR windspeedhandler(void){
 }
 
 void IRAM_ATTR rainhandler(void){
-  if((millis() - rainDebounceTime) > 15 ) { // debounce the switch contact.
+  if((millis() - rainDebounceTime) > 2000uL ) { // debounce the switch contact.
     rainCount++;
     rainDebounceTime = millis();
   }
@@ -72,6 +72,7 @@ bool Weather::begin(TwoWire *pi2c, float height,int8_t oneWirePin, int8_t windDi
   _height = height;
   hasTempSensor = false;
   aneometerpulsecount = 0;
+  bNewWeather = false;
   log_i("onewire pin=%d",oneWirePin);
   if (oneWirePin >= 0){
     oneWire.begin(oneWirePin);
@@ -99,7 +100,7 @@ bool Weather::begin(TwoWire *pi2c, float height,int8_t oneWirePin, int8_t windDi
   delay(500);
   bme.readADCValues();
   delay(500); 
-  avgFactor = 128; //factor for avg-factor 
+  //avgFactor = 128; //factor for avg-factor 
   bFirst = false;
 
   //init-code for aneometer  
@@ -131,9 +132,10 @@ void Weather::copyValues(void){
   _weather.bTemp = true;
   _weather.bHumidity = true;
   _weather.bPressure = true;
-  _weather.temp = dTempOld;
-  _weather.Humidity = dHumidityOld;
-  _weather.Pressure = dPressureOld;
+  _weather.temp = dTemp;
+  _weather.Humidity = dHumidity;
+  _weather.Pressure = dPressure;
+  bNewWeather = true;
 }
 
 float Weather::calcPressure(float p, float t, float h){
@@ -150,16 +152,11 @@ void Weather::resetWindGust(void){
   windgust = 0; //reset windgust
 }
 
-void Weather::getValues(weatherData *weather){
+bool Weather::getValues(weatherData *weather){
   *weather = _weather;
-}
-
-float Weather::calcExpAvgf(float oldValue, float newValue, float Factor){
-  if (Factor <= 0){
-      return newValue;
-  }else{
-      return (newValue / Factor) + oldValue - (oldValue / Factor);
-  }
+  bool bRet = bNewWeather;
+  bNewWeather = false;
+  return bRet;
 }
 
 void Weather::setTempOffset(float tempOffset){
@@ -210,16 +207,19 @@ void Weather::runBME280(uint32_t tAct){
     dHumidity = humidity;
     dPressure = pressure;
     //log_i("T1=%f T2=%f h=%f p1=%f p2=%f",dTemp,temp,dHumidity,rawPressure,dPressure);
+    /*
     if (!bFirst){
       dTempOld = dTemp;
       dHumidityOld = dHumidity;
       dPressureOld = dPressure;
       bFirst = true;
     }
-
     dTempOld = calcExpAvgf(dTempOld,dTemp,avgFactor);
     dHumidityOld = calcExpAvgf(dHumidityOld,dHumidity,avgFactor);
     dPressureOld = calcExpAvgf(dPressureOld,dPressure,avgFactor);
+    */
+    checkAneometer();
+    checkRainSensor();
     copyValues();
     tOld = tAct;
   }
@@ -241,36 +241,15 @@ void Weather::checkAneometer(void){
   if (_weather.bWindDir){
     VaneValue = analogRead(_windDirPin);
     winddir = (map(VaneValue, 0, 1023, 0, 359) + _winddirOffset) % 360;
-    if (!bFirstWDir){
-      sinWinddir = sin(winddir * DEG2RAD);
-      cosWinddir = cos(winddir * DEG2RAD);
-      bFirstWDir = true;
-    }
-    sinWinddir = calcExpAvgf(sinWinddir,sin(winddir * DEG2RAD),avgFactor); //calc avg from sin
-    cosWinddir = calcExpAvgf(cosWinddir,cos(winddir * DEG2RAD),avgFactor); //calc avg from cos
-    winddirAvg = int16_t(atan2(sinWinddir,cosWinddir) * RAD2DEG * 10); //get deg back vom sin and cos-value
-    while (winddirAvg < 0){
-      winddirAvg += 3600;
-    }
-    while (winddirAvg > 3600){
-      winddirAvg -= 3600;
-    }
-    _weather.WindDir = winddirAvg / 10.0;
+    _weather.WindDir = winddir;
   }
   if (_weather.bWindSpeed){
     if (timerIrq){
       _actPulseCount = actPulseCount;
       timerIrq = 0;
       float wSpeed = calcWindspeed();
-      if (!bFirstWSpeed){
-        windspeed = wSpeed;
-        bFirstWSpeed = true;
-      }
+      _weather.WindSpeed = wSpeed;
       if (wSpeed > windgust) windgust =  wSpeed;
-      windspeed = calcExpAvgf(windspeed,wSpeed,avgFactor);
-      //log_i("timer-interrupt pulse_count=%d %d",_actPulseCount,millis());
-      //log_i("gust=%.1f speed=%.1f",_weather.WindGust,_weather.WindSpeed);
-      _weather.WindSpeed = windspeed;
       _weather.WindGust = windgust;      
     }
   }
@@ -298,6 +277,4 @@ void Weather::checkRainSensor(void){
 void Weather::run(void){
   uint32_t tAct = millis();
   runBME280(tAct);
-  checkAneometer();
-  checkRainSensor();
 }

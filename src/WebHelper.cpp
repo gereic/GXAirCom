@@ -140,6 +140,7 @@ void onWebSocketEvent(uint8_t client_num,
 
         }else if (clientPages[client_num] == 10){ //full settings
           doc.clear();
+          doc["setView"] = setting.settingsView;                  
           doc["board"] = setting.boardType;
           doc["bType"] = setting.BattType;
           doc["disp"] = setting.displayType;
@@ -230,6 +231,9 @@ void onWebSocketEvent(uint8_t client_num,
           doc["WIUlEnable"] = setting.WindyUpload.enable;
           doc["WIUlID"] = setting.WindyUpload.ID;
           doc["WIUlKEY"] = setting.WindyUpload.KEY;
+          doc["WFFNT"] = setting.wd.avgFactorFanet;
+          doc["WFWU"] = setting.wd.avgFactorWU;
+          doc["WIWU"] = setting.wd.WUUploadIntervall / 1000;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
 
@@ -324,6 +328,7 @@ void onWebSocketEvent(uint8_t client_num,
         value = doc["save"];
         //general settings-page          
         SettingsData newSetting = setting;
+        if (root.containsKey("setView")) newSetting.settingsView = doc["setView"].as<uint8_t>();                  
         if (root.containsKey("appw")) newSetting.wifi.appw = doc["appw"].as<String>();          
         if (root.containsKey("wificonnect")) newSetting.wifi.connect = doc["wificonnect"].as<uint8_t>();
         if (root.containsKey("ssid")) newSetting.wifi.ssid = doc["ssid"].as<String>();
@@ -365,6 +370,12 @@ void onWebSocketEvent(uint8_t client_num,
         if (root.containsKey("sFWD")) newSetting.wd.sendFanet = doc["sFWD"].as<uint8_t>();
         if (root.containsKey("wdTempOffset")) newSetting.wd.tempOffset = doc["wdTempOffset"].as<float>();
         if (root.containsKey("wdWDirOffset")) newSetting.wd.windDirOffset = doc["wdWDirOffset"].as<int16_t>();
+        if (root.containsKey("WFFNT")) newSetting.wd.avgFactorFanet = doc["WFFNT"].as<float>();
+        if (newSetting.wd.avgFactorFanet <= 0) newSetting.wd.avgFactorFanet = 64; //prevent division 0
+        if (root.containsKey("WFWU")) newSetting.wd.avgFactorWU = doc["WFWU"].as<float>();
+        if (newSetting.wd.avgFactorWU <= 0) newSetting.wd.avgFactorWU = 128; //prevent division 0
+        if (root.containsKey("WIWU")) newSetting.wd.WUUploadIntervall = doc["WIWU"].as<uint32_t>() * 1000;        
+        if (newSetting.wd.WUUploadIntervall <= 10000) newSetting.wd.WUUploadIntervall = 10000;
         //vario
         if (root.containsKey("vSinkTh")) newSetting.vario.sinkingThreshold = doc["vSinkTh"].as<float>();
         if (root.containsKey("vClimbTh")) newSetting.vario.climbingThreshold = doc["vClimbTh"].as<float>();

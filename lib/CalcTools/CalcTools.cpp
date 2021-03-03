@@ -69,3 +69,12 @@ int CalcBearingA(double lat1, double lon1, double lat2, double lon2)
   return ((int) bearing + 360) % 360;
 }
 
+float calcExpAvgf(float oldValue, float newValue, float Factor){
+  if (Factor <= 0){
+      return newValue;
+  }else{
+      return (newValue / Factor) + oldValue - (oldValue / Factor);
+  }
+}
+
+

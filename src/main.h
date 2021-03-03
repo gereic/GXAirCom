@@ -252,7 +252,6 @@ SCL 14
 #define MODE_WIFI_CONNECTED 2
 
 #define WEATHER_UPDATE_RATE 40000 //update every 40 seconds weatherdata
-#define WEATHER_UNDERGROUND_UPDATE_RATE 300000 //update 5min
 
 #define MODEM_DISCONNECTED 0
 #define MODEM_CONNECTING 1
@@ -274,12 +273,26 @@ SCL 14
 
 #define FUELSENDINTERVALL 10000
 
+#define SETTING_BASIC 0
+#define SETTING_ADVANCED 100
+#define SETTING_EXPERT 200
 
 
 struct weatherupload{
   bool enable;
   String ID;
   String KEY;
+};
+
+struct weatherAvg{
+  float Winddir;
+  float sinWinddir;
+  float cosWinddir;
+  float WindSpeed; //[km/h]
+  float WindGust; //[km/h]
+  float Pressure; // [hPa]
+  float Humidity; // [%rH]
+  float temp; //temp [°C]
 };
 
 struct VarioSettings{
@@ -319,6 +332,9 @@ struct WeatherSettings{
   float tempOffset;
   int16_t windDirOffset;
   uint8_t sendFanet;  
+  float avgFactorFanet;
+  float avgFactorWU;
+  uint32_t WUUploadIntervall;
 };
 
 struct GsmSettings{
@@ -338,6 +354,7 @@ struct WifiSettings{
 
 
 struct SettingsData{
+  uint8_t settingsView; //view of settings (basic, advanced, expert)
   uint8_t boardType;
   uint8_t Mode; //Air-Module, GS-Station,
   uint8_t displayType;

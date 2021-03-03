@@ -30,6 +30,8 @@ String addDot ( String numbersIn, int dotPos);
 String reformatLatLong ( String numbersIn, int digits);
 */
 
+float calcExpAvgf(float oldValue, float newValue, float Factor);
+
 
 
 

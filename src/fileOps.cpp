@@ -5,6 +5,7 @@ Preferences preferences;
 void load_configFile(SettingsData* pSetting){
   log_i("LOAD CONFIG FILE");
   preferences.begin("settings", false);                         //Ordner settings anlegen/verwenden
+  pSetting->settingsView = preferences.getUChar("setView",SETTING_BASIC); //
   pSetting->wifi.appw = preferences.getString("APPW","12345678");
   pSetting->boardType = preferences.getUChar("BOARDTYPE",BOARD_UNKNOWN); //
   pSetting->BattType = preferences.getUChar("BATT_TYPE",BATT_TYPE_1S_LIPO); //
@@ -49,6 +50,9 @@ void load_configFile(SettingsData* pSetting){
   pSetting->wd.sendFanet = preferences.getUChar("FanetWeather",0);
   pSetting->wd.tempOffset = preferences.getFloat("wdTempOffset",0.0);
   pSetting->wd.windDirOffset = preferences.getInt("wdWDirOffset",0);
+  pSetting->wd.avgFactorFanet = preferences.getFloat("avgFanet",16);
+  pSetting->wd.avgFactorWU = preferences.getFloat("avgWU",128);
+  pSetting->wd.WUUploadIntervall = preferences.getULong("WUIntervall",300000);
 
 
   //vario
@@ -98,6 +102,7 @@ void load_configFile(SettingsData* pSetting){
 void write_configFile(SettingsData* pSetting){
   log_i("WRITE CONFIG FILE");
   preferences.begin("settings", false);                         //Ordner settings anlegen/verwenden
+  preferences.putUChar("setView",pSetting->settingsView); //
   preferences.putString("APPW",pSetting->wifi.appw);
   preferences.putUChar("BOARDTYPE",pSetting->boardType); //
   preferences.putUChar("BATT_TYPE",pSetting->BattType); //battery-type
@@ -151,6 +156,9 @@ void write_configFile(SettingsData* pSetting){
   preferences.putUChar("FanetWeather",pSetting->wd.sendFanet);
   preferences.putFloat("wdTempOffset",pSetting->wd.tempOffset);
   preferences.putInt("wdWDirOffset",pSetting->wd.windDirOffset);
+  preferences.putFloat("avgFanet",pSetting->wd.avgFactorFanet);
+  preferences.putFloat("avgWU",pSetting->wd.avgFactorWU);
+  preferences.putULong("WUIntervall",pSetting->wd.WUUploadIntervall);
   
   //wu-upload
   preferences.putUChar("WUUlEnable",pSetting->WUUpload.enable);
