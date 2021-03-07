@@ -36,6 +36,9 @@ BUZZER 25
 ******** FUEL-SENSOR *******
 FUEL-SENSO 39
 
+******** external Power Switch (only for direct use with kobo to switch on an off automatically) *********
+PinExtPowerOnOff 36
+
 
 ************* Pins for TTGO-TBeam V07 ***************
 ******* LORA ********
