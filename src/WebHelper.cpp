@@ -285,32 +285,32 @@ void onWebSocketEvent(uint8_t client_num,
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
         }else if (clientPages[client_num] == 101){ //msg-type 1 test
-          doc["lat"] = String(testTrackingData.lat,6);
-          doc["lon"] = String(testTrackingData.lon,6);
-          doc["alt"] = String(testTrackingData.altitude,1);
-          doc["speed"] = String(testTrackingData.speed,2);
-          doc["climb"] = String(testTrackingData.climb,1);
-          doc["heading"] = String(testTrackingData.heading,1);
+          doc["lat"] = String(fanetTrackingData.lat,6);
+          doc["lon"] = String(fanetTrackingData.lon,6);
+          doc["alt"] = String(fanetTrackingData.altitude,1);
+          doc["speed"] = String(fanetTrackingData.speed,2);
+          doc["climb"] = String(fanetTrackingData.climb,1);
+          doc["heading"] = String(fanetTrackingData.heading,1);
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
         }else if (clientPages[client_num] == 102){ //msg-type 2 test
-          doc["name"] = testString;
+          doc["name"] = fanetString;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
         }else if (clientPages[client_num] == 103){ //msg-type 3 test
-          doc["msg"] = testString;
+          doc["msg"] = fanetString;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
         }else if (clientPages[client_num] == 104){ //msg-type 4 test
-          doc["lat"] = String(testWeatherData.lat,6);
-          doc["lon"] = String(testWeatherData.lon,6);
-          doc["temp"] = String(testWeatherData.temp,1);
-          doc["wHeading"] = String(testWeatherData.wHeading,2);
-          doc["wSpeed"] = String(testWeatherData.wSpeed,1);
-          doc["wGust"] = String(testWeatherData.wGust,1);
-          doc["hum"] = String(testWeatherData.Humidity,1);
-          doc["pressure"] = String(testWeatherData.Baro,1);
-          doc["charge"] = testWeatherData.Charge;
+          doc["lat"] = String(fanetWeatherData.lat,6);
+          doc["lon"] = String(fanetWeatherData.lon,6);
+          doc["temp"] = String(fanetWeatherData.temp,1);
+          doc["wHeading"] = String(fanetWeatherData.wHeading,2);
+          doc["wSpeed"] = String(fanetWeatherData.wSpeed,1);
+          doc["wGust"] = String(fanetWeatherData.wGust,1);
+          doc["hum"] = String(fanetWeatherData.Humidity,1);
+          doc["pressure"] = String(fanetWeatherData.Baro,1);
+          doc["charge"] = fanetWeatherData.Charge;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
 
@@ -424,35 +424,35 @@ void onWebSocketEvent(uint8_t client_num,
         value = doc["sendfanet"];
         if (value == 1){
           //send fanet msgtype 1
-          testTrackingData.lat = doc["lat"].as<float>();
-          testTrackingData.lon = doc["lon"].as<float>();
-          testTrackingData.aircraftType = (FanetLora::aircraft_t)doc["type"].as<uint8_t>();
-          testTrackingData.altitude = doc["alt"].as<float>();
-          testTrackingData.speed = doc["speed"].as<float>();
-          testTrackingData.climb = doc["climb"].as<float>();
-          testTrackingData.heading = doc["heading"].as<float>();
-          sendTestData = value; //          
+          fanetTrackingData.lat = doc["lat"].as<float>();
+          fanetTrackingData.lon = doc["lon"].as<float>();
+          fanetTrackingData.aircraftType = (FanetLora::aircraft_t)doc["type"].as<uint8_t>();
+          fanetTrackingData.altitude = doc["alt"].as<float>();
+          fanetTrackingData.speed = doc["speed"].as<float>();
+          fanetTrackingData.climb = doc["climb"].as<float>();
+          fanetTrackingData.heading = doc["heading"].as<float>();
+          sendFanetData = value; //          
         }else if (value == 2){
           //name
-          testString = doc["name"].as<String>();
-          sendTestData = value;          
+          fanetString = doc["name"].as<String>();
+          sendFanetData = value;          
         }else if (value == 3){
           //msg
-          testString = doc["msg"].as<String>();
+          fanetString = doc["msg"].as<String>();
           fanetReceiver = strtol( doc["receiver"].as<String>().c_str(), NULL, 16);
-          sendTestData = value;          
+          sendFanetData = value;          
         }else if (value == 4){
           //send fanet msgtype 4
-          testWeatherData.lat = doc["lat"].as<float>();
-          testWeatherData.lon = doc["lon"].as<float>();
-          testWeatherData.temp = doc["temp"].as<float>();
-          testWeatherData.wHeading = doc["wHeading"].as<float>();
-          testWeatherData.wSpeed = doc["wSpeed"].as<float>();
-          testWeatherData.wGust = doc["wGust"].as<float>();
-          testWeatherData.Humidity = doc["hum"].as<float>();
-          testWeatherData.Baro = doc["pressure"].as<float>();
-          testWeatherData.Charge = doc["charge"].as<uint8_t>();
-          sendTestData = value; //          
+          fanetWeatherData.lat = doc["lat"].as<float>();
+          fanetWeatherData.lon = doc["lon"].as<float>();
+          fanetWeatherData.temp = doc["temp"].as<float>();
+          fanetWeatherData.wHeading = doc["wHeading"].as<float>();
+          fanetWeatherData.wSpeed = doc["wSpeed"].as<float>();
+          fanetWeatherData.wGust = doc["wGust"].as<float>();
+          fanetWeatherData.Humidity = doc["hum"].as<float>();
+          fanetWeatherData.Baro = doc["pressure"].as<float>();
+          fanetWeatherData.Charge = doc["charge"].as<uint8_t>();
+          sendFanetData = value; //          
         }
 
       }      

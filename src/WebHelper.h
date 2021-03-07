@@ -16,11 +16,11 @@ extern struct SettingsData setting;
 extern struct statusData status;
 extern FanetLora fanet;
 
-extern FanetLora::trackingData testTrackingData;  
-extern FanetLora::weatherData testWeatherData;
-extern String testString;
+extern FanetLora::trackingData fanetTrackingData;  
+extern FanetLora::weatherData fanetWeatherData;
+extern String fanetString;
 extern uint32_t fanetReceiver;
-extern uint8_t sendTestData;
+extern uint8_t sendFanetData;
 extern const char compile_date[];
 
 extern TaskHandle_t xHandleStandard;
