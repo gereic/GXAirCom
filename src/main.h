@@ -251,7 +251,7 @@ SCL 14
 #define MODE_WIFI_STA 1
 #define MODE_WIFI_CONNECTED 2
 
-#define WEATHER_UPDATE_RATE 40000 //update every 40 seconds weatherdata
+#define FANET_WEATHER_UPDATE_RATE 40000 // update every 40 seconds weatherdata
 
 #define MODEM_DISCONNECTED 0
 #define MODEM_CONNECTING 1

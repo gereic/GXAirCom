@@ -2061,7 +2061,7 @@ void taskGsm(void *pvParameters){
 #ifdef GSMODULE
 void taskWeather(void *pvParameters){
   static uint32_t tUploadData =  0;
-  static uint32_t tSendData = millis() - WEATHER_UPDATE_RATE + 30000; //first sending is in 10 seconds
+  static uint32_t tSendData = millis() + 10000; //first sending is in 10 seconds
   bool bDataOk = false;
   log_i("starting weather-task ");  
   Weather::weatherData wData;
@@ -2201,7 +2201,7 @@ void taskWeather(void *pvParameters){
       }
       
       if (setting.wd.sendFanet){
-        if (timeOver(tAct,tSendData,WEATHER_UPDATE_RATE)){
+        if (timeOver(tAct,tSendData,FANET_WEATHER_UPDATE_RATE)){
           
           fanetWeatherData.lat = setting.gs.lat;
           fanetWeatherData.lon = setting.gs.lon;
@@ -2264,7 +2264,7 @@ void taskWeather(void *pvParameters){
           log_e("no Data from WU");
         }
       }
-      if (timeOver(tAct,tSendData,WEATHER_UPDATE_RATE)){
+      if (timeOver(tAct,tSendData,FANET_WEATHER_UPDATE_RATE)){
         tSendData = tAct;
         if (bDataOk){
           fanetWeatherData.Charge = status.BattPerc;
