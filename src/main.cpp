@@ -156,12 +156,12 @@ gxUpdater updater;
 FanetLora::trackingData MyFanetData;  
 
 
-FanetLora::trackingData testTrackingData;
-FanetLora::weatherData testWeatherData;
+FanetLora::trackingData fanetTrackingData;
+FanetLora::weatherData fanetWeatherData;
 bool sendWeatherData = false;
-String testString;
+String fanetString;
 uint32_t fanetReceiver;
-uint8_t sendTestData = 0;
+uint8_t sendFanetData = 0;
 
 IPAddress local_IP(192,168,4,1);
 IPAddress gateway(192,168,4,1);
@@ -2203,20 +2203,20 @@ void taskWeather(void *pvParameters){
       if (setting.wd.sendFanet){
         if (timeOver(tAct,tSendData,WEATHER_UPDATE_RATE)){
           
-          testWeatherData.lat = setting.gs.lat;
-          testWeatherData.lon = setting.gs.lon;
-          testWeatherData.bWind = true;
-          testWeatherData.wHeading = avg[0].Winddir;
-          testWeatherData.wSpeed = avg[0].WindSpeed;
-          testWeatherData.wGust = avg[0].WindGust;      
-          testWeatherData.bTemp = wData.bTemp;
-          testWeatherData.bHumidity = wData.bHumidity;
-          testWeatherData.bBaro = wData.bPressure;
-          testWeatherData.temp = avg[0].temp;
-          testWeatherData.Humidity = avg[0].Humidity;
-          testWeatherData.Baro = avg[0].Pressure;      
-          testWeatherData.bStateOfCharge = true;
-          testWeatherData.Charge = status.BattPerc;
+          fanetWeatherData.lat = setting.gs.lat;
+          fanetWeatherData.lon = setting.gs.lon;
+          fanetWeatherData.bWind = true;
+          fanetWeatherData.wHeading = avg[0].Winddir;
+          fanetWeatherData.wSpeed = avg[0].WindSpeed;
+          fanetWeatherData.wGust = avg[0].WindGust;      
+          fanetWeatherData.bTemp = wData.bTemp;
+          fanetWeatherData.bHumidity = wData.bHumidity;
+          fanetWeatherData.bBaro = wData.bPressure;
+          fanetWeatherData.temp = avg[0].temp;
+          fanetWeatherData.Humidity = avg[0].Humidity;
+          fanetWeatherData.Baro = avg[0].Pressure;      
+          fanetWeatherData.bStateOfCharge = true;
+          fanetWeatherData.Charge = status.BattPerc;
           //testWeatherData.Charge = 44;
           sendWeatherData = true;
           avg[0].WindGust = 0;
@@ -2246,20 +2246,20 @@ void taskWeather(void *pvParameters){
           status.weather.WindGust = wuData.windgust;
           status.weather.rain1h = wuData.rain1h;
           status.weather.rain1d = wuData.raindaily;
-          testWeatherData.lat = wuData.lat;
-          testWeatherData.lon = wuData.lon;
-          testWeatherData.bWind = true;
-          testWeatherData.wHeading = wuData.winddir;
-          testWeatherData.wSpeed = wuData.windspeed;
-          testWeatherData.wGust = wuData.windgust;      
-          testWeatherData.bTemp = true;
-          testWeatherData.bHumidity = true;
-          testWeatherData.bBaro = true;
-          testWeatherData.temp = wuData.temp;
-          testWeatherData.Humidity = wuData.humidity;
-          testWeatherData.Baro = wuData.pressure;      
-          testWeatherData.bStateOfCharge = true;  
-          log_i("winddir=%.1f speed=%.1f gust=%.1f temp=%.1f hum=%.1f press=%.1f",testWeatherData.wHeading,testWeatherData.wSpeed,testWeatherData.wGust,testWeatherData.temp,testWeatherData.Humidity,testWeatherData.Baro);          
+          fanetWeatherData.lat = wuData.lat;
+          fanetWeatherData.lon = wuData.lon;
+          fanetWeatherData.bWind = true;
+          fanetWeatherData.wHeading = wuData.winddir;
+          fanetWeatherData.wSpeed = wuData.windspeed;
+          fanetWeatherData.wGust = wuData.windgust;      
+          fanetWeatherData.bTemp = true;
+          fanetWeatherData.bHumidity = true;
+          fanetWeatherData.bBaro = true;
+          fanetWeatherData.temp = wuData.temp;
+          fanetWeatherData.Humidity = wuData.humidity;
+          fanetWeatherData.Baro = wuData.pressure;      
+          fanetWeatherData.bStateOfCharge = true;  
+          log_i("winddir=%.1f speed=%.1f gust=%.1f temp=%.1f hum=%.1f press=%.1f",fanetWeatherData.wHeading,fanetWeatherData.wSpeed,fanetWeatherData.wGust,fanetWeatherData.temp,fanetWeatherData.Humidity,fanetWeatherData.Baro);          
         }else{
           log_e("no Data from WU");
         }
@@ -2267,7 +2267,7 @@ void taskWeather(void *pvParameters){
       if (timeOver(tAct,tSendData,WEATHER_UPDATE_RATE)){
         tSendData = tAct;
         if (bDataOk){
-          testWeatherData.Charge = status.BattPerc;
+          fanetWeatherData.Charge = status.BattPerc;
           sendWeatherData = true;
         }
       }
@@ -3642,34 +3642,34 @@ void taskStandard(void *pvParameters){
     #endif
     }
     #endif
-    if (sendTestData == 1){
+    if (sendFanetData == 1){
       log_i("sending msgtype 1");
-      testTrackingData.devId = fanet._myData.devId;
-      fanet.writeMsgType1(&testTrackingData);
-      sendAWTrackingdata(&testTrackingData);
-      sendTraccarTrackingdata(&testTrackingData);
-      sendTestData = 0;
-    }else if (sendTestData == 2){
-      log_i("sending msgtype 2 %s",testString.c_str());
-      fanet.writeMsgType2(testString);
-      sendTestData = 0;
-    }else if (sendTestData == 3){
-      log_i("sending msgtype 3 to %s %s",fanet.getDevId(fanetReceiver).c_str(),testString.c_str());
-      fanet.writeMsgType3(fanetReceiver,testString);
-      sendTestData = 0;
-    }else if (sendTestData == 4){
+      fanetTrackingData.devId = fanet._myData.devId;
+      fanet.writeMsgType1(&fanetTrackingData);
+      sendAWTrackingdata(&fanetTrackingData);
+      sendTraccarTrackingdata(&fanetTrackingData);
+      sendFanetData = 0;
+    }else if (sendFanetData == 2){
+      log_i("sending msgtype 2 %s",fanetString.c_str());
+      fanet.writeMsgType2(fanetString);
+      sendFanetData = 0;
+    }else if (sendFanetData == 3){
+      log_i("sending msgtype 3 to %s %s",fanet.getDevId(fanetReceiver).c_str(),fanetString.c_str());
+      fanet.writeMsgType3(fanetReceiver,fanetString);
+      sendFanetData = 0;
+    }else if (sendFanetData == 4){
       log_i("sending msgtype 4");
-      testWeatherData.bStateOfCharge = true;
-      testWeatherData.bBaro = true;
-      testWeatherData.bHumidity = true;
-      testWeatherData.bWind = true;
-      testWeatherData.bTemp = true;
-      fanet.writeMsgType4(&testWeatherData);
-      sendTestData = 0;
+      fanetWeatherData.bStateOfCharge = true;
+      fanetWeatherData.bBaro = true;
+      fanetWeatherData.bHumidity = true;
+      fanetWeatherData.bWind = true;
+      fanetWeatherData.bTemp = true;
+      fanet.writeMsgType4(&fanetWeatherData);
+      sendFanetData = 0;
     }
     if (sendWeatherData){ //we have to send weatherdata
       //log_i("sending weatherdata");
-      fanet.writeMsgType4(&testWeatherData);
+      fanet.writeMsgType4(&fanetWeatherData);
       if (setting.OGNLiveTracking){
         Ogn::weatherData wData;
         wData.devId = fanet.getMyDevId();
