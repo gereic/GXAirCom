@@ -2101,14 +2101,6 @@ void taskWeather(void *pvParameters){
       //station has BME --> we are a weather-station
       weather.run();
       if (weather.getValues(&wData)){
-        status.weather.temp = wData.temp;
-        status.weather.Humidity = wData.Humidity;
-        status.weather.Pressure = wData.Pressure;
-        status.weather.WindDir = wData.WindDir;
-        status.weather.WindSpeed = wData.WindSpeed;
-        status.weather.WindGust = wData.WindGust;
-        status.weather.rain1h = wData.rain1h;
-        status.weather.rain1d = wData.rain1d;
         if (!bFirstWData){
           for (int i = 0;i <2; i++){
             avg[i].sinWinddir = sin(wData.WindDir * DEG2RAD);
@@ -2141,13 +2133,20 @@ void taskWeather(void *pvParameters){
             avg[i].Winddir -= 360;
           }
           avg[i].WindSpeed = calcExpAvgf(avg[i].WindSpeed,wData.WindSpeed,fAvg); 
-          if (avg[i].WindSpeed > avg[i].WindGust) avg[i].WindGust = avg[i].WindSpeed;
+          if (wData.WindSpeed > avg[i].WindGust) avg[i].WindGust = wData.WindSpeed;
           avg[i].Humidity = calcExpAvgf(avg[i].Humidity,wData.Humidity,fAvg);
           avg[i].Pressure = calcExpAvgf(avg[i].Pressure,wData.Pressure,fAvg);
           avg[i].temp = calcExpAvgf(avg[i].temp,wData.temp,fAvg);
         }
         //log_i("wDir=%f,wDir0=%f,wDir1=%f",wData.WindDir,avg[0].Winddir,avg[1].Winddir);
-
+        status.weather.rain1h = wData.rain1h;
+        status.weather.rain1d = wData.rain1d;
+        status.weather.temp = avg[0].temp;
+        status.weather.Humidity = avg[0].Humidity;
+        status.weather.Pressure = avg[0].Pressure;
+        status.weather.WindDir = avg[0].Winddir;
+        status.weather.WindSpeed = avg[0].WindSpeed; //we use the Fanet-Weather-Speed
+        status.weather.WindGust = avg[0].WindGust; //we use the Fanet-Weather-Gust
       }
       if (timeOver(tAct,tUploadData,setting.wd.WUUploadIntervall)){
         tUploadData = tAct;
@@ -2200,8 +2199,8 @@ void taskWeather(void *pvParameters){
         avg[1].WindGust = 0;
       }
       
-      if (setting.wd.sendFanet){
-        if (timeOver(tAct,tSendData,WEATHER_UPDATE_RATE)){
+      if (timeOver(tAct,tSendData,WEATHER_UPDATE_RATE)){
+        if (setting.wd.sendFanet){
           
           fanetWeatherData.lat = setting.gs.lat;
           fanetWeatherData.lon = setting.gs.lon;
@@ -2219,9 +2218,9 @@ void taskWeather(void *pvParameters){
           fanetWeatherData.Charge = status.BattPerc;
           //testWeatherData.Charge = 44;
           sendWeatherData = true;
-          avg[0].WindGust = 0;
-          tSendData = tAct;
         }
+        avg[0].WindGust = 0;
+        tSendData = tAct;
       }
     }
     if (status.bWUBroadCast){
