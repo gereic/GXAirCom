@@ -1420,9 +1420,11 @@ void printSettings(){
 
   //weather-data
   log_i("WD Fanet-Weatherdata=%d",setting.wd.sendFanet);
+  log_i("WD Fanet Interval=%d",setting.wd.FanetUploadInterval);
   log_i("WD tempoffset=%.1f",setting.wd.tempOffset);
   log_i("WD windDirOffset=%.1f",setting.wd.windDirOffset);
   log_i("WUUlEnable=%d",setting.WUUpload.enable);
+  log_i("WUUlInterval=%d",setting.wd.WUUploadIntervall);
   log_i("WUUlID=%s",setting.WUUpload.ID.c_str());
   log_i("WUUlKEY=%s",setting.WUUpload.KEY.c_str());
   log_i("WIUlEnable=%d",setting.WindyUpload.enable);
