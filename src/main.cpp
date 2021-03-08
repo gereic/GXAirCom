@@ -2201,7 +2201,7 @@ void taskWeather(void *pvParameters){
       }
       
       if (setting.wd.sendFanet){
-        if (timeOver(tAct,tSendData,FANET_WEATHER_UPDATE_RATE)){
+        if (timeOver(tAct,tSendData,setting.wd.FanetUploadInterval)){
           
           fanetWeatherData.lat = setting.gs.lat;
           fanetWeatherData.lon = setting.gs.lon;
@@ -2264,7 +2264,7 @@ void taskWeather(void *pvParameters){
           log_e("no Data from WU");
         }
       }
-      if (timeOver(tAct,tSendData,FANET_WEATHER_UPDATE_RATE)){
+      if (timeOver(tAct,tSendData,setting.wd.FanetUploadInterval)){
         tSendData = tAct;
         if (bDataOk){
           fanetWeatherData.Charge = status.BattPerc;

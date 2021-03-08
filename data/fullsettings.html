@@ -281,6 +281,7 @@ function sendValues(){
   WIUlID : document.getElementById("WIUlID").value,  
   WIUlKEY : document.getElementById("WIUlKEY").value,
   WFFNT : document.getElementById("WFFNT").value,
+  WIFNT : document.getElementById("WIFNT").value,
   WFWU : document.getElementById("WFWU").value,
   WIWU : document.getElementById("WIWU").value,
   save : 1
@@ -656,6 +657,10 @@ window.addEventListener("load", init, false);
           <tr id="VisAWFFNT">
             <th>average-coefficient (default 16)</th>
             <td><input type="number" id="WFFNT" min="0.1" max="2000"></td>
+          </tr>
+          <tr>
+            <th>upload-intervall [s] (default 40)</th>
+            <td><input type="number" id="WIFNT" min="5" max="15000"></td>
           </tr>
         </tbody>      
       </table>
