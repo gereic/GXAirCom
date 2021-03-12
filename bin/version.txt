@@ -258,3 +258,4 @@ Bugfix in windgust-calculation
 v4.6.2
 PinBuzzer for TTGO T-Beam V0.7 and Heltec changed from 0 to 25
 added Log-Output for weather-station
+added restart after configuring GPS

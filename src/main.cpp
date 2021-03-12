@@ -2206,7 +2206,7 @@ void taskWeather(void *pvParameters){
         avg[1].WindGust = 0;
       }
       
-      if (timeOver(tAct,tSendData,WEATHER_UPDATE_RATE)){
+      if (timeOver(tAct,tSendData,setting.wd.FanetUploadInterval)){
         if (setting.wd.sendFanet){
           
           fanetWeatherData.lat = setting.gs.lat;
@@ -3511,9 +3511,12 @@ void taskStandard(void *pvParameters){
     if (status.tMaxLoop < status.tLoop) status.tMaxLoop = status.tLoop;
 
     #ifdef AIRMODULE    
-    if (setting.bConfigGPS){
-      setupUbloxConfig();
+    if (setting.bConfigGPS){      
+      if (setupUbloxConfig()){
+        esp_restart();
+      }
       setting.bConfigGPS = false;
+      
     }
     #endif
     //handleButton(tAct);
