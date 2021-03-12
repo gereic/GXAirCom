@@ -1,7 +1,7 @@
 #include <Weather.h>
 
 volatile uint32_t rainCount = 0;
-volatile unsigned long rainDebounceTime; // Timer to avoid contact bounce in isr
+volatile uint32_t rainDebounceTime; // Timer to avoid contact bounce in isr
 volatile uint32_t aneometerpulsecount = 0;
 volatile uint32_t actPulseCount = 0;
 volatile uint8_t timerIrq = 0;
@@ -17,9 +17,10 @@ void IRAM_ATTR windspeedhandler(void){
 }
 
 void IRAM_ATTR rainhandler(void){
-  if((millis() - rainDebounceTime) > 2000uL ) { // debounce the switch contact.
+  uint32_t tAct = millis();
+  if((tAct - rainDebounceTime) > 2000uL ) { // debounce the switch contact.
     rainCount++;
-    rainDebounceTime = millis();
+    rainDebounceTime = tAct;
   }
 }
 
@@ -73,6 +74,8 @@ bool Weather::begin(TwoWire *pi2c, float height,int8_t oneWirePin, int8_t windDi
   hasTempSensor = false;
   aneometerpulsecount = 0;
   bNewWeather = false;
+  actHour = 0;
+  actDay = 0;
   log_i("onewire pin=%d",oneWirePin);
   if (oneWirePin >= 0){
     oneWire.begin(oneWirePin);
@@ -119,6 +122,7 @@ bool Weather::begin(TwoWire *pi2c, float height,int8_t oneWirePin, int8_t windDi
   if (rainPin >= 0){
     _weather.bRain = true;
     pinMode(rainPin, INPUT);
+    rainDebounceTime = millis();
     attachInterrupt(digitalPinToInterrupt(rainPin), rainhandler, FALLING);
   }
   timer = timerBegin(0, 80, true);
@@ -259,15 +263,17 @@ void Weather::checkRainSensor(void){
   time_t now;
   time(&now);
   //log_i("%04d-%02d-%02d %02d:%02d:%02d",year(now),month(now),day(now),hour(now),minute(now),second(now));
-  if (actHour != hour(now)){
+  uint8_t u8Hour = hour(now);
+  if (actHour != u8Hour){
     rainTipCount1h = rainCount;
-    actHour = hour(now);
-    //log_i("hour changed");
+    log_i("hour changed %d->%d %d",actHour,u8Hour,rainTipCount1h);
+    actHour = u8Hour;
   }
-  if (actDay != day(now)){
+  uint8_t u8Day = day(now);
+  if (actDay != u8Day){
     rainTipCount1d = rainCount;
-    actDay = day(now);
-    //log_i("day changed");
+    log_i("day changed %d->%d %d",actDay,u8Day,rainTipCount1d);
+    actDay = u8Day;
   }
   _weather.rain1h = float(rainCount - rainTipCount1h) * Bucket_Size;
   _weather.rain1d = float(rainCount - rainTipCount1d) * Bucket_Size;

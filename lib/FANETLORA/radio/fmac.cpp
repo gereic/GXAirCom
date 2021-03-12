@@ -629,13 +629,16 @@ void FanetMac::handleTx()
 	//note: for only a few nodes around, increase the coding rate to ensure a more robust transmission
 	int tx_ret = LoRa.sendFrame(buffer, blength, neighbors.size() < MAC_CODING48_THRESHOLD ? 8 : 5);
 	//int tx_ret=TX_OK;
+	bool bSendLegacy = false;
+  if ((_enableLegacyTx>0) && ((buffer[0]&0x1f)==1)) bSendLegacy = true;
 	delete[] buffer;
 
 	if (tx_ret == TX_OK)
 	{
-		if(_enableLegacyTx>0)
-			if ((buffer[0]&0x1f)==1)  //only my traking data
-				handleTxLegacy();
+		if (bSendLegacy){
+			//if ((buffer[0]&0x1f)==1)  //only my traking data
+			handleTxLegacy();
+    }
 		
 
 #if MAC_debug_mode > 0

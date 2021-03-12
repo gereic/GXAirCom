@@ -1704,7 +1704,7 @@ void setup() {
       pinMode(PinFuelSensor, INPUT);
     }    
 
-    PinBuzzer = 0;
+    PinBuzzer = 25;
 
     i2cOLED.begin(PinOledSDA, PinOledSCL);
     // voltage-divier 100kOhm and 100kOhm
@@ -2101,6 +2101,7 @@ void taskWeather(void *pvParameters){
       //station has BME --> we are a weather-station
       weather.run();
       if (weather.getValues(&wData)){
+        log_i("wdata:wDir=%f;wSpeed=%f,temp=%f,h=%f,p=%f",wData.WindDir,wData.WindSpeed,wData.temp,wData.Humidity,wData.Pressure);
         if (!bFirstWData){
           for (int i = 0;i <2; i++){
             avg[i].sinWinddir = sin(wData.WindDir * DEG2RAD);
@@ -2159,7 +2160,6 @@ void taskWeather(void *pvParameters){
                 wu.setMutex(&xGsmMutex);
               }
             #endif
-            //log_i("temp=%f,humidity=%f",testWeatherData.temp,testWeatherData.Humidity);
             wuData.bWind = true;
             wuData.winddir = avg[1].Winddir;
             wuData.windspeed = avg[1].WindSpeed;
@@ -2170,6 +2170,7 @@ void taskWeather(void *pvParameters){
             wuData.bRain = true;
             wuData.rain1h = wData.rain1h ;
             wuData.raindaily = wData.rain1d;
+            log_i("wuData:wDir=%f;wSpeed=%f,gust=%f,temp=%f,h=%f,p=%f",wuData.winddir,wuData.windspeed,wuData.windgust,wuData.temp,wuData.humidity,wuData.pressure);
             wu.sendData(setting.WUUpload.ID,setting.WUUpload.KEY,&wuData);
           }
           if (setting.WindyUpload.enable){

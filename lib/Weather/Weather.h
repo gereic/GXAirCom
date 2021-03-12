@@ -95,7 +95,7 @@ private:
     float windgust = 0;
     uint32_t rainTipCount1h = 0;
     uint32_t rainTipCount1d = 0;
-    uint8_t actHour;
-    uint8_t actDay;
+    uint8_t actHour = 0;
+    uint8_t actDay = 0;
 };
 #endif
