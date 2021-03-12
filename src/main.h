@@ -251,8 +251,6 @@ SCL 14
 #define MODE_WIFI_STA 1
 #define MODE_WIFI_CONNECTED 2
 
-#define WEATHER_UPDATE_RATE 40000 //update every 40 seconds weatherdata
-
 #define MODEM_DISCONNECTED 0
 #define MODEM_CONNECTING 1
 #define MODEM_CONNECTED 2
@@ -333,6 +331,7 @@ struct WeatherSettings{
   int16_t windDirOffset;
   uint8_t sendFanet;  
   float avgFactorFanet;
+  uint32_t FanetUploadInterval;
   float avgFactorWU;
   uint32_t WUUploadIntervall;
 };

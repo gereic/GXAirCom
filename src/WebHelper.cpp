@@ -232,6 +232,7 @@ void onWebSocketEvent(uint8_t client_num,
           doc["WIUlID"] = setting.WindyUpload.ID;
           doc["WIUlKEY"] = setting.WindyUpload.KEY;
           doc["WFFNT"] = setting.wd.avgFactorFanet;
+          doc["WIFNT"] = setting.wd.FanetUploadInterval / 1000;
           doc["WFWU"] = setting.wd.avgFactorWU;
           doc["WIWU"] = setting.wd.WUUploadIntervall / 1000;
           serializeJson(doc, msg_buf);
@@ -372,6 +373,8 @@ void onWebSocketEvent(uint8_t client_num,
         if (root.containsKey("wdWDirOffset")) newSetting.wd.windDirOffset = doc["wdWDirOffset"].as<int16_t>();
         if (root.containsKey("WFFNT")) newSetting.wd.avgFactorFanet = doc["WFFNT"].as<float>();
         if (newSetting.wd.avgFactorFanet <= 0) newSetting.wd.avgFactorFanet = 64; //prevent division 0
+        if (root.containsKey("WIFNT")) newSetting.wd.FanetUploadInterval = doc["WIFNT"].as<uint32_t>() * 1000;        
+        if (newSetting.wd.WUUploadIntervall <= 10000) newSetting.wd.WUUploadIntervall = 10000;
         if (root.containsKey("WFWU")) newSetting.wd.avgFactorWU = doc["WFWU"].as<float>();
         if (newSetting.wd.avgFactorWU <= 0) newSetting.wd.avgFactorWU = 128; //prevent division 0
         if (root.containsKey("WIWU")) newSetting.wd.WUUploadIntervall = doc["WIWU"].as<uint32_t>() * 1000;        

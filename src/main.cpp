@@ -1404,7 +1404,7 @@ void printSettings(){
   log_i("GS POWERSAFE=%d",setting.gs.PowerSave);
   
   
-  log_i("Airwhere-Livetracking=%d",setting.awLiveTracking);
+  log_i("AirWhere-Livetracking=%d",setting.awLiveTracking);
   log_i("OGN-Livetracking=%d",setting.OGNLiveTracking);
   log_i("Traccar-Livetracking=%d",setting.traccarLiveTracking);
   log_i("Traccar-Address=%s",setting.TraccarSrv.c_str());
@@ -1419,12 +1419,18 @@ void printSettings(){
   log_i("Vario temp offset=%.02f",setting.vario.tempOffset);
 
   //weather-data
-  log_i("WD Fanet-Weatherdata=%d",setting.wd.sendFanet);
-  log_i("WD tempoffset=%.1f",setting.wd.tempOffset);
-  log_i("WD windDirOffset=%.1f",setting.wd.windDirOffset);
+  //general
+  log_i("WD tempoffset=%.1f [°]",setting.wd.tempOffset);
+  log_i("WD windDirOffset=%.1f [°]",setting.wd.windDirOffset);
+  // FANET
+  log_i("WD FANET-Weatherdata=%d",setting.wd.sendFanet);
+  log_i("WD FANET-Interval=%d [msec]",setting.wd.FanetUploadInterval);
+  // Weather Underground
   log_i("WUUlEnable=%d",setting.WUUpload.enable);
+  log_i("WUUlInterval=%d [msec]",setting.wd.WUUploadIntervall);
   log_i("WUUlID=%s",setting.WUUpload.ID.c_str());
   log_i("WUUlKEY=%s",setting.WUUpload.KEY.c_str());
+  // Windy
   log_i("WIUlEnable=%d",setting.WindyUpload.enable);
   log_i("WIUlID=%s",setting.WindyUpload.ID.c_str());
   log_i("WIUlKEY=%s",setting.WindyUpload.KEY.c_str());
@@ -2061,7 +2067,7 @@ void taskGsm(void *pvParameters){
 #ifdef GSMODULE
 void taskWeather(void *pvParameters){
   static uint32_t tUploadData =  0;
-  static uint32_t tSendData = millis() - WEATHER_UPDATE_RATE + 30000; //first sending is in 10 seconds
+  static uint32_t tSendData = millis() + 10000; //first sending is in 10 seconds
   bool bDataOk = false;
   log_i("starting weather-task ");  
   Weather::weatherData wData;
@@ -2264,7 +2270,7 @@ void taskWeather(void *pvParameters){
           log_e("no Data from WU");
         }
       }
-      if (timeOver(tAct,tSendData,WEATHER_UPDATE_RATE)){
+      if (timeOver(tAct,tSendData,setting.wd.FanetUploadInterval)){
         tSendData = tAct;
         if (bDataOk){
           fanetWeatherData.Charge = status.BattPerc;

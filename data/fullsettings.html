@@ -82,8 +82,10 @@ function setVis(){
       document.getElementById("tWi2").innerHTML='enable sending weather-data to windy';
       document.getElementById("VisWI").style.display=''; //set weather-underground upload invisible
       if (document.getElementById("setView").value > 0){ //we are advanced or expert
-        document.getElementById("VisAWUS").style.display=''; //set advanced weahter upload settings visible    
-        document.getElementById("VisAWFFNT").style.display=''; //set advanced weahter upload settings invisible      
+        document.getElementById("VisAWUS").style.display=''; //set advanced weather upload settings visible  
+        if (document.getElementById("setView").value > 100){ //we are expert
+          document.getElementById("VisAWFFNT").style.display=''; //set advanced weather settings visible    
+        }
       }
     }
     document.getElementById("VisAirCraftType").style.display='none';
@@ -281,6 +283,7 @@ function sendValues(){
   WIUlID : document.getElementById("WIUlID").value,  
   WIUlKEY : document.getElementById("WIUlKEY").value,
   WFFNT : document.getElementById("WFFNT").value,
+  WIFNT : document.getElementById("WIFNT").value,
   WFWU : document.getElementById("WFWU").value,
   WIWU : document.getElementById("WIWU").value,
   save : 1
@@ -653,9 +656,22 @@ window.addEventListener("load", init, false);
             <th>offset wind direction [°]</th>
             <td><input type="number" id="wdWDirOffset" step="1"></td>
           </tr>
-          <tr id="VisAWFFNT">
-            <th>average-coefficient (default 16)</th>
+        </tbody>      
+      </table>
+    </fieldset>
+    <p></p>
+    <p></p>
+    <fieldset id="VisAWFFNT">
+      <legend><b>FANET Weather settings</b></legend>
+      <table style="width:100&#37;">
+        <tbody>
+          <tr>
+            <th>FANET average-coefficient (default 16)</th>
             <td><input type="number" id="WFFNT" min="0.1" max="2000"></td>
+          </tr>
+          <tr>
+            <th>FANET send-interval [s] (default 40)</th>
+            <td><input type="number" id="WIFNT" min="5" max="15000"></td>
           </tr>
         </tbody>      
       </table>
@@ -671,7 +687,7 @@ window.addEventListener("load", init, false);
             <td><input type="number" id="WFWU" min="0.1" max="2000"></td>
           </tr>
           <tr>
-            <th>upload-intervall [s] (default 300 -> 5min)</th>
+            <th>upload-interval [s] (default 300 -> 5min)</th>
             <td><input type="number" id="WIWU" min="30" max="1800000"></td>
           </tr>
         </tbody>      

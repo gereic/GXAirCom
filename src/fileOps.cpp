@@ -51,6 +51,7 @@ void load_configFile(SettingsData* pSetting){
   pSetting->wd.tempOffset = preferences.getFloat("wdTempOffset",0.0);
   pSetting->wd.windDirOffset = preferences.getInt("wdWDirOffset",0);
   pSetting->wd.avgFactorFanet = preferences.getFloat("avgFanet",16);
+  pSetting->wd.FanetUploadInterval = preferences.getULong("FanetWDInt",40000);
   pSetting->wd.avgFactorWU = preferences.getFloat("avgWU",128);
   pSetting->wd.WUUploadIntervall = preferences.getULong("WUIntervall",300000);
 
@@ -157,9 +158,10 @@ void write_configFile(SettingsData* pSetting){
   preferences.putFloat("wdTempOffset",pSetting->wd.tempOffset);
   preferences.putInt("wdWDirOffset",pSetting->wd.windDirOffset);
   preferences.putFloat("avgFanet",pSetting->wd.avgFactorFanet);
+  preferences.putULong("FanetWDInt",pSetting->wd.FanetUploadInterval);
   preferences.putFloat("avgWU",pSetting->wd.avgFactorWU);
   preferences.putULong("WUIntervall",pSetting->wd.WUUploadIntervall);
-  
+
   //wu-upload
   preferences.putUChar("WUUlEnable",pSetting->WUUpload.enable);
   preferences.putString("WUUlID",pSetting->WUUpload.ID);
