@@ -255,7 +255,9 @@ added adjustable intervall for upload weather-data to WU
 v4.6.1
 Bugfix in windgust-calculation
 
-v4.6.2
+v4.7.0
+New Feature: send and receive Fanet and Legacy (switching between 1.9sec Legacy-Mode 3sec. Fanet-Mode)
 PinBuzzer for TTGO T-Beam V0.7 and Heltec changed from 0 to 25
 added Log-Output for weather-station
 added restart after configuring GPS
+added auto-refresh of neighbours.html and weather.html with a cycle of 10seconds.

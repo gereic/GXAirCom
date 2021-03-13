@@ -12,14 +12,6 @@
 		},
 		{
 			"type": "PlatformIO",
-			"task": "Upload File System image",
-			"problemMatcher": [
-				"$platformio"
-			],
-			"label": "PlatformIO: Upload File System image"
-		},
-		{
-			"type": "PlatformIO",
 			"task": "Upload and Monitor",
 			"problemMatcher": [
 				"$platformio"

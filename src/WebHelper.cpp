@@ -155,7 +155,7 @@ void onWebSocketEvent(uint8_t client_num,
           doc["traccarsrv"]= setting.TraccarSrv;
           doc["fntMode"] = setting.fanetMode;
           doc["fntPin"] = setting.fanetpin;
-          doc["legacytx"] = setting.LegacyTxEnable;
+          doc["lgM"] = setting.LegacyMode;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
 
@@ -364,7 +364,7 @@ void onWebSocketEvent(uint8_t client_num,
         if (root.containsKey("ognlive")) newSetting.OGNLiveTracking = doc["ognlive"].as<uint8_t>();
         if (root.containsKey("traccar_live")) newSetting.traccarLiveTracking = doc["traccar_live"].as<uint8_t>();
         if (root.containsKey("traccarsrv")) newSetting.TraccarSrv = doc["traccarsrv"].as<String>();
-        if (root.containsKey("legacytx")) newSetting.LegacyTxEnable = doc["legacytx"].as<uint8_t>();
+        if (root.containsKey("lgM")) newSetting.LegacyMode = doc["lgM"].as<uint8_t>();
         if (root.containsKey("fntMode")) newSetting.fanetMode = doc["fntMode"].as<uint8_t>();
         if (root.containsKey("fntPin")) newSetting.fanetpin = doc["fntPin"].as<uint16_t>();
         //weatherdata
@@ -503,7 +503,7 @@ String processor(const String& var){
     return sRet;
   }else if (var == "NEIGHBOURSLIST"){
     sRet = "";
-    sRet =  "<tr><th>ID</th><td>lat</td><td>lon</td><td>state</td><td>dist</td><td>alt</td><td>speed</td><td>climb</td><td>heading</td><td>rssi</td><td>last seen:</td></tr>\r\n";    
+    sRet =  "<tr><th>ID</th><td>type</td><td>lat</td><td>lon</td><td>state</td><td>dist</td><td>alt</td><td>speed</td><td>climb</td><td>heading</td><td>rssi</td><td>last seen:</td></tr>\r\n";    
     for (int i = 0; i < MAXNEIGHBOURS; i++){
       if (fanet.neighbours[i].devId){
         sRet += "<tr><th><a href=\"https://www.google.com/maps/search/?api=1&query=" + String(fanet.neighbours[i].lat,6) + "," + String(fanet.neighbours[i].lon,6)+ "\"  target=\"_blank\">";
@@ -511,6 +511,7 @@ String processor(const String& var){
           sRet += fanet.neighbours[i].name;
         }
         sRet += " [" + fanet.getDevId(fanet.neighbours[i].devId) + "]</a></th>" + 
+        "<td>" +fanet.getAircraftType(fanet.neighbours[i].aircraftType) + "</td>" + 
         "<td>" +String(fanet.neighbours[i].lat,6) + "</td>" + 
         "<td>" + String(fanet.neighbours[i].lon,6) + "</td>" +
         "<td>" + fanet.getType(fanet.neighbours[i].type) + "</td>";

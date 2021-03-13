@@ -78,6 +78,36 @@ Manufacturer IDs:
 
 class FanetLora : public Fapp{
 public:
+  /*
+  * Tracking frame type (#1),
+  * Standard header,
+  * No signature,
+  * Broadcast
+  */
+  typedef struct {
+    unsigned int latitude       :24;
+    unsigned int longitude      :24;
+
+    /* units are degrees, seconds, and meter */
+    unsigned int altitude_lsb   :8; /* FANET+ reported alt. comes from ext. source */
+    unsigned int altitude_msb   :3; /* I assume that it is geo (GNSS) altitude */
+    unsigned int altitude_scale :1;
+    unsigned int aircraft_type  :3;
+    unsigned int track_online   :1;
+
+    unsigned int speed          :7;
+    unsigned int speed_scale    :1;
+
+    unsigned int climb          :7;
+    unsigned int climb_scale    :1;
+
+    unsigned int heading        :8;
+
+    unsigned int turn_rate      :7;
+    unsigned int turn_scale     :1;
+
+  } __attribute__((packed)) fanet_packet_t1;
+
     enum aircraft_t : uint8_t
     {
       otherAircraft = 0,
@@ -199,7 +229,7 @@ public:
   String getType(uint8_t type);
   void setPilotname(String name);
   void setAircraftType(aircraft_t type);
-  void setMyTrackingData(trackingData *tData);
+  void setMyTrackingData(trackingData *tData,float geoidAlt);
   void writeMsgType1(trackingData *tData);
   void writeMsgType2(String name);
   void writeMsgType3(uint32_t devId,String msg);
@@ -218,6 +248,7 @@ public:
   void sendTracking(trackingData *tData);
   void sendName(String name);
   void sendMSG(String msg);
+  void coord2payload_absolut(float lat, float lon, uint8_t *buf);
   uint16_t txCount;
   uint16_t rxCount;
   neighbour neighbours[MAXNEIGHBOURS];
@@ -253,8 +284,7 @@ private:
   String actMsg;
   msgData lastMsgData;
   void sendPilotName(uint32_t tAct);
-  String uint64ToString(uint64_t input);
-  void coord2payload_absolut(float lat, float lon, uint8_t *buf);
+  String uint64ToString(uint64_t input);  
   int getByteFromHex(char in[]);
   String getHexFromByte(uint8_t val,bool leadingZero = false);    
   String getHexFromWord(uint16_t val,bool leadingZero = false);
@@ -310,35 +340,6 @@ private:
 
   } __attribute__((packed)) fanet_header_t;
 
-  /*
-  * Tracking frame type (#1),
-  * Standard header,
-  * No signature,
-  * Broadcast
-  */
-  typedef struct {
-    unsigned int latitude       :24;
-    unsigned int longitude      :24;
-
-    /* units are degrees, seconds, and meter */
-    unsigned int altitude_lsb   :8; /* FANET+ reported alt. comes from ext. source */
-    unsigned int altitude_msb   :3; /* I assume that it is geo (GNSS) altitude */
-    unsigned int altitude_scale :1;
-    unsigned int aircraft_type  :3;
-    unsigned int track_online   :1;
-
-    unsigned int speed          :7;
-    unsigned int speed_scale    :1;
-
-    unsigned int climb          :7;
-    unsigned int climb_scale    :1;
-
-    unsigned int heading        :8;
-
-    unsigned int turn_rate      :7;
-    unsigned int turn_scale     :1;
-
-  } __attribute__((packed)) fanet_packet_t1;
     
   /*
   * Tracking frame type (#4),

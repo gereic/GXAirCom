@@ -236,7 +236,7 @@ function sendValues(){
   ognlive : Number(document.getElementById("ognlive").checked),
   traccar_live : Number(document.getElementById("traccar_live").checked),
   traccarsrv : document.getElementById("traccarsrv").value,
-  legacytx : Number(document.getElementById("legacytx").checked),
+  lgM : document.getElementById("lgM").value,
 
   vSinkTh : parseFloat(document.getElementById("vSinkTh").value),
   vClimbTh : parseFloat(document.getElementById("vClimbTh").value),
@@ -456,8 +456,12 @@ window.addEventListener("load", init, false);
             </select></td>
           </tr>	
           <tr id="VisLegacy">
-            <th>Legacy Protocol TX</th>
-            <td><input type="checkbox" id="legacytx" ></td>
+            <th>Legacy Protocol</th>
+            <td><select id="lgM">
+              <option value="0">OFF</option>
+              <option value="1">only sending</option>
+              <option value="2">sending and receiving</option>
+            </select></td>
           </tr>	
           <tr id="VisFanetTracking">
             <th>fanet-tracking-mode</th>

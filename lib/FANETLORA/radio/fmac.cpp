@@ -15,6 +15,8 @@
 #include "Legacy/Legacy.h"
 #include "CRC/lib_crc.h"
 
+void invertba(byte* ba, int len);
+int serialize_legacyTracking(ufo_t *Data,uint8_t*& buffer);
 
 /* get next frame which can be sent out */
 //todo: this is potentially dangerous, as frm may be deleted in another place.
@@ -138,6 +140,62 @@ bool MacFifo::remove_delete_acked_frame(MacAddr dest)
 	return found;
 }
 
+void coord2payload_absolut(float lat, float lon, uint8_t *buf)
+{
+	if(buf == NULL)
+		return;
+
+	int32_t lat_i = roundf(lat * 93206.0f);
+	int32_t lon_i = roundf(lon * 46603.0f);
+
+	buf[0] = ((uint8_t*)&lat_i)[0];
+	buf[1] = ((uint8_t*)&lat_i)[1];
+	buf[2] = ((uint8_t*)&lat_i)[2];
+
+	buf[3] = ((uint8_t*)&lon_i)[0];
+	buf[4] = ((uint8_t*)&lon_i)[1];
+	buf[5] = ((uint8_t*)&lon_i)[2];
+}
+
+
+
+int serialize_legacyTracking(ufo_t *Data,uint8_t*& buffer){
+  int msgSize = sizeof(FanetLora::fanet_packet_t1);
+  buffer = new uint8_t[msgSize];
+  coord2payload_absolut(Data->latitude,Data->longitude, &buffer[0]);
+
+	/* altitude set the lower 12bit */
+	int alt = constrain(Data->altitude, 0, 8190);
+	if(alt > 2047)
+		((uint16_t*)buffer)[3] = ((alt+2)/4) | (1<<11);				//set scale factor
+	else
+		((uint16_t*)buffer)[3] = alt;
+	/* online tracking */
+	((uint16_t*)buffer)[3] |= !!Data->no_track<<15;
+	/* aircraft type */
+	((uint16_t*)buffer)[3] |= (LP_Flarm2FanetAircraft((eFlarmAircraftType)Data->aircraft_type)&0x7)<<12;
+
+	/* Speed */
+	int speed2 = constrain((int)roundf(Data->speed *2.0f), 0, 635);
+	if(speed2 > 127)
+		buffer[8] = ((speed2+2)/5) | (1<<7);					//set scale factor
+	else
+		buffer[8] = speed2;
+
+	/* Climb */
+	int climb10 = constrain((int)roundf(Data->vs *10.0f), -315, 315);
+	if(std::abs(climb10) > 63)
+		buffer[9] = ((climb10 + (climb10>=0?2:-2))/5) | (1<<7);			//set scale factor
+	else
+		buffer[9] = climb10 & 0x7F;
+
+	/* Heading */
+	buffer[10] = constrain((int)roundf(Data->course *256.0f/360.0f), 0, 255);
+
+	return FANET_LORA_TYPE1_SIZE - 2;
+}
+
+
 /* this is executed in a non-linear fashion */
 void FanetMac::frameReceived(int length)
 {
@@ -147,6 +205,7 @@ void FanetMac::frameReceived(int length)
 	int rssi = LoRa.getRssi();
 	int snr = (120 + rssi) * 10; //we use the rssi as snr-value cause snr is normally -10 to 20db on Lora. so we use rssi which is 0 - -120 in invert it to 0 - 120
 	if (snr < 0) snr = 0;	
+  //log_i("rssi=%d,snr=%d",rssi,snr);
 
 #if MAC_debug_mode > 0
 	Serial.printf("### Mac Rx:%d @ %d ", num_received, rssi);
@@ -161,7 +220,37 @@ void FanetMac::frameReceived(int length)
 #endif
 
 	/* build frame from stream */
-	Frame *frm = new Frame(num_received, rx_frame);
+	Frame *frm;
+  if (_fskMode){
+    frm = new Frame();
+    //uint16_t crc16 =  getLegacyCkSum(rx_frame,24);
+    //uint32_t tNow = now();
+    //log_i("now=%d",tNow);
+    invertba(rx_frame,26);
+    ufo_t air={0};
+    ufo_t myAircraft={0};
+    myAircraft.latitude = lat;
+    myAircraft.longitude = lon;
+    myAircraft.geoid_separation = geoidAlt;
+    myAircraft.timestamp = now();
+    //myAircraft.latitude =     
+    decrypt_legacy(rx_frame,now());
+    if (legacy_decode(rx_frame,&myAircraft,&air)){
+      //legacyLogAircraft(&air);
+ 			frm->src.manufacturer = uint8_t(air.addr >> 16);
+      frm->src.id = uint16_t(air.addr & 0x0000FFFF);
+      frm->dest = MacAddr();
+      frm->forward = false;
+      frm->type = FRM_TYPE_TRACKING;
+			frm->payload_length = serialize_legacyTracking(&air,frm->payload);
+      //log_i("src=%02X%04X,dest=%02X%04X,type=%d",frm->src.manufacturer,frm->src.id,frm->dest.manufacturer,frm->dest.id,frm->type);
+    }else{
+      delete frm;
+      return;
+    }
+  }else{
+    frm = new Frame(num_received, rx_frame);
+  }  
 	frm->rssi = rssi;
 	frm->snr = snr;
 	
@@ -193,6 +282,7 @@ bool FanetMac::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset, 
 	setup_frequency=frequency;
 	_ss = ss;
 	_reset = reset;
+	_fskMode = false;
 
 	/* configure phy radio */
 	//SPI LoRa pins
@@ -250,12 +340,83 @@ bool FanetMac::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset, 
 	return true;
 }
 
+void FanetMac::switchLora(){
+  uint32_t tBegin = millis();
+  if(!LoRa.setLoRa())
+		Serial.println("LoRA Set Error");
+	delay(10);
+	LoRa.setFrequency(setup_frequency);
+	LoRa.setSignalBandwidth(250E3); //set Bandwidth to 250kHz
+	LoRa.setSpreadingFactor(7); //set spreading-factor to 7
+	LoRa.setCodingRate4(8);
+	LoRa.setSyncWord(MAC_SYNCWORD);
+	LoRa.enableCrc();
+	//LoRa.dumpRegisters(Serial);
+	LoRa.setArmed(true,frameRxWrapper); 
+	//LoRa.irqEnable(true);
+  _fskMode = false;
+  //log_i("LORA-Mode On %d",millis()-tBegin);
+}
+
+void FanetMac::switchFSK(){
+
+  uint32_t tBegin = millis();
+	uint8_t syncWord[] = {0x99, 0xA5, 0xA9, 0x55, 0x66, 0x65, 0x96};
+  LoRa.ClearIRQ();	
+	LoRa.setArmed(false,frameRxWrapper); 
+	if (!LoRa.setFSK())
+		Serial.println("FSK Set Error");
+
+	LoRa.setBitRate(100.0);
+	LoRa.setFrequencyDeviation(50.0);
+	LoRa.setPreambleLength(2);
+	LoRa.setPreamblePolarity(true);
+	LoRa.setEncoding(1);
+	LoRa.setSyncWordFSK(syncWord,sizeof(syncWord));
+	LoRa.setFrequency(868199950);
+  //LoRa.setFrequency(868200000);
+
+	LoRa.setPaRamp(8);	
+	LoRa.disableCrc();
+	LoRa.setRxBandwidth(125.0);
+
+  //log_i("t=%d",millis()-tBegin);
+
+  sendLegacy(); //we send always a legacy-package, when we swtich to legacy !!
+
+  LoRa.setPacketMode(0,26);
+  LoRa.setArmed(true,frameRxWrapper); 
+
+  _fskMode = true;
+  //log_i("FSK-Mode On %d",millis()-tBegin);
+}
+
+
+
 /* wrapper to fit callback into c++ */
 void FanetMac::stateWrapper()
 {
+	static uint32_t tSwitch = millis();
+	uint32_t tAct = millis();
+	if (fmac._enableLegacyTx == 2){
+		if (fmac._fskMode){
+			if ((tAct - tSwitch) >= 1900){ // 1.9sec in FSK-Mode
+				fmac.switchLora();
+				tSwitch = tAct;
+			}
+		}else{
+			if ((tAct - tSwitch) >= 3000){ // 3sec. in FANET-Mode
+				fmac.switchFSK();
+				tSwitch = tAct;
+			}
+		}
+	}
 	fmac.handleIRQ();
-	fmac.handleRx();
-	fmac.handleTx();
+  fmac.handleRx();
+	if (!fmac._fskMode){  	
+    fmac.handleTx();
+  }
+  
 }
 
 bool FanetMac::isNeighbor(MacAddr addr)
@@ -297,7 +458,8 @@ void FanetMac::ack(Frame* frm)
 void FanetMac::handleIRQ(){
 	int packetSize = LoRa.parsePacket();
 	if (packetSize > 0){
-		frameRxWrapper(packetSize);
+		//log_i("packet receive %d",packetSize);
+    frameRxWrapper(packetSize);
 	}
 }
 
@@ -322,7 +484,6 @@ void FanetMac::handleRx()
 	Frame *frm = rx_fifo.front();
 	if(frm == nullptr)
 		return;
-
 	/* build up neighbors list */
 	bool neighbor_known = false;
 	for (int i = 0; i < neighbors.size(); i++)
@@ -337,7 +498,7 @@ void FanetMac::handleRx()
 			break;
 		}
 	}
-
+  //log_i("src=%06X,dest=%06X,type=%d",frm->src,frm->dest,frm->type);
 	/* neighbor unknown until now, add to list */
 	if (neighbor_known == false)
 	{
@@ -442,28 +603,60 @@ void dumpBuffer(uint8_t * data, int len,Stream& out)
    } while (regnum <len);
 }
 
-unsigned short getLegacyCkSum(byte* ba, int len)
-{
-  unsigned short crc16 = 0xffff;  /* seed value */
-  crc16 = update_crc_ccitt(crc16, 0x31);
-  crc16 = update_crc_ccitt(crc16, 0xFA);
-  crc16 = update_crc_ccitt(crc16, 0xB6);
-    
-  for (int i =0;i<len;i++)
-    crc16 = update_crc_ccitt(crc16, (uint8_t)(ba[i]));
-
- return crc16;    
-} 
-
 
 void FanetMac::setLegacy(uint8_t enableTx){
     _enableLegacyTx = enableTx;
 }
 
+void FanetMac::sendLegacy(){
+	//LoRa.dumpRegisters(Serial);
+	encrypt_legacy(Legacy_Buffer,now());
+	
+	uint16_t crc16 =  getLegacyCkSum(Legacy_Buffer,24);
+
+	byte byteArr[26];
+	for (int i=0;i<24;i++)
+		byteArr[i]=Legacy_Buffer[i];
+	
+	byteArr[24]=(crc16 >>8);
+  	byteArr[25]=crc16;
+
+/*
+  ufo_t air={0};
+  ufo_t myAircraft={0};
+  myAircraft.latitude = lat;
+  myAircraft.longitude = lon;
+  myAircraft.timestamp = now();
+  //myAircraft.latitude = 
+  
+  byte byteArr2[26];
+	for (int i=0;i<26;i++)
+		byteArr2[i]=byteArr[i];
+  decrypt_legacy(byteArr2,now());
+  legacy_decode(byteArr2,&myAircraft,&air);
+  //decodeFrame(byteArr2,26,&air);
+  legacyLogAircraft(&air);
+*/  
+
+	invertba(byteArr,26);
+
+	LoRa.SetTxIRQ();
+	LoRa.SetFifoTresh();
+
+	LoRa.write(byteArr,26);
+	LoRa.setPacketMode(0,26);
+	LoRa.setTXFSK();
+
+	LoRa.WaitTxDone();
+	LoRa.ClearIRQ();
+
+}
+
 void FanetMac::handleTxLegacy()
 {
-	uint8_t syncWord[] = {0x99, 0xA5, 0xA9, 0x55, 0x66, 0x65, 0x96};
-	LoRa.ClearIRQ();	
+	//switchFSK();
+  uint8_t syncWord[] = {0x99, 0xA5, 0xA9, 0x55, 0x66, 0x65, 0x96};	
+  LoRa.ClearIRQ();	
 	LoRa.setArmed(false,frameRxWrapper); 
 	//LoRa.dumpRegisters(Serial);
 	//LoRa.irqEnable(false);
@@ -482,43 +675,9 @@ void FanetMac::handleTxLegacy()
 	LoRa.disableCrc();
 	LoRa.setRxBandwidth(125.0);
 
-	//LoRa.dumpRegisters(Serial);
-	encrypt_legacy(Legacy_Buffer,now());
-	
-	uint16_t crc16 =  getLegacyCkSum(Legacy_Buffer,24);
+  sendLegacy();
 
-	byte byteArr[26];
-	for (int i=0;i<24;i++)
-		byteArr[i]=Legacy_Buffer[i];
-	
-	byteArr[24]=(crc16 >>8);
-  	byteArr[25]=crc16;
-	
-	invertba(byteArr,26);
-
-	LoRa.SetTxIRQ();
-	LoRa.SetFifoTresh();
-
-	LoRa.write(byteArr,26);
-	LoRa.setPacketMode(0,26);
-	LoRa.setTXFSK();
-
-	LoRa.WaitTxDone();
-	LoRa.ClearIRQ();
-
-	if(!LoRa.setLoRa())
-		Serial.println("LoRA Set Error");
-
-	delay(10);
-	LoRa.setFrequency(setup_frequency);
-	LoRa.setSignalBandwidth(250E3); //set Bandwidth to 250kHz
-	LoRa.setSpreadingFactor(7); //set spreading-factor to 7
-	LoRa.setCodingRate4(8);
-	LoRa.setSyncWord(MAC_SYNCWORD);
-	LoRa.enableCrc();
-	//LoRa.dumpRegisters(Serial);
-	LoRa.setArmed(true,frameRxWrapper); 
-	//LoRa.irqEnable(true);
+	switchLora();
 	
 //	Serial.println("Lora Set Radio End ");
 }
@@ -630,7 +789,7 @@ void FanetMac::handleTx()
 	int tx_ret = LoRa.sendFrame(buffer, blength, neighbors.size() < MAC_CODING48_THRESHOLD ? 8 : 5);
 	//int tx_ret=TX_OK;
 	bool bSendLegacy = false;
-  if ((_enableLegacyTx>0) && ((buffer[0]&0x1f)==1)) bSendLegacy = true;
+  if ((_enableLegacyTx == 1) && ((buffer[0]&0x1f)==1)) bSendLegacy = true;
 	delete[] buffer;
 
 	if (tx_ret == TX_OK)

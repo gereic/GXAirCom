@@ -680,6 +680,7 @@ void FanetLora::handle_frame(Frame *frm){
   */
   //frm->payload
 
+  //log_i("new msg");
 
 	String msg = CreateFNFMSG(frm);
   String payload = ""; 
@@ -1134,13 +1135,17 @@ void FanetLora::writeMsgType4(weatherData *wData){
   frm2txBuffer(frm);
 }
 
-void FanetLora::setMyTrackingData(trackingData *tData){
+void FanetLora::setMyTrackingData(trackingData *tData,float geoidAlt){
     _myData.altitude = tData->altitude;
     _myData.climb = tData->climb;
     _myData.heading = tData->heading;
     _myData.lat = tData->lat;
     _myData.lon = tData->lon;
     _myData.speed = tData->speed;
+    fmac.lat = _myData.lat;
+    fmac.lon = _myData.lon;
+    fmac.geoidAlt = geoidAlt;
+    fmac.bPPS = true;
     valid_until = millis() + FANET_LORA_VALID_STATE_MS;
     //log_i("valid_until %lu",valid_until);
 }

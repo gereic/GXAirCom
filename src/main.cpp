@@ -1408,7 +1408,7 @@ void printSettings(){
   log_i("OGN-Livetracking=%d",setting.OGNLiveTracking);
   log_i("Traccar-Livetracking=%d",setting.traccarLiveTracking);
   log_i("Traccar-Address=%s",setting.TraccarSrv.c_str());
-  log_i("Legacy-TX=%d",setting.LegacyTxEnable);
+  log_i("LegacyMode=%d",setting.LegacyMode);
   
   //vario
   log_i("VarioSinkingThreshold=%0.2f",setting.vario.sinkingThreshold);
@@ -3434,7 +3434,8 @@ void taskStandard(void *pvParameters){
   long frequency = FREQUENCY868;
   //bool begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset, int dio0,long frequency,uint8_t outputPower);
   if (setting.band == BAND915)frequency = FREQUENCY915; 
-  fanet.setLegacy(setting.LegacyTxEnable);
+  //setting.LegacyMode = 2; //send an receive legacy-data
+  fanet.setLegacy(setting.LegacyMode);
   fanet.begin(PinLora_SCK, PinLora_MISO, PinLora_MOSI, PinLora_SS,PinLoraRst, PinLoraDI0,frequency,setting.LoraPower);
   fanet.setPilotname(setting.PilotName);
   fanet.setAircraftType(setting.AircraftType);
@@ -3824,6 +3825,8 @@ void taskStandard(void *pvParameters){
             status.GPS_speed = nmea.getSpeed()*1.852/1000.; //speed in cm/s --> we need km/h
             status.GPS_course = nmea.getCourse()/1000.;
           }
+          long geoidalt = 0;
+          nmea.getGeoIdAltitude(geoidalt);
           status.GPS_Lat = nmea.getLatitude() / 1000000.;
           status.GPS_Lon = nmea.getLongitude() / 1000000.;  
           status.GPS_alt = alt/1000.;
@@ -3850,8 +3853,7 @@ void taskStandard(void *pvParameters){
             }
             
           } 
-
-          fanet.setMyTrackingData(&MyFanetData); //set Data on fanet
+          fanet.setMyTrackingData(&MyFanetData,geoidalt/1000.); //set Data on fanet
           sendAWTrackingdata(&MyFanetData);
           sendTraccarTrackingdata(&MyFanetData);
         }else{

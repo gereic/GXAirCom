@@ -270,6 +270,18 @@ bool LoRaClass::isTransmitting()
 int LoRaClass::parsePacket(int size)
 {
   int packetLength = 0;
+  if (_FskMode){  
+    uint8_t reg = readRegister(REG_IRQFLAGS2);
+    if ((readRegister(REG_IRQFLAGS2)&0x04)==0x04){
+      packetLength = readRegister(REG_PAYLOADLENGTH);
+      //log_i("irqFlags=%X length=%d",reg,packetLength);
+      return packetLength;
+    }else{
+      return 0;
+    }
+  }
+  
+
   int irqFlags = readRegister(REG_IRQ_FLAGS);
 
   if (size > 0) {
@@ -595,8 +607,15 @@ int LoRaClass::sendFrame(uint8_t *data, int length, uint8_t cr){
 }
 
 int LoRaClass::getFrame(uint8_t *data, int max_length){
-	const int received = readRegister(REG_RX_NB_BYTES);
-	const int rxstartaddr = readRegister(REG_FIFO_RX_CURRENT_ADDR);
+  int received = 0;
+  int rxstartaddr = 0;
+	if (_FskMode){
+    received = readRegister(REG_PAYLOADLENGTH);
+    rxstartaddr = 0;
+  }else{
+    received = readRegister(REG_RX_NB_BYTES);
+    rxstartaddr = readRegister(REG_FIFO_RX_CURRENT_ADDR);
+  }
 	readFifo(rxstartaddr, data, min(received, max_length));
 
 	return min(received, max_length);
@@ -604,8 +623,9 @@ int LoRaClass::getFrame(uint8_t *data, int max_length){
 
 void LoRaClass::readFifo(uint8_t addr, uint8_t *data, int length){
 	/* select location */
-	writeRegister(REG_FIFO_ADDR_PTR, addr);
-
+	if (!_FskMode){
+    writeRegister(REG_FIFO_ADDR_PTR, addr);
+  }
 	/* upload data */
 	select();
 	_spi->transfer(REG_FIFO);
@@ -637,18 +657,32 @@ int LoRaClass::getRssi(void){
 		rssi += ((pktsnr-2)/4);			//note: correct rounding for negative numbers
   return rssi;
   */
-  return (readRegister(REG_PKT_RSSI_VALUE) - (_frequency < 868E6 ? 164 : 157));
+  if (_FskMode){
+    return (readRegister(REG_RSSIVALUE)) * -1 / 2;
+  }else{
+    return (readRegister(REG_PKT_RSSI_VALUE) - (_frequency < 868E6 ? 164 : 157));
+  }
+  
 }
 
 
 int LoRaClass::packetRssi()
 {
-  return (readRegister(REG_PKT_RSSI_VALUE) - (_frequency < 868E6 ? 164 : 157));
+  if (_FskMode){
+    return (readRegister(REG_RSSIVALUE)) * -1 / 2;
+  }else{
+    return (readRegister(REG_PKT_RSSI_VALUE) - (_frequency < 868E6 ? 164 : 157));
+  }
 }
 
 float LoRaClass::packetSnr()
 {
-  return ((int8_t)readRegister(REG_PKT_SNR_VALUE)) * 0.25;
+  if (_FskMode){
+    return 0;
+  }else{
+    return ((int8_t)readRegister(REG_PKT_SNR_VALUE)) * 0.25;
+  }
+  
 }
 
 long LoRaClass::packetFrequencyError()
@@ -971,7 +1005,7 @@ void LoRaClass::enableCrc()
 void LoRaClass::disableCrc()
 {
    if (_FskMode)
-    SPIsetRegValue(REG_PACKETCONFIG1, SX127X_CRC_ON, 4, 4);
+    SPIsetRegValue(REG_PACKETCONFIG1, SX127X_CRC_OFF, 4, 4);
    else
     writeRegister(REG_MODEM_CONFIG_2, readRegister(REG_MODEM_CONFIG_2) & 0xfb);
 }
@@ -1155,7 +1189,9 @@ bool LoRaClass::setFSK() {
    uint8_t reg = readRegister(REG_OPMODE);
  
   writeRegister(REG_OPMODE,  0x80);
-  delay(40); // neet to wait till it shut downs.. 
+  writeRegister(REG_OPMODE,  0x80);
+  //delay(40); // neet to wait till it shut downs.. 
+  writeRegister(REG_OPMODE,  0x00);
   writeRegister(REG_OPMODE,  0x00);
   writeRegister(REG_OPMODE,  0x01);
 

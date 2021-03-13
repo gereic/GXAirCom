@@ -1,5 +1,8 @@
 #include <stdint.h>
-#include "FanetLora.h"
+#include "../FanetLora.h"
+#include "../CRC/lib_crc.h"
+#include "../../FLARM/Flarm.h"
+
 #ifndef PROTOCOL_LEGACY_H
 #define PROTOCOL_LEGACY_H
 
@@ -12,6 +15,7 @@
 #define LEGACY_SYNCWORD_SIZE   7
 #define RF_PROTOCOL_LEGACY 1
 
+#define _GPS_KMH_PER_KNOT 1.852
 #define _GPS_MPH_PER_KNOT 1.15077945
 #define _GPS_MPS_PER_KNOT 0.51444444
 #define _GPS_FEET_PER_METER 3.2808399
@@ -87,6 +91,11 @@ extern uint8_t Legacy_Buffer [24];
 
 size_t encrypt_legacy(void *legacy_pkt, long timestamp);
 size_t decrypt_legacy(void *legacy_pkt, long timestamp);
+int8_t decodeFrame(void *legacy_pkt,uint32_t len,ufo_t *fop);
+bool legacy_decode(void *legacy_pkt, ufo_t *this_aircraft, ufo_t *fop);
+unsigned short getLegacyCkSum(byte* ba, int len);
+void legacyLogAircraft(ufo_t *air);
+FanetLora::aircraft_t LP_Flarm2FanetAircraft(eFlarmAircraftType aircraft);
 class Legacy {
 public:
 

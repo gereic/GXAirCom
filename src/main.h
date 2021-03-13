@@ -377,7 +377,7 @@ struct SettingsData{
   VarioSettings vario; //variosettings
   uint8_t OGNLiveTracking; //OGN-Live-Tracking
   uint8_t screenNumber; //number of default-screen
-  uint8_t LegacyTxEnable; //OGN-Live-Tracking
+  uint8_t LegacyMode; //OGN-Live-Tracking
   uint8_t traccarLiveTracking; //Traccar live-tracking
   String TraccarSrv; //OGN-Live-Tracking  
   WeatherSettings wd;

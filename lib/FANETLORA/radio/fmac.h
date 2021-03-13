@@ -12,6 +12,7 @@
 #include <stdbool.h>
 #include <math.h>
 #include <Arduino.h>
+//#include "../Legacy/Legacy.h"
 
 /* Debug */
 #define MAC_debug_mode				0
@@ -176,12 +177,20 @@ private:
 	void handleIRQ();
 	void handleTx();
 	void handleRx();
+	void switchLora();
+	void switchFSK();  
+  //void coord2payload_absolut(float lat, float lon, uint8_t *buf);
 
 	bool isNeighbor(MacAddr addr);
 	uint8_t _enableLegacyTx;
+	bool _fskMode;
 
 public:
-	bool doForward = true;
+  bool doForward = true;
+  float lat = 0;
+  float lon = 0;
+  float geoidAlt = 0;
+  bool bPPS = false;
 
 	FanetMac() : myTimer(MAC_SLOT_MS, stateWrapper), myAddr(_myAddr) { }
 	~FanetMac() { }
@@ -203,6 +212,7 @@ public:
 	bool eraseAddr(void);
 	MacAddr readAddr();
 	void handleTxLegacy();
+  void sendLegacy();
 
 };
 
