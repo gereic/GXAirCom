@@ -264,3 +264,4 @@ added auto-refresh of neighbours.html and weather.html with a cycle of 10seconds
 
 v4.7.1
 Bugfix Legacy-Rx 
+Bugfix Legacy-Rx stealth-mode

@@ -616,6 +616,9 @@ int LoRaClass::getFrame(uint8_t *data, int max_length){
     received = readRegister(REG_RX_NB_BYTES);
     rxstartaddr = readRegister(REG_FIFO_RX_CURRENT_ADDR);
   }
+  if (received <= 0){
+    return 0;
+  }
 	readFifo(rxstartaddr, data, min(received, max_length));
 
 	return min(received, max_length);

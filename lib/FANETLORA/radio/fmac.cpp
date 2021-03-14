@@ -171,7 +171,7 @@ int serialize_legacyTracking(ufo_t *Data,uint8_t*& buffer){
 	else
 		((uint16_t*)buffer)[3] = alt;
 	/* online tracking */
-	((uint16_t*)buffer)[3] |= !!Data->no_track<<15;
+	((uint16_t*)buffer)[3] |= !Data->stealth<<15;
 	/* aircraft type */
 	((uint16_t*)buffer)[3] |= (LP_Flarm2FanetAircraft((eFlarmAircraftType)Data->aircraft_type)&0x7)<<12;
 
@@ -266,7 +266,11 @@ void FanetMac::frameReceived(int length)
   }  
 	frm->rssi = rssi;
 	frm->snr = snr;
-	
+	if ((frm->src.id == 0) && (frm->src.manufacturer == 0)){
+    log_e("frmId=0");
+    delete frm;
+    return;
+  }
 	/* add to fifo */
 	if (rx_fifo.add(frm) < 0)
 		delete frm;
@@ -366,6 +370,7 @@ void FanetMac::switchLora(){
 	LoRa.enableCrc();
 	//LoRa.dumpRegisters(Serial);
 	LoRa.setArmed(true,frameRxWrapper); 
+  LoRa.getFrame(rx_frame, sizeof(rx_frame)); //clear FIFO
 	//LoRa.irqEnable(true);
   _fskMode = false;
   //log_i("LORA-Mode On %d",millis()-tBegin);
@@ -399,6 +404,7 @@ void FanetMac::switchFSK(){
 
   LoRa.setPacketMode(0,26);
   LoRa.setArmed(true,frameRxWrapper); 
+  LoRa.getFrame(rx_frame, sizeof(rx_frame)); //clear FIFO
 
   _fskMode = true;
   //log_i("FSK-Mode On %d",millis()-tBegin);
