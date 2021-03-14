@@ -185,6 +185,7 @@ void onWebSocketEvent(uint8_t client_num,
           doc["gslat"] = setting.gs.lat;
           doc["gslon"] = setting.gs.lon;
           doc["gsalt"] = setting.gs.alt;
+          doc["gsGeoAlt"] = setting.gs.geoidAlt;
           doc["gsScr"] = setting.gs.SreenOption;
           doc["gsPs"] = setting.gs.PowerSave;
           serializeJson(doc, msg_buf);
@@ -356,6 +357,7 @@ void onWebSocketEvent(uint8_t client_num,
         if (root.containsKey("gslat")) newSetting.gs.lat = doc["gslat"].as<float>();
         if (root.containsKey("gslon")) newSetting.gs.lon = doc["gslon"].as<float>();
         if (root.containsKey("gsalt")) newSetting.gs.alt = doc["gsalt"].as<float>();
+        if (root.containsKey("gsGeoAlt")) newSetting.gs.geoidAlt = doc["gsGeoAlt"].as<float>();
         if (root.containsKey("gsScr")) newSetting.gs.SreenOption = doc["gsScr"].as<uint8_t>();
         if (root.containsKey("gsPs")) newSetting.gs.PowerSave = doc["gsPs"].as<uint8_t>();
         

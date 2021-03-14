@@ -322,6 +322,7 @@ struct GSSettings{
   float lat; //Ground-Station Latitude
   float lon; //Ground-Station Longitude
   float alt; //Ground-Station altitude
+  float geoidAlt; //geoidaltitude for Legacy
   uint8_t SreenOption; //energy-option for display
   uint8_t PowerSave; //powersave-option
 };

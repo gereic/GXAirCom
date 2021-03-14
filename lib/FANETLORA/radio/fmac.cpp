@@ -223,10 +223,16 @@ void FanetMac::frameReceived(int length)
 	Frame *frm;
   if (_fskMode){
     frm = new Frame();
-    //uint16_t crc16 =  getLegacyCkSum(rx_frame,24);
-    //uint32_t tNow = now();
-    //log_i("now=%d",tNow);
-    invertba(rx_frame,26);
+    invertba(rx_frame,26); //invert complete Frame
+
+    //check if Checksum is OK
+  	uint16_t crc16 =  getLegacyCkSum(rx_frame,24);
+    uint16_t crc16_2 = (uint16_t(rx_frame[24]) << 8) + uint16_t(rx_frame[25]);
+    if (crc16 != crc16_2){
+      log_e("wrong Checksum %04X!=%04X",crc16,crc16_2);
+      delete frm;
+      return;
+    }
     ufo_t air={0};
     ufo_t myAircraft={0};
     myAircraft.latitude = lat;
@@ -237,13 +243,20 @@ void FanetMac::frameReceived(int length)
     decrypt_legacy(rx_frame,now());
     if (legacy_decode(rx_frame,&myAircraft,&air)){
       //legacyLogAircraft(&air);
- 			frm->src.manufacturer = uint8_t(air.addr >> 16);
-      frm->src.id = uint16_t(air.addr & 0x0000FFFF);
-      frm->dest = MacAddr();
-      frm->forward = false;
-      frm->type = FRM_TYPE_TRACKING;
-			frm->payload_length = serialize_legacyTracking(&air,frm->payload);
-      //log_i("src=%02X%04X,dest=%02X%04X,type=%d",frm->src.manufacturer,frm->src.id,frm->dest.manufacturer,frm->dest.id,frm->type);
+      //float dist = distance(myAircraft.latitude,myAircraft.longitude,air.latitude,air.longitude, 'K');      
+      //if (dist <= 100.0){
+        //only, if dist <= 100km        
+        frm->src.manufacturer = uint8_t(air.addr >> 16);
+        frm->src.id = uint16_t(air.addr & 0x0000FFFF);
+        frm->dest = MacAddr();
+        frm->forward = false;
+        frm->type = FRM_TYPE_TRACKING_LEGACY;
+        frm->payload_length = serialize_legacyTracking(&air,frm->payload);
+        //log_i("src=%02X%04X,dest=%02X%04X,type=%d",frm->src.manufacturer,frm->src.id,frm->dest.manufacturer,frm->dest.id,frm->type);
+      //}else{
+      //  delete frm;
+      //  return;
+      //}
     }else{
       delete frm;
       return;
@@ -508,6 +521,7 @@ void FanetMac::handleRx()
 
 		neighbors.add(new NeighborNode(frm->src, frm->type == FRM_TYPE_TRACKING || frm->type == FRM_TYPE_GROUNDTRACKING));
 	}
+  if (frm->type == FRM_TYPE_TRACKING_LEGACY) frm->type = FRM_TYPE_TRACKING; //if we have a Legacy-Tracking, we don't count it in neighbors, so switch back tracking-type
 
 	/* is the frame a forwarded one and is it still in the tx queue? */
 	Frame *frm_list = tx_fifo.frame_in_list(frm);

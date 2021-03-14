@@ -3426,6 +3426,10 @@ void taskStandard(void *pvParameters){
     status.GPS_Lat = setting.gs.lat;
     status.GPS_Lon = setting.gs.lon;  
     status.GPS_alt = setting.gs.alt;
+    MyFanetData.lat = status.GPS_Lat;
+    MyFanetData.lon = status.GPS_Lon;
+    MyFanetData.altitude = status.GPS_alt;
+    fanet.setMyTrackingData(&MyFanetData,setting.gs.geoidAlt); //set Data on fanet
   }
   #endif
 

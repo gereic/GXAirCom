@@ -66,6 +66,7 @@ function setVis(){
   document.getElementById("VisAWUS").style.display='none'; //set advanced weahter upload settings invisible    
   document.getElementById("VisAWFFNT").style.display='none'; //set advanced weahter upload settings invisible      
   document.getElementById("VisWD").style.display='none'; //set weather-data invisible
+  document.getElementById("VisLegacy").style.display=''; //now Legacy can be turned on always.
   if (document.getElementById("mode").value == 1){ //mode ground-station
     if (bHasBME == 0){      
       document.getElementById("tWu").innerHTML='Broadcast weather-underground data to FANET';
@@ -88,8 +89,7 @@ function setVis(){
         }
       }
     }
-    document.getElementById("VisAirCraftType").style.display='none';
-    document.getElementById("VisLegacy").style.display='none';
+    document.getElementById("VisAirCraftType").style.display='none';    
     document.getElementById("legacytx").checked=false;
     document.getElementById("tName").innerHTML='Ground Station name';
     document.getElementById("VisGS").style.display=''; //set GS visible
@@ -104,7 +104,6 @@ function setVis(){
     document.getElementById("VisExtPowerSw").style.display = 'none';
     document.getElementById("VisFuelSensor").style.display='none'; //set FuelSensor invisible
   }else{
-    document.getElementById("VisLegacy").style.display='';
     document.getElementById("VisAirCraftType").style.display='';
     document.getElementById("tName").innerHTML='Pilot name';
     document.getElementById("VisGS").style.display='none'; //set GS invisible
@@ -163,6 +162,12 @@ function onlyLetters(str) {
    return str.match("^[A-Za-z0-9]+$");
  }
 
+function openGeoidCalc(){
+  var url = "https://geographiclib.sourceforge.io/cgi-bin/GeoidEval?input=" + document.getElementById("gslat").value + "+" + document.getElementById("gslon").value + "&option=Submit"
+  var win = window.open(url, '_blank');
+  win.focus();
+}
+
 function checkValues(){
   if (document.getElementById("mode").value == 1){ //mode ground-station
    var gsname =  document.getElementById("PilotName").value;
@@ -202,6 +207,7 @@ function sendValues(){
   gslat : document.getElementById("gslat").value,
   gslon : document.getElementById("gslon").value,
   gsalt : document.getElementById("gsalt").value,
+  gsGeoAlt : document.getElementById("gsGeoAlt").value,
   gsScr : document.getElementById("gsScr").value,
   gsPs : document.getElementById("gsPs").value,
   save : 1
@@ -624,6 +630,13 @@ window.addEventListener("load", init, false);
             <td><input type="number" id="gsalt"></td>
           </tr>
           <tr>
+            <th>geoid-altitude [m] (ground-station)</th>
+            <td><input type="number" id="gsGeoAlt"></td>
+            <td>   
+              <button type="button"  onclick="openGeoidCalc()" class="button byel" style="line-height: 1.7rem;">calculator (use EGM84-value)</button>
+            </td>
+          </tr>
+          <tr>            
             <th>Screen option</th>
             <td><select id="gsScr">
               <option value="0">always on</option>
