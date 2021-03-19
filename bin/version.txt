@@ -265,3 +265,12 @@ added auto-refresh of neighbours.html and weather.html with a cycle of 10seconds
 v4.7.1
 Bugfix Legacy-Rx 
 Bugfix Legacy-Rx stealth-mode
+
+v4.8.0
+support for T-Beam with SX1262-Chip (ATTENTION --> at the moment no E-Ink for this board)
+automatic detection of T-Beam with SX1262-Chip
+Bugfix Legacy-speeed
+Bugfix Legacy-vertial-speed
+Bugfix OGN-Live-Tracking for Legacy-received data.
+
+

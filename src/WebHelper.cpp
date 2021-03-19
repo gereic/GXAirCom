@@ -524,8 +524,8 @@ String processor(const String& var){
         }
         sRet = sRet + 
         "<td>" + String(fanet.neighbours[i].altitude,0) + "m</td>" +
-        "<td>" + String(fanet.neighbours[i].speed,0) + "km/h</td>" +
-        "<td>" + String(fanet.neighbours[i].climb,0) + "m/s</td>" +
+        "<td>" + String(fanet.neighbours[i].speed,1) + "km/h</td>" +
+        "<td>" + String(fanet.neighbours[i].climb,1) + "m/s</td>" +
         "<td>" + String(fanet.neighbours[i].heading,0) + "°</td>" +
         "<td>" + String(fanet.neighbours[i].rssi) + "dB</td>" +
         "<td>" + String((millis() - fanet.neighbours[i].tLastMsg) / 1000) + "seconds</td>" +

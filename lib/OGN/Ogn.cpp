@@ -138,7 +138,7 @@ uint8_t Ogn::getAddressType(String devId){
 
 }
 
-uint8_t Ogn::getSenderDetails(bool onlinetracking,aircraft_t aircraftType,String devId){
+uint8_t Ogn::getSenderDetails(bool onlinetracking,aircraft_t aircraftType,uint8_t addressType){
     uint8_t type = 0;
     switch (aircraftType)
     {
@@ -178,16 +178,31 @@ uint8_t Ogn::getSenderDetails(bool onlinetracking,aircraft_t aircraftType,String
     //	FLARM(2)  FLARM HW
     //	OGN(3)    OGN tracker HW
     
-    type += getAddressType(devId);
+    //type += getAddressType(devId);
+    type += (addressType & 0x03);
     return type;
 }
 
-String Ogn::getOrigin(String devId){
-    if (getAddressType(devId) == 2){
+String Ogn::getOrigin(uint8_t addressType){
+  uint8_t adr = addressType & 0x03;
+  if (addressType & 0x80){
+    //it was a Fanet-MSG
+    if (adr == 2){
         return "FLR";
     }else{
         return "FNT";
     }
+  }else{
+    if (adr == 1){
+      return "ICA";
+    }else if (adr == 2){
+      return "FLR";
+    }else if (adr == 3){
+      return "OGN";
+    }else{
+      return "RND";
+    }
+  }
 }
 
 void Ogn::sendNameData(String devId,String name,float snr){
@@ -196,7 +211,7 @@ void Ogn::sendNameData(String devId,String name,float snr){
     if (sTime.length() <= 0) return;
     char buff[200];
     sprintf (buff,"%s%s>OGNFNT,qAS,%s:>%sh Name=\"%s\" %0.1fdB\r\n"
-    ,getOrigin(devId).c_str(),devId.c_str(),_user.c_str(),sTime.c_str(),name.c_str(),snr);
+    ,"FNT",devId.c_str(),_user.c_str(),sTime.c_str(),name.c_str(),snr);
     xSemaphoreTake( *xMutex, portMAX_DELAY );
     client->print(buff);                
     xSemaphoreGive( *xMutex );
@@ -221,13 +236,7 @@ void Ogn::sendWeatherData(weatherData *wData){
     String sTime = getActTimeString();
     if (sTime.length() <= 0) return;
     char buff[200];
-    //sprintf (buff,"%s%s>OGNFNT,qAS,%s:/%sh%02d%02d.%02d%c/%03d%02d.%02d%c_%03d/%03dg%03dt%03dr%03dp%03dh%02db%05d %0.1fdB\r\n"
-    //,getOrigin(devId).c_str(),devId.c_str(),_user.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,(lat < 0)?'S':'N',lonDeg,lonMin/1000,lonMin/10 %100,(lon < 0)?'W':'E',
-    //int(wDir),int(kmh2mph(wSpeed)),int(kmh2mph(wGust)),int(deg2f(temp)),int(rain1h * 10),int(rain24h * 10),mHum,int(press * 10),snr);
     String send = "";
-
-    //sprintf (buff,"%s%s>OGNFNT,qAS,%s:/%sh%02d%02d.%02d%c/%03d%02d.%02d%c_%03d/%03dg%03dt%03d"
-    //,getOrigin(devId).c_str(),devId.c_str(),_user.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,(lat < 0)?'S':'N',lonDeg,lonMin/1000,lonMin/10 %100,(lon < 0)?'W':'E',
     sprintf (buff,"FNT%s>OGNFNT,qAS,%s:/%sh%02d%02d.%02d%c/%03d%02d.%02d%c_%03d/%03dg%03d"
     ,wData->devId.c_str(),_user.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,(wData->lat < 0)?'S':'N',lonDeg,lonMin/1000,lonMin/10 %100,(wData->lon < 0)?'W':'E',
     int(wData->wHeading),int(kmh2mph(wData->wSpeed)),int(kmh2mph(wData->wGust)));
@@ -260,7 +269,7 @@ void Ogn::sendWeatherData(weatherData *wData){
 
 }
 
-void Ogn::sendGroundTrackingData(float lat,float lon,String devId,uint8_t state,float snr){
+void Ogn::sendGroundTrackingData(float lat,float lon,String devId,uint8_t state,uint8_t adressType,float snr){
     if (initOk < 10) return; //nothing todo
     char buff[200];
     float lLat = abs(lat);
@@ -272,10 +281,8 @@ void Ogn::sendGroundTrackingData(float lat,float lon,String devId,uint8_t state,
     String sTime = getActTimeString();
     if (sTime.length() <= 0) return;
 
-    //sprintf (buff,"%s%s>APRS,qAR:/%sh%02d%02d.%02d%c\\%03d%02d.%02d%cn !W%01d%01d! id%02X%s FNT%d %0.1fdB\r\n"
-    //            ,getOrigin(devId).c_str(),devId.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,(lat < 0)?'S':'N',lonDeg,lonMin/1000,lonMin/10 %100,(lon < 0)?'W':'E',int(latMin %10),int(latMin %10),getSenderDetails(aircraftType,devId),devId.c_str(),state,snr);
     sprintf (buff,"%s%s>OGNFNT,qAS,%s:/%sh%02d%02d.%02d%c\\%03d%02d.%02d%cn !W%01d%01d! id%02X%s FNT%X %0.1fdB\r\n" //3F OGN-Tracker and device 15
-    ,getOrigin(devId).c_str(),devId.c_str(),_user.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,(lat < 0)?'S':'N',lonDeg,lonMin/1000,lonMin/10 %100,(lon < 0)?'W':'E',int(latMin %10),int(latMin %10),getSenderDetails(true,aircraft_t::unknown,devId),devId.c_str(),state,snr);
+    ,getOrigin(adressType).c_str(),devId.c_str(),_user.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,(lat < 0)?'S':'N',lonDeg,lonMin/1000,lonMin/10 %100,(lon < 0)?'W':'E',int(latMin %10),int(latMin %10),getSenderDetails(true,aircraft_t::unknown,adressType),devId.c_str(),state,snr);
     xSemaphoreTake( *xMutex, portMAX_DELAY );
     client->print(buff);                
     xSemaphoreGive( *xMutex );
@@ -283,7 +290,7 @@ void Ogn::sendGroundTrackingData(float lat,float lon,String devId,uint8_t state,
 
 }
 
-void Ogn::sendTrackingData(float lat,float lon,float alt,float speed,float heading,float climb,String devId,aircraft_t aircraftType,bool Onlinetracking,float snr){
+void Ogn::sendTrackingData(float lat,float lon,float alt,float speed,float heading,float climb,String devId,aircraft_t aircraftType,uint8_t adressType,bool Onlinetracking,float snr){
     //if ((WiFi.status() != WL_CONNECTED) || (initOk < 10)) return; //nothing todo
     if (initOk < 10) return; //nothing todo
     char buff[200];
@@ -296,10 +303,8 @@ void Ogn::sendTrackingData(float lat,float lon,float alt,float speed,float headi
     String sTime = getActTimeString();
     if (sTime.length() <= 0) return;
 
-    //sprintf (buff,"%s%s>APRS,qAR:/%sh%02d%02d.%02d%c/%03d%02d.%02d%cg%03d/%03d/A=%06d !W%01d%01d! id%02X%s %+04.ffpm FNT11 %0.1fdB\r\n"
-    //            ,getOrigin(devId).c_str(),devId.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,(lat < 0)?'S':'N',lonDeg,lonMin/1000,lonMin/10 %100,(lon < 0)?'W':'E',int(heading),int(speed * 0.53996),int(alt * 3.28084),int(latMin %10),int(latMin %10),getSenderDetails(aircraftType,devId),devId.c_str(),climb*196.85f,snr);
     sprintf (buff,"%s%s>OGNFNT,qAS,%s:/%sh%02d%02d.%02d%c/%03d%02d.%02d%cg%03d/%03d/A=%06d !W%01d%01d! id%02X%s %+04.ffpm FNT11 %0.1fdB\r\n"
-                ,getOrigin(devId).c_str(),devId.c_str(),_user.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,(lat < 0)?'S':'N',lonDeg,lonMin/1000,lonMin/10 %100,(lon < 0)?'W':'E',int(heading),int(speed * 0.53996),int(alt * 3.28084),int(latMin %10),int(latMin %10),getSenderDetails(Onlinetracking,aircraftType,devId),devId.c_str(),climb*196.85f,snr);
+                ,getOrigin(adressType).c_str(),devId.c_str(),_user.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,(lat < 0)?'S':'N',lonDeg,lonMin/1000,lonMin/10 %100,(lon < 0)?'W':'E',int(heading),int(speed * 0.53996),int(alt * 3.28084),int(latMin %10),int(latMin %10),getSenderDetails(Onlinetracking,aircraftType,adressType),devId.c_str(),climb*196.85f,snr);
     xSemaphoreTake( *xMutex, portMAX_DELAY );
     client->print(buff);                
     xSemaphoreGive( *xMutex );

@@ -12,6 +12,8 @@
 #include <stdbool.h>
 #include <math.h>
 #include <Arduino.h>
+#include "LoRa.h"
+
 //#include "../Legacy/Legacy.h"
 
 /* Debug */
@@ -89,7 +91,17 @@
 #define MAC_FIFO_SIZE				8
 #define MAC_FRAME_LENGTH			254
 
+#define ADDRESSTYPE_RANDOM 0
+#define ADDRESSTYPE_ICAO 1
+#define ADDRESSTYPE_FLARM 2
+#define ADDRESSTYPE_OGN 3
 
+// SEND FRAME RETURN VALUES
+#define	TX_OK						0
+#define	TX_TX_ONGOING					-1
+#define	TX_RX_ONGOING					-2
+#define	TX_FSK_ONGOING					-3
+#define TX_ERROR					-100
 
 
 
@@ -174,16 +186,19 @@ private:
 	void ack(Frame* frm);
 
 	static void stateWrapper();
+	//static void setFlag(void);
 	void handleIRQ();
 	void handleTx();
 	void handleRx();
 	void switchLora();
 	void switchFSK();  
+	uint8_t getAddressType(uint8_t manuId);
   //void coord2payload_absolut(float lat, float lon, uint8_t *buf);
 
 	bool isNeighbor(MacAddr addr);
 	uint8_t _enableLegacyTx;
 	bool _fskMode;
+	LoRaClass radio;
 
 public:
   bool doForward = true;
@@ -191,11 +206,13 @@ public:
   float lon = 0;
   float geoidAlt = 0;
   bool bPPS = false;
+	bool bSendLegacy = false;
+	
 
 	FanetMac() : myTimer(MAC_SLOT_MS, stateWrapper), myAddr(_myAddr) { }
 	~FanetMac() { }
 
-	bool begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset, int dio0,Fapp &app,long frequency,uint8_t level);
+	bool begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset, int dio0,Fapp &app,long frequency,uint8_t level,uint8_t radioChip);
 	void end();
 	void handle() { myTimer.Update(); }
 

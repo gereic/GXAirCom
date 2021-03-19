@@ -56,8 +56,8 @@ public:
   void run(bool bNetworkOk); //has to be called cyclic
   void setAirMode(bool _AirMode); //sets the mode (for sending heading and speed only if Air-Module)
   void setGPS(float lat,float lon,float alt,float speed,float heading);
-  void sendTrackingData(float lat,float lon,float alt,float speed,float heading,float climb,String devId,aircraft_t aircraftType,bool Onlinetracking,float snr);
-  void sendGroundTrackingData(float lat,float lon,String devId,uint8_t state,float snr);
+  void sendTrackingData(float lat,float lon,float alt,float speed,float heading,float climb,String devId,aircraft_t aircraftType,uint8_t adressType,bool Onlinetracking,float snr);
+  void sendGroundTrackingData(float lat,float lon,String devId,uint8_t state,uint8_t adressType,float snr);
   void sendNameData(String devId,String name,float snr);
   void sendWeatherData(weatherData *wData);
   void setClient(Client *_client);
@@ -76,9 +76,9 @@ private:
     void sendReceiverStatus(String sTime);    
     void sendReceiverBeacon(String sTime);
     String getActTimeString();
-    uint8_t getSenderDetails(bool onlinetracking,aircraft_t aircraftType,String devId);
+    uint8_t getSenderDetails(bool onlinetracking,aircraft_t aircraftType,uint8_t addressType);
     uint8_t getAddressType(String devId);
-    String getOrigin(String devId);
+    String getOrigin(uint8_t addressType);
     bool connected = false;
     Client *client;
     SemaphoreHandle_t *xMutex;    

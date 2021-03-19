@@ -141,6 +141,7 @@ public:
     float lon; //longitude
     float altitude; //altitude [m]
     aircraft_t aircraftType; //
+    uint8_t addressType;
     float speed; //km/h
     float climb; //m/s
     float heading; //deg
@@ -218,7 +219,7 @@ public:
   } weatherData;
 
   FanetLora(); //constructor
-  bool begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset, int dio0,long frequency,uint8_t outputPower);
+  bool begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset, int dio0,long frequency,uint8_t outputPower,uint8_t radio);
   void end(void);
   String getMyDevId(void);
   String getDevId(uint32_t devId);

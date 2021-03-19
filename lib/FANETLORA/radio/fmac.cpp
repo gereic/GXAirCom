@@ -15,7 +15,6 @@
 #include "Legacy/Legacy.h"
 #include "CRC/lib_crc.h"
 
-void invertba(byte* ba, int len);
 int serialize_legacyTracking(ufo_t *Data,uint8_t*& buffer);
 
 /* get next frame which can be sent out */
@@ -196,34 +195,54 @@ int serialize_legacyTracking(ufo_t *Data,uint8_t*& buffer){
 }
 
 
+uint8_t FanetMac::getAddressType(uint8_t manuId){
+	if (manuId == 0x11 || manuId == 0x20 || manuId == 0xDD || manuId == 0xDE || manuId == 0xDF){
+			return 2; //address type FLARM
+			//log_i("address=%s Flarm",devId.c_str());
+	}else{
+			return 3; //address type OGN        
+			//log_i("address=%s OGN",devId.c_str());
+	}
+}
+
 /* this is executed in a non-linear fashion */
 void FanetMac::frameReceived(int length)
 {
 	/* quickly read registers */
-	num_received = LoRa.getFrame(rx_frame, sizeof(rx_frame));
-
-	int rssi = LoRa.getRssi();
-	int snr = (120 + rssi) * 10; //we use the rssi as snr-value cause snr is normally -10 to 20db on Lora. so we use rssi which is 0 - -120 in invert it to 0 - 120
-	if (snr < 0) snr = 0;	
-  //log_i("rssi=%d,snr=%d",rssi,snr);
-
-#if MAC_debug_mode > 0
-	Serial.printf("### Mac Rx:%d @ %d ", num_received, rssi);
-
-	for(int i=0; i<num_received; i++)
-	{
-		Serial.printf("%02X", rx_frame[i]);
-		if(i<num_received-1)
-			Serial.printf(":");
+	num_received = length;
+	int state = radio.readData(rx_frame, length);
+	if (state != ERR_NONE) {
+		if (state == ERR_CRC_MISMATCH) {
+			//log_e("CRC error!");
+		}else{
+			log_e("failed, code %d",state);
+		}
+		return;
 	}
-	Serial.printf("\n");
-#endif
+	int rssi = radio.getRSSI();
+	int snr = radio.getSNR();
 
 	/* build frame from stream */
 	Frame *frm;
   if (_fskMode){
-    frm = new Frame();
-    invertba(rx_frame,26); //invert complete Frame
+    if (length != 26){ //FSK-Frame is fixed 26Bytes long
+			return;
+		}
+		frm = new Frame();
+		#if 0
+			Serial.printf("### Mac Rx:%d @ %d ", num_received, rssi);
+
+			for(int i=0; i<num_received; i++)
+			{
+				Serial.printf("%02X", rx_frame[i]);
+				if(i<num_received-1)
+					Serial.printf(":");
+			}
+			Serial.printf("\n");
+		#endif
+
+    //invertba(rx_frame,26); //invert complete Frame
+
 
     //check if Checksum is OK
   	uint16_t crc16 =  getLegacyCkSum(rx_frame,24);
@@ -251,6 +270,7 @@ void FanetMac::frameReceived(int length)
         frm->dest = MacAddr();
         frm->forward = false;
         frm->type = FRM_TYPE_TRACKING_LEGACY;
+				frm->AddressType = air.addr_type;
         frm->payload_length = serialize_legacyTracking(&air,frm->payload);
         //log_i("src=%02X%04X,dest=%02X%04X,type=%d",frm->src.manufacturer,frm->src.id,frm->dest.manufacturer,frm->dest.id,frm->type);
       //}else{
@@ -263,11 +283,12 @@ void FanetMac::frameReceived(int length)
     }
   }else{
     frm = new Frame(num_received, rx_frame);
+		frm->AddressType = getAddressType(frm->src.manufacturer) + 0x80; //set highest Bit, so we know, that it was a Fanet-MSG
   }  
 	frm->rssi = rssi;
 	frm->snr = snr;
-	if ((frm->src.id == 0) && (frm->src.manufacturer == 0)){
-    log_e("frmId=0");
+	if ((frm->src.id == 0) || (frm->src.manufacturer == 0)){
+    //log_e("frmId=0");
     delete frm;
     return;
   }
@@ -279,21 +300,21 @@ void FanetMac::frameReceived(int length)
 /* wrapper to fit callback into c++ */
 void FanetMac::frameRxWrapper(int length)
 {
-	//log_i("received %d",length);
+	log_i("received %d",length);
 	fmac.frameReceived(length);
 }
 
 void FanetMac::end()
 {
   // stop LoRa class
-  LoRa.end();
+  //LoRa.end();
   SPI.end();
   //if (_ss >= 0) digitalWrite(_ss,LOW);
   //if (_reset >= 0) digitalWrite(_reset,HIGH);
 }
 
 
-bool FanetMac::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset, int dio0,Fapp &app,long frequency,uint8_t level)
+bool FanetMac::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset, int dio0,Fapp &app,long frequency,uint8_t level,uint8_t radioChip)
 {
 	myApp = &app;
 	setup_frequency=frequency;
@@ -301,77 +322,60 @@ bool FanetMac::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset, 
 	_reset = reset;
 	_fskMode = false;
 
+	// address 
+	_myAddr = readAddr();
+
+
 	/* configure phy radio */
 	//SPI LoRa pins
 	log_i("sck=%d,miso=%d,mosi=%d,ss=%d,reset=%d,dio0=%d",sck,miso,mosi,ss,reset,dio0);
 	SPI.begin(sck, miso, mosi, ss);
 	
 	//setup LoRa transceiver module
-	LoRa.setPins(ss, reset, dio0);
+	//LoRa.setPins(ss, reset, dio0);
 	//LoRa.setPins(18, 14, 26);
 	//long frequency = FREQUENCY868;
 	//if (setting.band == BAND915)frequency = FREQUENCY915; 
 	log_i("Start Lora Frequency=%d",frequency);
-	uint8_t counter = 0;
-	while (!LoRa.begin(frequency) && counter < 10) {
-		log_i(".");
-		counter++;
-		delay(500);
+  //pModule = new Module(ss,33,reset,32);
+	//LoRaClass radio = new LoRaClass(&SPI,ss,33,reset,32);
+	//radio.setPins(&SPI,ss,33,reset,32);
+	
+	//_fskMode = true;
+	if (radioChip == RADIO_SX1262){
+		radio.setPins(&SPI,ss,dio0,reset,32);
+	}else{
+		radio.setPins(&SPI,ss,dio0,reset);
 	}
-	if (counter == 10) {
-		log_e("Starting LoRa failed!"); 
-	}
-	LoRa.setSignalBandwidth(250E3); //set Bandwidth to 250kHz
-	LoRa.setSpreadingFactor(7); //set spreading-factor to 7
-	LoRa.setCodingRate4(8);
-	LoRa.setSyncWord(MAC_SYNCWORD);
-	LoRa.enableCrc();
-	//LoRa.setTxPower(10); //10dbm + 4dbm antenna --> max 14dbm
-	//LoRa.setTxPower(10); //+4dB antenna gain (skytraxx/lynx) -> max allowed output (14dBm) (20 //full Power)
-	//level = 20;
-	log_i("set tx Power=%d",level);
-	LoRa.setTxPower(level); //+4dB antenna gain (skytraxx/lynx) -> max allowed output (14dBm) (20 //full Power)
-	//LoRa.setTxPower(20); //+4dB antenna gain (skytraxx/lynx) -> max allowed output (14dBm) (20 //full Power)
-	//LoRa.onReceive(frameRxWrapper);
-	//LoRa.receive();
-	LoRa.setArmed(true,frameRxWrapper); //set receiver armed
+	//radio.setPins(&SPI,ss,dio0,reset,32);
+	//radio.setPins(&SPI,ss,dio0,reset);
+  int state = radio.begin(float(frequency) / 1000000.,250.0,7,8,0xF1,int8_t(level),radioChip);
+  if (state == ERR_NONE) {
+    log_i("success!");
+  } else {
+    log_i("failed, code %d",state);
+		return 0;
+  }
+	// start listening for LoRa packets
+	state = radio.startReceive();
+	if (state != ERR_NONE) {
+			log_i("startReceive failed, code %d",state);
+			return 0;
+	}	
 	log_i("LoRa Initialization OK!");
 
-	// address 
-	_myAddr = readAddr();
 
 	/* start state machine */
 	myTimer.Start();
-
-	/* start random machine */
-#if defined(ARDUINO_SAMD_ZERO) || defined(ARDUINO_SAMD_VARIANT_COMPLIANCE)
-	/* use the device ID */
-	volatile uint32_t *ptr1 = (volatile uint32_t *)0x0080A00C;
-	volatile uint32_t *ptr2 = (volatile uint32_t *)0x0080A040;
-	volatile uint32_t *ptr3 = (volatile uint32_t *)0x0080A044;
-	volatile uint32_t *ptr4 = (volatile uint32_t *)0x0080A048;
-	randomSeed(millis() + *ptr1 + *ptr2 + *ptr3 + *ptr4);
-#else
 	randomSeed(millis());
-#endif
+	
 	return true;
 }
 
 void FanetMac::switchLora(){
-  uint32_t tBegin = millis();
-  if(!LoRa.setLoRa())
-		Serial.println("LoRA Set Error");
-	delay(10);
-	LoRa.setFrequency(setup_frequency);
-	LoRa.setSignalBandwidth(250E3); //set Bandwidth to 250kHz
-	LoRa.setSpreadingFactor(7); //set spreading-factor to 7
-	LoRa.setCodingRate4(8);
-	LoRa.setSyncWord(MAC_SYNCWORD);
-	LoRa.enableCrc();
-	//LoRa.dumpRegisters(Serial);
-	LoRa.setArmed(true,frameRxWrapper); 
-  LoRa.getFrame(rx_frame, sizeof(rx_frame)); //clear FIFO
-	//LoRa.irqEnable(true);
+	uint32_t tBegin = millis();
+	radio.switchLORA();
+	radio.startReceive();
   _fskMode = false;
   //log_i("LORA-Mode On %d",millis()-tBegin);
 }
@@ -379,33 +383,9 @@ void FanetMac::switchLora(){
 void FanetMac::switchFSK(){
 
   uint32_t tBegin = millis();
-	uint8_t syncWord[] = {0x99, 0xA5, 0xA9, 0x55, 0x66, 0x65, 0x96};
-  LoRa.ClearIRQ();	
-	LoRa.setArmed(false,frameRxWrapper); 
-	if (!LoRa.setFSK())
-		Serial.println("FSK Set Error");
-
-	LoRa.setBitRate(100.0);
-	LoRa.setFrequencyDeviation(50.0);
-	LoRa.setPreambleLength(2);
-	LoRa.setPreamblePolarity(true);
-	LoRa.setEncoding(1);
-	LoRa.setSyncWordFSK(syncWord,sizeof(syncWord));
-	LoRa.setFrequency(868199950);
-  //LoRa.setFrequency(868200000);
-
-	LoRa.setPaRamp(8);	
-	LoRa.disableCrc();
-	LoRa.setRxBandwidth(125.0);
-
-  //log_i("t=%d",millis()-tBegin);
-
-  sendLegacy(); //we send always a legacy-package, when we swtich to legacy !!
-
-  LoRa.setPacketMode(0,26);
-  LoRa.setArmed(true,frameRxWrapper); 
-  LoRa.getFrame(rx_frame, sizeof(rx_frame)); //clear FIFO
-
+	radio.switchFSK();
+	if (bSendLegacy) sendLegacy(); //we send the legacy-msg, and switch then to receive
+	radio.startReceive();
   _fskMode = true;
   //log_i("FSK-Mode On %d",millis()-tBegin);
 }
@@ -415,18 +395,22 @@ void FanetMac::switchFSK(){
 /* wrapper to fit callback into c++ */
 void FanetMac::stateWrapper()
 {
+	//return;
 	static uint32_t tSwitch = millis();
+	static uint32_t tNewTime = 3000 + random(MAC_FORWARD_DELAY_MIN, MAC_FORWARD_DELAY_MAX);
 	uint32_t tAct = millis();
 	if (fmac._enableLegacyTx == 2){
 		if (fmac._fskMode){
-			if ((tAct - tSwitch) >= 1900){ // 1.9sec in FSK-Mode
+			if ((tAct - tSwitch) >= tNewTime){ // 1.9sec in FSK-Mode
 				fmac.switchLora();
 				tSwitch = tAct;
+				tNewTime = 3000 + random(MAC_FORWARD_DELAY_MIN, MAC_FORWARD_DELAY_MAX);
 			}
 		}else{
-			if ((tAct - tSwitch) >= 3000){ // 3sec. in FANET-Mode
+			if ((tAct - tSwitch) >= tNewTime){ // 3sec. in FANET-Mode
 				fmac.switchFSK();
 				tSwitch = tAct;
+				tNewTime = 1900 + random(MAC_FORWARD_DELAY_MIN, MAC_FORWARD_DELAY_MAX);
 			}
 		}
 	}
@@ -435,7 +419,6 @@ void FanetMac::stateWrapper()
 	if (!fmac._fskMode){  	
     fmac.handleTx();
   }
-  
 }
 
 bool FanetMac::isNeighbor(MacAddr addr)
@@ -475,11 +458,19 @@ void FanetMac::ack(Frame* frm)
  * Processes irq
  */
 void FanetMac::handleIRQ(){
-	int packetSize = LoRa.parsePacket();
-	if (packetSize > 0){
-		//log_i("packet receive %d",packetSize);
-    frameRxWrapper(packetSize);
+	// check if the flag is set
+	if (radio.isRxMessage()) {	
+		
+		int16_t packetSize = radio.getPacketLength();
+		//log_i("new package arrived %d",packetSize);
+		if (packetSize > 0){
+			//log_i("packet receive %d",packetSize);			
+			fmac.frameReceived(packetSize);
+			
+		}
+		radio.startReceive();
 	}
+	return;
 }
 
 /*
@@ -577,7 +568,7 @@ void FanetMac::handleRx()
 
 		/* Forward frame */
 		if (doForward && frm->forward && tx_fifo.size() < MAC_FIFO_SIZE - 3 && frm->rssi <= MAC_FORWARD_MAX_RSSI_DBM
-				&& (frm->dest == MacAddr() || isNeighbor(frm->dest)) && LoRa.get_airlimit() < 0.5f)
+				&& (frm->dest == MacAddr() || isNeighbor(frm->dest)) && radio.get_airlimit() < 0.5f)
 		{
 #if MAC_debug_mode >= 2
 			Serial.printf("### adding new forward frame\n");
@@ -600,12 +591,6 @@ void FanetMac::handleRx()
 }
 
 
-
-void invertba(byte* ba, int len)
-{
-  for (int i =0;i<len;i++)
-    ba[i] =~ba[i];
-} 
 
 void dumpBuffer(uint8_t * data, int len,Stream& out)
 {
@@ -630,6 +615,8 @@ void FanetMac::setLegacy(uint8_t enableTx){
 
 void FanetMac::sendLegacy(){
 	//LoRa.dumpRegisters(Serial);
+	//log_i("sending legacy");
+	
 	encrypt_legacy(Legacy_Buffer,now());
 	
 	uint16_t crc16 =  getLegacyCkSum(Legacy_Buffer,24);
@@ -657,61 +644,31 @@ void FanetMac::sendLegacy(){
   //decodeFrame(byteArr2,26,&air);
   legacyLogAircraft(&air);
 */  
-
-	invertba(byteArr,26);
-
-	LoRa.SetTxIRQ();
-	LoRa.SetFifoTresh();
-
-	LoRa.write(byteArr,26);
-	LoRa.setPacketMode(0,26);
-	LoRa.setTXFSK();
-
-	LoRa.WaitTxDone();
-	LoRa.ClearIRQ();
-
+	
+	int16_t state = radio.transmit(byteArr, 26);
+	if (state != ERR_NONE){
+		log_e("error TX state=%d",state);
+	}	
+	bSendLegacy = false; //legacy sent !!
 }
 
 void FanetMac::handleTxLegacy()
 {
 	//switchFSK();
-  uint8_t syncWord[] = {0x99, 0xA5, 0xA9, 0x55, 0x66, 0x65, 0x96};	
-  LoRa.ClearIRQ();	
-	LoRa.setArmed(false,frameRxWrapper); 
-	//LoRa.dumpRegisters(Serial);
-	//LoRa.irqEnable(false);
-	if (!LoRa.setFSK())
-		Serial.println("FSK Set Error");
-
-	LoRa.setBitRate(100.0);
-	LoRa.setFrequencyDeviation(50.0);
-	LoRa.setPreambleLength(2);
-	LoRa.setPreamblePolarity(true);
-	LoRa.setEncoding(1);
-	LoRa.setSyncWordFSK(syncWord,sizeof(syncWord));
-	LoRa.setFrequency(868199950);
-
-	LoRa.setPaRamp(8);	
-	LoRa.disableCrc();
-	LoRa.setRxBandwidth(125.0);
-
-  sendLegacy();
-
-	switchLora();
-	
-//	Serial.println("Lora Set Radio End ");
+	radio.switchFSK();
+	sendLegacy();
+	radio.switchLORA();
 }
-
-
-
 
 /*
  * get a from from tx_fifo (or the app layer) and transmit it
  */
 void FanetMac::handleTx()
 {
+	
 	/* still in backoff or chip turned off*/
-	if (millis() < csma_next_tx  || !LoRa.isArmed())
+	//if (millis() < csma_next_tx  || !LoRa.isArmed())
+	if (millis() < csma_next_tx)
 		return;
 
 	/* find next send-able packet */
@@ -732,7 +689,7 @@ void FanetMac::handleTx()
 
 		app_tx = true;
 	}
-	else if(LoRa.get_airlimit() < 0.9f)
+	else if(radio.get_airlimit() < 0.9f)
 	{
 #if MAC_debug_mode >= 2
 		static int queue_length = 0;
@@ -806,17 +763,41 @@ void FanetMac::handleTx()
 
 	/* channel free and transmit? */
 	//note: for only a few nodes around, increase the coding rate to ensure a more robust transmission
-	int tx_ret = LoRa.sendFrame(buffer, blength, neighbors.size() < MAC_CODING48_THRESHOLD ? 8 : 5);
-	//int tx_ret=TX_OK;
-	bool bSendLegacy = false;
-  if ((_enableLegacyTx == 1) && ((buffer[0]&0x1f)==1)) bSendLegacy = true;
+	if (neighbors.size() < MAC_CODING48_THRESHOLD){
+		radio.setCodingRate(8);
+	}else{
+		radio.setCodingRate(5);
+	}	
+	int16_t state = radio.transmit(buffer, blength);
+	//int tx_ret = LoRa.sendFrame(buffer, blength, neighbors.size() < MAC_CODING48_THRESHOLD ? 8 : 5);
+	int tx_ret=TX_OK;
+	if (state != ERR_NONE){
+		log_e("error TX state=%d",state);
+		tx_ret = TX_ERROR;
+	}else{
+		//log_i("TX OK");
+	}	
+	state = radio.startReceive();
+	if (state != ERR_NONE) {
+			log_e("startReceive failed, code %d",state);
+	}
+	//enableInterrupt = true;	
+
+	bool bSend = false;
+	if ((buffer[0]&0x1f)==1){
+		//my tracking-data
+		if (_enableLegacyTx == 1){
+			bSend = true;
+		}else if (_enableLegacyTx == 2){
+			bSendLegacy = true; //send legacy, when switching to legacy !! (not now)
+		}
+	}
+	//if ((_enableLegacyTx == 1) && ((buffer[0]&0x1f)==1)) bSend = true;	
 	delete[] buffer;
 
-	if (tx_ret == TX_OK)
-	{
-		if (bSendLegacy){
-			//if ((buffer[0]&0x1f)==1)  //only my traking data
-			handleTxLegacy();
+	if (tx_ret == TX_OK){
+		if (bSend == 1){
+				handleTxLegacy();
     }
 		
 

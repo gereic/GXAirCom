@@ -18,6 +18,7 @@
 #define _GPS_KMH_PER_KNOT 1.852
 #define _GPS_MPH_PER_KNOT 1.15077945
 #define _GPS_MPS_PER_KNOT 0.51444444
+#define _GPS_KMH_2_MPS 0.277778
 #define _GPS_FEET_PER_METER 3.2808399
 #define StdOut  Serial
 
@@ -86,7 +87,7 @@ typedef struct UFO {
     float     geoid_separation; /* metres */
 } ufo_t;
 
-void createLegacyPkt(FanetLora::trackingData *Data,uint8_t * buffer);
+void createLegacyPkt(FanetLora::trackingData *Data,float geoidAlt,uint8_t * buffer);
 extern uint8_t Legacy_Buffer [24];
 
 size_t encrypt_legacy(void *legacy_pkt, long timestamp);

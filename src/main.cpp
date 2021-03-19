@@ -313,6 +313,7 @@ void drawWifiStat(int wifiStat);
 void oledPowerOff();
 void oledPowerOn();
 void checkBoardType();
+void checkLoraChip();
 // Forward reference to prevent Arduino compiler becoming confused.
 void handleEvent(ace_button::AceButton*, uint8_t, uint8_t);
 void readFuelSensor(uint32_t tAct);
@@ -411,6 +412,37 @@ void handleEvent(ace_button::AceButton* button, uint8_t eventType, uint8_t butto
   }
 }
 
+void checkLoraChip(){
+  //we check the Lora-Chip, if it is a SX1276
+  PinLoraRst = 23;
+  PinLoraDI0 = 26;
+  PinLora_SS = 18;
+  PinLora_MISO = 19;
+  PinLora_MOSI = 27;
+  PinLora_SCK = 5;
+
+  SPI.begin(PinLora_SCK, PinLora_MISO, PinLora_MOSI, PinLora_SS);
+  pinMode(PinLoraRst,OUTPUT);
+  pinMode(PinLora_SS,OUTPUT);
+  digitalWrite(PinLoraRst,LOW);
+  delay(5);
+  digitalWrite(PinLoraRst,HIGH);
+  delay(5);
+  SPISettings _spiSettings = SPISettings(8000000, MSBFIRST, SPI_MODE0);
+  digitalWrite(PinLora_SS,LOW);
+  SPI.beginTransaction(_spiSettings);  
+  SPI.transfer(0x42); //read reg 0x42
+  uint8_t v = SPI.transfer(0x00);
+  digitalWrite(PinLora_SS,HIGH);
+  SPI.endTransaction();
+  //log_i("Lora-Chip-Version=%02X",v);
+  if (v == 0x12){
+    log_i("Lora-Chip SX1276 found --> Board is a T-Beam with SX1276");    
+  }else{
+    setting.boardType = BOARD_T_BEAM_SX1262;
+    log_i("Lora-Chip SX1262 found --> Board is a T-Beam with SX1262");
+  }
+}
 
 void checkBoardType(){
   #ifdef TINY_GSM_MODEM_SIM7000
@@ -432,6 +464,7 @@ void checkBoardType(){
     //check, if we have an OLED
     setting.boardType = BOARD_T_BEAM;
     log_i("AXP192 found");
+    checkLoraChip();
     i2cOLED.beginTransmission(OLED_SLAVE_ADDRESS);
     if (i2cOLED.endTransmission() == 0) {
       //we have found also the OLED
@@ -1560,6 +1593,7 @@ void setup() {
 
   //listSpiffsFiles();
   load_configFile(&setting); //load configuration
+  //setting.boardType = BOARD_UNKNOWN;
   if (setting.boardType == BOARD_UNKNOWN){
     checkBoardType();
   }  
@@ -1652,6 +1686,45 @@ void setup() {
     log_i("Board=T_BEAM");
     PinLoraRst = 23;
     PinLoraDI0 = 26;
+    PinLora_SS = 18;
+    PinLora_MISO = 19;
+    PinLora_MOSI = 27;
+    PinLora_SCK = 5;
+
+    PinOledRst = -1;
+    PinOledSDA = 21;
+    PinOledSCL = 22;
+
+    PinBaroSDA = 13;
+    PinBaroSCL = 14;
+
+    
+    PinUserLed = 4;
+
+    //V3.0.0 changed from PIN 0 to PIN 25
+    PinBuzzer = 25;
+
+    if (setting.bHasExtPowerSw){
+      PinExtPowerOnOff = 36;
+    }
+
+    sButton[1].PinButton = 38;
+    //PinButton[1] = 38;
+
+    if (setting.bHasFuelSensor){
+      PinFuelSensor = 39;
+      pinMode(PinFuelSensor, INPUT);
+    }      
+
+    i2cOLED.begin(PinOledSDA, PinOledSCL);
+    setupAXP192();
+    //for new T-Beam output 4 is red led
+
+    break;
+  case BOARD_T_BEAM_SX1262: 
+    log_i("Board=T_BEAM SX1262");
+    PinLoraRst = 23;
+    PinLoraDI0 = 33;
     PinLora_SS = 18;
     PinLora_MISO = 19;
     PinLora_MOSI = 27;
@@ -2107,7 +2180,7 @@ void taskWeather(void *pvParameters){
       //station has BME --> we are a weather-station
       weather.run();
       if (weather.getValues(&wData)){
-        log_i("wdata:wDir=%f;wSpeed=%f,temp=%f,h=%f,p=%f",wData.WindDir,wData.WindSpeed,wData.temp,wData.Humidity,wData.Pressure);
+        //log_i("wdata:wDir=%f;wSpeed=%f,temp=%f,h=%f,p=%f",wData.WindDir,wData.WindSpeed,wData.temp,wData.Humidity,wData.Pressure);
         if (!bFirstWData){
           for (int i = 0;i <2; i++){
             avg[i].sinWinddir = sin(wData.WindDir * DEG2RAD);
@@ -3096,7 +3169,7 @@ void checkSystemCmd(char *ch_str){
     add2OutputString("#SYC OK\r\n");
     if (u8 != setting.LoraPower){
       setting.LoraPower = u8;
-      LoRa.setTxPower(setting.LoraPower);
+      //LoRa.setTxPower(setting.LoraPower);
       write_LoraPower();
     }
   }
@@ -3440,7 +3513,9 @@ void taskStandard(void *pvParameters){
   if (setting.band == BAND915)frequency = FREQUENCY915; 
   //setting.LegacyMode = 2; //send an receive legacy-data
   fanet.setLegacy(setting.LegacyMode);
-  fanet.begin(PinLora_SCK, PinLora_MISO, PinLora_MOSI, PinLora_SS,PinLoraRst, PinLoraDI0,frequency,setting.LoraPower);
+  uint8_t radioChip = RADIO_SX1276;
+  if (setting.boardType == BOARD_T_BEAM_SX1262) radioChip = RADIO_SX1262;
+  fanet.begin(PinLora_SCK, PinLora_MISO, PinLora_MOSI, PinLora_SS,PinLoraRst, PinLoraDI0,frequency,setting.LoraPower,radioChip);
   fanet.setPilotname(setting.PilotName);
   fanet.setAircraftType(setting.AircraftType);
   //if (setting.Mode != MODE_DEVELOPER){ //
@@ -3782,13 +3857,13 @@ void taskStandard(void *pvParameters){
         //log_i("new Tracking-Data");
         if (tFanetData.type == 0x11){ //online-tracking
           if (setting.OGNLiveTracking){
-            ogn.sendTrackingData(tFanetData.lat ,tFanetData.lon,tFanetData.altitude,tFanetData.speed,tFanetData.heading,tFanetData.climb,fanet.getDevId(tFanetData.devId) ,(Ogn::aircraft_t)tFanetData.aircraftType,tFanetData.OnlineTracking,(float)tFanetData.snr / 10.0);
+            ogn.sendTrackingData(tFanetData.lat ,tFanetData.lon,tFanetData.altitude,tFanetData.speed,tFanetData.heading,tFanetData.climb,fanet.getDevId(tFanetData.devId) ,(Ogn::aircraft_t)tFanetData.aircraftType,tFanetData.addressType,tFanetData.OnlineTracking,(float)tFanetData.snr / 10.0);
           } 
           sendAWTrackingdata(&tFanetData);
           sendTraccarTrackingdata(&tFanetData);
         }else if (tFanetData.type >= 0x70){ //ground-tracking
           if (setting.OGNLiveTracking){
-            ogn.sendGroundTrackingData(tFanetData.lat,tFanetData.lon,fanet.getDevId(tFanetData.devId),tFanetData.type,(float)tFanetData.snr / 10.0);
+            ogn.sendGroundTrackingData(tFanetData.lat,tFanetData.lon,fanet.getDevId(tFanetData.devId),tFanetData.type,tFanetData.addressType,(float)tFanetData.snr / 10.0);
           } 
         }
         
@@ -3842,7 +3917,9 @@ void taskStandard(void *pvParameters){
           MyFanetData.lat = status.GPS_Lat;
           MyFanetData.lon = status.GPS_Lon;
           MyFanetData.altitude = status.GPS_alt;
+          //log_i("lat=%.6f;lon=%.6f;alt=%.1f;geoAlt=%.1f",status.GPS_Lat,status.GPS_Lon,status.GPS_alt,geoidalt/1000.);
           MyFanetData.speed = status.GPS_speed; //speed in cm/s --> we need km/h
+          MyFanetData.addressType = ADDRESSTYPE_OGN;
           if ((status.GPS_speed <= 5.0) && (status.vario.bHasVario)){
             MyFanetData.heading = status.varioHeading;
           }else{
@@ -3851,9 +3928,9 @@ void taskStandard(void *pvParameters){
           if (setting.OGNLiveTracking){
             ogn.setGPS(status.GPS_Lat,status.GPS_Lon,status.GPS_alt,status.GPS_speed,MyFanetData.heading);
             if (fanet.onGround){
-              ogn.sendGroundTrackingData(status.GPS_Lat,status.GPS_Lon,fanet.getDevId(tFanetData.devId),fanet.state,0.0);
+              ogn.sendGroundTrackingData(status.GPS_Lat,status.GPS_Lon,fanet.getDevId(tFanetData.devId),fanet.state,MyFanetData.addressType,0.0);
             }else{
-              ogn.sendTrackingData(status.GPS_Lat,status.GPS_Lon,status.GPS_alt,status.GPS_speed,MyFanetData.heading,status.ClimbRate,fanet.getMyDevId() ,(Ogn::aircraft_t)fanet.getAircraftType(),fanet.doOnlineTracking,0.0);
+              ogn.sendTrackingData(status.GPS_Lat,status.GPS_Lon,status.GPS_alt,status.GPS_speed,MyFanetData.heading,status.ClimbRate,fanet.getMyDevId() ,(Ogn::aircraft_t)fanet.getAircraftType(),MyFanetData.addressType,fanet.doOnlineTracking,0.0);
             }
             
           } 

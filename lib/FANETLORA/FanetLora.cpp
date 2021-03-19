@@ -35,21 +35,13 @@ String FanetLora::getMyDevId(void){
     return getDevId(_myData.devId);
 }
 
-bool FanetLora::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset, int dio0,long frequency,uint8_t outputPower){
+bool FanetLora::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset, int dio0,long frequency,uint8_t outputPower,uint8_t radio){
   valid_until = millis() - 1000; //set Data to not valid
   _myData.lat = 0.0;
   _myData.lon = 0.0;
   Fapp * fa = this;
-  while(fmac.begin(sck, miso, mosi, ss, reset, dio0,*fa,frequency,outputPower) == false)
-	{
-		log_e("radio failed");
-		delay(500);
-		esp_restart();
-	}
-  fmac.setLegacy(_enableLegacyTx);
   //_myData.devId = getDevIdFromMac(fmac.myAddr);
-  _myData.devId = ((uint32_t)fmac.myAddr.manufacturer << 16) + (uint32_t)fmac.myAddr.id;
-  log_i("myDevId:%02X%04X",fmac.myAddr.manufacturer,fmac.myAddr.id);
+  
 
   _PilotName = "";  
   _myData.aircraftType = FanetLora::aircraft_t::paraglider; //default Paraglider
@@ -60,6 +52,15 @@ bool FanetLora::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset,
     neighbours[i].devId = 0; 
   }
 
+  bool bRet = fmac.begin(sck, miso, mosi, ss, reset, dio0,*fa,frequency,outputPower,radio);
+  _myData.devId = ((uint32_t)fmac.myAddr.manufacturer << 16) + (uint32_t)fmac.myAddr.id;
+  log_i("myDevId:%02X%04X",fmac.myAddr.manufacturer,fmac.myAddr.id);
+  if (!bRet){
+    log_e("radio failed");
+    return false;
+  }
+
+  fmac.setLegacy(_enableLegacyTx);
   return true;
 }
 
@@ -455,7 +456,7 @@ Frame *FanetLora::get_frame()
 			frm->payload_length = serialize_tracking(&_myData,frm->payload);
 
       if (_enableLegacyTx>0)
-        createLegacyPkt(&_myData,Legacy_Buffer);
+        createLegacyPkt(&_myData,fmac.geoidAlt,Legacy_Buffer);
 		}
 		else
 		{
@@ -697,6 +698,7 @@ void FanetLora::handle_frame(Frame *frm){
     actTrackingData.rssi = frm->rssi;
     actTrackingData.snr = frm->snr;
     actTrackingData.type = 0x11;
+    actTrackingData.addressType = frm->AddressType;
     getTrackingInfo(payload,frm->payload_length);
     insertDataToNeighbour(actTrackingData.devId,&actTrackingData);
   }else if (frm->type == 2){      
@@ -732,6 +734,7 @@ void FanetLora::handle_frame(Frame *frm){
     actTrackingData.devId = ((uint32_t)frm->src.manufacturer << 16) + (uint32_t)frm->src.id;
     actTrackingData.rssi = frm->rssi;
     actTrackingData.snr = frm->snr;
+    actTrackingData.addressType = frm->AddressType;
     getGroundTrackingInfo(frm->payload,frm->payload_length);
     insertDataToNeighbour(actTrackingData.devId,&actTrackingData);
   }
@@ -804,7 +807,7 @@ bool FanetLora::frm2txBuffer(Frame *frm){
   }
   /* pass to mac */
   if(fmac.transmit(frm) == 0){
-		if(!LoRa.isArmed()) log_e("power down");
+		//if(!LoRa.isArmed()) log_e("power down");
     txCount++;
     return true;
   }else{
@@ -1004,7 +1007,7 @@ void FanetLora::sendTracking(trackingData *tData){
   {
     int oldid = tData->devId;
     tData->devId=_myData.devId;
-    createLegacyPkt(tData,Legacy_Buffer);
+    createLegacyPkt(tData,fmac.geoidAlt,Legacy_Buffer);
     tData->devId=oldid;
   }
 

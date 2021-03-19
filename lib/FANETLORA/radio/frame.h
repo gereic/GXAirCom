@@ -73,6 +73,7 @@ public:
 	/* Received stuff */
 	int rssi = 0;
 	int snr = 0;
+	uint8_t AddressType = 0; //address-Type of Flarm
 
 	int serialize(uint8_t*& buffer);
 

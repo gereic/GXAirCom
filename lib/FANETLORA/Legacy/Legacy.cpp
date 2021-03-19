@@ -93,16 +93,6 @@ unsigned short getLegacyCkSum(byte* ba, int len)
 
 
 int8_t decodeFrame(void *legacy_pkt,uint32_t len,ufo_t *fop){
-	/*
-  uint8_t *buffer = (uint8_t *)legacy_pkt;
-  uint16_t crc1 =  getLegacyCkSum(buffer,24);
-  uint16_t crc2 = (uint16_t(buffer[24]) << 8) + uint16_t(buffer[25]);
-  //log_i("crc16=%04X %04X",crc16, *pCrc);
-  if (crc1 != crc2){
-    log_i("wrong crc %04X != %04X",crc1, crc2);
-    return -1; //wrong CRC
-  }
-  */
   legacy_packet_t *pkt = (legacy_packet_t *) legacy_pkt;
   int ndx;
   uint8_t pkt_parity=0;
@@ -150,9 +140,10 @@ int8_t decodeFrame(void *legacy_pkt,uint32_t len,ufo_t *fop){
   fop->latitude = (float)lat / 1e7;
   fop->longitude = (float)lon / 1e7;
   fop->altitude = (float) alt; // - geo_separ;
-  fop->speed = speed4 / (4 * _GPS_KMH_PER_KNOT);
+  fop->speed = speed4 / (4 * _GPS_KMH_2_MPS);
   fop->course = direction;
-  fop->vs = ((float) vs10) * (_GPS_FEET_PER_METER * 6.0);
+  //fop->vs = ((float) vs10) * (_GPS_FEET_PER_METER * 6.0);
+  fop->vs = ((float) vs10) / 10.0;
   fop->aircraft_type = pkt->aircraft_type;
   fop->stealth = pkt->stealth;
   fop->no_track = pkt->no_track;
@@ -160,53 +151,6 @@ int8_t decodeFrame(void *legacy_pkt,uint32_t len,ufo_t *fop){
   fop->ns[2] = pkt->ns[2]; fop->ns[3] = pkt->ns[3];
   fop->ew[0] = pkt->ew[0]; fop->ew[1] = pkt->ew[1];
   fop->ew[2] = pkt->ew[2]; fop->ew[3] = pkt->ew[3];
-  /*
-
-    int32_t round_lat = (int32_t) (ref_lat * 1e7) >> 7;
-    int32_t lat = (pkt->lat - round_lat) % (uint32_t) 0x080000;
-    if (lat >= 0x040000) lat -= 0x080000;
-    lat = ((lat + round_lat) << 7) // + 0x40 
-
-    int32_t round_lon = (int32_t) (ref_lon * 1e7) >> 7;
-    int32_t lon = (pkt->lon - round_lon) % (uint32_t) 0x100000;
-    if (lon >= 0x080000) lon -= 0x100000;
-    lon = ((lon + round_lon) << 7) // + 0x40 
-
-    int32_t ns = (pkt->ns[0] + pkt->ns[1] + pkt->ns[2] + pkt->ns[3]) / 4;
-    int32_t ew = (pkt->ew[0] + pkt->ew[1] + pkt->ew[2] + pkt->ew[3]) / 4;
-    float speed4 = sqrtf(ew * ew + ns * ns) * (1 << pkt->smult);
-
-    float direction = 0;
-    if (speed4 > 0) {
-      direction = atan2f(ns,ew) * 180.0 / PI;  // -180 ... 180 
-      // convert from math angle into course relative to north 
-      direction = (direction <= 90.0 ? 90.0 - direction :
-                                      450.0 - direction);
-    }
-
-    uint16_t vs_u16 = pkt->vs;
-    int16_t vs_i16 = (int16_t) (vs_u16 | (vs_u16 & (1<<9) ? 0xFC00U : 0));
-    int16_t vs10 = vs_i16 << pkt->smult;
-
-    int16_t alt = pkt->alt ; // relative to WGS84 ellipsoid 
-
-    fop->addr = pkt->addr;
-    fop->addr_type = pkt->addr_type;
-    fop->timestamp = timestamp;
-    fop->latitude = (float)lat / 1e7;
-    fop->longitude = (float)lon / 1e7;
-    fop->altitude = (float) alt - geo_separ;
-    fop->speed = speed4 / (4 * _GPS_KMH_PER_KNOT);
-    fop->course = direction;
-    fop->vs = ((float) vs10) * (_GPS_FEET_PER_METER * 6.0);
-    fop->aircraft_type = pkt->aircraft_type;
-    fop->stealth = pkt->stealth;
-    fop->no_track = pkt->no_track;
-    fop->ns[0] = pkt->ns[0]; fop->ns[1] = pkt->ns[1];
-    fop->ns[2] = pkt->ns[2]; fop->ns[3] = pkt->ns[3];
-    fop->ew[0] = pkt->ew[0]; fop->ew[1] = pkt->ew[1];
-    fop->ew[2] = pkt->ew[2]; fop->ew[3] = pkt->ew[3];
-  */
  return 0;
 }
 
@@ -277,9 +221,11 @@ bool legacy_decode(void *legacy_pkt, ufo_t *this_aircraft, ufo_t *fop) {
   fop->latitude = (float)lat / 1e7;
   fop->longitude = (float)lon / 1e7;
   fop->altitude = (float) alt - geo_separ;
-  fop->speed = speed4 / (4 * _GPS_KMH_PER_KNOT);
+  fop->speed = speed4 / (4 * _GPS_KMH_2_MPS);
   fop->course = direction;
-  fop->vs = ((float) vs10) * (_GPS_FEET_PER_METER * 6.0);
+  //log_i("vs10=%d",vs10);
+  //fop->vs = ((float) vs10) * (_GPS_FEET_PER_METER * 6.0);
+  fop->vs = ((float) vs10) / 10.0;
   fop->aircraft_type = pkt->aircraft_type;
   fop->stealth = pkt->stealth;
   fop->no_track = pkt->no_track;
@@ -305,8 +251,9 @@ size_t legacy_encode(void *legacy_pkt, ufo_t *this_aircraft) {
     int16_t alt = (int16_t) (this_aircraft->altitude + this_aircraft->geoid_separation);
  
     float course = this_aircraft->course;
-    float speedf = this_aircraft->speed * _GPS_KMH_PER_KNOT; /* m/s */
-    float vsf = this_aircraft->vs / (_GPS_FEET_PER_METER * 60.0); /* m/s */
+    float speedf = this_aircraft->speed * _GPS_KMH_2_MPS; /* m/s */
+    //float vsf = this_aircraft->vs / (_GPS_FEET_PER_METER * 60.0); /* m/s */
+    float vsf = this_aircraft->vs ; /* m/s */
 
     uint16_t speed4 = (uint16_t) roundf(speedf * 4.0f);
     if (speed4 > 0x3FF) {
@@ -454,7 +401,7 @@ eFlarmAircraftType LP_Fanet2FlarmAircraft(FanetLora::aircraft_t aircraft){
 }
 
 
-void createLegacyPkt(FanetLora::trackingData *Data,uint8_t * buffer)
+void createLegacyPkt(FanetLora::trackingData *Data,float geoidAlt,uint8_t * buffer)
 {
     FlarmtrackingData FlarmDataData;
     ufo_t air={0};
@@ -464,13 +411,14 @@ void createLegacyPkt(FanetLora::trackingData *Data,uint8_t * buffer)
     air.no_track = false;
     air.aircraft_type=(uint8_t)LP_Fanet2FlarmAircraft(Data->aircraftType);
     air.altitude= Data->altitude;
+    air.geoid_separation = geoidAlt;
     air.addr = Data->devId;
     air.latitude=Data->lat;
     air.longitude=Data->lon;
     air.vs=Data->climb;
-    //air.vs=2.5;
+    //air.vs=-12.3;
     air.speed= Data->speed;
-    //air.speed = 33.5;
+    //air.speed = 37.5;
     //legacyLogAircraft(&air);
     legacy_encode(buffer,&air);
 
