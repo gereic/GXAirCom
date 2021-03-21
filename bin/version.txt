@@ -276,3 +276,6 @@ Bugfix OGN-Live-Tracking for Legacy-received data.
 v4.8.1
 Bugfix in receiving with SX1276
 
+v4.8.2
+Changed Timing for simultaneoulsy Fanet-Legacy-Mode
+added Info in neighbours.html, if message was a FANET or LEGACY

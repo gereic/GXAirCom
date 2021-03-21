@@ -399,22 +399,22 @@ void FanetMac::stateWrapper()
 	static uint32_t tSwitch = millis();
 	static uint32_t tNewTime = 3000 + random(MAC_FORWARD_DELAY_MIN, MAC_FORWARD_DELAY_MAX);
 	uint32_t tAct = millis();
+	fmac.handleIRQ();
 	if (fmac._enableLegacyTx == 2){
 		if (fmac._fskMode){
 			if ((tAct - tSwitch) >= tNewTime){ // 1.9sec in FSK-Mode
 				fmac.switchLora();
 				tSwitch = tAct;
-				tNewTime = 3000 + random(MAC_FORWARD_DELAY_MIN, MAC_FORWARD_DELAY_MAX);
+				tNewTime = 5500 + random(MAC_FORWARD_DELAY_MIN, MAC_FORWARD_DELAY_MAX);
 			}
 		}else{
 			if ((tAct - tSwitch) >= tNewTime){ // 3sec. in FANET-Mode
 				fmac.switchFSK();
 				tSwitch = tAct;
-				tNewTime = 1900 + random(MAC_FORWARD_DELAY_MIN, MAC_FORWARD_DELAY_MAX);
+				tNewTime = 2200 + random(MAC_FORWARD_DELAY_MIN, MAC_FORWARD_DELAY_MAX);
 			}
 		}
 	}
-	fmac.handleIRQ();
   fmac.handleRx();
 	if (!fmac._fskMode){  	
     fmac.handleTx();

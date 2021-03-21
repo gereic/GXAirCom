@@ -208,7 +208,6 @@ int16_t LoRaClass::switchLORA(){
       //log_i("setFrequency %d",ret);
       break;
     case RADIO_SX1276:
-      //ret = pSx1276Radio->startReceive();
       ret = pSx1276Radio->standby();
       //log_i("standby %d",ret);
       ret = pSx1276Radio->setActiveModem(SX127X_LORA);
@@ -285,11 +284,9 @@ int16_t LoRaClass::startReceive(){
       break;
     case RADIO_SX1276:
       iRet = pSx1276Radio->startReceive();
-      //delay(10);
-      //iRet = pSx1276Radio->startReceive();
       break;
   }
-  //log_i("startReceive %d,ret=%d",radioType,iRet);  
+  receivedFlag = false;
   enableInterrupt = true;
   return iRet;
 }
