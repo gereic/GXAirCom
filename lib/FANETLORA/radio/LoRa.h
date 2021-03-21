@@ -54,7 +54,7 @@ private:
   uint16_t _preambleLength = 8;
   bool _fskMode;
 	float sx_airtime = 0.0f;
-
+  uint8_t rxCount = 0;
 
 
 };

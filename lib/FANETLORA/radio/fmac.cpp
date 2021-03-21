@@ -649,6 +649,7 @@ void FanetMac::sendLegacy(){
 	if (state != ERR_NONE){
 		log_e("error TX state=%d",state);
 	}	
+	log_i("sending Legacy");
 	bSendLegacy = false; //legacy sent !!
 }
 

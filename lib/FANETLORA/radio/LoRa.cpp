@@ -24,7 +24,8 @@ void setFlag(void)
 
 bool LoRaClass::isRxMessage(){
   if (receivedFlag){
-    //log_i("new message arrived");
+    rxCount++;
+    //log_i("new message arrived %d",rxCount);
     enableInterrupt = false;
     receivedFlag = false;
     return true;
@@ -119,6 +120,7 @@ int16_t LoRaClass::readData(uint8_t* data, size_t len){
       
     case RADIO_SX1276:
       ret = pSx1276Radio->readData(data,len);
+
       if (_fskMode){
         invertba(data,len); //invert complete Frame
       }
@@ -351,10 +353,9 @@ int16_t LoRaClass::transmit(uint8_t* data, size_t len){
       }      
     case RADIO_SX1276:
       if (_fskMode){
-        invertba(data,len);
-        
-      }else{
-        return 0; // GE only for testing FSK_MODE !!
+        invertba(data,len);        
+      //}else{
+      //  return 0; // GE only for testing FSK_MODE !!
       } 
       return pSx1276Radio->transmit(data,len);
   }

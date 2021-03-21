@@ -194,6 +194,7 @@ public:
     float heading; //deg
     int rssi; //rssi
     uint8_t type; //tracking-type (11... online tracking 7X .... ground tracking)s
+    uint8_t addressType;
   } neighbour;
 
   typedef struct {

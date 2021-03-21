@@ -1144,7 +1144,12 @@ bool SX127x::findChip(uint8_t ver) {
 }
 
 int16_t SX127x::setMode(uint8_t mode) {
-  return(_mod->SPIsetRegValue(SX127X_REG_OP_MODE, mode, 2, 0, 10));
+  //uint32_t tstart = millis();
+  int16_t ret = _mod->SPIsetRegValue(SX127X_REG_OP_MODE, mode, 2, 0, 10);
+  //log_i("ret=%d,mode=%d;t=%d",ret,mode,millis()-tstart);
+  //delay(1);
+  delayMicroseconds(500);
+  return(ret);
 }
 
 int16_t SX127x::getActiveModem() {

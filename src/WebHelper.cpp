@@ -505,7 +505,7 @@ String processor(const String& var){
     return sRet;
   }else if (var == "NEIGHBOURSLIST"){
     sRet = "";
-    sRet =  "<tr><th>ID</th><td>type</td><td>lat</td><td>lon</td><td>state</td><td>dist</td><td>alt</td><td>speed</td><td>climb</td><td>heading</td><td>rssi</td><td>last seen:</td></tr>\r\n";    
+    sRet =  "<tr><th>ID</th><td>type</td><td>lat</td><td>lon</td><td>state</td><td>dist</td><td>alt</td><td>speed</td><td>climb</td><td>heading</td><td>rssi</td><td>last seen</td><td>received by</td></tr>\r\n";    
     for (int i = 0; i < MAXNEIGHBOURS; i++){
       if (fanet.neighbours[i].devId){
         sRet += "<tr><th><a href=\"https://www.google.com/maps/search/?api=1&query=" + String(fanet.neighbours[i].lat,6) + "," + String(fanet.neighbours[i].lon,6)+ "\"  target=\"_blank\">";
@@ -528,9 +528,13 @@ String processor(const String& var){
         "<td>" + String(fanet.neighbours[i].climb,1) + "m/s</td>" +
         "<td>" + String(fanet.neighbours[i].heading,0) + "°</td>" +
         "<td>" + String(fanet.neighbours[i].rssi) + "dB</td>" +
-        "<td>" + String((millis() - fanet.neighbours[i].tLastMsg) / 1000) + "seconds</td>" +
-        "</th>" +
-        "\r\n";
+        "<td>" + String((millis() - fanet.neighbours[i].tLastMsg) / 1000) + "s</td>";
+        if (fanet.neighbours[i].addressType & 0x80){
+          sRet += "<td>FANET</td>";
+        }else{
+          sRet += "<td>LEGACY</td>";
+        }
+        sRet += "</th>\r\n";
       }
     }
     return sRet;

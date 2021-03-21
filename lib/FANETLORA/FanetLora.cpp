@@ -357,6 +357,7 @@ void FanetLora::insertDataToNeighbour(uint32_t devId, trackingData *Data){
   neighbours[index].heading = Data->heading;
   neighbours[index].rssi = Data->rssi;
   neighbours[index].type = Data->type;
+  neighbours[index].addressType = Data->addressType;
 }
 
 void FanetLora::clearNeighboursWeather(uint32_t tAct){

@@ -273,4 +273,6 @@ Bugfix Legacy-speeed
 Bugfix Legacy-vertial-speed
 Bugfix OGN-Live-Tracking for Legacy-received data.
 
+v4.8.1
+Bugfix in receiving with SX1276
 
