@@ -279,3 +279,9 @@ Bugfix in receiving with SX1276
 v4.8.2
 Changed Timing for simultaneoulsy Fanet-Legacy-Mode
 added Info in neighbours.html, if message was a FANET or LEGACY
+
+v4.8.3
+adjusted frequencys
+better settings.html with response for calibration-buttons
+Setting of Kalman-Filter for Vario are in advanced-settings-view
+added STL for kobo glo and kobo touch.
