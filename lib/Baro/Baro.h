@@ -68,6 +68,7 @@ class Baro {
 public:
     Baro(); //constructor
     uint8_t begin(TwoWire *pi2c);
+    void setKalmanSettings(float sigmaP,float sigmaA);
     void useMPU(bool bUseMPU);
     void run(void);
     void end(void);
@@ -122,6 +123,8 @@ private:
     Interpolation interpolate;
     double tValues[2] = { 29.4, 15.5 };
     double zValues[2] = {   0,  -90 };
+    double _sigmaP;
+    double _sigmaA;
 };
 
 

@@ -155,7 +155,7 @@ int16_t LoRaClass::switchFSK(){
     case RADIO_SX1262:
       ret = pSx1262Radio->switchFSK(100.0,50.0,156.2,8,0.0,false);
       //log_i("switchFSK %d",ret);
-      ret = pSx1262Radio->setFrequency(868.199950,false); //don't calibrate Frequency
+      ret = pSx1262Radio->setFrequency(FSK_FREQUENCY,false); //don't calibrate Frequency
       //log_i("setFrequency %d",ret);
       ret = pSx1262Radio->setSyncWord(syncWord,sizeof(syncWord));
       //log_i("setSyncWord %d",ret);
@@ -170,6 +170,8 @@ int16_t LoRaClass::switchFSK(){
       ret = pSx1276Radio->setActiveModem(SX127X_FSK_OOK);
       //log_i("setActiveModem %d",ret);
       ret = pSx1276Radio->setOOK(false);
+      //log_i("setOOK %d",ret);
+      ret = pSx1276Radio->setFrequency(FSK_FREQUENCY);
       //log_i("setOOK %d",ret);
       ret = pSx1276Radio->setBitRate(100.0);
       //log_i("setBitRate %d",ret);

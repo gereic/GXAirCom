@@ -29,7 +29,8 @@
 #define RST 23
 #define DIO0 26
 
-#define FREQUENCY868 868200012
+//#define FREQUENCY868 868200012
+#define FREQUENCY868 868200000
 #define FREQUENCY915 916039978
 
 //#define ManuId 0x07 // for the moment we use soft-Rf, cause then airwhere is showing it on the map
@@ -102,6 +103,9 @@
 #define	TX_RX_ONGOING					-2
 #define	TX_FSK_ONGOING					-3
 #define TX_ERROR					-100
+
+#define LORA_TIME 5000
+#define FSK_TIME 2000
 
 
 
@@ -196,6 +200,7 @@ private:
   //void coord2payload_absolut(float lat, float lon, uint8_t *buf);
 
 	bool isNeighbor(MacAddr addr);
+	//int16_t checkLegacyPaket(void *legacy_pkt, ufo_t *this_aircraft, ufo_t *fop);
 	uint8_t _enableLegacyTx;
 	bool _fskMode;
 	LoRaClass radio;

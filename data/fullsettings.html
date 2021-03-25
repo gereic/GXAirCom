@@ -67,6 +67,30 @@ function setVis(){
   document.getElementById("VisAWFFNT").style.display='none'; //set advanced weahter upload settings invisible      
   document.getElementById("VisWD").style.display='none'; //set weather-data invisible
   document.getElementById("VisLegacy").style.display=''; //now Legacy can be turned on always.
+  document.getElementById("visAxOffset").style.display='none';
+  document.getElementById("visAyOffset").style.display='none';
+  document.getElementById("visAzOffset").style.display='none';
+  document.getElementById("visGxOffset").style.display='none';
+  document.getElementById("visGyOffset").style.display='none';
+  document.getElementById("visGzOffset").style.display='none';
+  document.getElementById("visAccTemp1").style.display='none';
+  document.getElementById("visAccTemp2").style.display='none';  
+  document.getElementById("visSigmaP").style.display='none';  
+  document.getElementById("visSigmaA").style.display='none';  
+  if (document.getElementById("setView").value > 0){ //we are advanced user
+    document.getElementById("visSigmaP").style.display='';  
+    document.getElementById("visSigmaA").style.display='';  
+  }
+  if (document.getElementById("setView").value > 100){ //we are expert
+    document.getElementById("visAxOffset").style.display='';
+    document.getElementById("visAyOffset").style.display='';
+    document.getElementById("visAzOffset").style.display='';
+    document.getElementById("visGxOffset").style.display='';
+    document.getElementById("visGyOffset").style.display='';
+    document.getElementById("visGzOffset").style.display='';
+    document.getElementById("visAccTemp1").style.display='';
+    document.getElementById("visAccTemp2").style.display='';
+  }
   if (document.getElementById("mode").value == 1){ //mode ground-station
     if (bHasBME == 0){      
       document.getElementById("tWu").innerHTML='Broadcast weather-underground data to FANET';
@@ -133,8 +157,32 @@ function setVis(){
   }
 }
 
+function setBtnCalib(BtnId,state){
+  e = document.getElementById(BtnId);
+  switch(state){
+    case 0:
+      e.innerText = "calib";
+      break;
+    case 1:
+      e.innerText = "calibrating, please wait ...";
+      break;
+    case 2:
+      e.innerText = "calibration ready --> Board will reboot";
+      document.getElementById("btnsave").innerText  = "rebooting ..."
+      var delay = 2000;
+      setTimeout( callMainPage, delay )
+      break;
+    case 255:
+      e.innerText = "error calibration";
+      break;
+    default:
+      break;
+  }
+}
+
 //send calibGyro
 function calibGyro(){  
+  setBtnCalib("btnCalibGyro",1);
   var obj = {
   calibGyro : 1
   };
@@ -143,13 +191,41 @@ function calibGyro(){
 
 //send calibcalibAcc
 function calibAcc(){  
+  setBtnCalib("btnCalibAcc",1);
   var obj = {
     calibAcc : 1
   };
   doSend(JSON.stringify(obj));
 }
 
+
+function setBtnGPS(state){
+  e = document.getElementById("btnGPS");
+  switch(state){
+    case 0:
+      e.innerText = "config GPS";
+      break;
+    case 1:
+      e.innerText = "configure GPS, please wait ...";
+      break;
+    case 2:
+      e.innerText = "GPS ready --> Board will reboot";
+      document.getElementById("btnsave").innerText  = "rebooting ..."
+      var delay = 2000;
+      setTimeout( callMainPage, delay )
+      break;
+    case 255:
+      e.innerText = "error configure GPS";
+      break;
+    default:
+      break;
+  }
+
+
+}
+
 function sendUbloxConfig(){
+  setBtnGPS(1);
   var obj = {
   configGPS : 1
   };
@@ -242,7 +318,8 @@ function sendValues(){
   traccar_live : Number(document.getElementById("traccar_live").checked),
   traccarsrv : document.getElementById("traccarsrv").value,
   lgM : document.getElementById("lgM").value,
-
+  sigmaP : parseFloat(document.getElementById("sigmaP").value),
+  sigmaA : parseFloat(document.getElementById("sigmaA").value),
   vSinkTh : parseFloat(document.getElementById("vSinkTh").value),
   vClimbTh : parseFloat(document.getElementById("vClimbTh").value),
   vNClimbSens : parseFloat(document.getElementById("vNClimbSens").value),
@@ -333,6 +410,15 @@ function onMessage(evt) {
           if (myObj[key] == 0){
             document.getElementById("VisGSM").style.display='none';
           }
+          continue;          
+        }else if (key == "configGPS"){
+          setBtnGPS(myObj[key]);
+          continue;          
+        }else if (key == "calibGyro"){
+          setBtnCalib("btnCalibGyro",myObj[key]);
+          continue;          
+        }else if (key == "calibAcc"){
+          setBtnCalib("btnCalibAcc",myObj[key]);
           continue;          
         }else if (key == "useMPU"){
           if (myObj[key] == 0){
@@ -543,7 +629,7 @@ window.addEventListener("load", init, false);
             <th>output GPS</th>
             <td><input type="checkbox" id="oGPS" ></td>
             <td>   
-              <button type="button"  onclick="sendUbloxConfig()" class="button byel" style="line-height: 1.7rem;">config GPS</button>
+              <button type="button"  onclick="sendUbloxConfig()" id="btnGPS" class="button byel" style="line-height: 1.7rem;">config GPS</button>
             </td>
           </tr>
           <tr>
@@ -758,11 +844,6 @@ window.addEventListener("load", init, false);
       <legend><b>Vario settings</b></legend>
       <table style="width:100&#37;">
         <tbody>
-          <tr id="VisMPUSetting">
-            <th>use accelerometer</th>
-            <td><input type="checkbox" id="useMPU"></td>
-          </tr>
-          <tr>
             <th>climbing threshold [m/s]</th>
             <td><input type="number" id="vClimbTh" step=".01"></td>
           </tr>
@@ -790,6 +871,18 @@ window.addEventListener("load", init, false);
             <th>offset Temperature [K]</th>
             <td><input type="number" id="vTOffs" step=".5"></td>
           </tr>
+          <tr id="VisMPUSetting">
+            <th>use accelerometer</th>
+            <td><input type="checkbox" id="useMPU"></td>
+          <tr>
+          <tr id="visSigmaP">
+            <th>Kalman filter pressure-value (default 0.1)</th>
+            <td><input type="number" id="sigmaP" step=".01"></td>
+          </tr>
+          <tr id="visSigmaA">
+            <th>Kalman filter accelerator-value (default 0.6)</th>
+            <td><input type="number" id="sigmaA" step=".01"></td>
+          </tr>
       </table>
     </fieldset>
     <p></p>
@@ -800,30 +893,30 @@ window.addEventListener("load", init, false);
         <tbody>
           <tr>
             <th>acc-sensor</th>
-            <td><input type="number" id="axOffset" step="1"></td>
-            <td><input type="number" id="ayOffset" step="1"></td>
-            <td><input type="number" id="azOffset" step="1"></td>
+            <td id="visAxOffset"><input type="number" id="axOffset" step="1"></td>
+            <td id="visAyOffset"><input type="number" id="ayOffset" step="1"></td>
+            <td id="visAzOffset"><input type="number" id="azOffset" step="1"></td>
             <td>
-              <button type="button" onClick="calibAcc()" class="button byel" style="line-height: 1.7rem;">calib</button>
+              <button type="button" onClick="calibAcc()" id="btnCalibAcc" class="button byel" style="line-height: 1.7rem;">calib</button>
             </td>
           </tr>
-          <tr>
+          <tr id="visAccTemp1">
             <th>acc-sensor Temp [°C]</th>
             <td><input type="number" id="t[0]" step="0.1"></td>
             <td><input type="number" id="t[1]" step="0.1"></td>
           </tr>
-          <tr>
+          <tr id="visAccTemp2">
             <th>acc-sensor Z-Offset</th>
             <td><input type="number" id="z[0]" step="1"></td>
             <td><input type="number" id="z[1]" step="1"></td>
           </tr>
           <tr>
             <th>gyro-sensor</th>
-            <td><input type="number" id="gxOffset" step="1"></td>
-            <td><input type="number" id="gyOffset" step="1"></td>
-            <td><input type="number" id="gzOffset" step="1"></td>
+            <td id="visGxOffset"><input type="number" id="gxOffset" step="1"></td>
+            <td id="visGyOffset"><input type="number" id="gyOffset" step="1"></td>
+            <td id="visGzOffset"><input type="number" id="gzOffset" step="1"></td>
             <td>
-              <button type="button" onClick="calibGyro()" class="button byel" style="line-height: 1.7rem;">calib</button>
+              <button type="button" onClick="calibGyro()" id="btnCalibGyro" class="button byel" style="line-height: 1.7rem;">calib</button>
             </td>
           </tr>
       </table>

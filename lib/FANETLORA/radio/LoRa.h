@@ -20,6 +20,8 @@
 
 #define FSK_PACKET_LENGTH 26
 
+#define FSK_FREQUENCY 868.2
+
 class LoRaClass {
 public:
   //LoRaClass(SPIClass *_spi,uint8_t cs, uint8_t irq, uint8_t rst, uint8_t gpio);

@@ -458,6 +458,7 @@ Frame *FanetLora::get_frame()
 
       if (_enableLegacyTx>0)
         createLegacyPkt(&_myData,fmac.geoidAlt,Legacy_Buffer);
+        fmac.bSendLegacy = true; //send Legacy-Information
 		}
 		else
 		{

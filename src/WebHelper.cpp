@@ -193,6 +193,9 @@ void onWebSocketEvent(uint8_t client_num,
 
 
           doc.clear();
+          doc["configGPS"] = command.ConfigGPS;
+          doc["calibGyro"] = command.CalibGyro;
+          doc["calibAcc"] = command.CalibAcc;
           doc["axOffset"] = setting.vario.accel[0];
           doc["ayOffset"] = setting.vario.accel[1];
           doc["azOffset"] = setting.vario.accel[2];
@@ -203,6 +206,8 @@ void onWebSocketEvent(uint8_t client_num,
           doc["t[1]"] = setting.vario.tValues[1];
           doc["z[0]"] = setting.vario.zValues[0];
           doc["z[1]"] = setting.vario.zValues[1];
+          doc["sigmaA"] =  setting.vario.sigmaA;
+          doc["sigmaP"] =  setting.vario.sigmaP;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
 
@@ -318,11 +323,11 @@ void onWebSocketEvent(uint8_t client_num,
 
         }
       }else if (root.containsKey("configGPS")){
-        setting.bConfigGPS = true; //setup GPS
+        command.ConfigGPS = doc["configGPS"].as<uint8_t>(); //setup GPS
       }else if (root.containsKey("calibGyro")){
-        setting.vario.bCalibGyro = true; //calibrate Gyro
+        command.CalibGyro =  doc["calibGyro"].as<uint8_t>(); //calibrate Gyro
       }else if (root.containsKey("calibAcc")){
-        setting.vario.bCalibAcc = true; //calibrate accelerometer
+        command.CalibAcc = doc["calibAcc"].as<uint8_t>(); //calibrate accelerometer
       }else if (root.containsKey("updateState")){
         status.updateState = doc["updateState"].as<uint8_t>();
       }else if (root.containsKey("save")){
@@ -399,6 +404,8 @@ void onWebSocketEvent(uint8_t client_num,
         if (root.containsKey("t[1]")) newSetting.vario.tValues[1] = doc["t[1]"].as<float>();
         if (root.containsKey("z[0]")) newSetting.vario.zValues[0] = doc["z[0]"].as<float>();
         if (root.containsKey("z[1]")) newSetting.vario.zValues[1] = doc["z[1]"].as<float>();
+        if (root.containsKey("sigmaA")) newSetting.vario.sigmaA = doc["sigmaA"].as<float>();
+        if (root.containsKey("sigmaP")) newSetting.vario.sigmaP = doc["sigmaP"].as<float>();
 
         //weather-underground upload
         if (root.containsKey("WUUlEnable")) newSetting.WUUpload.enable = doc["WUUlEnable"].as<bool>();
@@ -499,7 +506,12 @@ String processor(const String& var){
     //sRet += "<option value=\"08AF88\">mytest 08AF88</option>\r\n";
     for (int i = 0; i < MAXNEIGHBOURS; i++){
       if (fanet.neighbours[i].devId){
-        sRet += "<option value=\"" + fanet.getDevId(fanet.neighbours[i].devId) + "\">" + fanet.neighbours[i].name + " " + fanet.getDevId(fanet.neighbours[i].devId) + "</option>\r\n";
+        sRet += "<option value=\"" + fanet.getDevId(fanet.neighbours[i].devId) + "\">";
+        if (fanet.neighbours[i].name.length() > 0){
+          sRet += fanet.neighbours[i].name;
+        }
+        sRet +=  " [" + fanet.getDevId(fanet.neighbours[i].devId) + "]</option>\r\n";
+        //sRet += "<option value=\"" + fanet.getDevId(fanet.neighbours[i].devId) + "\">" + fanet.neighbours[i].name + " " + fanet.getDevId(fanet.neighbours[i].devId) + "</option>\r\n";
       }
     }
     return sRet;
@@ -742,7 +754,8 @@ void Web_loop(void){
   static uint32_t tRestart = millis();
   uint32_t tAct = millis();
   bool bSend = false;
-  statusData mStatus;
+  static statusData mStatus;
+  static commandData mCommand;
   StaticJsonDocument<300> doc; //Memory pool
   // Look for and handle WebSocket data
   webSocket.loop();
@@ -750,6 +763,7 @@ void Web_loop(void){
 
   if ((tAct - tLife) >= 100){
     tLife = tAct;
+    //site update
     doc.clear();
     bSend = false;
     if (mStatus.updateState != status.updateState){
@@ -769,6 +783,34 @@ void Web_loop(void){
         }
       }
     }
+    //site fullsettings
+    doc.clear();
+    bSend = false;
+    if (mCommand.ConfigGPS != command.ConfigGPS){
+      bSend = true;
+      mCommand.ConfigGPS = command.ConfigGPS;
+      doc["configGPS"] = mCommand.ConfigGPS;
+    }    
+    if (mCommand.CalibGyro != command.CalibGyro){
+      bSend = true;
+      mCommand.CalibGyro = command.CalibGyro;
+      doc["calibGyro"] = mCommand.CalibGyro;
+    }    
+    if (mCommand.CalibAcc != command.CalibAcc){
+      bSend = true;
+      mCommand.CalibAcc = command.CalibAcc;
+      doc["calibAcc"] = mCommand.CalibAcc;
+    }    
+    if (bSend){
+      serializeJson(doc, msg_buf);
+      for (int i = 0;i <MAXCLIENTS;i++){
+        if (clientPages[i] == 10){
+          log_d("Sending to [%u]: %s", i, msg_buf);
+          webSocket.sendTXT(i, msg_buf);
+        }
+      }
+    }
+    
 
 
     //vario
@@ -824,6 +866,12 @@ void Web_loop(void){
     if ((tAct - tCounter) >= 1000){
       tCounter = tAct;
       counter++;
+      char buffer [80];
+      struct tm timeinfo;
+      if (getLocalTime(&timeinfo)){
+        strftime (buffer,80,"%F %T",&timeinfo);
+        doc["time"] = buffer;
+      }
       doc["freeHeap"] = xPortGetFreeHeapSize();
       doc["fHeapMin"] = xPortGetMinimumEverFreeHeapSize();
       doc["counter"] = counter;
@@ -932,26 +980,28 @@ void Web_loop(void){
       }
     }
 
-    doc.clear();
-    bSend = false;
-    if (mStatus.fuelSensor != status.fuelSensor){
-      bSend = true;
-      mStatus.fuelSensor = status.fuelSensor;
-      doc["fuelValue"] = String(status.fuelSensor,3);
-    }        
-    if (bSend){
-      serializeJson(doc, msg_buf);
-      for (int i = 0;i <MAXCLIENTS;i++){
-        if (clientPages[i] == 1){
-          log_d("Sending to [%u]: %s", i, msg_buf);
-          webSocket.sendTXT(i, msg_buf);
+    if (setting.bHasFuelSensor){
+      doc.clear();
+      bSend = false;
+      if (mStatus.fuelSensor != status.fuelSensor){
+        bSend = true;
+        mStatus.fuelSensor = status.fuelSensor;
+        doc["fuelValue"] = String(status.fuelSensor,3);
+      }        
+      if (bSend){
+        serializeJson(doc, msg_buf);
+        for (int i = 0;i <MAXCLIENTS;i++){
+          if (clientPages[i] == 1){
+            log_d("Sending to [%u]: %s", i, msg_buf);
+            webSocket.sendTXT(i, msg_buf);
+          }
         }
       }
     }
 
 
     #ifdef GSMODULE
-    if (setting.Mode == MODE_GROUND_STATION){
+    if ((setting.Mode == MODE_GROUND_STATION) && (status.vario.bHasBME | status.bWUBroadCast)){
       //weahter-data
       doc.clear();
       bSend = false;

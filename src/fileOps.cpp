@@ -66,6 +66,8 @@ void load_configFile(SettingsData* pSetting){
   pSetting->vario.BeepOnlyWhenFlying = preferences.getUChar("VBeepFlying",1);
   pSetting->vario.useMPU = preferences.getUChar("useMPU",0);
   pSetting->vario.tempOffset = preferences.getFloat("vTOffs",0.0);
+  pSetting->vario.sigmaP = preferences.getFloat("vSigmaP",0.1);
+  pSetting->vario.sigmaA = preferences.getFloat("vSigmaA",0.6);
 
   //wu-upload
   pSetting->WUUpload.enable = preferences.getUChar("WUUlEnable",0);
@@ -155,6 +157,8 @@ void write_configFile(SettingsData* pSetting){
   preferences.putUChar("VBeepFlying",pSetting->vario.BeepOnlyWhenFlying);
   preferences.putUChar("useMPU",pSetting->vario.useMPU);
   preferences.putFloat("vTOffs",pSetting->vario.tempOffset);
+  preferences.putFloat("vSigmaP",pSetting->vario.sigmaP);
+  preferences.putFloat("vSigmaA",pSetting->vario.sigmaA);
 
   //weathersettings
   preferences.putUChar("FanetWeather",pSetting->wd.sendFanet);

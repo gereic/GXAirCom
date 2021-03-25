@@ -131,6 +131,7 @@ bool bGsmOff= false;
 
 struct SettingsData setting;
 struct statusData status;
+struct commandData command;
 String host_name = "";
 String bleMsg = "";
 
@@ -1297,6 +1298,7 @@ void setupWifi(){
     delay(100); //wait until we have the devid
   }
   status.wifiStat = 0;
+  WiFi.disconnect(true,true);
   WiFi.mode(WIFI_OFF);
   //delay(500);
   WiFi.persistent(false);
@@ -1450,6 +1452,8 @@ void printSettings(){
   log_i("VarioVolume=%d",setting.vario.volume);
   log_i("Vario use MPU=%d",setting.vario.useMPU);
   log_i("Vario temp offset=%.02f",setting.vario.tempOffset);
+  log_i("Vario sigmaP=%.02f",setting.vario.sigmaP);
+  log_i("Vario sigmaA=%.02f",setting.vario.sigmaA);
 
   //weather-data
   //general
@@ -1543,7 +1547,7 @@ void setup() {
   status.bInternetConnected = false;
   status.bTimeOk = false;
   status.modemstatus = MODEM_DISCONNECTED;
-  setting.bConfigGPS = false;
+  command.ConfigGPS = 0;
   status.bHasGPS = true; //we have our own GPS-Module
   status.tRestart = 0;
 
@@ -2384,6 +2388,7 @@ void taskBaro(void *pvParameters){
   //if (baro.begin(&i2cBaro)){
   baro.useMPU(setting.vario.useMPU);
   uint8_t baroSensor = baro.begin(&Wire);
+  baro.setKalmanSettings(setting.vario.sigmaP,setting.vario.sigmaA);
   if (baroSensor > 0){
     if (baroSensor == 2){
       status.vario.bHasMPU = true;
@@ -2400,13 +2405,20 @@ void taskBaro(void *pvParameters){
   if (status.vario.bHasVario){
     xLastWakeTime = xTaskGetTickCount ();
     while (1){      
-      if (setting.vario.bCalibGyro){
+      if (command.CalibGyro == 1){
         baro.calibGyro();
-        setting.vario.bCalibGyro = false;
+        command.CalibGyro = 2;
+        delay(2000);
+        esp_restart();
       }
-      if (setting.vario.bCalibAcc){
-        baro.calibAcc();
-        setting.vario.bCalibAcc = false;
+      if (command.CalibAcc == 1){
+        if (baro.calibAcc()){
+          command.CalibAcc = 2;
+          delay(2000);
+          esp_restart();
+        }else{
+          command.CalibAcc = 255; //error
+        }        
       }
       if (((!status.flying) && (setting.vario.BeepOnlyWhenFlying)) || (status.bMuting)){
         Beeper.setVolume(0);
@@ -3014,7 +3026,7 @@ void printGPSData(uint32_t tAct){
 void setWifi(bool on){
   if ((on) && (status.wifiStat == 0)){
     log_i("switch WIFI ACCESS-POINT ON");
-    WiFi.disconnect();
+    WiFi.disconnect(true,true);
     WiFi.mode(WIFI_OFF);
     WiFi.persistent(false);
     WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE); // call is only a workaround for bug in WiFi class
@@ -3518,8 +3530,13 @@ void taskStandard(void *pvParameters){
   fanet.begin(PinLora_SCK, PinLora_MISO, PinLora_MOSI, PinLora_SS,PinLoraRst, PinLoraDI0,frequency,setting.LoraPower,radioChip);
   fanet.setPilotname(setting.PilotName);
   fanet.setAircraftType(setting.AircraftType);
-  //if (setting.Mode != MODE_DEVELOPER){ //
+  //if (setting.Mode == MODE_GROUND_STATION){
+  //  fanet.autobroadcast = false;
+  //}else{
     fanet.autobroadcast = true;
+  //}
+  //if (setting.Mode != MODE_DEVELOPER){ //
+    
   //}else{
   //  fanet.autobroadcast = false;
   //}
@@ -3591,12 +3608,14 @@ void taskStandard(void *pvParameters){
     if (status.tMaxLoop < status.tLoop) status.tMaxLoop = status.tLoop;
 
     #ifdef AIRMODULE    
-    if (setting.bConfigGPS){      
+    if (command.ConfigGPS == 1){      
       if (setupUbloxConfig()){
+        command.ConfigGPS = 2; //setting ok
+        delay(2000);
         esp_restart();
+      }else{
+        command.ConfigGPS = 255; //error Setting GPS-konfig
       }
-      setting.bConfigGPS = false;
-      
     }
     #endif
     //handleButton(tAct);
@@ -3803,8 +3822,9 @@ void taskStandard(void *pvParameters){
     status.fanetRx = fanet.rxCount;
     status.fanetTx = fanet.txCount;
     if (fanet.isNewMsg()){
-      //write msg to udp !!
+      //write msg to udp !!      
       String msg = fanet.getactMsg() + "\n";
+      //log_i("new MSG:%s",msg.c_str());
       if (setting.outputFANET) sendData2Client(msg);
     }
     FanetLora::nameData nameData;
@@ -4205,6 +4225,7 @@ void taskBackGround(void *pvParameters){
   static uint32_t tCheckDayTime = millis();
   bool bSunsetOk = false;
   Dusk2Dawn dusk2dawn(setting.gs.lat,setting.gs.lon, 0);
+  uint8_t actDay = 0;
   #endif
 
   if (startOption != 0){ //we start wifi
@@ -4226,6 +4247,18 @@ void taskBackGround(void *pvParameters){
     handleUpdate(tAct);
     #ifdef GSMODULE
     if (setting.Mode == MODE_GROUND_STATION){
+      if (status.bTimeOk == true){
+        if (day() != actDay){
+          //restart every new day --> to get new NTP-Time
+          log_i("day changed %d->%d",actDay,day());
+          if (actDay != 0){
+            log_i("new day --> restart ESP");
+            delay(500);
+            esp_restart();
+          }
+          actDay = day();
+        }
+      }
       if (setting.gs.PowerSave == GS_POWER_SAFE){
         if (timeOver(tAct,tRuntime,180000)) bPowersaveOk = true; //after 3min. esp is allowed to go to sleep, so that anybody has a chance to change settings
         //bPowersaveOk = true; //after 3min. esp is allowed to go to sleep, so that anybody has a chance to change settings
@@ -4347,7 +4380,7 @@ void taskBackGround(void *pvParameters){
       if (timeOver(tAct,tWifiCheck,WIFI_RECONNECT_TIME)){
         tWifiCheck = tAct;
         log_i("WiFi not connected. Try to reconnect");
-        WiFi.disconnect();
+        WiFi.disconnect(true,true);
         WiFi.mode(WIFI_OFF);
         WiFi.persistent(false);
         WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE); // call is only a workaround for bug in WiFi class

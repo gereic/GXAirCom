@@ -304,10 +304,10 @@ struct VarioSettings{
   int16_t accel[3];
   int16_t gyro[3];
   float tValues[2];
-  float zValues[2];
-  bool bCalibGyro;
-  bool bCalibAcc;
+  float zValues[2];    
   float tempOffset;
+  float sigmaP;
+  float sigmaA;
 };
 
 struct VarioStatus{
@@ -386,7 +386,6 @@ struct SettingsData{
   weatherupload WUUpload; //weather-underground upload-settings
   weatherupload WindyUpload; //weather-underground upload-settings
   GsmSettings gsm; //settings for GSM
-  bool bConfigGPS;
   uint8_t fanetMode; //fanet tracking-mode 0 ... switch between online-tracking and ground-tracking 1 ... always online-tracking
   uint16_t fanetpin; //pin for fanet (4 signs)
   bool bHasExtPowerSw; //has external power-switch
@@ -402,6 +401,12 @@ struct weatherStatus{
   float WindGust = NAN; //[km/h]
   float rain1h = NAN; // rain this hour [l/h]
   float rain1d = NAN; // rain this day [l/h]
+};
+
+struct commandData{
+  uint8_t ConfigGPS; //command to configure GPS
+  uint8_t CalibAcc;  //command calibrate acc
+  uint8_t CalibGyro; //command calibrate Gyro
 };
 
 struct statusData{

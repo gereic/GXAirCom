@@ -13,6 +13,7 @@
 #include "fmac.h"
 #include <TimeLib.h>
 #include "Legacy/Legacy.h"
+#include "../FLARM/Flarm.h"
 #include "CRC/lib_crc.h"
 
 int serialize_legacyTracking(ufo_t *Data,uint8_t*& buffer);
@@ -22,7 +23,7 @@ int serialize_legacyTracking(ufo_t *Data,uint8_t*& buffer);
 Frame* MacFifo::get_nexttx()
 {
 	int next;
-	noInterrupts();
+	//noInterrupts();
 	for (next = 0; next < fifo.size(); next++)
 		if (fifo.get(next)->next_tx < millis())
 			break;
@@ -31,13 +32,13 @@ Frame* MacFifo::get_nexttx()
 		frm = NULL;
 	else
 		frm = fifo.get(next);
-	interrupts();
+	//interrupts();
 	return frm;
 }
 
 Frame* MacFifo::frame_in_list(Frame *frm)
 {
-	noInterrupts();
+	//noInterrupts();
 
 	for (int i = 0; i < fifo.size(); i++)
 	{
@@ -49,16 +50,16 @@ Frame* MacFifo::frame_in_list(Frame *frm)
 		}
 	}
 
-	interrupts();
+	//interrupts();
 
 	return NULL;
 }
 
 Frame* MacFifo::front()
 {
-	noInterrupts();
+	//noInterrupts();
 	Frame *frm = fifo.shift();
-	interrupts();
+	//interrupts();
 
 	return frm;
 }
@@ -66,7 +67,7 @@ Frame* MacFifo::front()
 /* add frame to fifo */
 int MacFifo::add(Frame *frm)
 {
-	noInterrupts();
+	//noInterrupts();
 
 	/* buffer full */
 	/* note: ACKs will always fit */
@@ -99,7 +100,7 @@ int MacFifo::add(Frame *frm)
 		/* add to tail */
 		fifo.add(frm);
 
-	interrupts();
+	//interrupts();
 	return 0;
 }
 
@@ -108,14 +109,14 @@ bool MacFifo::remove_delete(Frame *frm)
 {
 	bool found = false;
 
-	noInterrupts();
+	//noInterrupts();
 	for (int i = 0; i < fifo.size() && !found; i++)
 		if (frm == fifo.get(i))
 		{
 			delete fifo.remove(i);
 			found = true;
 		}
-	interrupts();
+	//interrupts();
 
 	return found;
 }
@@ -124,7 +125,7 @@ bool MacFifo::remove_delete(Frame *frm)
 bool MacFifo::remove_delete_acked_frame(MacAddr dest)
 {
 	bool found = false;
-	noInterrupts();
+	//noInterrupts();
 
 	for (int i = 0; i < fifo.size(); i++)
 	{
@@ -135,7 +136,7 @@ bool MacFifo::remove_delete_acked_frame(MacAddr dest)
 			found = true;
 		}
 	}
-	interrupts();
+	//interrupts();
 	return found;
 }
 
@@ -248,7 +249,7 @@ void FanetMac::frameReceived(int length)
   	uint16_t crc16 =  getLegacyCkSum(rx_frame,24);
     uint16_t crc16_2 = (uint16_t(rx_frame[24]) << 8) + uint16_t(rx_frame[25]);
     if (crc16 != crc16_2){
-      log_e("wrong Checksum %04X!=%04X",crc16,crc16_2);
+      //log_e("Legacy: wrong Checksum %04X!=%04X",crc16,crc16_2);
       delete frm;
       return;
     }
@@ -258,29 +259,45 @@ void FanetMac::frameReceived(int length)
     myAircraft.longitude = lon;
     myAircraft.geoid_separation = geoidAlt;
     myAircraft.timestamp = now();
-    //myAircraft.latitude =     
-    decrypt_legacy(rx_frame,now());
-    if (legacy_decode(rx_frame,&myAircraft,&air)){
-      //legacyLogAircraft(&air);
-      //float dist = distance(myAircraft.latitude,myAircraft.longitude,air.latitude,air.longitude, 'K');      
-      //if (dist <= 100.0){
-        //only, if dist <= 100km        
-        frm->src.manufacturer = uint8_t(air.addr >> 16);
-        frm->src.id = uint16_t(air.addr & 0x0000FFFF);
-        frm->dest = MacAddr();
-        frm->forward = false;
-        frm->type = FRM_TYPE_TRACKING_LEGACY;
-				frm->AddressType = air.addr_type;
-        frm->payload_length = serialize_legacyTracking(&air,frm->payload);
-        //log_i("src=%02X%04X,dest=%02X%04X,type=%d",frm->src.manufacturer,frm->src.id,frm->dest.manufacturer,frm->dest.id,frm->type);
-      //}else{
-      //  delete frm;
-      //  return;
-      //}
-    }else{
-      delete frm;
-      return;
-    }
+    //myAircraft.latitude =    
+		uint8_t newPacket[26];
+		uint32_t tNow = now();	
+		uint32_t tOffset = 0;	
+		bool bOk = false;
+		for(int i = 0;i < 5; i++){
+			memcpy(&newPacket[0],&rx_frame[0],26);
+			decrypt_legacy(newPacket,tNow + tOffset);
+			if (legacy_decode(newPacket,&myAircraft,&air)){
+				float dist = distance(myAircraft.latitude,myAircraft.longitude,air.latitude,air.longitude, 'K');      
+      	if ((dist <= 100.0) && (air.addr != 0) && (air.aircraft_type != 0)){
+					bOk = true;
+					break;
+				}
+			}
+			//log_i("Legacy-Packet not valid ts=%d;offset=%d",tNow,tOffset);
+			if (i == 0){
+				tOffset = -1;
+			}else if (i == 1){
+				tOffset = 1;
+			}else if (i == 2){
+				tOffset = -2;
+			}else if (i == 3){
+				tOffset = 2;
+			}
+		}
+		if (bOk){
+			frm->src.manufacturer = uint8_t(air.addr >> 16);
+			frm->src.id = uint16_t(air.addr & 0x0000FFFF);
+			frm->dest = MacAddr();
+			frm->forward = false;
+			frm->type = FRM_TYPE_TRACKING_LEGACY;
+			frm->AddressType = air.addr_type;
+			frm->payload_length = serialize_legacyTracking(&air,frm->payload);
+		}else{
+			//log_e("error decoding legacy");
+			delete frm;
+			return;
+		}
   }else{
     frm = new Frame(num_received, rx_frame);
 		frm->AddressType = getAddressType(frm->src.manufacturer) + 0x80; //set highest Bit, so we know, that it was a Fanet-MSG
@@ -397,21 +414,21 @@ void FanetMac::stateWrapper()
 {
 	//return;
 	static uint32_t tSwitch = millis();
-	static uint32_t tNewTime = 3000 + random(MAC_FORWARD_DELAY_MIN, MAC_FORWARD_DELAY_MAX);
+	static uint32_t tNewTime = LORA_TIME + random(MAC_FORWARD_DELAY_MIN, MAC_FORWARD_DELAY_MAX);
 	uint32_t tAct = millis();
 	fmac.handleIRQ();
 	if (fmac._enableLegacyTx == 2){
 		if (fmac._fskMode){
-			if ((tAct - tSwitch) >= tNewTime){ // 1.9sec in FSK-Mode
+			if ((tAct - tSwitch) >= tNewTime){ // 2.2sec in FSK-Mode
 				fmac.switchLora();
 				tSwitch = tAct;
-				tNewTime = 5500 + random(MAC_FORWARD_DELAY_MIN, MAC_FORWARD_DELAY_MAX);
+				tNewTime = LORA_TIME + random(MAC_FORWARD_DELAY_MIN, MAC_FORWARD_DELAY_MAX);
 			}
 		}else{
-			if ((tAct - tSwitch) >= tNewTime){ // 3sec. in FANET-Mode
+			if ((tAct - tSwitch) >= tNewTime){ // 5.5sec. in FANET-Mode
 				fmac.switchFSK();
 				tSwitch = tAct;
-				tNewTime = 2200 + random(MAC_FORWARD_DELAY_MIN, MAC_FORWARD_DELAY_MAX);
+				tNewTime = FSK_TIME + random(MAC_FORWARD_DELAY_MIN, MAC_FORWARD_DELAY_MAX);
 			}
 		}
 	}
@@ -614,9 +631,6 @@ void FanetMac::setLegacy(uint8_t enableTx){
 }
 
 void FanetMac::sendLegacy(){
-	//LoRa.dumpRegisters(Serial);
-	//log_i("sending legacy");
-	
 	encrypt_legacy(Legacy_Buffer,now());
 	
 	uint16_t crc16 =  getLegacyCkSum(Legacy_Buffer,24);
@@ -626,30 +640,12 @@ void FanetMac::sendLegacy(){
 		byteArr[i]=Legacy_Buffer[i];
 	
 	byteArr[24]=(crc16 >>8);
-  	byteArr[25]=crc16;
-
-/*
-  ufo_t air={0};
-  ufo_t myAircraft={0};
-  myAircraft.latitude = lat;
-  myAircraft.longitude = lon;
-  myAircraft.timestamp = now();
-  //myAircraft.latitude = 
-  
-  byte byteArr2[26];
-	for (int i=0;i<26;i++)
-		byteArr2[i]=byteArr[i];
-  decrypt_legacy(byteArr2,now());
-  legacy_decode(byteArr2,&myAircraft,&air);
-  //decodeFrame(byteArr2,26,&air);
-  legacyLogAircraft(&air);
-*/  
-	
+  byteArr[25]=crc16;
 	int16_t state = radio.transmit(byteArr, 26);
 	if (state != ERR_NONE){
 		log_e("error TX state=%d",state);
 	}	
-	log_i("sending Legacy");
+	//log_i("sending Legacy");
 	bSendLegacy = false; //legacy sent !!
 }
 
@@ -706,7 +702,6 @@ void FanetMac::handleTx()
 		frm = tx_fifo.get_nexttx();
 		if (frm == nullptr)
 			return;
-
 		/* frame w/o a received ack and no more re-transmissions left */
 		if (frm->ack_requested && frm->num_tx <= 0)
 		{
@@ -769,6 +764,7 @@ void FanetMac::handleTx()
 	}else{
 		radio.setCodingRate(5);
 	}	
+	//log_i("sending Frame");
 	int16_t state = radio.transmit(buffer, blength);
 	//int tx_ret = LoRa.sendFrame(buffer, blength, neighbors.size() < MAC_CODING48_THRESHOLD ? 8 : 5);
 	int tx_ret=TX_OK;
@@ -782,23 +778,11 @@ void FanetMac::handleTx()
 	if (state != ERR_NONE) {
 			log_e("startReceive failed, code %d",state);
 	}
-	//enableInterrupt = true;	
-
-	bool bSend = false;
-	if ((buffer[0]&0x1f)==1){
-		//my tracking-data
-		if (_enableLegacyTx == 1){
-			bSend = true;
-		}else if (_enableLegacyTx == 2){
-			bSendLegacy = true; //send legacy, when switching to legacy !! (not now)
-		}
-	}
-	//if ((_enableLegacyTx == 1) && ((buffer[0]&0x1f)==1)) bSend = true;	
 	delete[] buffer;
 
 	if (tx_ret == TX_OK){
-		if (bSend == 1){
-				handleTxLegacy();
+		if ((_enableLegacyTx == 1) && (bSendLegacy)){
+			handleTxLegacy();
     }
 		
 

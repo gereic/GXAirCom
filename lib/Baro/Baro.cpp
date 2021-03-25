@@ -243,8 +243,8 @@ bool Baro::calibGyro(void){
       preferences.putInt("gyOffset", gy_offset);
       preferences.putInt("gzOffset", gz_offset);
       preferences.end();
-      log_i("reboot");
-      ESP.restart();      
+      //log_i("reboot");
+      //ESP.restart();      
 			return true;
 		}
 
@@ -306,8 +306,8 @@ bool Baro::calibAcc(void){
       preferences.putInt("ayOffset", ay_offset);
       preferences.putInt("azOffset", az_offset);
       preferences.end();
-      log_i("reboot");
-      ESP.restart();      
+      //log_i("reboot");
+      //ESP.restart();      
 			return true;
 		}
 
@@ -438,24 +438,32 @@ void Baro::useMPU(bool bUseMPU){
   bUseAcc = bUseMPU;
 }
 
+void Baro::setKalmanSettings(float sigmaP,float sigmaA){
+  _sigmaP = sigmaP;
+  _sigmaA = sigmaA;
+}
+
 void Baro::calcClimbing(void){
   
   if (logData.newData == 0x80){
     //init alt-array
     //double test = logData.altitude;
-    if (bUseAcc){
+    log_i("Kalman_settings sigmaP=%.04f,sigmaA=%.04f",_sigmaP,_sigmaA);
+    //if (bUseAcc){
       Kalmanvert.init(logData.altitude,
                       0.0,
-                      0.1,
-                      0.3,
+                      _sigmaP,
+                      _sigmaA,
                       millis());
+    /*
     }else{
       Kalmanvert.init(logData.altitude,
                       0.0,
-                      0.1,
-                      0.6,
+                      _sigmaP,
+                      _sigmaA,
                       millis());
     }
+    */
     //Serial.println("KalmanInit");
   }else{
     if (bUseAcc){

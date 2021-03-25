@@ -14,6 +14,7 @@
 //extern WebServer server;
 extern struct SettingsData setting;
 extern struct statusData status;
+extern struct commandData command;
 extern FanetLora fanet;
 
 extern FanetLora::trackingData fanetTrackingData;  
