@@ -165,7 +165,8 @@ uint32_t fanetReceiver;
 uint8_t sendFanetData = 0;
 
 IPAddress local_IP(192,168,4,1);
-IPAddress gateway(192,168,4,1);
+//IPAddress gateway(192,168,4,1);
+IPAddress gateway(255,255,255,255); //clear gateway
 IPAddress subnet(255,255,255,0);
 
 volatile bool ppsTriggered = false;
@@ -1298,12 +1299,45 @@ void setupWifi(){
     delay(100); //wait until we have the devid
   }
   status.wifiStat = 0;
+  /*
+  WiFi.disconnect();
+  WiFi.mode(WIFI_AP);
+
+  WiFi.setAutoReconnect(false);
+  WiFi.setAutoConnect(false);
+  WiFi.softAPConfig(local_IP, INADDR_NONE, subnet);
+  if(WiFi.softAP(host_name.c_str(), setting.wifi.appw.c_str(), 6)) {
+    Serial.print("Succesfully setup Access Point with:");
+    Serial.print(host_name.c_str());
+    Serial.print(", ");
+    Serial.println(setting.wifi.appw.c_str());
+  } else {
+    Serial.print("Failed to setup Acces Point with:");
+    Serial.print(host_name.c_str());
+    Serial.print(", ");
+    Serial.println(setting.wifi.appw.c_str());
+  }
+  */
+  
   WiFi.disconnect(true,true);
-  WiFi.mode(WIFI_OFF);
+  WiFi.mode(WIFI_OFF);  
   //delay(500);
   WiFi.persistent(false);
   WiFi.onEvent(WiFiEvent);
-  WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE); // call is only a workaround for bug in WiFi class
+  if (WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE,INADDR_NONE,INADDR_NONE) == false){
+    log_e("error setting wifi.config");
+  }
+  //tcpip_adapter_dns_info_t dns;
+  //dns.ip.type = IPADDR_TYPE_V4;
+  //dns.ip.u_addr.ip4.addr = static_cast<uint32_t>(INADDR_NONE);
+  //tcpip_adapter_set_dns_info(TCPIP_ADAPTER_IF_AP,TCPIP_ADAPTER_DNS_MAIN,&dns);
+  //tcpip_adapter_set_dns_info(TCPIP_ADAPTER_IF_AP,TCPIP_ADAPTER_DNS_BACKUP,&dns);
+  //tcpip_adapter_set_dns_info(TCPIP_ADAPTER_IF_AP,TCPIP_ADAPTER_DNS_FALLBACK,&dns);
+  //ip_addr_t d;
+  //d.type = IPADDR_TYPE_V4;
+  //d.u_addr.ip4.addr = static_cast<uint32_t>(INADDR_NONE);
+  //dns_setserver(0, &d);
+  //dns_setserver(1, &d);
   log_i("Setting soft-AP ... ");
   //if (WiFi.softAP(host_name.c_str(), setting.appw.c_str(),rand() % 12 + 1,0,2)){
   if (WiFi.softAP(host_name.c_str(), setting.wifi.appw.c_str())){
@@ -1313,11 +1347,13 @@ void setupWifi(){
   }
   delay(10);
   log_i("Setting soft-AP configuration ... ");
-  if(WiFi.softAPConfig(local_IP, gateway, subnet)){
+  //if(WiFi.softAPConfig(local_IP, gateway, subnet)){
+  if(WiFi.softAPConfig(local_IP, INADDR_NONE, subnet)){
     log_i("Ready");
   }else{
     log_i("Failed!");
   }
+  
   delay(10);
 
   //now configure access-point
@@ -1335,11 +1371,55 @@ void setupWifi(){
       // ... Begin with sdk config.
       WiFi.begin();
     }
+  }else{
+    WiFi.mode(WIFI_MODE_AP);
   }
   log_i("hostname=%s",host_name.c_str());
   WiFi.setHostname(host_name.c_str());
 
+
   log_i("my APIP=%s",local_IP.toString().c_str());
+
+  /*
+  tcpip_adapter_dhcps_stop(TCPIP_ADAPTER_IF_AP);
+  //tcpip_adapter_dns_info_t dns_info = {0};
+  //IP_ADDR4(&dns_info.ip, 0, 0, 0, 0);
+  //ESP_ERROR_CHECK(tcpip_adapter_set_dns_info(TCPIP_ADAPTER_IF_AP, TCPIP_ADAPTER_DNS_MAIN, &dns_info));
+  dhcps_offer_t opt_val = 0; // no DNS-Server
+  tcpip_adapter_dhcps_option(TCPIP_ADAPTER_OP_SET, TCPIP_ADAPTER_DOMAIN_NAME_SERVER, &opt_val, sizeof(dhcps_offer_t));  // don't supply a dns server via dhcps
+  opt_val = 0; // no Router
+  tcpip_adapter_dhcps_option(TCPIP_ADAPTER_OP_SET, TCPIP_ADAPTER_ROUTER_SOLICITATION_ADDRESS, &opt_val, sizeof(dhcps_offer_t));  // don't supply a gateway (router) via dhcps option 3
+  tcpip_adapter_dhcps_start(TCPIP_ADAPTER_IF_AP);
+  */
+  
+  if((WiFi.getMode() & WIFI_MODE_STA)){
+    if (setting.outputMode =! OUTPUT_BLE){
+      WiFi.setSleep(false); //disable power-save-mode !! will increase ping-time
+    }
+  }
+  //}else{
+  //  log_i("STA has not been started");
+  //}
+  
+
+  /*
+  // Set up mDNS responder:
+  // - first argument is the domain name, in this example
+  //   the fully-qualified domain name is "esp32.local"
+  // - second argument is the IP address to advertise
+  //   we send our IP address on the WiFi network
+  if (!MDNS.begin(host_name.c_str())) {
+      Serial.println("Error setting up MDNS responder!");
+      while(1) {
+          delay(1000);
+      }
+  }
+  Serial.println("mDNS responder started");
+
+  // Add service to MDNS-SD
+  MDNS.addService("http", "tcp", 80);  
+  */
+
   status.wifiStat = 1;
   Web_setup();
 }
@@ -1458,7 +1538,7 @@ void printSettings(){
   //weather-data
   //general
   log_i("WD tempoffset=%.1f [°]",setting.wd.tempOffset);
-  log_i("WD windDirOffset=%.1f [°]",setting.wd.windDirOffset);
+  log_i("WD windDirOffset=%d [°]",setting.wd.windDirOffset);
   // FANET
   log_i("WD FANET-Weatherdata=%d",setting.wd.sendFanet);
   log_i("WD FANET-Interval=%d [msec]",setting.wd.FanetUploadInterval);
@@ -1561,7 +1641,7 @@ void setup() {
 
 
   log_i("SDK-Version=%s",ESP.getSdkVersion());
-  log_i("CPU-Speed=%d",ESP.getCpuFreqMHz());
+  log_i("CPU-Speed=%dMhz",ESP.getCpuFreqMHz());
   log_i("Total heap: %d", ESP.getHeapSize());
   log_i("Free heap: %d", ESP.getFreeHeap());
 
@@ -2311,40 +2391,42 @@ void taskWeather(void *pvParameters){
       //station should broadcast WU-Data over Fanet
       if (timeOver(tAct,tUploadData,setting.wd.WUUploadIntervall)){ //get Data from WU        
         tUploadData = tAct;
-        WeatherUnderground::wData wuData;
-        WeatherUnderground wu;
-        #ifdef GSM_MODULE
-          if (setting.wifi.connect == MODE_WIFI_DISABLED){
-            wu.setClient(&GsmWUClient);
-            wu.setMutex(&xGsmMutex);
+        if (status.bInternetConnected){
+          WeatherUnderground::wData wuData;
+          WeatherUnderground wu;
+          #ifdef GSM_MODULE
+            if (setting.wifi.connect == MODE_WIFI_DISABLED){
+              wu.setClient(&GsmWUClient);
+              wu.setMutex(&xGsmMutex);
+            }
+          #endif
+          bDataOk = wu.getData(setting.WUUpload.ID,setting.WUUpload.KEY,&wuData);
+          if (bDataOk){
+            status.weather.temp = wuData.temp;
+            status.weather.Humidity = wuData.humidity;
+            status.weather.Pressure = wuData.pressure;
+            status.weather.WindDir = wuData.winddir;
+            status.weather.WindSpeed = wuData.windspeed;
+            status.weather.WindGust = wuData.windgust;
+            status.weather.rain1h = wuData.rain1h;
+            status.weather.rain1d = wuData.raindaily;
+            fanetWeatherData.lat = wuData.lat;
+            fanetWeatherData.lon = wuData.lon;
+            fanetWeatherData.bWind = true;
+            fanetWeatherData.wHeading = wuData.winddir;
+            fanetWeatherData.wSpeed = wuData.windspeed;
+            fanetWeatherData.wGust = wuData.windgust;      
+            fanetWeatherData.bTemp = true;
+            fanetWeatherData.bHumidity = true;
+            fanetWeatherData.bBaro = true;
+            fanetWeatherData.temp = wuData.temp;
+            fanetWeatherData.Humidity = wuData.humidity;
+            fanetWeatherData.Baro = wuData.pressure;      
+            fanetWeatherData.bStateOfCharge = true;  
+            log_i("winddir=%.1f speed=%.1f gust=%.1f temp=%.1f hum=%.1f press=%.1f",fanetWeatherData.wHeading,fanetWeatherData.wSpeed,fanetWeatherData.wGust,fanetWeatherData.temp,fanetWeatherData.Humidity,fanetWeatherData.Baro);          
+          }else{
+            log_e("no Data from WU");
           }
-        #endif
-        bDataOk = wu.getData(setting.WUUpload.ID,setting.WUUpload.KEY,&wuData);
-        if (bDataOk){
-          status.weather.temp = wuData.temp;
-          status.weather.Humidity = wuData.humidity;
-          status.weather.Pressure = wuData.pressure;
-          status.weather.WindDir = wuData.winddir;
-          status.weather.WindSpeed = wuData.windspeed;
-          status.weather.WindGust = wuData.windgust;
-          status.weather.rain1h = wuData.rain1h;
-          status.weather.rain1d = wuData.raindaily;
-          fanetWeatherData.lat = wuData.lat;
-          fanetWeatherData.lon = wuData.lon;
-          fanetWeatherData.bWind = true;
-          fanetWeatherData.wHeading = wuData.winddir;
-          fanetWeatherData.wSpeed = wuData.windspeed;
-          fanetWeatherData.wGust = wuData.windgust;      
-          fanetWeatherData.bTemp = true;
-          fanetWeatherData.bHumidity = true;
-          fanetWeatherData.bBaro = true;
-          fanetWeatherData.temp = wuData.temp;
-          fanetWeatherData.Humidity = wuData.humidity;
-          fanetWeatherData.Baro = wuData.pressure;      
-          fanetWeatherData.bStateOfCharge = true;  
-          log_i("winddir=%.1f speed=%.1f gust=%.1f temp=%.1f hum=%.1f press=%.1f",fanetWeatherData.wHeading,fanetWeatherData.wSpeed,fanetWeatherData.wGust,fanetWeatherData.temp,fanetWeatherData.Humidity,fanetWeatherData.Baro);          
-        }else{
-          log_e("no Data from WU");
         }
       }
       if (timeOver(tAct,tSendData,setting.wd.FanetUploadInterval)){
@@ -2529,7 +2611,11 @@ void taskBluetooth(void *pvParameters) {
 		   ble_data="";
 		   ble_mutex=false;
 	   }
-	   vTaskDelay(100);
+     vTaskDelay(100);
+	   if ((WebUpdateRunning) || (bPowerOff)){
+        stop_ble();
+        break;
+     } 
 	 }
   }else if (setting.outputMode == OUTPUT_BLUETOOTH){
   #ifdef BLUETOOTHSERIAL 
@@ -2546,9 +2632,13 @@ void taskBluetooth(void *pvParameters) {
     while (1)
     {
       delay(1);
+      if ((WebUpdateRunning) || (bPowerOff)){
+        break;
+      } 
     }
   }
-
+  log_i("stop task"); 
+  vTaskDelete(xHandleBluetooth); //delete bluetooth task
 }
 
 String setStringSize(String s,uint8_t sLen){
@@ -3030,9 +3120,12 @@ void setWifi(bool on){
     WiFi.mode(WIFI_OFF);
     WiFi.persistent(false);
     WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE); // call is only a workaround for bug in WiFi class
+    //WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE,INADDR_NONE,INADDR_NONE); // call is only a workaround for bug in WiFi class
+    //WiFi.config(local_IP, INADDR_NONE, subnet,INADDR_NONE,INADDR_NONE); // call is only a workaround for bug in WiFi class
     WiFi.mode(WIFI_MODE_AP);
     WiFi.softAP(host_name.c_str(), setting.wifi.appw.c_str());
-    WiFi.softAPConfig(local_IP, gateway, subnet);
+    //WiFi.softAPConfig(local_IP, gateway, subnet);
+    WiFi.softAPConfig(local_IP, INADDR_NONE, subnet);
     WiFi.setHostname(host_name.c_str());
     Web_setup();
     status.wifiStat = 1;      
@@ -4385,6 +4478,7 @@ void taskBackGround(void *pvParameters){
         WiFi.persistent(false);
         WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE); // call is only a workaround for bug in WiFi class
         WiFi.mode(WIFI_MODE_APSTA);
+        esp_wifi_set_ps (WIFI_PS_NONE);
         WiFi.begin(setting.wifi.ssid.c_str(), setting.wifi.password.c_str()); 
         WiFi.setHostname(host_name.c_str());
       }

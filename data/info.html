@@ -20,6 +20,7 @@ function init() {
 function wsConnect(url) {
     
     // Connect to WebSocket server
+    console.log("try to connect to " + url);
     websocket = new WebSocket(url);
     
     // Assign callbacks

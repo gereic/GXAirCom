@@ -36,7 +36,7 @@ void onWebSocketEvent(uint8_t client_num,
     case WStype_CONNECTED:
       {
         IPAddress ip = webSocket.remoteIP(client_num);
-        log_i("[%u] Connection from ", client_num);
+        log_i("[%u] Connection from %s", client_num,ip.toString().c_str());
         //log_i("%s",ip.toString());        
       }
       break;
@@ -160,6 +160,7 @@ void onWebSocketEvent(uint8_t client_num,
           webSocket.sendTXT(client_num, msg_buf);
 
           doc.clear();
+          log_i("output=%d",setting.outputMode);
           doc["output"] = setting.outputMode;
           doc["oSERIAL"] = setting.bOutputSerial;
           doc["oGPS"] = setting.outputGPS;
@@ -478,6 +479,7 @@ void onWebSocketEvent(uint8_t client_num,
     case WStype_FRAGMENT:
     case WStype_FRAGMENT_FIN:
     default:
+      log_i("[%u] type=%d", client_num,type);
       break;
   }
 }

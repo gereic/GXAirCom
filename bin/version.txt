@@ -285,3 +285,8 @@ adjusted frequencys
 better settings.html with response for calibration-buttons
 Setting of Kalman-Filter for Vario are in advanced-settings-view
 added STL for kobo glo and kobo touch.
+
+
+v4.8.4
+Fix Bluetooth-connection crashes ESP32 --> implemented new nimble v1.20
+Stopped ble-function on firmware-update, otherwise esp can crash

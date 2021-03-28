@@ -73,6 +73,7 @@ public:
     bool                stop();
     void                clearResults();
     NimBLEScanResults   getResults();
+    void                setMaxResults(uint8_t maxResults);
     void                erase(const NimBLEAddress &address);
 
 
@@ -83,16 +84,16 @@ private:
     ~NimBLEScan();
     static int          handleGapEvent(ble_gap_event*  event, void* arg);
     void                onHostReset();
+    void                onHostSync();
 
     NimBLEAdvertisedDeviceCallbacks*    m_pAdvertisedDeviceCallbacks = nullptr;
     void                                (*m_scanCompleteCB)(NimBLEScanResults scanResults);
     ble_gap_disc_params                 m_scan_params;
-    uint8_t                             m_own_addr_type;
-    bool                                m_stopped;
-    bool                                m_wantDuplicates;
+    bool                                m_ignoreResults;
     NimBLEScanResults                   m_scanResults;
     uint32_t                            m_duration;
     ble_task_data_t                     *m_pTaskData;
+    uint8_t                             m_maxResults;
 };
 
 #endif // #if defined(CONFIG_BT_NIMBLE_ROLE_OBSERVER)

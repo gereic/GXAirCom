@@ -25,6 +25,7 @@
 #include "nimble/nimble_port.h"
 #include "nimble/nimble_port_freertos.h"
 #include "host/ble_hs.h"
+#include "host/ble_hs_pvcy.h"
 #include "host/util/util.h"
 #include "services/gap/ble_svc_gap.h"
 #include "services/gatt/ble_svc_gatt.h"
@@ -60,6 +61,9 @@ std::list <NimBLEClient*>   NimBLEDevice::m_cList;
 #endif
 std::list <NimBLEAddress>   NimBLEDevice::m_ignoreList;
 NimBLESecurityCallbacks*    NimBLEDevice::m_securityCallbacks = nullptr;
+uint8_t                     NimBLEDevice::m_own_addr_type = BLE_OWN_ADDR_PUBLIC;
+uint16_t                    NimBLEDevice::m_scanDuplicateSize = CONFIG_BTDM_SCAN_DUPL_CACHE_SIZE;
+uint8_t                     NimBLEDevice::m_scanFilterMode = CONFIG_BTDM_SCAN_DUPL_TYPE;
 
 
 /**
@@ -144,8 +148,8 @@ void NimBLEDevice::stopAdvertising() {
 #if defined(CONFIG_BT_NIMBLE_ROLE_CENTRAL)
 /* STATIC */ NimBLEClient* NimBLEDevice::createClient(NimBLEAddress peerAddress) {
     if(m_cList.size() >= NIMBLE_MAX_CONNECTIONS) {
-        NIMBLE_LOGW("Number of clients exceeds Max connections. Max=(%d)",
-                                            NIMBLE_MAX_CONNECTIONS);
+        NIMBLE_LOGW(LOG_TAG,"Number of clients exceeds Max connections. Cur=%d Max=%d",
+                    m_cList.size(), NIMBLE_MAX_CONNECTIONS);
     }
 
     NimBLEClient* pClient = new NimBLEClient(peerAddress);
@@ -165,26 +169,31 @@ void NimBLEDevice::stopAdvertising() {
         return false;
     }
 
+    // Set the connection established flag to false to stop notifications
+    // from accessing the attribute vectors while they are being deleted.
+    pClient->m_connEstablished = false;
     int rc =0;
 
-    if(pClient->m_isConnected) {
+    if(pClient->isConnected()) {
         rc = pClient->disconnect();
         if (rc != 0 && rc != BLE_HS_EALREADY && rc != BLE_HS_ENOTCONN) {
             return false;
         }
 
-        while(pClient->m_isConnected) {
-            vTaskDelay(10);
+        while(pClient->isConnected()) {
+            taskYIELD();
         }
-    }
+        // Since we set the flag to false the app will not get a callback
+        // in the disconnect event so we call it here for good measure.
+        pClient->m_pClientCallbacks->onDisconnect(pClient);
 
-    if(pClient->m_waitingToConnect) {
+    } else if(pClient->m_pTaskData != nullptr) {
         rc = ble_gap_conn_cancel();
         if (rc != 0 && rc != BLE_HS_EALREADY) {
             return false;
         }
-        while(pClient->m_waitingToConnect) {
-            vTaskDelay(10);
+        while(pClient->m_pTaskData != nullptr) {
+            taskYIELD();
         }
     }
 
@@ -296,7 +305,7 @@ void NimBLEDevice::stopAdvertising() {
 
 
 /**
- * @brief Set the transmission power.
+ * @brief Get the transmission power.
  * @param [in] powerType The power level to set, can be one of:
  * *   ESP_BLE_PWR_TYPE_CONN_HDL0  = 0,  For connection handle 0
  * *   ESP_BLE_PWR_TYPE_CONN_HDL1  = 1,  For connection handle 1
@@ -335,7 +344,7 @@ void NimBLEDevice::stopAdvertising() {
         default:
             return BLE_HS_ADV_TX_PWR_LVL_AUTO;
     }
-} // setPower
+} // getPower
 
 
 /**
@@ -394,6 +403,53 @@ void NimBLEDevice::stopAdvertising() {
 
 
 /**
+ * @brief Set the duplicate filter cache size for filtering scanned devices.
+ * @param [in] cacheSize The number of advertisements filtered before the cache is reset.\n
+ * Range is 10-1000, a larger value will reduce how often the same devices are reported.
+ * @details Must only be called before calling NimBLEDevice::init.
+ */
+/*STATIC*/
+void NimBLEDevice::setScanDuplicateCacheSize(uint16_t cacheSize) {
+    if(initialized) {
+        NIMBLE_LOGE(LOG_TAG, "Cannot change scan cache size while initialized");
+        return;
+    } else if(cacheSize > 1000 || cacheSize <10) {
+        NIMBLE_LOGE(LOG_TAG, "Invalid scan cache size; min=10 max=1000");
+        return;
+    }
+
+    m_scanDuplicateSize = cacheSize;
+}
+
+
+/**
+ * @brief Set the duplicate filter mode for filtering scanned devices.
+ * @param [in] mode One of three possible options:
+ * * CONFIG_BTDM_SCAN_DUPL_TYPE_DEVICE (0) (default)\n
+     Filter by device address only, advertisements from the same address will be reported only once.
+ * * CONFIG_BTDM_SCAN_DUPL_TYPE_DATA (1)\n
+     Filter by data only, advertisements with the same data will only be reported once,\n
+     even from different addresses.
+ * * CONFIG_BTDM_SCAN_DUPL_TYPE_DATA_DEVICE (2)\n
+     Filter by address and data, advertisements from the same address will be reported only once,\n
+     except if the data in the advertisement has changed, then it will be reported again.
+ * @details Must only be called before calling NimBLEDevice::init.
+ */
+/*STATIC*/
+void NimBLEDevice::setScanFilterMode(uint8_t mode) {
+    if(initialized) {
+        NIMBLE_LOGE(LOG_TAG, "Cannot change scan duplicate type while initialized");
+        return;
+    } else if(mode > 2) {
+        NIMBLE_LOGE(LOG_TAG, "Invalid scan duplicate type");
+        return;
+    }
+
+    m_scanFilterMode = mode;
+}
+
+
+/**
  * @brief Host reset, we pass the message so we don't make calls until resynced.
  * @param [in] reason The reason code for the reset.
  */
@@ -405,30 +461,16 @@ void NimBLEDevice::stopAdvertising() {
 
     m_synced = false;
 
-#if defined(CONFIG_BT_NIMBLE_ROLE_OBSERVER)
-    if(m_pScan != nullptr) {
-        m_pScan->onHostReset();
-    }
-#endif
-
-/*  Not needed
-    if(m_pServer != nullptr) {
-        m_pServer->onHostReset();
-    }
-
-    for(auto it = m_cList.cbegin(); it != m_cList.cend(); ++it) {
-        (*it)->onHostReset();
-    }
-*/
-
-#if defined(CONFIG_BT_NIMBLE_ROLE_BROADCASTER)
-    if(m_bleAdvertising != nullptr) {
-        m_bleAdvertising->onHostReset();
-    }
-#endif
-
     NIMBLE_LOGC(LOG_TAG, "Resetting state; reason=%d, %s", reason,
                         NimBLEUtils::returnCodeToString(reason));
+
+#if defined(CONFIG_BT_NIMBLE_ROLE_OBSERVER)
+    if(initialized) {
+        if(m_pScan != nullptr) {
+            m_pScan->onHostReset();
+        }
+    }
+#endif
 } // onReset
 
 
@@ -448,20 +490,22 @@ void NimBLEDevice::stopAdvertising() {
     int rc = ble_hs_util_ensure_addr(0);
     assert(rc == 0);
 
+    // Yield for houskeeping before returning to operations.
+    // Occasionally triggers exception without.
+    taskYIELD();
+
     m_synced = true;
 
     if(initialized) {
 #if defined(CONFIG_BT_NIMBLE_ROLE_OBSERVER)
         if(m_pScan != nullptr) {
-            // Restart scanning with the last values sent, allow to clear results.
-            m_pScan->start(m_pScan->m_duration, m_pScan->m_scanCompleteCB);
+            m_pScan->onHostSync();
         }
 #endif
 
 #if defined(CONFIG_BT_NIMBLE_ROLE_BROADCASTER)
         if(m_bleAdvertising != nullptr) {
-            // Restart advertisng, parameters should already be set.
-            m_bleAdvertising->start();
+            m_bleAdvertising->onHostSync();
         }
 #endif
     }
@@ -504,8 +548,17 @@ void NimBLEDevice::stopAdvertising() {
 
         ESP_ERROR_CHECK(errRc);
 
-        ESP_ERROR_CHECK(esp_nimble_hci_and_controller_init());
+        esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT);
 
+        esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
+        bt_cfg.mode = ESP_BT_MODE_BLE;
+        bt_cfg.ble_max_conn = CONFIG_BT_NIMBLE_MAX_CONNECTIONS;
+        bt_cfg.normal_adv_size = m_scanDuplicateSize;
+        bt_cfg.scan_duplicate_type = m_scanFilterMode;
+
+        ESP_ERROR_CHECK(esp_bt_controller_init(&bt_cfg));
+        ESP_ERROR_CHECK(esp_bt_controller_enable(ESP_BT_MODE_BLE));
+        ESP_ERROR_CHECK(esp_nimble_hci_init());
         nimble_port_init();
 
         // Setup callbacks for host events
@@ -703,6 +756,35 @@ bool NimBLEDevice::getInitialized() {
 void NimBLEDevice::setSecurityCallbacks(NimBLESecurityCallbacks* callbacks) {
     NimBLEDevice::m_securityCallbacks = callbacks;
 } // setSecurityCallbacks
+
+
+/**
+ * @brief Set the own address type.
+ * @param [in] own_addr_type Own Bluetooth Device address type.\n
+ * The available bits are defined as:
+ * * 0x00: BLE_OWN_ADDR_PUBLIC
+ * * 0x01: BLE_OWN_ADDR_RANDOM
+ * * 0x02: BLE_OWN_ADDR_RPA_PUBLIC_DEFAULT
+ * * 0x03: BLE_OWN_ADDR_RPA_RANDOM_DEFAULT
+ * @param [in] useNRPA If true, and address type is random, uses a non-resolvable random address.
+ */
+void NimBLEDevice::setOwnAddrType(uint8_t own_addr_type, bool useNRPA) {
+    m_own_addr_type = own_addr_type;
+    switch (own_addr_type) {
+        case BLE_OWN_ADDR_PUBLIC:
+            ble_hs_pvcy_rpa_config(NIMBLE_HOST_DISABLE_PRIVACY);
+            break;
+        case BLE_OWN_ADDR_RANDOM:
+            setSecurityInitKey(BLE_SM_PAIR_KEY_DIST_ENC | BLE_SM_PAIR_KEY_DIST_ID);
+            ble_hs_pvcy_rpa_config(useNRPA ? NIMBLE_HOST_ENABLE_NRPA : NIMBLE_HOST_ENABLE_RPA);
+            break;
+        case BLE_OWN_ADDR_RPA_PUBLIC_DEFAULT:
+        case BLE_OWN_ADDR_RPA_RANDOM_DEFAULT:
+            setSecurityInitKey(BLE_SM_PAIR_KEY_DIST_ENC | BLE_SM_PAIR_KEY_DIST_ID);
+            ble_hs_pvcy_rpa_config(NIMBLE_HOST_ENABLE_RPA);
+            break;
+    }
+} // setOwnAddrType
 
 
 /**

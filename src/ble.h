@@ -127,7 +127,7 @@ void NEMEA_Checksum(String *sentence)
 void start_ble (String bleId)
 {
 	esp_coex_preference_set(ESP_COEX_PREFER_BT);
-    NimBLEDevice::init(bleId.c_str());
+  NimBLEDevice::init(bleId.c_str());
 	NimBLEDevice::setMTU(256); //set MTU-Size to 256 Byte
 	NimBLEServer *pServer = NimBLEDevice::createServer();
 	pServer->setCallbacks(new MyServerCallbacks());
@@ -175,4 +175,9 @@ void start_ble (String bleId)
 
 }
 
-#endif /* MAIN_AIRWHERE_BLE_H_ */
+void stop_ble ()
+{
+	NimBLEDevice::deinit(true);
+}
+
+#endif

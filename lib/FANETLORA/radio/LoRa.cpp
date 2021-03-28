@@ -11,7 +11,7 @@ volatile bool receivedFlag = false;
 // disable interrupt when it's not needed
 volatile bool enableInterrupt = true;
 
-void setFlag(void)
+void IRAM_ATTR setFlag(void)
 {
     // check if the interrupt is enabled
     if (!enableInterrupt) {

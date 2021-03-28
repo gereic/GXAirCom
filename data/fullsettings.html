@@ -22,6 +22,7 @@ function init() {
 function wsConnect(url) {
     
     // Connect to WebSocket server
+    console.log("try to connect to " + url);
     websocket = new WebSocket(url);
     
     // Assign callbacks
@@ -262,16 +263,16 @@ function sendValues(){
   
   
   var obj = {
-  setView : document.getElementById("setView").value,
-  board : document.getElementById("board").value,
-  bType : document.getElementById("bType").value,
-  disp : document.getElementById("disp").value,
-  band : document.getElementById("band").value,
-  power : document.getElementById("power").value,
-  type : document.getElementById("type").value,
-  mode : document.getElementById("mode").value,
-  fntMode : document.getElementById("fntMode").value,
-  fntPin : document.getElementById("fntPin").value,
+  setView : Number(document.getElementById("setView").value),
+  board : Number(document.getElementById("board").value),
+  bType : Number(document.getElementById("bType").value),
+  disp : Number(document.getElementById("disp").value),
+  band : Number(document.getElementById("band").value),
+  power : Number(document.getElementById("power").value),
+  type : Number(document.getElementById("type").value),
+  mode : Number(document.getElementById("mode").value),
+  fntMode : Number(document.getElementById("fntMode").value),
+  fntPin : Number(document.getElementById("fntPin").value),
   PilotName : document.getElementById("PilotName").value,
   expwsw : Number(document.getElementById("expwsw").checked),
   save : 1
@@ -279,28 +280,28 @@ function sendValues(){
   doSend(JSON.stringify(obj));
   
   var obj = {
-  gslat : document.getElementById("gslat").value,
-  gslon : document.getElementById("gslon").value,
-  gsalt : document.getElementById("gsalt").value,
-  gsGeoAlt : document.getElementById("gsGeoAlt").value,
-  gsScr : document.getElementById("gsScr").value,
-  gsPs : document.getElementById("gsPs").value,
+  gslat : Number(document.getElementById("gslat").value),
+  gslon : Number(document.getElementById("gslon").value),
+  gsalt : Number(document.getElementById("gsalt").value),
+  gsGeoAlt : Number(document.getElementById("gsGeoAlt").value),
+  gsScr : Number(document.getElementById("gsScr").value),
+  gsPs : Number(document.getElementById("gsPs").value),
   save : 1
   };
   doSend(JSON.stringify(obj));
   
   var obj = {
   appw : document.getElementById("appw").value,
-  wificonnect : document.getElementById("wificonnect").value,
+  wificonnect : Number(document.getElementById("wificonnect").value),
   ssid : document.getElementById("ssid").value,
   password : document.getElementById("password").value,
-  wifioff : document.getElementById("wifioff").value,
+  wifioff : Number(document.getElementById("wifioff").value),
   save : 1
   };
   doSend(JSON.stringify(obj));
   
   var obj = {  
-  output : document.getElementById("output").value,
+  output : Number(document.getElementById("output").value),
   oSERIAL : Number(document.getElementById("oSERIAL").checked),
   oGPS : Number(document.getElementById("oGPS").checked),
   oFlarm : Number(document.getElementById("oFlarm").checked),
@@ -308,7 +309,7 @@ function sendValues(){
   oLK8EX1 : Number(document.getElementById("oLK8EX1").checked),
   awlive : Number(document.getElementById("awlive").checked),
   UDPServerIP : document.getElementById("UDPServerIP").value,
-  UDPSendPort : document.getElementById("UDPSendPort").value,
+  UDPSendPort : Number(document.getElementById("UDPSendPort").value),
   save : 1
   };
   doSend(JSON.stringify(obj));
@@ -317,13 +318,13 @@ function sendValues(){
   ognlive : Number(document.getElementById("ognlive").checked),
   traccar_live : Number(document.getElementById("traccar_live").checked),
   traccarsrv : document.getElementById("traccarsrv").value,
-  lgM : document.getElementById("lgM").value,
+  lgM : Number(document.getElementById("lgM").value),
   sigmaP : parseFloat(document.getElementById("sigmaP").value),
   sigmaA : parseFloat(document.getElementById("sigmaA").value),
   vSinkTh : parseFloat(document.getElementById("vSinkTh").value),
   vClimbTh : parseFloat(document.getElementById("vClimbTh").value),
   vNClimbSens : parseFloat(document.getElementById("vNClimbSens").value),
-  vVol : document.getElementById("vVol").value,
+  vVol : Number(document.getElementById("vVol").value),
   vBeepFly : Number(document.getElementById("vBeepFly").checked),
   useMPU : Number(document.getElementById("useMPU").checked),
   vTOffs : parseFloat(document.getElementById("vTOffs").value),
@@ -332,12 +333,12 @@ function sendValues(){
   doSend(JSON.stringify(obj));
 
   var obj = {  
-  axOffset : document.getElementById("axOffset").value,
-  ayOffset : document.getElementById("ayOffset").value,
-  azOffset : document.getElementById("azOffset").value,
-  gxOffset : document.getElementById("gxOffset").value,
-  gyOffset : document.getElementById("gyOffset").value,
-  gzOffset : document.getElementById("gzOffset").value,
+  axOffset : Number(document.getElementById("axOffset").value),
+  ayOffset : Number(document.getElementById("ayOffset").value),
+  azOffset : Number(document.getElementById("azOffset").value),
+  gxOffset : Number(document.getElementById("gxOffset").value),
+  gyOffset : Number(document.getElementById("gyOffset").value),
+  gzOffset : Number(document.getElementById("gzOffset").value),
   "t[0]" : parseFloat(document.getElementById("t[0]").value),
   "t[1]" : parseFloat(document.getElementById("t[1]").value),
   "z[0]" : parseFloat(document.getElementById("z[0]").value),
@@ -355,8 +356,8 @@ function sendValues(){
 
   var obj = {  
   sFWD : Number(document.getElementById("sFWD").checked),
-  wdTempOffset : document.getElementById("wdTempOffset").value,  
-  wdWDirOffset : document.getElementById("wdWDirOffset").value,  
+  wdTempOffset : Number(document.getElementById("wdTempOffset").value),  
+  wdWDirOffset : Number(document.getElementById("wdWDirOffset").value),  
 
   WUUlEnable : Number(document.getElementById("WUUlEnable").checked),
   WUUlID : document.getElementById("WUUlID").value,  
@@ -364,10 +365,10 @@ function sendValues(){
   WIUlEnable : Number(document.getElementById("WIUlEnable").checked),
   WIUlID : document.getElementById("WIUlID").value,  
   WIUlKEY : document.getElementById("WIUlKEY").value,
-  WFFNT : document.getElementById("WFFNT").value,
-  WIFNT : document.getElementById("WIFNT").value,
-  WFWU : document.getElementById("WFWU").value,
-  WIWU : document.getElementById("WIWU").value,
+  WFFNT : Number(document.getElementById("WFFNT").value),
+  WIFNT : Number(document.getElementById("WIFNT").value),
+  WFWU : Number(document.getElementById("WFWU").value),
+  WIWU : Number(document.getElementById("WIWU").value),
   save : 1
 	};
   doSend(JSON.stringify(obj));
