@@ -290,3 +290,5 @@ added STL for kobo glo and kobo touch.
 v4.8.4
 Fix Bluetooth-connection crashes ESP32 --> implemented new nimble v1.20
 Stopped ble-function on firmware-update, otherwise esp can crash
+Bugfix esp-crash caused by watchdog --> set bar-prio below standard-task
+Bugfix Webinterface

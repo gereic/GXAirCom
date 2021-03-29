@@ -22,7 +22,8 @@ function init() {
 function wsConnect(url) {
     
     // Connect to WebSocket server
-    console.log("try to connect to " + url);
+    //console.log("try to connect to " + url);    
+    //document.getElementById("TxtConn").innerHTML ="try to connect to " + url;
     websocket = new WebSocket(url);
     
     // Assign callbacks
@@ -37,7 +38,7 @@ function onOpen(evt) {
  
     // Log connection state
     console.log("Connected");
-    
+    //document.getElementById("TxtConn").innerHTML ="connected";
     // write page-number --> then we get all values for page
     doSend(JSON.stringify({ page : 10 }));//send page-number
 }
@@ -47,7 +48,7 @@ function onClose(evt) {
  
     // Log disconnection state
     console.log("Disconnected");
-    
+    //document.getElementById("TxtConn").innerHTML ="disconnected";
     // Try to reconnect after a few seconds
     setTimeout(function() { wsConnect(url) }, 2000);
 }
@@ -448,6 +449,7 @@ function onMessage(evt) {
 // Called when a WebSocket error occurs
 function onError(evt) {
     console.log("ERROR: " + evt.data);
+    //document.getElementById("TxtConn").innerHTML ="error: " + evt.data;
 }
  
 // Sends a message to the server (and prints it to the console)
@@ -467,8 +469,9 @@ window.addEventListener("load", init, false);
       <noscript>JavaScript aktivieren um GXAirCom benutzen zu können<br></noscript>
       <h1>%APPNAME%-%VERSION%</h1>
       <h3>build-date: %BUILD%</h3>
-      <h3>%PILOT%</h3>      
+      <h3>%PILOT%</h3>            
     </div>
+    <!--<div style='text-align:center;color:#eaeaea;' id="TxtConn"></div>-->
     <fieldset>
       <legend><b>General settings</b></legend>
       <table style="width:100&#37;">

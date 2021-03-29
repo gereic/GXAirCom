@@ -160,7 +160,6 @@ void onWebSocketEvent(uint8_t client_num,
           webSocket.sendTXT(client_num, msg_buf);
 
           doc.clear();
-          log_i("output=%d",setting.outputMode);
           doc["output"] = setting.outputMode;
           doc["oSERIAL"] = setting.bOutputSerial;
           doc["oGPS"] = setting.outputGPS;
@@ -748,20 +747,38 @@ void Web_stop(void){
   server.end();
 }
 
-void Web_loop(void){
-  
+void Web_loop(void){  
   static uint32_t tLife = millis();
   static uint32_t tCounter = millis();
   static uint16_t counter = 0;
   static uint32_t tRestart = millis();
   uint32_t tAct = millis();
+  //static uint32_t tMax = 0;
+  //static uint32_t tStart = tAct;
+  //uint32_t tCycle;
+  //static uint32_t tLog = tAct;
   bool bSend = false;
   static statusData mStatus;
   static commandData mCommand;
-  StaticJsonDocument<300> doc; //Memory pool
+  StaticJsonDocument<300> doc; //Memory pool  
+  /*
+  if ((tAct - tLog) >= 1000){
+    tLog = tAct;
+    //if (tMax >= 50){
+      log_w("webloop max=%dms",tMax);
+      tMax = 0;
+    //  tMax = 0;
+    //}
+  }
+  tCycle = tAct - tStart;
+  if (tCycle >= tMax){
+    tMax = tCycle;
+  }
+  tStart = tAct;
+  */
+  
   // Look for and handle WebSocket data
   webSocket.loop();
-
 
   if ((tAct - tLife) >= 100){
     tLife = tAct;
@@ -780,11 +797,12 @@ void Web_loop(void){
       serializeJson(doc, msg_buf);
       for (int i = 0;i <MAXCLIENTS;i++){
         if (clientPages[i] == 5){
-          log_d("Sending to [%u]: %s", i, msg_buf);
+          //log_d("Sending to [%u]: %s", i, msg_buf);
           webSocket.sendTXT(i, msg_buf);
         }
       }
     }
+    
     //site fullsettings
     doc.clear();
     bSend = false;
@@ -807,13 +825,11 @@ void Web_loop(void){
       serializeJson(doc, msg_buf);
       for (int i = 0;i <MAXCLIENTS;i++){
         if (clientPages[i] == 10){
-          log_d("Sending to [%u]: %s", i, msg_buf);
+          //log_d("Sending to [%u]: %s", i, msg_buf);
           webSocket.sendTXT(i, msg_buf);
         }
       }
     }
-    
-
 
     //vario
     if (status.vario.bHasVario){
@@ -855,25 +871,37 @@ void Web_loop(void){
         serializeJson(doc, msg_buf);
         for (int i = 0;i <MAXCLIENTS;i++){
           if (clientPages[i] == 1){
-            log_d("Sending to [%u]: %s", i, msg_buf);
+            //log_d("Sending to [%u]: %s", i, msg_buf);
             webSocket.sendTXT(i, msg_buf);
           }
         }
       }
     }
 
-
     doc.clear();
     bSend = false;
     if ((tAct - tCounter) >= 1000){
       tCounter = tAct;
       counter++;
-      char buffer [80];
-      struct tm timeinfo;
-      if (getLocalTime(&timeinfo)){
-        strftime (buffer,80,"%F %T",&timeinfo);
-        doc["time"] = buffer;
+      /*
+      if (status.bTimeOk){
+        char buffer [80];
+        struct tm timeinfo;
+        if (getLocalTime(&timeinfo)){
+          strftime (buffer,80,"%F %T",&timeinfo);
+          doc["time"] = buffer;
+        }
       }
+      */
+      time_t now;
+      char strftime_buf[64];
+      struct tm timeinfo;
+      time(&now);
+      localtime_r(&now, &timeinfo);
+      strftime(strftime_buf, sizeof(strftime_buf), "%F %T", &timeinfo);   
+      //log_i("actual time %s",strftime_buf);
+      doc["time"] = strftime_buf;
+
       doc["freeHeap"] = xPortGetFreeHeapSize();
       doc["fHeapMin"] = xPortGetMinimumEverFreeHeapSize();
       doc["counter"] = counter;
@@ -942,11 +970,14 @@ void Web_loop(void){
       serializeJson(doc, msg_buf);
       for (int i = 0;i <MAXCLIENTS;i++){
         if (clientPages[i] == 1){
-          log_d("Sending to [%u]: %s", i, msg_buf);
+          //log_d("Sending to [%u]: %s", i, msg_buf);
           webSocket.sendTXT(i, msg_buf);
         }
       }
     }
+
+    return;
+
 
     doc.clear();
     bSend = false;
@@ -976,7 +1007,7 @@ void Web_loop(void){
       serializeJson(doc, msg_buf);
       for (int i = 0;i <MAXCLIENTS;i++){
         if (clientPages[i] == 1){
-          log_d("Sending to [%u]: %s", i, msg_buf);
+          //log_d("Sending to [%u]: %s", i, msg_buf);
           webSocket.sendTXT(i, msg_buf);
         }
       }
@@ -994,7 +1025,7 @@ void Web_loop(void){
         serializeJson(doc, msg_buf);
         for (int i = 0;i <MAXCLIENTS;i++){
           if (clientPages[i] == 1){
-            log_d("Sending to [%u]: %s", i, msg_buf);
+            //log_d("Sending to [%u]: %s", i, msg_buf);
             webSocket.sendTXT(i, msg_buf);
           }
         }
@@ -1051,7 +1082,7 @@ void Web_loop(void){
         serializeJson(doc, msg_buf);
         for (int i = 0;i <MAXCLIENTS;i++){
           if (clientPages[i] == 1){
-            log_d("Sending to [%u]: %s", i, msg_buf);
+            //log_d("Sending to [%u]: %s", i, msg_buf);
             webSocket.sendTXT(i, msg_buf);
           }
         }

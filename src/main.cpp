@@ -96,13 +96,6 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &i2cOLED);
 
 #endif
 
-#ifdef BLUETOOTHSERIAL
-
-#include <BluetoothSerial.h>
-BluetoothSerial SerialBT;
-
-#endif
-
 #ifdef AIRMODULE
 #include <MicroNMEA.h>
 //Libraries for Vario
@@ -166,7 +159,9 @@ uint8_t sendFanetData = 0;
 
 IPAddress local_IP(192,168,4,1);
 //IPAddress gateway(192,168,4,1);
-IPAddress gateway(255,255,255,255); //clear gateway
+IPAddress gateway(0,0,0,0);
+//IPAddress gateway(255,255,255,255); //clear gateway
+//IPAddress gateway = INADDR_NONE;
 IPAddress subnet(255,255,255,0);
 
 volatile bool ppsTriggered = false;
@@ -350,10 +345,6 @@ void checkReceivedLine(char *ch_str);
 void checkSystemCmd(char *ch_str);
 void setWifi(bool on);
 void handleUpdate(uint32_t tAct);
-#ifdef BLUETOOTHSERIAL
-void serialBtCallBack(esp_spp_cb_event_t event, esp_spp_cb_param_t *param);
-char* readBtSerial();
-#endif
 void printChipInfo(void);
 void setAllTime(tm &timeinfo);
 void checkExtPowerOff(uint32_t tAct);
@@ -643,17 +634,6 @@ bool printLocalTime()
   return true;
   */
 }
-
-#ifdef BLUETOOTHSERIAL
-void serialBtCallBack(esp_spp_cb_event_t event, esp_spp_cb_param_t *param){
-  if (event == ESP_SPP_SRV_OPEN_EVT){
-    status.bluetoothStat = 2; //client connected
-  }else if (event == ESP_SPP_CLOSE_EVT){
-    status.bluetoothStat = 1; //client disconnected
-  }
-  //log_i("Event=%d",event);
-}
-#endif
 
 /*
 void handleButton(uint32_t tAct){
@@ -1160,16 +1140,6 @@ void sendData2Client(String data){
   if ((setting.outputMode == OUTPUT_SERIAL) || (setting.bOutputSerial)){//output over serial-connection
     Serial.print(data); 
   }
-  #ifdef BLUETOOTHSERIAL
-  if (setting.outputMode == OUTPUT_BLUETOOTH){//output over bluetooth serial
-    if (status.bluetoothStat == 2){
-      //if (SerialBT.hasClient()){
-        //log_i("sending to bt-device %s",data.c_str());
-      SerialBT.print(data);
-      //}    
-    }
-  }
-  #endif
   if (setting.outputMode == OUTPUT_BLE){ //output over ble-connection
     if (xHandleBluetooth){
       if ((ble_data.length() + data.length()) <512){
@@ -1299,34 +1269,15 @@ void setupWifi(){
     delay(100); //wait until we have the devid
   }
   status.wifiStat = 0;
-  /*
-  WiFi.disconnect();
-  WiFi.mode(WIFI_AP);
-
-  WiFi.setAutoReconnect(false);
-  WiFi.setAutoConnect(false);
-  WiFi.softAPConfig(local_IP, INADDR_NONE, subnet);
-  if(WiFi.softAP(host_name.c_str(), setting.wifi.appw.c_str(), 6)) {
-    Serial.print("Succesfully setup Access Point with:");
-    Serial.print(host_name.c_str());
-    Serial.print(", ");
-    Serial.println(setting.wifi.appw.c_str());
-  } else {
-    Serial.print("Failed to setup Acces Point with:");
-    Serial.print(host_name.c_str());
-    Serial.print(", ");
-    Serial.println(setting.wifi.appw.c_str());
-  }
-  */
-  
   WiFi.disconnect(true,true);
   WiFi.mode(WIFI_OFF);  
-  //delay(500);
   WiFi.persistent(false);
   WiFi.onEvent(WiFiEvent);
-  if (WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE,INADDR_NONE,INADDR_NONE) == false){
-    log_e("error setting wifi.config");
-  }
+  //WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE); // call is only a workaround for bug in WiFi class
+  WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE,INADDR_NONE,INADDR_NONE);
+  //if (WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE,INADDR_NONE,INADDR_NONE) == false){
+  //  log_e("error setting wifi.config");
+  //}
   //tcpip_adapter_dns_info_t dns;
   //dns.ip.type = IPADDR_TYPE_V4;
   //dns.ip.u_addr.ip4.addr = static_cast<uint32_t>(INADDR_NONE);
@@ -1347,8 +1298,8 @@ void setupWifi(){
   }
   delay(10);
   log_i("Setting soft-AP configuration ... ");
-  //if(WiFi.softAPConfig(local_IP, gateway, subnet)){
-  if(WiFi.softAPConfig(local_IP, INADDR_NONE, subnet)){
+  if(WiFi.softAPConfig(local_IP, gateway, subnet)){
+  //if(WiFi.softAPConfig(local_IP, INADDR_NONE, subnet)){
     log_i("Ready");
   }else{
     log_i("Failed!");
@@ -1380,47 +1331,24 @@ void setupWifi(){
 
   log_i("my APIP=%s",local_IP.toString().c_str());
 
+  
+  if((WiFi.getMode() & WIFI_MODE_STA)){
+    if (setting.outputMode != OUTPUT_BLE){
+      WiFi.setSleep(false); //disable power-save-mode !! will increase ping-time
+    }
+  }
+
   /*
   tcpip_adapter_dhcps_stop(TCPIP_ADAPTER_IF_AP);
-  //tcpip_adapter_dns_info_t dns_info = {0};
-  //IP_ADDR4(&dns_info.ip, 0, 0, 0, 0);
-  //ESP_ERROR_CHECK(tcpip_adapter_set_dns_info(TCPIP_ADAPTER_IF_AP, TCPIP_ADAPTER_DNS_MAIN, &dns_info));
-  dhcps_offer_t opt_val = 0; // no DNS-Server
+  dhcps_offer_t opt_val = 3; // no DNS-Server
   tcpip_adapter_dhcps_option(TCPIP_ADAPTER_OP_SET, TCPIP_ADAPTER_DOMAIN_NAME_SERVER, &opt_val, sizeof(dhcps_offer_t));  // don't supply a dns server via dhcps
   opt_val = 0; // no Router
   tcpip_adapter_dhcps_option(TCPIP_ADAPTER_OP_SET, TCPIP_ADAPTER_ROUTER_SOLICITATION_ADDRESS, &opt_val, sizeof(dhcps_offer_t));  // don't supply a gateway (router) via dhcps option 3
   tcpip_adapter_dhcps_start(TCPIP_ADAPTER_IF_AP);
   */
-  
-  if((WiFi.getMode() & WIFI_MODE_STA)){
-    if (setting.outputMode =! OUTPUT_BLE){
-      WiFi.setSleep(false); //disable power-save-mode !! will increase ping-time
-    }
-  }
-  //}else{
-  //  log_i("STA has not been started");
-  //}
-  
-
-  /*
-  // Set up mDNS responder:
-  // - first argument is the domain name, in this example
-  //   the fully-qualified domain name is "esp32.local"
-  // - second argument is the IP address to advertise
-  //   we send our IP address on the WiFi network
-  if (!MDNS.begin(host_name.c_str())) {
-      Serial.println("Error setting up MDNS responder!");
-      while(1) {
-          delay(1000);
-      }
-  }
-  Serial.println("mDNS responder started");
-
-  // Add service to MDNS-SD
-  MDNS.addService("http", "tcp", 80);  
-  */
 
   status.wifiStat = 1;
+  delay(2000);
   Web_setup();
 }
 
@@ -2054,7 +1982,7 @@ xOutputMutex = xSemaphoreCreateMutex();
   //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
 #ifdef AIRMODULE
   if (setting.Mode == MODE_AIR_MODULE){
-    xTaskCreatePinnedToCore(taskBaro, "taskBaro", 6500, NULL, 100, &xHandleBaro, ARDUINO_RUNNING_CORE1); //high priority task
+    xTaskCreatePinnedToCore(taskBaro, "taskBaro", 6500, NULL, 9, &xHandleBaro, ARDUINO_RUNNING_CORE1); //high priority task
   }
 #endif  
   //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
@@ -2450,11 +2378,16 @@ void taskWeather(void *pvParameters){
 
 #ifdef AIRMODULE
 void taskBaro(void *pvParameters){
+  uint32_t tMax = 0;
+  uint32_t tStart;
+  uint32_t tCycle;
+  uint32_t tLog = millis();
+  uint32_t tReset = millis();
   uint8_t u8Volume = setting.vario.volume;
   log_i("starting baro-task ");  
-  TickType_t xLastWakeTime;
+  //TickType_t xLastWakeTime;
   // Block for 500ms.
-  const TickType_t xDelay = 10 / portTICK_PERIOD_MS;  
+  //const TickType_t xDelay = 10 / portTICK_PERIOD_MS;  
   status.vario.bHasMPU = false;
 
   ledcSetup(channel, freq, resolution);
@@ -2484,9 +2417,28 @@ void taskBaro(void *pvParameters){
     log_i("no baro found --> end baro-task ");  
     status.vario.bHasVario = false;    
   }
+  //status.vario.bHasVario = false; //only for testing
   if (status.vario.bHasVario){
-    xLastWakeTime = xTaskGetTickCount ();
+    //xLastWakeTime = xTaskGetTickCount();
     while (1){      
+      tStart = millis();
+      if ((tStart - tLog) >= 1000){
+        tLog = tStart;
+        if (tMax >= 50){
+          log_w("baro max=%dms",tMax);
+          tMax = 0;
+        }
+      }
+      /*
+      if ((tStart - tLog) >= 1000){
+        tLog = tStart;
+        log_i("max cycle=%dms;max=%dms",tCycle,tMax);
+      }
+      if ((tStart - tReset) >= 5000){
+        tReset = tStart;
+        tMax = 0;
+      }
+      */
       if (command.CalibGyro == 1){
         baro.calibGyro();
         command.CalibGyro = 2;
@@ -2525,6 +2477,10 @@ void taskBaro(void *pvParameters){
       //delay(10);
       // Wait for the next cycle.
       //vTaskDelayUntil( &xLastWakeTime, xDelay );
+      tCycle = millis() - tStart;
+      if (tCycle >= tMax){
+        tMax = tCycle;
+      }
       delay(1);
       if ((WebUpdateRunning) || (bPowerOff)) break;
     }
@@ -2618,16 +2574,6 @@ void taskBluetooth(void *pvParameters) {
      } 
 	 }
   }else if (setting.outputMode == OUTPUT_BLUETOOTH){
-  #ifdef BLUETOOTHSERIAL 
-    //esp_bt_controller_config_t cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
-    //esp_bt_controller_init(&cfg);
-    esp_bt_controller_enable(ESP_BT_MODE_CLASSIC_BT);
-    esp_bt_controller_mem_release(ESP_BT_MODE_BLE);    
-    log_i("starting bluetooth_serial %s",host_name.c_str());
-    SerialBT.begin(host_name.c_str()); //Bluetooth device name
-    SerialBT.register_callback(&serialBtCallBack);
-    log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
-  #endif
     status.bluetoothStat = 1; //client disconnected
     while (1)
     {
@@ -3119,13 +3065,13 @@ void setWifi(bool on){
     WiFi.disconnect(true,true);
     WiFi.mode(WIFI_OFF);
     WiFi.persistent(false);
-    WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE); // call is only a workaround for bug in WiFi class
-    //WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE,INADDR_NONE,INADDR_NONE); // call is only a workaround for bug in WiFi class
+    //WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE); // call is only a workaround for bug in WiFi class
+    WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE,INADDR_NONE,INADDR_NONE); // call is only a workaround for bug in WiFi class
     //WiFi.config(local_IP, INADDR_NONE, subnet,INADDR_NONE,INADDR_NONE); // call is only a workaround for bug in WiFi class
     WiFi.mode(WIFI_MODE_AP);
     WiFi.softAP(host_name.c_str(), setting.wifi.appw.c_str());
-    //WiFi.softAPConfig(local_IP, gateway, subnet);
-    WiFi.softAPConfig(local_IP, INADDR_NONE, subnet);
+    WiFi.softAPConfig(local_IP, gateway, subnet);
+    //WiFi.softAPConfig(local_IP, INADDR_NONE, subnet);
     WiFi.setHostname(host_name.c_str());
     Web_setup();
     status.wifiStat = 1;      
@@ -3316,34 +3262,6 @@ void checkReceivedLine(char *ch_str){
     fanet.writeMsgType3(0,msg);
   }*/
 }
-
-#ifdef BLUETOOTHSERIAL 
-char* readBtSerial(){
-  static char lineBuffer[512];
-  static uint16_t recBufferIndex = 0;
-  if (status.bluetoothStat == 0){
-    return NULL; //bluetooth not started yet.
-  }
-  if (status.bluetoothStat == 2){
-    while(SerialBT.available()){
-      if (recBufferIndex >= (512-1)) recBufferIndex = 0; //Buffer overrun
-      lineBuffer[recBufferIndex] = SerialBT.read();
-      if (lineBuffer[recBufferIndex] == '\n'){
-        recBufferIndex++;
-        lineBuffer[recBufferIndex] = 0; //zero-termination
-        recBufferIndex = 0;
-        return &lineBuffer[0];
-      }else{
-        recBufferIndex++;
-      }  
-    }
-  }else{
-    //status.bluetoothStat = 1;
-    recBufferIndex = 0;
-  }
-  return NULL;
-}
-#endif
 
 char* readSerial(){
   static char lineBuffer[512];
@@ -3898,14 +3816,6 @@ void taskStandard(void *pvParameters){
     if (pSerialLine != NULL){
       checkReceivedLine(pSerialLine);
     }
-    #ifdef BLUETOOTHSERIAL 
-    if (setting.outputMode == OUTPUT_BLUETOOTH){
-      pSerialLine = readBtSerial();
-      if (pSerialLine != NULL){
-        checkReceivedLine(pSerialLine);
-      }
-    }
-    #endif    
     if ((setting.fanetMode == FN_AIR_TRACKING) || (status.flying)){
       fanet.onGround = false; //online-tracking
     }else{
@@ -4337,6 +4247,9 @@ void taskBackGround(void *pvParameters){
 
   while (1){
     uint32_t tAct = millis();
+    if  (status.wifiStat){
+      Web_loop();
+    }
     handleUpdate(tAct);
     #ifdef GSMODULE
     if (setting.Mode == MODE_GROUND_STATION){
@@ -4476,7 +4389,8 @@ void taskBackGround(void *pvParameters){
         WiFi.disconnect(true,true);
         WiFi.mode(WIFI_OFF);
         WiFi.persistent(false);
-        WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE); // call is only a workaround for bug in WiFi class
+        //WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE); // call is only a workaround for bug in WiFi class
+        WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE,INADDR_NONE,INADDR_NONE); // call is only a workaround for bug in WiFi class
         WiFi.mode(WIFI_MODE_APSTA);
         esp_wifi_set_ps (WIFI_PS_NONE);
         WiFi.begin(setting.wifi.ssid.c_str(), setting.wifi.password.c_str()); 
@@ -4501,9 +4415,6 @@ void taskBackGround(void *pvParameters){
     }
     */
 
-    if  (status.wifiStat){
-      Web_loop();
-    }
     if (wifiCMD == 11) setWifi(true); //switch wifi on
     if (wifiCMD == 10) setWifi(false); //switch wifi off
     if (( tAct > (setting.wifi.tWifiStop * 1000)) && (setting.wifi.tWifiStop!=0) && (!WebUpdateRunning)){
