@@ -80,6 +80,7 @@ public:
     bool calibGyro(void);
     bool calibAcc(void);
     bool calibration(void);
+    bool calibrate(bool bInit);
 
 protected:
 private:
@@ -125,6 +126,7 @@ private:
     double zValues[2] = {   0,  -90 };
     double _sigmaP;
     double _sigmaA;
+    int axMin,axMax,ayMin,ayMax,azMin,azMax;
 };
 
 

@@ -1,0 +1,206 @@
+*******************************
+FLARM PROTOCOL VERSION 4 (2008)
+*******************************
+courtesy of Hiram Yaeger
+
+Document Release: 1.0
+
+
+INTRODUCTION
+
+For some time there has been a discussion about the correctness of using a secret radio protocol for a safety device in aeronautics. This fact was never seen before and has led the FAI/IGC to PUSH for an open standard for data transmission between gliders and light planes.
+In a completely opposite direction, from the latest Flarm update, not only the radio protocol is secret, but part of it has also been encrypted. 
+
+DESCRIPTION OF TRANSMISSION
+
+The flarm unit is transmitting data blocks of 24 bytes.
+Each block contains all of the informations that a remote plane need to know about a possible danger: plane identification, position, altitude.
+Other non-essential information are transmitted.
+
+Since version 4 of the firmware, the essential information are partially obscurated.
+
+The fact that all of the data is changing even for very small horizontal or vertical movements, lets you understand that the content is encrypted and not simply "shuffled".
+
+Flarm uses ATM128 by AVR as a CPU (microprocessor), running at 8-16 Mhz.
+These CPUs are of RISC type which means that can only do simple operations as instructions.
+For example: they cannot multiply or divide numbers, except if very short (0-256).
+It is clear THAT in order to multiply or divide a number, and do mathematic functions, this processor needs to be over-programmed. Normally these processors are very good for programming Elevators, Coffe Machines, anything that does not need math or that does not need speed while doing math.
+
+Using an encryption method on such a slow microprocessor (and for every radio packet!) was not so obvious because of performance problems.
+Compared to other processors, the Flarm is ten or hundred times slower when doing number crunching, because calculations are not its original job by design.
+Much surprise to discover that an already overloaded processor, starting from version 4 of the firmware, was even more loaded by an encryption routine in action every time a packet is sent or received.
+
+So, Google search for "AVR crypt" and you will find the very first link to a real AVR microprocessor.
+Select the "8051&AVR Cryptolibrary" and read about three algorithms: Skipjack, Sea and Tea. All of them compared in term of performance on AVR processors.
+http://www.cix.co.uk/~klockstone/tea.pdf
+
+TEA was the only one fitting for a small 24 bytes block (in fact even less).
+Other methods are suitable only for larger chunk of data, and they are even slower than TEA.
+TEA in fact means: Tiny Encryption Algorithm, not subject to any patent (free to use) since 1994.
+There are several ready-to-use implementations of TEA for AVR processors on the internet, for free!
+
+Guess what Flarm is using. The only possible method for a slow processor is TEA.
+TEA shuffles bytes for "n" times, where "n" can be a minimum of 6 times for effective encryption.
+Flarm encrypts with TEA using 6 iterations, THE SIMPLEST WAY.
+
+TEA is available of course even for PC, where Intel processors have also very powerful floating point units for math operations. A single PC is roughly 10 thousands faster than a flarm processor.
+Do an exaustive attempt on any possible combination of 128 bit, and you will find the password. 
+
+
+One important issue has to be cleared out: using encryption on Flarm's CPU does in fact slow down operations. On a slow processor such as AVR Atmel is, this slowness becomes a critic factor for the overall result. Flarm could have been using this "extra" CPU load for their "prediction" algorithms? 
+By the way, how do you think it is possible to "predict" without doing some heavy calculations? 
+Do you really believe there are complex calculations beyond such a "prediction" ?
+
+
+TECHNICAL DETAILS
+
+The RF link is built around a standard chip, the Nordic nrf 905. Its microprocessor interface is a standard SPI connection, plus some status lines (mirrored into a status register) and an IRQ line.
+
+This chip can operate in different RF bands simply changing the internal PLL programming.
+
+All the timing is done with a single 16 Mhz quartz crystal (but other frequencies can be used, software selectable).
+
+The device initialization includes the chosen frequency, the packet length, the sync word (VERY important: without the right word the RF stream will be ignored), the type of transmission, and other parameters.
+
+The device initialization in this application (for the V4 protocol) is, in Hex:
+
+75 0e 33 18 18 93 9a 0c ff d8
+
+For the RX / TX operations, refer to the data sheet of the Nordic chip.
+
+The transmission is done randomly between 0.8 and 2.0 seconds.
+
+The data packet exchanged, that has the length of 24 bytes, contains the data as described below.
+
+Legenda:
+-	the fix bits are marked with 0/1
+-	the known fields are marked with letters and explained
+-	the unknown bits are marked with x
+
+Note that for basic use, the x bits are not necessary, especially for the operation of sole reading of the radio packets received.
+16 bytes are encrypted, in two blocks of 8, with the encryption algorithm explained below.
+
+Below follows the meaning of the bits, AFTER the decoding process.
+
+Byte n.	 contained bits
+
+0	 AAAA AAAA
+1	 AAAA AAAA
+2	 AAAA AAAA
+3	 x x 1 x 0 0 0 0
+4	 LLLL LLLL	1st byte of the 1st chunk of coded data (see later) 
+5	 LLLL LLLL	2nd byte of the 1st chunk of coded data
+6	 NNNN NNNN	3rd byte of the 1st chunk of coded data
+7	 NNNN NNNN	4th byte of the 1st chunk of coded data
+8	 HHHH HHHH	(7..0) 5th byte of the 1st chunk of coded data
+9	 VVVH HHHH (2..0)(12..8) 6th byte of the 1st chunk of coded data
+10	 1VVV VVVV	(9..3) 7th byte of the 1st chunk of coded data
+11	 ZZTT TTxx	8th byte of the 1st chunk of coded data
+12	 SSSS SSSS	1st byte of the 2nd chunk of coded data (see later) 
+13	 ssss ssss	2nd byte of the 2nd chunk of coded data
+14	 KKKK KKKK	3rd byte of the 2nd chunk of coded data
+15	 kkkk kkkk	4th byte of the 2nd chunk of coded data
+16	 EEEE EEEE	5th byte of the 2nd chunk of coded data
+17	 eeee eeee	6th byte of the 2nd chunk of coded data
+18	 PPPP PPPP	7th byte of the 2nd chunk of coded data
+19	 pppp pppp	8th byte of the 2nd chunk of coded data
+20	 xxxx xxxx (Gps status data)
+21	 FF xx xxxx
+22	 xxxx xxxx
+23	 xxxx xxxx
+
+
+Bits explanation:
+
+AA... address bits. Different for each device. The byte n. 2 is fixed to DD
+(but it works with any number)
+
+LL..,	 Latitude, 0000..FFFF is a square around the actual position: because the 
+device tx range is limited, it is enough to transmit only the less significant
+part of the position. 
+
+NN..	 Longitude, same as before. The dimension of the square changes with the latitude.
+
+HH..	 altitude, in meters. 
+The altitude is given by the GPS, NOT by the pressure sensor
+Note that the maximum height can be 8192 meters
+
+VV..	 vertical speed. Signed. If positive, see FF bits.
+
+ZZ	 00: free mode. 10: stealth mode. Note that the position and movement data are 
+radio transmitted correctly, with highest available precision, regardless of this setting.
+
+
+TTTT	 plane type. Starting from 0000 follows the list as described in the manual.
+
+SS
+ss
+KK
+kk	 Horizontal (N/S) speed, signed. The four bytes are different depending on speed.
+Used for collision forecast
+
+EE
+ee
+PP
+pp	 Horizontal (E/W) speed, signed. The four bytes are different depending on speed.
+Used for collision forecast
+
+FF	 multiplying factor for vertical speed. Meaningful only if the vertical speed is 
+positive. 00: leave as it is. 01: multiply x2. 10: multiply x4. 11: multiply x8
+
+
+ENCRYPTION
+
+The two chunks of data are encrypted with the TEA algorithm, with the following parameters:
+
+common data
+
+Delta value: 9e 37 79 b9 (standard, i.e. the default delta in every TEA document)
+
+Encryption iteration loop: 6 times 
+
+Keys:
+
+1st chunk:
+---------
+DB62
+62B9
+A579
+5664 
+7C97
+90A0 
+27D6
+FCCE 
+
+
+2nd chunk:
+---------
+A2BE
+C3AC 
+D193
+51E1
+0801
+774F
+9074
+262E
+
+
+Each iteration loop uses 2 keys.
+At each iteration loop the word changes. See a TEA description for any doubt.
+
+
+LEGAL ASPECTS
+
+While it is not possible for Flarm to "protect" an air protocol by law, they maybe could register and protect a method for predicting a flight collision by the use of calculations (if this was possible at all: pilots, especially soaring pilots, are unpredictable).
+There is no such method around simply because there is no prediction, unless considering simple linear projections and extrapolations, a "prediction"!
+
+You can implement your own radio protocol, even modifying the Flarm one, but you will not be able to protect it in any way, legally, since the law does not allow you to copyright or patent any radio protocol. You can propose a standard out of a protocol, but that's all about it.
+Anything you transmit can be used by others, without any restriction, and they can transmit like you do, on public frequencies, like the one used by Flarm.
+
+Just a quick look on the public servers that report the patents, searching for anticollision systems, will show you the amount of work that was done in this field during the end of past century. Also in this field, there is no patent assigned to Flarm. The radio transmission and use of the coordinates of a vehicle for traffic control purposes is anything but legally protectable, since it's a simple, basic concept, implemented in different fields since years.
+
+
+
+SIGNED: HP2814A01996
+SIGNED: JAPANS679677
+

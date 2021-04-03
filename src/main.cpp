@@ -2006,7 +2006,7 @@ xOutputMutex = xSemaphoreCreateMutex();
 #endif  
 #ifdef GSM_MODULE
   //start Gsm-task
-  xTaskCreatePinnedToCore(taskGsm, "taskGsm", 4096, NULL, 6, &xHandleGsm, ARDUINO_RUNNING_CORE1);
+  xTaskCreatePinnedToCore(taskGsm, "taskGsm", 4096, NULL, 3, &xHandleGsm, ARDUINO_RUNNING_CORE1);
 #endif
 
 }
@@ -2078,7 +2078,7 @@ void taskGsm(void *pvParameters){
   #endif
   */
   GsmSerial.begin(115200,SERIAL_8N1,PinGsmRx,PinGsmTx,false); //baud, config, rx, tx, invert
-  const TickType_t xDelay = 5000 / portTICK_PERIOD_MS;   //only every 1sek.
+  const TickType_t xDelay = 60000 / portTICK_PERIOD_MS;   //only every 60sek.
   TickType_t xLastWakeTime = xTaskGetTickCount (); //get actual tick-count
   //bool status;
   while(1){
@@ -2375,7 +2375,6 @@ void taskWeather(void *pvParameters){
 }
 #endif
 
-
 #ifdef AIRMODULE
 void taskBaro(void *pvParameters){
   uint32_t tMax = 0;
@@ -2384,6 +2383,7 @@ void taskBaro(void *pvParameters){
   uint32_t tLog = millis();
   uint32_t tReset = millis();
   uint8_t u8Volume = setting.vario.volume;
+  static bool bInitCalib = true;
   log_i("starting baro-task ");  
   //TickType_t xLastWakeTime;
   // Block for 500ms.
@@ -2446,14 +2446,39 @@ void taskBaro(void *pvParameters){
         esp_restart();
       }
       if (command.CalibAcc == 1){
+        status.calibAccStat = 1;
+        command.CalibAcc = 10;
+        bInitCalib = true;
+      }
+      if (command.CalibAcc == 11){
+        if (baro.calibrate(bInitCalib)){
+          status.calibAccStat = 0;
+          command.CalibAcc = 2; //calibrating finished --> reboot
+          delay(2000);
+          esp_restart();
+          
+        }
+        bInitCalib = false;
+        status.calibAccStat++;
+        command.CalibAcc = 10;
+      }
+        /*
         if (baro.calibAcc()){
           command.CalibAcc = 2;
           delay(2000);
           esp_restart();
         }else{
           command.CalibAcc = 255; //error
-        }        
+        } 
+        */       
+      //}
+      
+      if (command.CalibAcc > 0){
+        delay(1);
+        continue;
       }
+      
+
       if (((!status.flying) && (setting.vario.BeepOnlyWhenFlying)) || (status.bMuting)){
         Beeper.setVolume(0);
       }else{

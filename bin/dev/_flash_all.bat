@@ -1,10 +1,10 @@
 set PORT=COM1
 set version=v4.8.4
 REM set version=v4.5.0
-REM set option=psRam
+set option=psRam
 REM set option=nopsRam
 REM set option=sim800
-set option=sim7000_psRam
+REM set option=sim7000_psRam
 
 
 set firmware=firmware_%version%_%option%.bin

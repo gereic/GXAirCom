@@ -10,6 +10,7 @@
  var url = "ws://" + window.location.host + ":1337/";
  var bHasBME = 0;
  var bHasVario = 0;
+ var calibBtnState = 0;
  
 // This is called when the page finishes loading
 function init() {
@@ -159,6 +160,35 @@ function setVis(){
   }
 }
 
+function setCalibState(StateId,state){
+  e = document.getElementById(StateId);
+  switch(state){
+    case 0:
+      e.innerText = "";
+      break;
+    case 1:
+      e.innerText = "please put module flat on ground";
+      break;
+    case 2:
+      e.innerText = "please put module reverse";
+      break;
+    case 3:
+      e.innerText = "please put module left side";
+      break;
+    case 4:
+      e.innerText = "please put module right side";
+      break;
+    case 5:
+      e.innerText = "please put module up";
+      break;
+    case 6:
+      e.innerText = "please put module down";
+      break;
+    default:
+      break;
+  }
+}
+
 function setBtnCalib(BtnId,state){
   e = document.getElementById(BtnId);
   switch(state){
@@ -171,8 +201,14 @@ function setBtnCalib(BtnId,state){
     case 2:
       e.innerText = "calibration ready --> Board will reboot";
       document.getElementById("btnsave").innerText  = "rebooting ..."
-      var delay = 2000;
+      var delay = 5000;
       setTimeout( callMainPage, delay )
+      break;
+    case 10:
+      e.innerText = "press when done";
+      break;
+    case 11:
+      e.innerText = "calibrating";
       break;
     case 255:
       e.innerText = "error calibration";
@@ -193,9 +229,13 @@ function calibGyro(){
 
 //send calibcalibAcc
 function calibAcc(){  
-  setBtnCalib("btnCalibAcc",1);
+  var value = 1;
+  if (calibBtnState == 10){
+    value = 11;
+  }
+  setBtnCalib("btnCalibAcc",value);
   var obj = {
-    calibAcc : 1
+    calibAcc : value
   };
   doSend(JSON.stringify(obj));
 }
@@ -213,7 +253,7 @@ function setBtnGPS(state){
     case 2:
       e.innerText = "GPS ready --> Board will reboot";
       document.getElementById("btnsave").innerText  = "rebooting ..."
-      var delay = 2000;
+      var delay = 5000;
       setTimeout( callMainPage, delay )
       break;
     case 255:
@@ -383,7 +423,7 @@ function sendValues(){
   doSend(JSON.stringify(obj));
 
   document.getElementById("btnsave").innerText  = "rebooting ..."
-  var delay = 2000;
+  var delay = 5000;
   setTimeout( callMainPage, delay )
 }
  
@@ -420,8 +460,12 @@ function onMessage(evt) {
           setBtnCalib("btnCalibGyro",myObj[key]);
           continue;          
         }else if (key == "calibAcc"){
+          calibBtnState = myObj[key];
           setBtnCalib("btnCalibAcc",myObj[key]);
-          continue;          
+          continue; 
+        }else if (key == "stateCalibAcc"){
+          setCalibState("stateCalibAcc",myObj[key]);
+          continue;                    
         }else if (key == "useMPU"){
           if (myObj[key] == 0){
             document.getElementById("VisMPU").style.display='none';
@@ -903,6 +947,9 @@ window.addEventListener("load", init, false);
             <td>
               <button type="button" onClick="calibAcc()" id="btnCalibAcc" class="button byel" style="line-height: 1.7rem;">calib</button>
             </td>
+          </tr>
+          <tr>
+            <th id="stateCalibAcc"></th>
           </tr>
           <tr id="visAccTemp1">
             <th>acc-sensor Temp [°C]</th>

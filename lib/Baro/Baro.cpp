@@ -101,6 +101,83 @@ void Baro::meansensors() {
 	Serial.println(mean_gx);
 }
 
+bool Baro::calibrate(bool bInit){
+  int16_t ax, ay, az, gx, gy, gz;
+  if (bInit){
+    mpu.setDMPEnabled(false);
+    /*
+    mpu.setXAccelOffset(0);
+    mpu.setYAccelOffset(0);
+    mpu.setZAccelOffset(0);
+    mpu.setXGyroOffset(0);
+    mpu.setYGyroOffset(0);
+    mpu.setZGyroOffset(0);
+    */
+    //First 100 measures are discarded
+    axMin = 0;
+    axMax = 0;
+    ayMin = 0;
+    ayMax = 0;
+    azMin = 0;
+    azMax = 0;
+  }
+  for (int j = 0; j < 100; j++) {
+    mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+    delay(2);
+  }
+  meansensors();
+  if ((abs(mean_ax) <= 5000) && (abs(mean_ay) <= 5000) && (mean_az > 10000)){
+    azMax = mean_az;
+    log_i("azMax=%d",azMax);
+  }
+  if ((abs(mean_ax) <= 5000) && (abs(mean_ay) <= 5000) && (mean_az < -10000)){
+    azMin = mean_az;
+    log_i("azMin=%d",azMin);
+  }
+  if ((abs(mean_ax) <= 5000) && (mean_ay > 10000) && (abs(mean_az) <= 5000)){
+    ayMax = mean_ay;
+    log_i("ayMax=%d",ayMax);
+  }
+  if ((abs(mean_ax) <= 5000) && (mean_ay < -10000) && (abs(mean_az) <= 5000)){
+    ayMin = mean_ay;
+    log_i("ayMin=%d",ayMin);
+  }
+  if ((mean_ax > 10000) && (abs(mean_ay) <= 5000) && (abs(mean_az) <= 5000)){
+    axMax = mean_ax;
+    log_i("axMax=%d",axMax);
+  }
+  if ((mean_ax < -10000) && (abs(mean_ay) <= 5000) && (abs(mean_az) <= 5000)){
+    axMin = mean_ax;
+    log_i("axMin=%d",axMin);
+  }
+  if ((axMin != 0) && (axMax != 0) && (ayMin != 0) && (ayMax != 0) && (azMin != 0) && (azMax != 0)){
+    // we are ready !!
+    ax_offset = (axMax + axMin) / 2 * -1;
+    ay_offset = (ayMax + ayMin) / 2 * -1;
+    az_offset = (azMax + azMin) / 2 * -1;
+    
+    float aRange;
+    ax_scale = 32768 / (float(axMax) - float(axMin));
+    ay_scale = 32768 / (float(ayMax) - float(ayMin));
+    az_scale = 32768 / (float(azMax) - float(azMin));
+    log_i("write new offsets");
+    log_i("scale ax_scale=%.02f,ay_scale=%.02f,az_scale=%.02f,",ax_scale,ay_scale,az_scale);
+    log_i("acc offsets ax_offset=%d,ay_offset=%d,az_offset=%d",ax_offset,ay_offset,az_offset);
+    Preferences preferences;
+    preferences.begin("fastvario", false);
+    preferences.putInt("axOffset", ax_offset);
+    preferences.putInt("ayOffset", ay_offset);
+    preferences.putInt("azOffset", az_offset);
+
+    preferences.putFloat("axScale", ax_scale);
+    preferences.putFloat("ayScale", ay_scale);
+    preferences.putFloat("azScale", az_scale);
+
+    preferences.end();
+    return true;
+  }
+  return false;
+}
 
 bool Baro::calibration() {
 
@@ -353,6 +430,9 @@ bool Baro::initMS5611(void){
 	ax_offset = preferences.getInt("axOffset", 0);
 	ay_offset = preferences.getInt("ayOffset", 0);
 	az_offset = preferences.getInt("azOffset", 0);
+	ax_scale = preferences.getFloat("axScale", 1.0);
+	ay_scale = preferences.getFloat("ayScale", 1.0);
+	az_scale = preferences.getFloat("azScale", 1.0);
 	gx_offset = preferences.getInt("gxOffset", 0);
 	gy_offset = preferences.getInt("gyOffset", 0);
 	gz_offset = preferences.getInt("gzOffset", 0);
@@ -381,6 +461,11 @@ bool Baro::initMS5611(void){
     mpu.setZGyroOffset(gz_offset);
   }
 
+  int actAxOffset = mpu.getXAccelOffset();
+  int actAyOffset = mpu.getYAccelOffset();
+  int actAzOffset = mpu.getZAccelOffset();
+  log_i("acc offsets ax_offset=%d,ay_offset=%d,az_offset=%d",actAxOffset,actAyOffset,actAzOffset);
+  /*
   if ((ax_offset == 0) && (ay_offset == 0) && (az_offset == 0)){
     //bUseAcc = false;
     ax_offset = mpu.getXAccelOffset();
@@ -392,8 +477,9 @@ bool Baro::initMS5611(void){
     mpu.setYAccelOffset(ay_offset);
     mpu.setZAccelOffset(az_offset);
   }
+  */
 
-  //log_i("scale ax_scale=%.02f,ay_scale=%.02f,az_scale=%.02f,",ax_scale,ay_scale,az_scale);
+  log_i("scale ax_scale=%.02f,ay_scale=%.02f,az_scale=%.02f,",ax_scale,ay_scale,az_scale);
   log_i("acc offsets ax_offset=%d,ay_offset=%d,az_offset=%d",ax_offset,ay_offset,az_offset);
   log_i("gyro offsets gx_offset=%d,gy_offset=%d,gz_offset=%d",gx_offset,gy_offset,gz_offset);
 
@@ -564,13 +650,22 @@ void Baro::scaleAccel(VectorInt16 *accel){
   //static uint32_t tLog = millis();
   //y=mx+b; //linear function  
   float scale_x,scale_y,scale_z;
-  float offset_x,offset_y,offset_z;
+  float offset_x,offset_y,offset_z;  
+  /*
   scale_x = 1;
   scale_y = 1;
   scale_z = 1;
   offset_x = 0;
   offset_y = 0;
   offset_z = 0;
+  */
+  scale_x = ax_scale;
+  scale_y = ay_scale;
+  scale_z = az_scale;
+  offset_x = ax_offset;
+  offset_y = ay_offset;
+  offset_z = az_offset;
+  ;
 
   /*
   scale factor=((average couts at +1g)-(average counts at -1g))/(2g's)
@@ -598,7 +693,7 @@ void Baro::scaleAccel(VectorInt16 *accel){
   float temp = getMpuTemp();
   accel->x = (int16_t)round(scale_x * (float)accel->x + offset_x);//(offset_x * scale_x));
   accel->y = (int16_t)round(scale_y * (float)accel->y + offset_y);//(offset_y * scale_y));
-  offset_z = interpolate.Linear(tValues,zValues,2,temp,false);
+  //offset_z = interpolate.Linear(tValues,zValues,2,temp,false);
   /*
   if ((millis() - tLog) >= 1000){
     tLog = millis();

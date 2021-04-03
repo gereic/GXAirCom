@@ -454,6 +454,7 @@ struct statusData{
   String sNewVersion;
   uint32_t tRestart;
   float fuelSensor; //ads of fuel-sensor
+  uint8_t calibAccStat;
 };
 
 #endif

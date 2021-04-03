@@ -821,6 +821,11 @@ void Web_loop(void){
       mCommand.CalibAcc = command.CalibAcc;
       doc["calibAcc"] = mCommand.CalibAcc;
     }    
+    if (mStatus.calibAccStat != status.calibAccStat){
+      bSend = true;
+      mStatus.calibAccStat = status.calibAccStat;
+      doc["stateCalibAcc"] = mStatus.calibAccStat;
+    }    
     if (bSend){
       serializeJson(doc, msg_buf);
       for (int i = 0;i <MAXCLIENTS;i++){
@@ -975,9 +980,6 @@ void Web_loop(void){
         }
       }
     }
-
-    return;
-
 
     doc.clear();
     bSend = false;
