@@ -93,7 +93,7 @@ extern uint8_t Legacy_Buffer [24];
 size_t encrypt_legacy(void *legacy_pkt, long timestamp);
 size_t decrypt_legacy(void *legacy_pkt, long timestamp);
 int8_t decodeFrame(void *legacy_pkt,uint32_t len,ufo_t *fop);
-bool legacy_decode(void *legacy_pkt, ufo_t *this_aircraft, ufo_t *fop);
+int8_t legacy_decode(void *legacy_pkt, ufo_t *this_aircraft, ufo_t *fop);
 unsigned short getLegacyCkSum(byte* ba, int len);
 void legacyLogAircraft(ufo_t *air);
 FanetLora::aircraft_t LP_Flarm2FanetAircraft(eFlarmAircraftType aircraft);

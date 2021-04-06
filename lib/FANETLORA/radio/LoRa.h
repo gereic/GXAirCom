@@ -36,9 +36,10 @@ public:
   int16_t setCodingRate(uint8_t cr);
   int16_t transmit(uint8_t* data, size_t len);
   bool isRxMessage();
-  int16_t switchFSK();
+  int16_t switchFSK(float frequency);
   int16_t switchLORA();
-  float get_airlimit(void);  
+  float get_airlimit(void);
+  int16_t setFrequency(float frequency);
 
 private:
 	float expectedAirTime_ms(int pktLen);

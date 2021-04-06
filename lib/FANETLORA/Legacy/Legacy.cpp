@@ -79,7 +79,7 @@ void invert_buffer(uint8_t *buffer,uint32_t len){
 
 unsigned short getLegacyCkSum(byte* ba, int len)
 {
-  unsigned short crc16 = 0xffff;  /* seed value */
+  uint16_t crc16 = 0xffff;  /* seed value */
   crc16 = update_crc_ccitt(crc16, 0x31);
   crc16 = update_crc_ccitt(crc16, 0xFA);
   crc16 = update_crc_ccitt(crc16, 0xB6);
@@ -102,11 +102,6 @@ int8_t decodeFrame(void *legacy_pkt,uint32_t len,ufo_t *fop){
     pkt_parity += parity(*(((unsigned char *) pkt) + ndx));
   }
   
-  if (pkt_parity % 2) {
-    log_i("$PSRFE,bad parity of decoded packet: %02X",pkt_parity % 2);
-    return -2;
-  }
-
   int32_t lat = (pkt->lat) % (uint32_t) 0x080000;
   if (lat >= 0x040000) lat -= 0x080000;
   lat = (lat << 7); // + 0x40 
@@ -166,7 +161,7 @@ uint8_t parity(uint32_t x) {
 }
  
 
-bool legacy_decode(void *legacy_pkt, ufo_t *this_aircraft, ufo_t *fop) {
+int8_t legacy_decode(void *legacy_pkt, ufo_t *this_aircraft, ufo_t *fop) {
 
   legacy_packet_t *pkt = (legacy_packet_t *) legacy_pkt;
 
@@ -183,9 +178,16 @@ bool legacy_decode(void *legacy_pkt, ufo_t *this_aircraft, ufo_t *fop) {
   }
   
   if (pkt_parity % 2) {
-    //log_i("$PSRFE,bad parity of decoded packet: %02X",pkt_parity % 2);        
-    return false;
+    log_i("bad parity of decoded packet: %02X",pkt_parity % 2);        
+    return -1;
   }
+
+  //log_i("unk0=%02X,unk1=%02X",pkt->_unk0,pkt->_unk1);
+  if (pkt->_unk0 != 0){
+    log_e("unknown message unk0=%02X",pkt->_unk0);
+    return -2;
+  }
+
 
   int32_t round_lat = (int32_t) (ref_lat * 1e7) >> 7;
   int32_t lat = (pkt->lat - round_lat) % (uint32_t) 0x080000;
@@ -234,7 +236,7 @@ bool legacy_decode(void *legacy_pkt, ufo_t *this_aircraft, ufo_t *fop) {
   fop->ew[0] = pkt->ew[0]; fop->ew[1] = pkt->ew[1];
   fop->ew[2] = pkt->ew[2]; fop->ew[3] = pkt->ew[3];
 
-  return true;
+  return 0;
 }
 
 size_t legacy_encode(void *legacy_pkt, ufo_t *this_aircraft) {

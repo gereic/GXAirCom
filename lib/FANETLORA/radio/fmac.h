@@ -195,7 +195,7 @@ private:
 	void handleTx();
 	void handleRx();
 	void switchLora();
-	void switchFSK();  
+	void switchFSK(float frequency);  
 	uint8_t getAddressType(uint8_t manuId);
   //void coord2payload_absolut(float lat, float lon, uint8_t *buf);
 
@@ -204,6 +204,9 @@ private:
 	uint8_t _enableLegacyTx;
 	bool _fskMode;
 	LoRaClass radio;
+
+	bool bLegacyFrequ2 = false;
+	void sendUdpData(const uint8_t *buffer,int len);
 
 public:
   bool doForward = true;

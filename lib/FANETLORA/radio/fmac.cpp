@@ -15,6 +15,8 @@
 #include "Legacy/Legacy.h"
 #include "../FLARM/Flarm.h"
 #include "CRC/lib_crc.h"
+#include "WiFi.h"
+#include "Udp.h"
 
 int serialize_legacyTracking(ufo_t *Data,uint8_t*& buffer);
 
@@ -206,6 +208,16 @@ uint8_t FanetMac::getAddressType(uint8_t manuId){
 	}
 }
 
+void FanetMac::sendUdpData(const uint8_t *buffer,int len){
+	if ((WiFi.status() == WL_CONNECTED) || (WiFi.softAPgetStationNum() > 0)){ //connected to wifi or a client is connected to me
+		//log_i("sending udp");
+		WiFiUDP udp;
+		udp.beginPacket("192.168.0.10",10110);
+		udp.write(buffer,len);
+		udp.endPacket();    
+	}
+}
+
 /* this is executed in a non-linear fashion */
 void FanetMac::frameReceived(int length)
 {
@@ -226,21 +238,42 @@ void FanetMac::frameReceived(int length)
 	/* build frame from stream */
 	Frame *frm;
   if (_fskMode){
+		char Buffer[500];
+		int len = 0;
+		if (fmac._enableLegacyTx == 3){
+      time_t now;
+      char strftime_buf[64];
+      struct tm timeinfo;
+      time(&now);
+			len += sprintf(Buffer+len,"T=%d;",now);
+			//log_i("l=%d,%s",len,Buffer);
+      localtime_r(&now, &timeinfo);
+      strftime(strftime_buf, sizeof(strftime_buf), "%F %T", &timeinfo);   
+			len += sprintf(Buffer+len,"%s;",strftime_buf);
+			//log_i("l=%d,%s",len,Buffer);
+			if (fmac.bLegacyFrequ2){
+				len += sprintf(Buffer+len,"F=868.4;");
+			}else{
+				len += sprintf(Buffer+len,"F=868.2;");
+			}
+			len += sprintf(Buffer+len,"Rx=%d;rssi=%d;", num_received, rssi);
+
+			for(int i=0; i<num_received; i++)
+			{
+				len += sprintf(Buffer+len,"0x%02X", rx_frame[i]);
+				if(i<num_received-1)
+					len += sprintf(Buffer+len,",");
+			}
+			len += sprintf(Buffer+len,"\n");
+			Serial.print(Buffer);
+			fmac.sendUdpData((uint8_t *)Buffer,len);
+			//log_i("%s",Buffer);
+			//log_i("l=%d;%s",len,Buffer);
+		}
     if (length != 26){ //FSK-Frame is fixed 26Bytes long
 			return;
 		}
 		frm = new Frame();
-		#if 0
-			Serial.printf("### Mac Rx:%d @ %d ", num_received, rssi);
-
-			for(int i=0; i<num_received; i++)
-			{
-				Serial.printf("%02X", rx_frame[i]);
-				if(i<num_received-1)
-					Serial.printf(":");
-			}
-			Serial.printf("\n");
-		#endif
 
     //invertba(rx_frame,26); //invert complete Frame
 
@@ -249,7 +282,7 @@ void FanetMac::frameReceived(int length)
   	uint16_t crc16 =  getLegacyCkSum(rx_frame,24);
     uint16_t crc16_2 = (uint16_t(rx_frame[24]) << 8) + uint16_t(rx_frame[25]);
     if (crc16 != crc16_2){
-      //log_e("Legacy: wrong Checksum %04X!=%04X",crc16,crc16_2);
+      log_e("Legacy: wrong Checksum %04X!=%04X",crc16,crc16_2);
       delete frm;
       return;
     }
@@ -267,12 +300,21 @@ void FanetMac::frameReceived(int length)
 		for(int i = 0;i < 5; i++){
 			memcpy(&newPacket[0],&rx_frame[0],26);
 			decrypt_legacy(newPacket,tNow + tOffset);
-			if (legacy_decode(newPacket,&myAircraft,&air)){
+			int8_t ret = legacy_decode(newPacket,&myAircraft,&air);
+			//if (legacy_decode(newPacket,&myAircraft,&air) == 0){
+			if (ret == 0){				
 				float dist = distance(myAircraft.latitude,myAircraft.longitude,air.latitude,air.longitude, 'K');      
       	if ((dist <= 100.0) && (air.addr != 0) && (air.aircraft_type != 0)){
+					len = sprintf(Buffer,"adr=%06X;adrType=%d;airType=%d,lat=%.06f,lon=%.06f,alt=%.01f,speed=%.01f,course=%.01f,climb=%.01f\n", air.addr,air.addr_type,air.aircraft_type,air.latitude,air.longitude,air.altitude,air.speed,air.course,air.vs);
+					fmac.sendUdpData((uint8_t *)Buffer,len);
+					Serial.print(Buffer);
+
 					bOk = true;
 					break;
 				}
+			}else if (ret == -2){
+				//unknown message
+				break;
 			}
 			//log_i("Legacy-Packet not valid ts=%d;offset=%d",tNow,tOffset);
 			if (i == 0){
@@ -397,10 +439,10 @@ void FanetMac::switchLora(){
   //log_i("LORA-Mode On %d",millis()-tBegin);
 }
 
-void FanetMac::switchFSK(){
+void FanetMac::switchFSK(float frequency){
 
   uint32_t tBegin = millis();
-	radio.switchFSK();
+	radio.switchFSK(frequency);
 	if (bSendLegacy) sendLegacy(); //we send the legacy-msg, and switch then to receive
 	radio.startReceive();
   _fskMode = true;
@@ -426,10 +468,23 @@ void FanetMac::stateWrapper()
 			}
 		}else{
 			if ((tAct - tSwitch) >= tNewTime){ // 5.5sec. in FANET-Mode
-				fmac.switchFSK();
+				fmac.switchFSK(868.2);
 				tSwitch = tAct;
 				tNewTime = FSK_TIME + random(MAC_FORWARD_DELAY_MIN, MAC_FORWARD_DELAY_MAX);
 			}
+		}
+	}
+	if (fmac._enableLegacyTx == 3){ //this is a testmode only receiving on 2 frequencys of legacy
+		if ((tAct - tSwitch) >= tNewTime){ //switch every 5sec.
+			if (!fmac.bLegacyFrequ2){
+				fmac.switchFSK(868.4);
+				fmac.bLegacyFrequ2 = true;
+			}else{
+				fmac.switchFSK(868.2);
+				fmac.bLegacyFrequ2 = false;
+			}
+			tSwitch = tAct;
+			tNewTime = 5000; 
 		}
 	}
   fmac.handleRx();
@@ -652,7 +707,7 @@ void FanetMac::sendLegacy(){
 void FanetMac::handleTxLegacy()
 {
 	//switchFSK();
-	radio.switchFSK();
+	radio.switchFSK(868.2);
 	sendLegacy();
 	radio.switchLORA();
 }

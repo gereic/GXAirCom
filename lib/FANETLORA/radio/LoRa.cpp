@@ -148,15 +148,28 @@ float LoRaClass::getSNR(){
   }
 }
 
-int16_t LoRaClass::switchFSK(){
+int16_t LoRaClass::setFrequency(float frequency){
+  int16_t ret = 0;
+  switch (radioType){
+    case RADIO_SX1262:
+      ret = pSx1262Radio->setFrequency(frequency,false); //don't calibrate Frequency
+      break;
+    case RADIO_SX1276:
+      ret = pSx1276Radio->setFrequency(frequency);
+      break;
+  }
+  return ret;
+}
+
+int16_t LoRaClass::switchFSK(float frequency){
   int16_t ret = 0;
   uint8_t syncWord[] = {0x99, 0xA5, 0xA9, 0x55, 0x66, 0x65, 0x96};	
   switch (radioType){
     case RADIO_SX1262:
       ret = pSx1262Radio->switchFSK(100.0,50.0,156.2,8,0.0,false);
       //log_i("switchFSK %d",ret);
-      ret = pSx1262Radio->setFrequency(FSK_FREQUENCY,false); //don't calibrate Frequency
-      //log_i("setFrequency %d",ret);
+      ret = pSx1262Radio->setFrequency(frequency,false); //don't calibrate Frequency
+      //log_i("setFrequency %f ret=%d",frequency,ret);
       ret = pSx1262Radio->setSyncWord(syncWord,sizeof(syncWord));
       //log_i("setSyncWord %d",ret);
       //preamble-size = 1Byte --> 8Bits
@@ -171,7 +184,7 @@ int16_t LoRaClass::switchFSK(){
       //log_i("setActiveModem %d",ret);
       ret = pSx1276Radio->setOOK(false);
       //log_i("setOOK %d",ret);
-      ret = pSx1276Radio->setFrequency(FSK_FREQUENCY);
+      ret = pSx1276Radio->setFrequency(frequency);
       //log_i("setOOK %d",ret);
       ret = pSx1276Radio->setBitRate(100.0);
       //log_i("setBitRate %d",ret);

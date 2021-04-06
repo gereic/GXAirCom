@@ -29,6 +29,7 @@
 //#include "Update.h"
 #include "gxUpdater.h"
 #include <AceButton.h>
+#include "../lib/FANETLORA/Legacy/Legacy.h"
 
 
 //#define TEST
@@ -1542,6 +1543,61 @@ void startBluetooth(void){
 }
 */
 
+#ifdef TEST
+void testLegacy(){
+  log_i("test legacy");
+  //uint8_t rx_frame[26] = {0x7A,0x32,0x4B,0x10,0x82,0xE5,0x59,0x4E,0x30,0x69,0x70,0xCB,0x4F,0xFC,0x5C,0x83,0xD1,0xB0,0xB7,0xF0,0x82,0x38,0xD4,0xC0,0xCD,0x34};
+  uint8_t rx_frame[26] = {0x21,0x30,0x4B,0x10,0x99,0x63,0xA9,0x3B,0xAA,0x3A,0xAE,0x2A,0x12,0xEC,0xE9,0xC5,0xE4,0x6E,0x54,0xA7,0x2C,0x0E,0x70,0xD3,0x81,0x7E};
+  uint16_t crc16 =  getLegacyCkSum(rx_frame,24);
+  uint16_t crc16_2 = (uint16_t(rx_frame[24]) << 8) + uint16_t(rx_frame[25]);
+  if (crc16 != crc16_2){
+    log_e("Legacy: wrong Checksum %04X!=%04X",crc16,crc16_2);    
+    //return;
+  }
+  ufo_t air={0};
+  ufo_t myAircraft={0};
+  myAircraft.latitude = setting.gs.lat;
+  myAircraft.longitude = setting.gs.lon;
+  myAircraft.geoid_separation = setting.gs.geoidAlt;
+  myAircraft.timestamp = 1617554883;
+  uint8_t newPacket[26];
+  uint32_t tNow = myAircraft.timestamp;	
+  uint32_t tOffset = 0;	
+  bool bOk = false;
+  char Buffer[500];
+	int len = 0;
+  for(int i = 0;i < 5; i++){
+    memcpy(&newPacket[0],&rx_frame[0],26);
+    decrypt_legacy(newPacket,tNow + tOffset);
+    int8_t ret = legacy_decode(newPacket,&myAircraft,&air);
+    if (ret == 0){
+      float dist = distance(myAircraft.latitude,myAircraft.longitude,air.latitude,air.longitude, 'K');      
+      //if ((dist <= 100.0) && (air.addr != 0) && (air.aircraft_type != 0)){
+      if ((air.addr != 0) && (air.aircraft_type != 0)){
+        len = sprintf(Buffer,"adr=%06X;adrType=%d;airType=%d,lat/lon=%.06f,%.06f,alt=%.01f,speed=%.01f,course=%.01f,climb=%.01f,dist=%.01f\n", air.addr,air.addr_type,air.aircraft_type,air.latitude,air.longitude,air.altitude,air.speed,air.course,air.vs,dist);
+        log_i("%s",Buffer);
+
+        bOk = true;
+        break;
+      }
+    }else if (ret == -2){
+      //unknown message
+      break;
+    }
+    log_i("Legacy-Packet not valid ts=%d;offset=%d",tNow,tOffset);
+    if (i == 0){
+      tOffset = -1;
+    }else if (i == 1){
+      tOffset = 1;
+    }else if (i == 2){
+      tOffset = -2;
+    }else if (i == 3){
+      tOffset = 2;
+    }
+  }
+}
+#endif
+
 void setup() {
   
   
@@ -1653,7 +1709,6 @@ void setup() {
   esp_deep_sleep_start();
   */
 
-
   #ifdef GSMODULE
   if (setting.Mode == MODE_GROUND_STATION){
     if ((setting.gs.PowerSave == GS_POWER_SAFE) && (reason2 == ESP_SLEEP_WAKEUP_TIMER)){
@@ -1691,6 +1746,9 @@ void setup() {
     sButton[i].PinButton = -1;
   }
 
+  #ifdef TEST
+  testLegacy();
+  #endif
 
   switch (setting.boardType)
   {
