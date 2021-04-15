@@ -202,9 +202,11 @@ uint8_t FanetMac::getAddressType(uint8_t manuId){
 	if (manuId == 0x11 || manuId == 0x20 || manuId == 0xDD || manuId == 0xDE || manuId == 0xDF){
 			return 2; //address type FLARM
 			//log_i("address=%s Flarm",devId.c_str());
-	}else{
+	}else if (manuId == 0x08){
 			return 3; //address type OGN        
 			//log_i("address=%s OGN",devId.c_str());
+	}else{
+			return 0; //address type unknown
 	}
 }
 
@@ -233,7 +235,21 @@ void FanetMac::frameReceived(int length)
 		return;
 	}
 	int rssi = radio.getRSSI();
-	int snr = radio.getSNR();
+	int snr = 0;
+	if (_fskMode){
+		snr = rssi + 120;
+	}else{
+		snr = rssi + 120;
+	}
+	if (snr < 0) snr = 0;
+	/*
+	if (_fskMode){
+		snr = rssi + 157;
+	}else{
+		snr = radio.getSNR();
+	}
+	*/
+	
 
 	/* build frame from stream */
 	Frame *frm;
@@ -261,6 +277,7 @@ void FanetMac::frameReceived(int length)
 			for(int i=0; i<num_received; i++)
 			{
 				len += sprintf(Buffer+len,"0x%02X", rx_frame[i]);
+				if (i >= 26) break;
 				if(i<num_received-1)
 					len += sprintf(Buffer+len,",");
 			}
@@ -304,7 +321,7 @@ void FanetMac::frameReceived(int length)
 			//if (legacy_decode(newPacket,&myAircraft,&air) == 0){
 			if (ret == 0){				
 				float dist = distance(myAircraft.latitude,myAircraft.longitude,air.latitude,air.longitude, 'K');      
-      	if ((dist <= 100.0) && (air.addr != 0) && (air.aircraft_type != 0)){
+      	if ((dist <= 100) && (air.addr != 0) && (air.aircraft_type != 0)){
 					len = sprintf(Buffer,"adr=%06X;adrType=%d;airType=%d,lat=%.06f,lon=%.06f,alt=%.01f,speed=%.01f,course=%.01f,climb=%.01f\n", air.addr,air.addr_type,air.aircraft_type,air.latitude,air.longitude,air.altitude,air.speed,air.course,air.vs);
 					fmac.sendUdpData((uint8_t *)Buffer,len);
 					Serial.print(Buffer);
@@ -334,6 +351,8 @@ void FanetMac::frameReceived(int length)
 			frm->forward = false;
 			frm->type = FRM_TYPE_TRACKING_LEGACY;
 			frm->AddressType = air.addr_type;
+			frm->legacyAircraftType = air.aircraft_type;
+			frm->timeStamp = tNow + tOffset;
 			frm->payload_length = serialize_legacyTracking(&air,frm->payload);
 		}else{
 			//log_e("error decoding legacy");
@@ -342,6 +361,9 @@ void FanetMac::frameReceived(int length)
 		}
   }else{
     frm = new Frame(num_received, rx_frame);
+		time_t now;
+		time(&now);
+		frm->timeStamp = now;
 		frm->AddressType = getAddressType(frm->src.manufacturer) + 0x80; //set highest Bit, so we know, that it was a Fanet-MSG
   }  
 	frm->rssi = rssi;
@@ -408,6 +430,7 @@ bool FanetMac::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset, 
 	}
 	//radio.setPins(&SPI,ss,dio0,reset,32);
 	//radio.setPins(&SPI,ss,dio0,reset);
+	radio.gain = 1; //highest gain setting for FSK
   int state = radio.begin(float(frequency) / 1000000.,250.0,7,8,0xF1,int8_t(level),radioChip);
   if (state == ERR_NONE) {
     log_i("success!");
@@ -441,12 +464,12 @@ void FanetMac::switchLora(){
 
 void FanetMac::switchFSK(float frequency){
 
-  uint32_t tBegin = millis();
+  uint32_t tBegin = micros();
 	radio.switchFSK(frequency);
-	if (bSendLegacy) sendLegacy(); //we send the legacy-msg, and switch then to receive
+	//if (bSendLegacy) sendLegacy(); //we send the legacy-msg, and switch then to receive
 	radio.startReceive();
   _fskMode = true;
-  //log_i("FSK-Mode On %d",millis()-tBegin);
+  log_i("FSK-Mode %.1f On %d",frequency,micros()-tBegin);
 }
 
 
@@ -491,6 +514,7 @@ void FanetMac::stateWrapper()
 	if (!fmac._fskMode){  	
     fmac.handleTx();
   }
+	fmac.handleTxLegacy();
 }
 
 bool FanetMac::isNeighbor(MacAddr addr)
@@ -686,30 +710,55 @@ void FanetMac::setLegacy(uint8_t enableTx){
 }
 
 void FanetMac::sendLegacy(){
-	encrypt_legacy(Legacy_Buffer,now());
+	//encrypt_legacy(Legacy_Buffer,now());
 	
-	uint16_t crc16 =  getLegacyCkSum(Legacy_Buffer,24);
+	//uint16_t crc16 =  getLegacyCkSum(Legacy_Buffer,24);
 
-	byte byteArr[26];
-	for (int i=0;i<24;i++)
-		byteArr[i]=Legacy_Buffer[i];
+	//byte byteArr[26];
+	//for (int i=0;i<24;i++)
+	//	byteArr[i]=Legacy_Buffer[i];
 	
-	byteArr[24]=(crc16 >>8);
-  byteArr[25]=crc16;
-	int16_t state = radio.transmit(byteArr, 26);
+	//byteArr[24]=(crc16 >>8);
+  //byteArr[25]=crc16;
+	//int16_t state = radio.transmit(byteArr, 26);
+	//if (state != ERR_NONE){
+	//	log_e("error TX state=%d",state);
+	//}	
+	//log_i("sending Legacy");
+	//bSendLegacy = false; //legacy sent !!
+	int16_t state = radio.transmit(LegacyBuffer, sizeof(LegacyBuffer));
 	if (state != ERR_NONE){
 		log_e("error TX state=%d",state);
 	}	
-	//log_i("sending Legacy");
-	bSendLegacy = false; //legacy sent !!
+	log_i("%d sending Legacy",millis());
 }
 
 void FanetMac::handleTxLegacy()
 {
-	//switchFSK();
-	radio.switchFSK(868.2);
-	sendLegacy();
-	radio.switchLORA();
+	if (_enableLegacyTx == 0) return; //legacy disabled
+	if (legacy_next_tx == 0){
+		if (myApp->createLegacy(LegacyBuffer,&ppsMillis)){
+			//log_i("get Legacy-packet");
+			if ((millis() - ppsMillis) <= LEGACY_SEND_MIN){
+				legacy_next_tx = ppsMillis + uint32_t(random(LEGACY_SEND_MIN,LEGACY_SEND_MAX));
+				log_i("calc legNextTx=%d,pps=%d",legacy_next_tx,ppsMillis);
+			}
+		}
+	}else if (millis() >= legacy_next_tx){		
+		uint32_t tStart = micros();
+		log_i("sending legacy %d",millis() - ppsMillis);
+		radio.switchFSK(868.4);		
+		sendLegacy();
+		if (_fskMode){
+			//radio.switchLORA();
+			radio.startReceive();
+		}else{
+			radio.switchLORA();
+			radio.startReceive();
+		}
+		log_i("leg_Tx=%d",micros()-tStart);
+		legacy_next_tx = 0;
+	}
 }
 
 /*
@@ -836,9 +885,9 @@ void FanetMac::handleTx()
 	delete[] buffer;
 
 	if (tx_ret == TX_OK){
-		if ((_enableLegacyTx == 1) && (bSendLegacy)){
-			handleTxLegacy();
-    }
+		//if ((_enableLegacyTx == 1) && (bSendLegacy)){
+		//	handleTxLegacy();
+    //}
 		
 
 #if MAC_debug_mode > 0

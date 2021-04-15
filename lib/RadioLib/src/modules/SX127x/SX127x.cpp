@@ -351,11 +351,14 @@ int16_t SX127x::packetMode() {
 }
 
 int16_t SX127x::startReceive(uint8_t len, uint8_t mode) {
+  //uint32_t tBegin = micros();
   // set mode to standby
   int16_t state = setMode(SX127X_STANDBY);
   RADIOLIB_ASSERT(state);
 
+  //log_i("FSK-Mode On %d",micros()-tBegin);
   int16_t modem = getActiveModem();
+  //log_i("FSK-Mode On %d",micros()-tBegin);
   if(modem == SX127X_LORA) {
     // set DIO pin mapping
     state = _mod->SPIsetRegValue(SX127X_REG_DIO_MAPPING_1, SX127X_DIO0_RX_DONE | SX127X_DIO1_RX_TIMEOUT, 7, 4);
@@ -377,12 +380,14 @@ int16_t SX127x::startReceive(uint8_t len, uint8_t mode) {
     // set DIO pin mapping
     state = _mod->SPIsetRegValue(SX127X_REG_DIO_MAPPING_1, SX127X_DIO0_PACK_PAYLOAD_READY, 7, 6);
     RADIOLIB_ASSERT(state);
+    //log_i("FSK-Mode On %d",micros()-tBegin);
 
     // clear interrupt flags
     clearIRQFlags();
 
     // FSK modem does not distinguish between Rx single and continuous
     if(mode == SX127X_RXCONTINUOUS) {
+      //log_i("FSK-Mode On %d",micros()-tBegin);
       return(setMode(SX127X_RX));
     }
   }
@@ -1148,7 +1153,9 @@ int16_t SX127x::setMode(uint8_t mode) {
   int16_t ret = _mod->SPIsetRegValue(SX127X_REG_OP_MODE, mode, 2, 0, 10);
   //log_i("ret=%d,mode=%d;t=%d",ret,mode,millis()-tstart);
   //delay(1);
-  delayMicroseconds(1000); //wait 1000 microseconds, until modem has switched his state
+  if (mode != 0){
+    delay(1); //wait 1millisecond, until modem has switched his state
+  }
   return(ret);
 }
 

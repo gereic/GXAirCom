@@ -98,6 +98,7 @@ void onWebSocketEvent(uint8_t client_num,
           doc["gpslat"] = String(status.GPS_Lat,6);
           doc["gpslon"] = String(status.GPS_Lon,6);
           doc["gpsAlt"] = String(status.GPS_alt,1);
+          doc["gpsGAlt"] = String(status.GPS_geoidAlt,1);
           doc["fanetTx"] = status.fanetTx;
           doc["fanetRx"] = status.fanetRx;
           doc["tLoop"] = status.tLoop;
@@ -902,7 +903,7 @@ void Web_loop(void){
       char strftime_buf[64];
       struct tm timeinfo;
       time(&now);
-      localtime_r(&now, &timeinfo);
+      gmtime_r(&now, &timeinfo);
       strftime(strftime_buf, sizeof(strftime_buf), "%F %T", &timeinfo);   
       //log_i("actual time %s",strftime_buf);
       doc["time"] = strftime_buf;
@@ -950,6 +951,11 @@ void Web_loop(void){
       bSend = true;
       mStatus.GPS_alt = status.GPS_alt;
       doc["gpsAlt"] = String(status.GPS_alt,1);
+    }    
+    if (mStatus.GPS_geoidAlt != status.GPS_geoidAlt){
+      bSend = true;
+      mStatus.GPS_geoidAlt = status.GPS_geoidAlt;
+      doc["gpsGAlt"] = String(status.GPS_geoidAlt,1);
     }    
     if (mStatus.fanetTx != status.fanetTx){
       bSend = true;

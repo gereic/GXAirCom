@@ -14,22 +14,32 @@
 #include "tools.h"
 #include <TimeLib.h>
 
+//#define OGNTEST
+
 #define OGNSTATUSINTERVALL 300000ul
 
 class Ogn {
 public:
   enum aircraft_t : uint8_t
   {
-    otherAircraft = 0,
-    paraglider = 1,
-    hangglider = 2,
-    balloon = 3,
-    glider = 4,
-    poweredAircraft = 5,
-    helicopter = 6,
-    uav = 7,
-    unknown = 15,
+    UNKNOWN = 0,
+    GLIDER_MOTOR_GLIDER = 1,
+    TOW_PLANE = 2,
+    HELICOPTER_ROTORCRAFT = 3,
+    SKYDIVER = 4,
+    DROP_PLANE_SKYDIVER = 5,
+    HANG_GLIDER = 6,
+    PARA_GLIDER = 7,
+    AIRCRAFT_RECIPROCATING_ENGINE = 8,
+    AIRCRAFT_JET_TURBO_ENGINE = 9,
+    UFO = 10,
+    BALLOON = 11,
+    AIRSHIP = 12,
+    UAV = 13,
+    GROUND_SUPPORT = 14,
+    STATIC_OBJECT = 15
   };
+
   typedef struct {
     String devId; //devId
     float lat; //latitude
@@ -56,14 +66,14 @@ public:
   void run(bool bNetworkOk); //has to be called cyclic
   void setAirMode(bool _AirMode); //sets the mode (for sending heading and speed only if Air-Module)
   void setGPS(float lat,float lon,float alt,float speed,float heading);
-  void sendTrackingData(float lat,float lon,float alt,float speed,float heading,float climb,String devId,aircraft_t aircraftType,uint8_t adressType,bool Onlinetracking,float snr);
-  void sendGroundTrackingData(float lat,float lon,String devId,uint8_t state,uint8_t adressType,float snr);
+  void sendTrackingData(time_t timestamp,float lat,float lon,float alt,float speed,float heading,float climb,String devId,aircraft_t aircraftType,uint8_t adressType,bool Onlinetracking,float snr);
+  void sendGroundTrackingData(time_t timestamp,float lat,float lon,String devId,uint8_t state,uint8_t adressType,float snr);
   void sendNameData(String devId,String name,float snr);
   void sendWeatherData(weatherData *wData);
   void setClient(Client *_client);
   void setMutex(SemaphoreHandle_t *_xMutex);
   void setBattVoltage(float battVoltage);
-  void setStatusData(float pressure, float temp,float hum, float battVoltage);
+  void setStatusData(float pressure, float temp,float hum, float battVoltage,uint8_t battPercent);
 
 private:
     void checkClientConnected(uint32_t tAct);
@@ -76,9 +86,12 @@ private:
     void sendReceiverStatus(String sTime);    
     void sendReceiverBeacon(String sTime);
     String getActTimeString();
+    String getActTimeString(time_t timestamp);
     uint8_t getSenderDetails(bool onlinetracking,aircraft_t aircraftType,uint8_t addressType);
-    uint8_t getAddressType(String devId);
     String getOrigin(uint8_t addressType);
+    #ifdef OGNTEST
+      void sendTestMsg(uint32_t tAct);
+    #endif
     bool connected = false;
     Client *client;
     SemaphoreHandle_t *xMutex;    
@@ -91,6 +104,7 @@ private:
     float _speed = NAN;
     float _heading = NAN;
     float _BattVoltage = NAN;
+    uint8_t _BattPercent = 0;
     float _Pressure = NAN;
     float _Temp = NAN;
     float _Hum = NAN;
@@ -99,6 +113,24 @@ private:
     uint8_t initOk;
     uint8_t GPSOK;
     bool AirMode = false;
+    const char *AprsIcon[16] = // Icons for various FLARM acftType's
+    { "/z",  //  0 = ?
+      "/'",  //  1 = (moto-)glider    (most frequent)
+      "/'",  //  2 = tow plane        (often)
+      "/X",  //  3 = helicopter       (often)
+      "/g" , //  4 = parachute        (rare but seen - often mixed with drop plane)
+      "\\^", //  5 = drop plane       (seen)
+      "/g" , //  6 = hang-glider      (rare but seen)
+      "/g" , //  7 = para-glider      (rare but seen)
+      "\\^", //  8 = powered aircraft (often)
+      "/^",  //  9 = jet aircraft     (rare but seen)
+      "/z",  //  A = UFO              (people set for fun)
+      "/O",  //  B = balloon          (seen once)
+      "/O",  //  C = airship          (seen once)
+      "/'",  //  D = UAV              (drones, can become very common)
+      "/z",  //  E = ground support   (ground vehicles at airfields)
+      "\\n"  //  F = static object    (ground relay ?)
+    } ;    
 };
 
 #endif

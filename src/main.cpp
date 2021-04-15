@@ -166,6 +166,7 @@ IPAddress gateway(0,0,0,0);
 IPAddress subnet(255,255,255,0);
 
 volatile bool ppsTriggered = false;
+volatile uint32_t ppsMillis = 0;
 
 AXP20X_Class axp;
 #define AXP_IRQ 35
@@ -759,24 +760,31 @@ void drawAircraftType(int16_t x, int16_t y, FanetLora::aircraft_t AircraftType){
   switch (AircraftType)
   {
   case FanetLora::paraglider :
+  case FanetLora::leg_para_glider :
       display.drawXBitmap(x,y, Paraglider16_bits, 16, 16, WHITE);   //GxEPD_BLACK);
       break;
   case FanetLora::hangglider :
+  case FanetLora::leg_hang_glider :
       display.drawXBitmap(x,y, Hangglider16_bits, 16, 16, WHITE);   //GxEPD_BLACK);
       break;
   case FanetLora::balloon :
+  case FanetLora::leg_balloon :
       display.drawXBitmap(x,y, Ballon16_bits, 16, 16, WHITE);   //GxEPD_BLACK);
       break;
   case FanetLora::glider :
+  case FanetLora::leg_glider_motor_glider :
       display.drawXBitmap(x,y, Sailplane16_bits, 16, 16, WHITE);   //GxEPD_BLACK);
       break;
   case FanetLora::poweredAircraft :
+  case FanetLora::leg_aircraft_reciprocating_engine :
       display.drawXBitmap(x,y, Airplane16_bits, 16, 16, WHITE);   //GxEPD_BLACK);
       break;
   case FanetLora::helicopter :
+  case FanetLora::leg_helicopter_rotorcraft :
       display.drawXBitmap(x,y, Helicopter16_bits, 16, 16, WHITE);   //GxEPD_BLACK);
       break;
   case FanetLora::uav :
+  case FanetLora::leg_uav :
       display.drawXBitmap(x,y, UAV16_bits, 16, 16, WHITE);   //GxEPD_BLACK);
       break;
   
@@ -877,24 +885,31 @@ void printGSData(uint32_t tAct){
   switch (fanet.neighbours[index].aircraftType)
   {
   case FanetLora::aircraft_t ::paraglider :
+  case FanetLora::leg_para_glider :
     display.drawXBitmap(88, 12, PGRX_bits,PGRX_width, PGRX_height,WHITE);      
     break;
   case FanetLora::aircraft_t::hangglider :
+  case FanetLora::leg_hang_glider :
     display.drawXBitmap(88, 12, HGRX_bits,HGRX_width, HGRX_height,WHITE);      
     break;
   case FanetLora::aircraft_t::balloon :
+  case FanetLora::leg_balloon :
     display.drawXBitmap(88, 12, BLRX_bits,BLRX_width, BLRX_height,WHITE);      
     break;
   case FanetLora::aircraft_t::glider :
+  case FanetLora::leg_glider_motor_glider :
     display.drawXBitmap(88, 12, SPRX_bits,SPRX_width, SPRX_height,WHITE);      
     break;
   case FanetLora::aircraft_t::poweredAircraft :
+  case FanetLora::leg_aircraft_reciprocating_engine :
     display.drawXBitmap(88, 12, Airplane40_bits,Airplane40_width, Airplane40_height,WHITE);      
     break;
   case FanetLora::aircraft_t::helicopter :
+  case FanetLora::leg_helicopter_rotorcraft :
     display.drawXBitmap(88, 10, Helicopter40_bits,Helicopter40_width, Helicopter40_height,WHITE);      
     break;
   case FanetLora::aircraft_t::uav:
+  case FanetLora::leg_uav :
     display.drawXBitmap(88, 12, UAVRX_bits,UAVRX_width, UAVRX_height,WHITE);      
     break;
   
@@ -1222,6 +1237,7 @@ void setupAXP192(){
 }
 
 void IRAM_ATTR ppsHandler(void){
+  ppsMillis = millis();
   ppsTriggered = true;
 }
 
@@ -2094,6 +2110,10 @@ bool initModem(){
   if (!modem.restart()) return false;
   #ifdef TINY_GSM_MODEM_SIM7000
     modem.disableGPS();
+    log_i("set NetworkMode to LTE");
+    modem.setNetworkMode(38); //set mode to LTE
+    log_i("set preferredMode to CAT-M and NB-IoT");
+    modem.setPreferredMode(3); //set to CAT-M and NB-IoT
   #endif
   modem.sleepEnable(false); //set sleepmode off
   log_i("Waiting for network...");
@@ -2937,24 +2957,31 @@ void DrawRadarPilot(uint8_t neighborIndex){
   switch (fanet.neighbours[neighborIndex].aircraftType)
   {
   case FanetLora::aircraft_t ::paraglider :
+  case FanetLora::leg_para_glider :
     display.drawXBitmap(relEast, relNorth, Paraglider16_bits,16, 16,WHITE);      
     break;
   case FanetLora::aircraft_t::hangglider :
+  case FanetLora::leg_hang_glider :
     display.drawXBitmap(relEast, relNorth, Hangglider16_bits,16, 16,WHITE);      
     break;
   case FanetLora::aircraft_t::balloon :
+  case FanetLora::leg_balloon :
     display.drawXBitmap(relEast, relNorth, Ballon16_bits,16, 16,WHITE);      
     break;
   case FanetLora::aircraft_t::glider :
+  case FanetLora::leg_glider_motor_glider :
     display.drawXBitmap(relEast, relNorth, Sailplane16_bits,16, 16,WHITE);      
     break;
   case FanetLora::aircraft_t::poweredAircraft :
+  case FanetLora::leg_aircraft_reciprocating_engine :
     display.drawXBitmap(relEast, relNorth, Airplane16_bits,16, 16,WHITE);      
     break;
   case FanetLora::aircraft_t::helicopter :
+  case FanetLora::leg_helicopter_rotorcraft :
     display.drawXBitmap(relEast, relNorth, Helicopter16_bits,16, 16,WHITE);      
     break;
   case FanetLora::aircraft_t::uav:
+  case FanetLora::leg_uav :
     display.drawXBitmap(relEast, relNorth, UAV16_bits,16, 16,WHITE);      
     break;
   
@@ -3429,6 +3456,7 @@ void readGPS(){
 #endif
 
 eFlarmAircraftType Fanet2FlarmAircraft(FanetLora::aircraft_t aircraft){
+  if (aircraft >= 0x80) return (eFlarmAircraftType)(aircraft - 0x80);
   switch (aircraft)
   {
   case FanetLora::aircraft_t::paraglider :
@@ -3562,7 +3590,6 @@ void taskStandard(void *pvParameters){
   char * pSerialLine = NULL;
   String sSerial = "";
   String s = "";
-  FanetLora::trackingData myFanetData;  
   FanetLora::trackingData tFanetData;  
   
   uint8_t oldScreenNumber = 0;
@@ -3605,10 +3632,11 @@ void taskStandard(void *pvParameters){
     status.GPS_Lat = setting.gs.lat;
     status.GPS_Lon = setting.gs.lon;  
     status.GPS_alt = setting.gs.alt;
+    status.GPS_geoidAlt = setting.gs.geoidAlt;
     MyFanetData.lat = status.GPS_Lat;
     MyFanetData.lon = status.GPS_Lon;
     MyFanetData.altitude = status.GPS_alt;
-    fanet.setMyTrackingData(&MyFanetData,setting.gs.geoidAlt); //set Data on fanet
+    fanet.setMyTrackingData(&MyFanetData,setting.gs.geoidAlt,0); //set Data on fanet
   }
   #endif
 
@@ -3756,11 +3784,11 @@ void taskStandard(void *pvParameters){
 
     if (setting.OGNLiveTracking){
       if (status.vario.bHasVario){
-        ogn.setStatusData(status.pressure ,status.varioTemp,NAN,(float)status.vBatt / 1000.);
+        ogn.setStatusData(status.pressure ,status.varioTemp,NAN,(float)status.vBatt / 1000.,status.BattPerc);
       }else if ((status.vario.bHasBME) || (status.bWUBroadCast)){
-        ogn.setStatusData(status.weather.Pressure ,status.weather.temp,status.weather.Humidity,(float)status.vBatt / 1000.);
+        ogn.setStatusData(status.weather.Pressure ,status.weather.temp,status.weather.Humidity,(float)status.vBatt / 1000.,status.BattPerc);
       }else{
-        ogn.setStatusData(NAN ,NAN, NAN, (float)status.vBatt / 1000.);
+        ogn.setStatusData(NAN ,NAN, NAN, (float)status.vBatt / 1000.,status.BattPerc);
       }
       ogn.run(status.bInternetConnected);
     } 
@@ -3960,23 +3988,18 @@ void taskStandard(void *pvParameters){
       }
     }    
     if (fanet.getTrackingData(&tFanetData)){
-        //log_i("new Tracking-Data");
-        if (tFanetData.type == 0x11){ //online-tracking
-          if (setting.OGNLiveTracking){
-            ogn.sendTrackingData(tFanetData.lat ,tFanetData.lon,tFanetData.altitude,tFanetData.speed,tFanetData.heading,tFanetData.climb,fanet.getDevId(tFanetData.devId) ,(Ogn::aircraft_t)tFanetData.aircraftType,tFanetData.addressType,tFanetData.OnlineTracking,(float)tFanetData.snr / 10.0);
-          } 
-          sendAWTrackingdata(&tFanetData);
-          sendTraccarTrackingdata(&tFanetData);
-        }else if (tFanetData.type >= 0x70){ //ground-tracking
-          if (setting.OGNLiveTracking){
-            ogn.sendGroundTrackingData(tFanetData.lat,tFanetData.lon,fanet.getDevId(tFanetData.devId),tFanetData.type,tFanetData.addressType,(float)tFanetData.snr / 10.0);
-          } 
-        }
-        
-       
-        //if (nmea.isValid()){
-        //  fanet.getMyTrackingData(&myFanetData);
-        //}
+      //log_i("new Tracking-Data");
+      if (tFanetData.type == 0x11){ //online-tracking
+        if (setting.OGNLiveTracking){
+          ogn.sendTrackingData(tFanetData.timestamp ,tFanetData.lat ,tFanetData.lon,tFanetData.altitude,tFanetData.speed,tFanetData.heading,tFanetData.climb,fanet.getDevId(tFanetData.devId) ,(Ogn::aircraft_t)fanet.getFlarmAircraftType(&tFanetData),tFanetData.addressType,tFanetData.OnlineTracking,(float)tFanetData.snr);
+        } 
+        sendAWTrackingdata(&tFanetData);
+        sendTraccarTrackingdata(&tFanetData);
+      }else if (tFanetData.type >= 0x70){ //ground-tracking
+        if (setting.OGNLiveTracking){
+          ogn.sendGroundTrackingData(tFanetData.timestamp,tFanetData.lat,tFanetData.lon,fanet.getDevId(tFanetData.devId),tFanetData.type,tFanetData.addressType,(float)tFanetData.snr);
+        } 
+      }
     }    
     flarm.run();
     sendLK8EX(tAct);
@@ -3984,6 +4007,7 @@ void taskStandard(void *pvParameters){
     if (setting.Mode == MODE_AIR_MODULE){
       if (!status.bHasAXP192){
         if ((tAct - tOldPPS) >= 1000){
+          ppsMillis = millis();
           ppsTriggered = true;
         }
       }
@@ -4015,10 +4039,12 @@ void taskStandard(void *pvParameters){
           status.GPS_Lat = nmea.getLatitude() / 1000000.;
           status.GPS_Lon = nmea.getLongitude() / 1000000.;  
           status.GPS_alt = alt/1000.;
+          status.GPS_geoidAlt = geoidalt/1000.;
           setTime(nmea.getHour(), nmea.getMinute(), nmea.getSecond(), nmea.getDay(), nmea.getMonth(), nmea.getYear());
+          MyFanetData.timestamp = now();
           if (oldAlt == 0) oldAlt = status.GPS_alt;        
           if (!status.vario.bHasVario) status.ClimbRate = (status.GPS_alt - oldAlt) / (float(status.tGPSCycle) / 1000.0);        
-          oldAlt = status.GPS_alt;
+          oldAlt = status.GPS_alt;          
           MyFanetData.climb = status.ClimbRate;
           MyFanetData.lat = status.GPS_Lat;
           MyFanetData.lon = status.GPS_Lon;
@@ -4030,17 +4056,18 @@ void taskStandard(void *pvParameters){
             MyFanetData.heading = status.varioHeading;
           }else{
             MyFanetData.heading = status.GPS_course;
-          }        
+          }
+          MyFanetData.aircraftType = fanet.getAircraftType();        
           if (setting.OGNLiveTracking){
             ogn.setGPS(status.GPS_Lat,status.GPS_Lon,status.GPS_alt,status.GPS_speed,MyFanetData.heading);
             if (fanet.onGround){
-              ogn.sendGroundTrackingData(status.GPS_Lat,status.GPS_Lon,fanet.getDevId(tFanetData.devId),fanet.state,MyFanetData.addressType,0.0);
+              ogn.sendGroundTrackingData(now(),status.GPS_Lat,status.GPS_Lon,fanet.getDevId(tFanetData.devId),fanet.state,MyFanetData.addressType,0.0);
             }else{
-              ogn.sendTrackingData(status.GPS_Lat,status.GPS_Lon,status.GPS_alt,status.GPS_speed,MyFanetData.heading,status.ClimbRate,fanet.getMyDevId() ,(Ogn::aircraft_t)fanet.getAircraftType(),MyFanetData.addressType,fanet.doOnlineTracking,0.0);
+              ogn.sendTrackingData(now(),status.GPS_Lat,status.GPS_Lon,status.GPS_alt,status.GPS_speed,MyFanetData.heading,status.ClimbRate,fanet.getMyDevId() ,(Ogn::aircraft_t)fanet.getFlarmAircraftType(&MyFanetData),MyFanetData.addressType,fanet.doOnlineTracking,0.0);
             }
             
           } 
-          fanet.setMyTrackingData(&MyFanetData,geoidalt/1000.); //set Data on fanet
+          fanet.setMyTrackingData(&MyFanetData,geoidalt/1000.,ppsMillis); //set Data on fanet
           sendAWTrackingdata(&MyFanetData);
           sendTraccarTrackingdata(&MyFanetData);
         }else{
@@ -4051,6 +4078,7 @@ void taskStandard(void *pvParameters){
           status.GPS_alt = 0.0;
           status.GPS_course = 0.0;
           status.GPS_NumSat = 0;
+          status.GPS_geoidAlt = 0;
           if (!status.vario.bHasVario) status.ClimbRate = 0.0;
           oldAlt = 0.0;
         }
@@ -4063,6 +4091,7 @@ void taskStandard(void *pvParameters){
         status.GPS_Lat = 0.0;
         status.GPS_Lon = 0.0;
         status.GPS_alt = 0.0;
+        status.GPS_geoidAlt = 0.0;
         status.GPS_course = 0.0;
         status.GPS_NumSat = 0;
       }

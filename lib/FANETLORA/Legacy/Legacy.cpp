@@ -173,6 +173,12 @@ int8_t legacy_decode(void *legacy_pkt, ufo_t *this_aircraft, ufo_t *fop) {
   uint8_t pkt_parity=0;
 
   
+  //log_i("unk0=%02X,unk1=%02X",pkt->_unk0,pkt->_unk1);
+  if (pkt->_unk0 != 0){
+    log_e("unknown message unk0=%02X",pkt->_unk0);
+    return -2;
+  }
+
   for (ndx = 0; ndx < sizeof (legacy_packet_t); ndx++) {
     pkt_parity += parity(*(((unsigned char *) pkt) + ndx));
   }
@@ -182,11 +188,6 @@ int8_t legacy_decode(void *legacy_pkt, ufo_t *this_aircraft, ufo_t *fop) {
     return -1;
   }
 
-  //log_i("unk0=%02X,unk1=%02X",pkt->_unk0,pkt->_unk1);
-  if (pkt->_unk0 != 0){
-    log_e("unknown message unk0=%02X",pkt->_unk0);
-    return -2;
-  }
 
 
   int32_t round_lat = (int32_t) (ref_lat * 1e7) >> 7;

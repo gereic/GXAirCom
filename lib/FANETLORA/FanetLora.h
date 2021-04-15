@@ -118,6 +118,22 @@ public:
       poweredAircraft = 5,
       helicopter = 6,
       uav = 7,
+      leg_unknown = 0x80 + 0,
+      leg_glider_motor_glider = 0x80 + 1,
+      leg_tow_plane = 0x80 + 2,
+      leg_helicopter_rotorcraft = 0x80 + 3,
+      leg_skydiver = 0x80 + 4,
+      leg_drop_plane_skydiver = 0x80 + 5,
+      leg_hang_glider = 0x80 + 6,
+      leg_para_glider = 0x80 + 7,
+      leg_aircraft_reciprocating_engine = 0x80 + 8,
+      leg_aircraft_jet_engine = 0x80 + 9,
+      leg_ufo = 0x80 + 10,
+      leg_balloon = 0x80 + 11,
+      leg_airship = 0x80 + 12,
+      leg_uav = 0x80 + 13,
+      leg_ground_support = 0x80 + 14,
+      leg_static_object = 0x80 + 15,
     };
 
     enum status_t : uint16_t
@@ -135,6 +151,7 @@ public:
       distressCallAuto = 15,				//max number
     };
   typedef struct {
+    uint32_t timestamp = 0;
     uint8_t type; //tracking-type (11... online tracking 7X .... ground tracking)
     uint32_t devId;
     float lat; //latitude
@@ -231,7 +248,7 @@ public:
   String getType(uint8_t type);
   void setPilotname(String name);
   void setAircraftType(aircraft_t type);
-  void setMyTrackingData(trackingData *tData,float geoidAlt);
+  void setMyTrackingData(trackingData *tData,float geoidAlt,uint32_t ppsMillis);
   void writeMsgType1(trackingData *tData);
   void writeMsgType2(String name);
   void writeMsgType3(uint32_t devId,String msg);
@@ -251,6 +268,7 @@ public:
   void sendName(String name);
   void sendMSG(String msg);
   void coord2payload_absolut(float lat, float lon, uint8_t *buf);
+  uint8_t getFlarmAircraftType(trackingData *tData);
   uint16_t txCount;
   uint16_t rxCount;
   neighbour neighbours[MAXNEIGHBOURS];
@@ -265,6 +283,7 @@ public:
 	/* device -> air */
 	bool is_broadcast_ready(int num_neighbors);
 	void broadcast_successful(int type);
+  bool createLegacy(uint8_t *buffer,uint32_t *ppsMillis);
 
 	/* air -> device */
 	void handle_acked(bool ack, MacAddr &addr);
@@ -296,7 +315,7 @@ private:
   bool newName = false;
   weatherData lastWeatherData;
   bool newWData = false;
-  void getTrackingInfo(String line,uint16_t length);
+  void getTrackingInfo(String line,Frame *frm);
   void getGroundTrackingInfo(uint8_t *buffer,uint16_t length);  
   void getWeatherinfo(uint8_t *buffer,uint16_t length);  
   float getSpeedFromByte(uint8_t speed);
@@ -322,6 +341,8 @@ private:
 	/* determines the tx rate */
 	unsigned long last_tx = 0;
 	unsigned long next_tx = 0;
+  uint32_t _ppsMillis = 0;
+  float _geoIdAltitude; //altitude [m]
 
   typedef struct fanet_header_t {
     unsigned int type           :6;

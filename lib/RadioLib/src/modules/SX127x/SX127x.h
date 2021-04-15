@@ -947,6 +947,8 @@ class SX127x: public PhysicalLayer {
 
     int16_t setActiveModem(uint8_t modem);
 
+    int16_t setMode(uint8_t mode);    
+
 #ifndef RADIOLIB_GODMODE
   protected:
 #endif
@@ -977,7 +979,6 @@ class SX127x: public PhysicalLayer {
     uint8_t _packetLengthConfig = SX127X_PACKET_VARIABLE;
 
     bool findChip(uint8_t ver);
-    int16_t setMode(uint8_t mode);
     
     void clearIRQFlags();
     void clearFIFO(size_t count); // used mostly to clear remaining bytes in FIFO after a packet read

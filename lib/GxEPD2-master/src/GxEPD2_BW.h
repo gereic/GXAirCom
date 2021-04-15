@@ -43,6 +43,7 @@
 #include "epd/GxEPD2_260.h"
 #include "epd/GxEPD2_290.h"
 #include "epd/GxEPD2_290_T5.h"
+#include "epd/GxEPD2_290_T94.h"
 #include "epd/GxEPD2_270.h"
 #include "epd/GxEPD2_371.h"
 #include "epd/GxEPD2_420.h"

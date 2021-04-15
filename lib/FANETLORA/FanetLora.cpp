@@ -701,7 +701,7 @@ void FanetLora::handle_frame(Frame *frm){
     actTrackingData.snr = frm->snr;
     actTrackingData.type = 0x11;
     actTrackingData.addressType = frm->AddressType;
-    getTrackingInfo(payload,frm->payload_length);
+    getTrackingInfo(payload,frm);
     insertDataToNeighbour(actTrackingData.devId,&actTrackingData);
   }else if (frm->type == 2){      
       //log_i("name=%s",msg2.c_str());
@@ -762,6 +762,19 @@ MacAddr FanetLora::getMacFromDevId(uint32_t devId){
   adr.manufacturer = (devId >> 16) & 0xFF;
   adr.id = devId & 0xFFFF;
   return adr;
+}
+
+bool FanetLora::createLegacy(uint8_t *buffer,uint32_t *ppsMillis){
+  if ((!autobroadcast) || (onGround)) //autobroadcast not enabled or on ground
+    return false;
+  //we create the complete legacy-packet ready for sending
+  createLegacyPkt(&_myData,_geoIdAltitude,buffer);
+  encrypt_legacy(buffer,_myData.timestamp);
+	uint16_t crc16 = getLegacyCkSum(buffer,24);
+	buffer[24]=(crc16 >>8);
+  buffer[25]=crc16;
+  *ppsMillis = _ppsMillis; //milliseconds from PPS-Pin for checking transmitting-time
+  return true;
 }
 
 bool FanetLora::is_broadcast_ready(int num_neighbors)
@@ -856,23 +869,46 @@ void FanetLora::broadcast_successful(int type){
 }
 
 String FanetLora::getAircraftType(aircraft_t type){
-  if (type == aircraft_t::paraglider){
-    return "PARA_GLIDER";
-  }else if (type == aircraft_t::hangglider){
-    return "HANG_GLIDER";
-  }else if (type == aircraft_t::balloon){
-    return "BALLOON";
-  }else if (type == aircraft_t::glider){
-    return "GLIDER";
-  }else if (type == aircraft_t::poweredAircraft){
-    return "POWERED_AIRCRAFT";
-  }else if (type == aircraft_t::helicopter){
-    return "HELICOPTER_ROTORCRAFT";
-  }else if (type == aircraft_t::uav){
-    return "UAV";
+  switch (type){
+    case aircraft_t::paraglider:
+    case aircraft_t::leg_para_glider:
+      return "PARA_GLIDER";
+    case aircraft_t::hangglider:
+    case aircraft_t::leg_hang_glider:
+      return "HANG_GLIDER";
+    case aircraft_t::balloon:
+    case aircraft_t::leg_balloon:
+      return "BALLOON";
+    case aircraft_t::glider:
+    case aircraft_t::leg_glider_motor_glider:
+      return "GLIDER";
+    case aircraft_t::poweredAircraft:
+    case aircraft_t::leg_aircraft_reciprocating_engine:
+      return "POWERED_AIRCRAFT";
+    case aircraft_t::helicopter:
+    case aircraft_t::leg_helicopter_rotorcraft:
+      return "HELICOPTER_ROTORCRAFT";
+    case aircraft_t::uav:
+    case aircraft_t::leg_uav:
+      return "UAV";
+    case aircraft_t::leg_aircraft_jet_engine:
+      return "JETENGINE_AIRCRAFT";
+    case aircraft_t::leg_airship:
+      return "AIRSHIP";
+    case aircraft_t::leg_drop_plane_skydiver:
+      return "DROP_PLANE_SKYDIVER";
+    case aircraft_t::leg_ground_support:
+      return "GROUND_SUPPORT";
+    case aircraft_t::leg_skydiver:
+      return "SKY_DIVER";
+    case aircraft_t::leg_static_object:
+      return "STATIC_OBJECT";
+    case aircraft_t::leg_tow_plane:
+      return "TOW_PLANE";
+    case aircraft_t::leg_ufo:
+      return "UFO";      
   }
   return "UNKNOWN";
-
 }
 
 String FanetLora::getHexFromWord(uint16_t val,bool leadingZero){
@@ -919,10 +955,35 @@ bool FanetLora::getTrackingData(trackingData *tData){
     return bRet;
 }
 
-void FanetLora::getTrackingInfo(String line,uint16_t length){
+uint8_t FanetLora::getFlarmAircraftType(trackingData *tData){
+  if (tData->aircraftType >= 0x80) return tData->aircraftType & 0x7F; //is already a Flarm-Aircraft-Type
+  switch (tData->aircraftType)
+  {
+  case aircraft_t::paraglider :
+    return aircraft_t::leg_para_glider & 0x7F;
+  case aircraft_t::hangglider :
+    return aircraft_t::leg_hang_glider & 0x7F;
+  case aircraft_t::balloon :
+    return aircraft_t::leg_balloon & 0x7F;
+  case aircraft_t::glider :
+    return aircraft_t::leg_glider_motor_glider & 0x7F;
+  case aircraft_t::poweredAircraft :
+    return aircraft_t::leg_aircraft_reciprocating_engine & 0x7F;
+  case aircraft_t::helicopter :
+    return aircraft_t::leg_helicopter_rotorcraft & 0x7F;
+  case aircraft_t::uav :
+    return aircraft_t::leg_uav & 0x7F;
+  default:
+    return aircraft_t::leg_unknown & 0x7F;
+  }
+  
+}
+
+void FanetLora::getTrackingInfo(String line,Frame *frm){
     char arPayload[23];
 
     //log_i("getTrackingInfo");
+    actTrackingData.timestamp = frm->timeStamp; //copy timestamp
     line.toCharArray(arPayload,sizeof(arPayload));
 
     // integer values /
@@ -947,7 +1008,12 @@ void FanetLora::getTrackingInfo(String line,uint16_t length){
         altitude *= 4;
     } 
     actTrackingData.altitude = altitude;
-    actTrackingData.aircraftType = (aircraft_t)((Type >> 12) & 0x07);
+    if (frm->legacyAircraftType != 0){
+      actTrackingData.aircraftType = (aircraft_t)(0x80 + frm->legacyAircraftType);
+    }else{
+      actTrackingData.aircraftType = (aircraft_t)((Type >> 12) & 0x07);
+    }
+    
 
     uint16_t speed = uint16_t(getByteFromHex(&arPayload[16]));
     if (speed & 0x80){
@@ -1009,7 +1075,7 @@ void FanetLora::sendTracking(trackingData *tData){
   {
     int oldid = tData->devId;
     tData->devId=_myData.devId;
-    createLegacyPkt(tData,fmac.geoidAlt,Legacy_Buffer);
+    //createLegacyPkt(tData,fmac.geoidAlt,Legacy_Buffer);
     tData->devId=oldid;
   }
 
@@ -1140,7 +1206,8 @@ void FanetLora::writeMsgType4(weatherData *wData){
   frm2txBuffer(frm);
 }
 
-void FanetLora::setMyTrackingData(trackingData *tData,float geoidAlt){
+void FanetLora::setMyTrackingData(trackingData *tData,float geoidAlt,uint32_t ppsMillis){
+    _myData.timestamp = tData->timestamp;
     _myData.altitude = tData->altitude;
     _myData.climb = tData->climb;
     _myData.heading = tData->heading;
@@ -1151,6 +1218,8 @@ void FanetLora::setMyTrackingData(trackingData *tData,float geoidAlt){
     fmac.lon = _myData.lon;
     fmac.geoidAlt = geoidAlt;
     fmac.bPPS = true;
+    _ppsMillis = ppsMillis;
+    _geoIdAltitude = geoidAlt;
     valid_until = millis() + FANET_LORA_VALID_STATE_MS;
     //log_i("valid_until %lu",valid_until);
 }

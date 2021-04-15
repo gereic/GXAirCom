@@ -119,10 +119,17 @@ int16_t LoRaClass::readData(uint8_t* data, size_t len){
       }
       
     case RADIO_SX1276:
-      ret = pSx1276Radio->readData(data,len);
 
       if (_fskMode){
+        // put module to standby
+        pSx1276Radio->standby();
+        pModule->SPIreadRegisterBurst(SX127X_REG_FIFO, len, data);
+        //clear irqflags
+        pModule->SPIwriteRegister(SX127X_REG_IRQ_FLAGS_1, 0b11111111);
+        pModule->SPIwriteRegister(SX127X_REG_IRQ_FLAGS_2, 0b11111111);        
         invertba(data,len); //invert complete Frame
+      }else{
+        ret = pSx1276Radio->readData(data,len);
       }
       return ret;
   }
@@ -162,6 +169,7 @@ int16_t LoRaClass::setFrequency(float frequency){
 }
 
 int16_t LoRaClass::switchFSK(float frequency){
+  uint32_t tBegin = micros();
   int16_t ret = 0;
   uint8_t syncWord[] = {0x99, 0xA5, 0xA9, 0x55, 0x66, 0x65, 0x96};	
   switch (radioType){
@@ -180,6 +188,85 @@ int16_t LoRaClass::switchFSK(float frequency){
 
       break;
     case RADIO_SX1276:
+
+      /*
+      ret = pSx1276Radio->setActiveModem(SX127X_FSK_OOK);
+      //log_i("setActiveModem %d",ret);
+      
+      //set module to standby
+      pModule->SPIsetRegValue(SX127X_REG_OP_MODE, 0x00);
+      if (pModule->SPIreadRegister(SX127X_REG_RX_NB_BYTES) != 0x00){
+        log_e("failed set modem to sleep");
+      }
+
+      pSx1276Radio->standby(); //switch to standby
+
+      // set Frequency 
+      //calculate register values
+      uint32_t FRF = (frequency * (uint32_t(1) << SX127X_DIV_EXPONENT)) / SX127X_CRYSTAL_FREQ;
+
+      // write registers
+      pModule->SPIsetRegValue(SX127X_REG_FRF_MSB, (FRF & 0xFF0000) >> 16);
+      pModule->SPIsetRegValue(SX127X_REG_FRF_MID, (FRF & 0x00FF00) >> 8);
+      pModule->SPIsetRegValue(SX127X_REG_FRF_LSB, FRF & 0x0000FF);
+
+      // set LNA gain
+      //pModule->SPIsetRegValue(SX127X_REG_LNA, LNA_RX_GAIN);
+      pModule->SPIsetRegValue(SX127X_REG_LNA, 0x20 | 0x03); // max gain, boost enable
+      //pModule->SPIsetRegValue(SX127X_REG_LNA, 0x20 | 0x00); // max gain, default LNA current
+      //pModule->SPIsetRegValue(SX127X_REG_LNA, 0x60 | 0x00); // -12dB gain, default LNA current
+      //pModule->SPIsetRegValue(SX127X_REG_LNA, 0x80 | 0x00); // -24dB gain, default LNA current
+      //pModule->SPIsetRegValue(SX127X_REG_LNA, 0xC0 | 0x00); // -48dB gain, default LNA current
+
+      // configure receiver
+      //pModule->SPIsetRegValue(SX127X_REG_RX_CONFIG, 0x1E); // AFC auto, AGC, trigger on preamble?!?
+      pModule->SPIsetRegValue(SX127X_REG_RX_CONFIG, 0x0E); // AFC off, AGC on, trigger on preamble?!?
+      //pModule->SPIsetRegValue(SX127X_REG_RX_CONFIG, 0x06); // AFC off, AGC off, trigger on preamble?!?
+
+      pModule->SPIsetRegValue(SX127X_REG_RX_BW, 0x02); // 125kHz SSb; BW >= (DR + 2 X FDEV)
+
+    // set AFC bandwidth
+//    pModule->SPIsetRegValue(SX127X_REG_AFC_BW, 0x0B); // 50kHz SSB  // PAW
+//    pModule->SPIsetRegValue(SX127X_REG_AFC_BW, 0x12); // 83.3kHz SSB
+      pModule->SPIsetRegValue(SX127X_REG_AFC_BW, 0x11); // 166.6kHz SSB
+//    pModule->SPIsetRegValue(SX127X_REG_AFC_BW, 0x09); // 200kHz SSB
+//    pModule->SPIsetRegValue(SX127X_REG_AFC_BW, 0x01); // 250kHz SSB
+
+      pModule->SPIsetRegValue(SX127X_REG_PREAMBLE_DETECT, 0x85); // enable, 1 bytes, 5 chip errors
+      
+      // set sync config
+      uint8_t SyncConfig = (sizeof(syncWord) - 1);
+      //set preambletype to 55
+      pModule->SPIsetRegValue(SX127X_REG_SYNC_CONFIG, (0x30 | SyncConfig));
+
+      //set Manchester encoding and fixed length
+      pModule->SPIsetRegValue(SX127X_REG_PACKET_CONFIG_1, 0x20);
+      //set packet-mode
+      pModule->SPIsetRegValue(SX127X_REG_PACKET_CONFIG_2, 0x40); // packet mode
+
+
+      pModule->SPIsetRegValue(SX127X_REG_PAYLOAD_LENGTH_FSK,26);
+
+      // set sync word
+      pModule->SPIwriteRegisterBurst(SX127X_REG_SYNC_VALUE_1, syncWord, sizeof(syncWord));
+
+      //set bitrate to 100kBps
+      pModule->SPIsetRegValue(SX127X_REG_BITRATE_MSB, 0x01); // 100kbps
+      pModule->SPIsetRegValue(SX127X_REG_BITRATE_LSB, 0x40);      
+
+      //set deviation to 50kHz
+      pModule->SPIsetRegValue(SX127X_REG_FDEV_MSB, 0x03); // +/- 50kHz
+      pModule->SPIsetRegValue(SX127X_REG_FDEV_LSB, 0x33);
+
+      // frame and packet handler settings
+      pModule->SPIsetRegValue(SX127X_REG_PREAMBLE_MSB_FSK, 0x00);
+      // add extra preamble symbol at Tx to ease reception on partner's side 
+      pModule->SPIsetRegValue(SX127X_REG_PREAMBLE_LSB_FSK, 2);
+
+      // configure output power
+      pModule->SPIsetRegValue(SX127X_REG_PA_RAMP, 0x49); 
+      */
+
       ret = pSx1276Radio->setActiveModem(SX127X_FSK_OOK);
       //log_i("setActiveModem %d",ret);
       ret = pSx1276Radio->setOOK(false);
@@ -191,6 +278,8 @@ int16_t LoRaClass::switchFSK(float frequency){
       ret = pSx1276Radio->setFrequencyDeviation(50.0);
       //log_i("setBandwidth %d",ret);
       ret = pSx1276Radio->setRxBandwidth(125.0);
+      //log_i("setRxBandwidth %d",ret);
+      ret = pSx1276Radio->setGain(1); //set highest Gain
       //log_i("setRxBandwidth %d",ret);
       ret = pSx1276Radio->setSyncWord(syncWord,sizeof(syncWord));
       //log_i("setSyncWord %d",ret);
@@ -206,11 +295,13 @@ int16_t LoRaClass::switchFSK(float frequency){
       //log_i("setWhitening %d",ret);
       ret = pSx1276Radio->setPreambleLength(2);
       //log_i("setPreambleLength %d",ret);
+
       break;
   }
   enableInterrupt = false;
   receivedFlag = false;
   _fskMode = true;
+  //log_i("FSK-Mode On %d",micros()-tBegin);
   return ret;
 }
 int16_t LoRaClass::switchLORA(){
@@ -223,7 +314,14 @@ int16_t LoRaClass::switchLORA(){
       //log_i("setFrequency %d",ret);
       break;
     case RADIO_SX1276:
-      ret = pSx1276Radio->standby();
+      //ret = pSx1276Radio->setActiveModem(SX127X_LORA);
+      //pModule->SPIsetRegValue(SX127X_REG_SYNC_WORD, _syncWord);
+
+      // set preamble length
+      //pModule->SPIsetRegValue(SX127X_REG_PREAMBLE_MSB, (uint8_t)((7 >> 8) & 0xFF));
+      //pModule->SPIsetRegValue(SX127X_REG_PREAMBLE_LSB, (uint8_t)(7 & 0xFF));
+
+      //ret = pSx1276Radio->standby();
       //log_i("standby %d",ret);
       ret = pSx1276Radio->setActiveModem(SX127X_LORA);
       //log_i("setActiveModem %d",ret);
@@ -231,10 +329,10 @@ int16_t LoRaClass::switchLORA(){
       //log_i("setSyncWord %d",ret);
       ret = pSx1276Radio->setPreambleLength(7);
       //log_i("setPreambleLength %d",ret);
-      ret = pSx1276Radio->setFrequency(_freq);
-      //log_i("setFrequency %d",ret);
       ret = pSx1276Radio->setBandwidth(_bw);
       //log_i("setBandwidth %d",ret);
+      ret = pSx1276Radio->setFrequency(_freq);
+      //log_i("setFrequency %d",ret);
       ret = pSx1276Radio->setSpreadingFactor(_sf);
       //log_i("setSpreadingFactor %d",ret);
       ret = pSx1276Radio->setCodingRate(_cr);
@@ -309,6 +407,7 @@ int16_t LoRaClass::startReceive(){
 size_t LoRaClass::getPacketLength(){
   size_t tRet = 0;
   //log_i("getPacketLength %d",radioType);
+  if (_fskMode) return FSK_PACKET_LENGTH;
   switch (radioType){
     case RADIO_SX1262:
       tRet = pSx1262Radio->getPacketLength();

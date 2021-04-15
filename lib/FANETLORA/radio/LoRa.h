@@ -40,6 +40,7 @@ public:
   int16_t switchLORA();
   float get_airlimit(void);
   int16_t setFrequency(float frequency);
+  uint8_t gain = 0; //0 --> auto-gain, 1--> highest gain; 6 --> lowest gain
 
 private:
 	float expectedAirTime_ms(int pktLen);

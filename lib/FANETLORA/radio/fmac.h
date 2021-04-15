@@ -107,6 +107,10 @@
 #define LORA_TIME 5000
 #define FSK_TIME 2000
 
+#define LEGACY_SEND_MIN			900
+#define LEGACY_SEND_MAX			1200
+
+
 
 
 //#include "main.h"
@@ -140,6 +144,7 @@ public:
 	virtual bool is_broadcast_ready(int num_neighbors) = 0;
 	virtual void broadcast_successful(int type) = 0;
 	virtual Frame *get_frame() = 0;
+	virtual bool createLegacy(uint8_t *buffer,uint32_t *ppsMillis);
 
 	/* air -> device */
 	virtual void handle_acked(bool ack, MacAddr &addr) = 0;
@@ -182,7 +187,7 @@ private:
 	
 	/* used for interrupt handler */
 	uint8_t rx_frame[MAC_FRAME_LENGTH];
-	int num_received = 0;
+	int num_received = 0;	
 
 	static void frameRxWrapper(int length);
 	void frameReceived(int length);
@@ -193,7 +198,9 @@ private:
 	//static void setFlag(void);
 	void handleIRQ();
 	void handleTx();
+	void handleTxLegacy();
 	void handleRx();
+	void sendLegacy();
 	void switchLora();
 	void switchFSK(float frequency);  
 	uint8_t getAddressType(uint8_t manuId);
@@ -207,14 +214,18 @@ private:
 
 	bool bLegacyFrequ2 = false;
 	void sendUdpData(const uint8_t *buffer,int len);
+	uint32_t long legacy_next_tx = 0;
+	uint8_t LegacyBuffer [26];
+	uint32_t ppsMillis = 0;
 
 public:
+
   bool doForward = true;
   float lat = 0;
   float lon = 0;
   float geoidAlt = 0;
   bool bPPS = false;
-	bool bSendLegacy = false;
+	bool bSendLegacy = false;	
 	
 
 	FanetMac() : myTimer(MAC_SLOT_MS, stateWrapper), myAddr(_myAddr) { }
@@ -235,9 +246,7 @@ public:
 	const MacAddr &myAddr;
 	bool setAddr(MacAddr addr);
 	bool eraseAddr(void);
-	MacAddr readAddr();
-	void handleTxLegacy();
-  void sendLegacy();
+	MacAddr readAddr();	
 
 };
 

@@ -261,35 +261,23 @@ PinBuzzer for TTGO T-Beam V0.7 and Heltec changed from 0 to 25
 added Log-Output for weather-station
 added restart after configuring GPS
 added auto-refresh of neighbours.html and weather.html with a cycle of 10seconds.
-
-v4.7.1
 Bugfix Legacy-Rx 
 Bugfix Legacy-Rx stealth-mode
-
-v4.8.0
 support for T-Beam with SX1262-Chip (ATTENTION --> at the moment no E-Ink for this board)
 automatic detection of T-Beam with SX1262-Chip
 Bugfix Legacy-speeed
 Bugfix Legacy-vertial-speed
 Bugfix OGN-Live-Tracking for Legacy-received data.
-
-v4.8.1
 Bugfix in receiving with SX1276
-
-v4.8.2
 Changed Timing for simultaneoulsy Fanet-Legacy-Mode
 added Info in neighbours.html, if message was a FANET or LEGACY
-
-v4.8.3
 adjusted frequencys
 better settings.html with response for calibration-buttons
 Setting of Kalman-Filter for Vario are in advanced-settings-view
 added STL for kobo glo and kobo touch.
-
-
-v4.8.4
 Fix Bluetooth-connection crashes ESP32 --> implemented new nimble v1.20
 Stopped ble-function on firmware-update, otherwise esp can crash
 Bugfix esp-crash caused by watchdog --> set bar-prio below standard-task
 Bugfix Webinterface
 New calibration-method for acc (checking offsets and scale with 6 axis-rotation)
+extendet fmac to hold also Legacy-Aircraft-types
