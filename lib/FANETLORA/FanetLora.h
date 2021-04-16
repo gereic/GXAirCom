@@ -283,7 +283,7 @@ public:
 	/* device -> air */
 	bool is_broadcast_ready(int num_neighbors);
 	void broadcast_successful(int type);
-  bool createLegacy(uint8_t *buffer,uint32_t *ppsMillis);
+  bool createLegacy(uint8_t *buffer);
 
 	/* air -> device */
 	void handle_acked(bool ack, MacAddr &addr);
@@ -294,11 +294,11 @@ public:
   //void fanet_sendMsg(char *ch_str);
 
   /* Legacy Switch */
-  void setLegacy(uint8_t enableTx);
+  void setRFMode(uint8_t mode);
 
 protected:
 private:  
-  uint8_t _enableLegacyTx;
+  uint8_t _RfMode;
   String _PilotName;  
   uint32_t valid_until;
   bool newMsg;

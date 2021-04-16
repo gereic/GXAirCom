@@ -856,6 +856,7 @@ int16_t SX127x::setFrequencyRaw(float newFreq) {
   // calculate register values
   uint32_t FRF = (newFreq * (uint32_t(1) << SX127X_DIV_EXPONENT)) / SX127X_CRYSTAL_FREQ;
 
+  //log_i("FRF=%d",FRF);
   // write registers
   state |= _mod->SPIsetRegValue(SX127X_REG_FRF_MSB, (FRF & 0xFF0000) >> 16);
   state |= _mod->SPIsetRegValue(SX127X_REG_FRF_MID, (FRF & 0x00FF00) >> 8);

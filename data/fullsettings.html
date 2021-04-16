@@ -69,7 +69,6 @@ function setVis(){
   document.getElementById("VisAWUS").style.display='none'; //set advanced weahter upload settings invisible    
   document.getElementById("VisAWFFNT").style.display='none'; //set advanced weahter upload settings invisible      
   document.getElementById("VisWD").style.display='none'; //set weather-data invisible
-  document.getElementById("VisLegacy").style.display=''; //now Legacy can be turned on always.
   document.getElementById("visAxOffset").style.display='none';
   document.getElementById("visAyOffset").style.display='none';
   document.getElementById("visAzOffset").style.display='none';
@@ -359,7 +358,7 @@ function sendValues(){
   ognlive : Number(document.getElementById("ognlive").checked),
   traccar_live : Number(document.getElementById("traccar_live").checked),
   traccarsrv : document.getElementById("traccarsrv").value,
-  lgM : Number(document.getElementById("lgM").value),
+  RFM : Number(document.getElementById("RFM").value),
   sigmaP : parseFloat(document.getElementById("sigmaP").value),
   sigmaA : parseFloat(document.getElementById("sigmaA").value),
   vSinkTh : parseFloat(document.getElementById("vSinkTh").value),
@@ -595,13 +594,16 @@ window.addEventListener("load", init, false);
               <option value="7">UAV</option>
             </select></td>
           </tr>	
-          <tr id="VisLegacy">
-            <th>Legacy Protocol</th>
-            <td><select id="lgM">
-              <option value="0">OFF</option>
-              <option value="1">only sending</option>
-              <option value="2">sending and receiving</option>
-              <option value="3">TESTMODE only receiving</option>
+          <tr>
+            <th>RF-Mode<br>Note: for Legacy TX, GPS is needed<br>because PPS-Signal from GPS is<br>essential for transmit<br></th>
+            <td><select id="RFM">
+              <option value="0">FANET(RX/TX)</option>
+              <option value="1">FANET(RX/TX),LEGACY(TX)</option>
+              <option value="2">FANET(RX/TX),LEGACY(RX/TX)</option>
+              <option value="3">FANET(TX),LEGACY(RX/TX)</option>
+              <option value="4">FANET(TX),LEGACY(RX)</option>
+              <option value="5">LEGACY(RX/TX)</option>
+              <option value="6">LEGACY(RX)</option>
             </select></td>
           </tr>	
           <tr id="VisFanetTracking">

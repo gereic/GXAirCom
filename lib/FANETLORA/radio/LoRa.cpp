@@ -189,6 +189,7 @@ int16_t LoRaClass::switchFSK(float frequency){
       break;
     case RADIO_SX1276:
 
+
       /*
       ret = pSx1276Radio->setActiveModem(SX127X_FSK_OOK);
       //log_i("setActiveModem %d",ret);
@@ -269,7 +270,7 @@ int16_t LoRaClass::switchFSK(float frequency){
 
       ret = pSx1276Radio->setActiveModem(SX127X_FSK_OOK);
       //log_i("setActiveModem %d",ret);
-      ret = pSx1276Radio->setOOK(false);
+      //ret = pSx1276Radio->setOOK(false);
       //log_i("setOOK %d",ret);
       ret = pSx1276Radio->setFrequency(frequency);
       //log_i("setOOK %d",ret);

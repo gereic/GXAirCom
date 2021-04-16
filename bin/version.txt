@@ -281,3 +281,4 @@ Bugfix esp-crash caused by watchdog --> set bar-prio below standard-task
 Bugfix Webinterface
 New calibration-method for acc (checking offsets and scale with 6 axis-rotation)
 extendet fmac to hold also Legacy-Aircraft-types
+New setting RF-Mode for Legacy and FANET

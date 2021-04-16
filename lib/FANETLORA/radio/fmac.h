@@ -19,6 +19,7 @@
 /* Debug */
 #define MAC_debug_mode				0
 //#define MAC_debug_mode				100
+#define RX_DEBUG 0
 
 
 //define the pins used by the LoRa transceiver module
@@ -107,8 +108,23 @@
 #define LORA_TIME 5000
 #define FSK_TIME 2000
 
-#define LEGACY_SEND_MIN			900
-#define LEGACY_SEND_MAX			1200
+#define LEGACY_RANGE 20
+#define LEGACY_8682_BEGIN		400
+#define LEGACY_8682_END			800
+#define LEGACY_8684_BEGIN		900
+#define LEGACY_8684_END			1200
+
+#define MODE_LORA 1
+#define MODE_FSK_8682 2
+#define MODE_FSK_8684 3
+
+#define RF_MODE_FANET_RX_TX 0
+#define RF_MODE_FANET_RX_TX_LEG_TX 1
+#define RF_MODE_FANET_RX_TX_LEG_RX_TX 2
+#define RF_MODE_FANET_TX_LEG_RX_TX 3
+#define RF_MODE_FANET_TX_LEG_RX 4
+#define RF_MODE_LEG_RX_TX 5
+#define RF_MODE_LEG_RX 6
 
 
 
@@ -144,7 +160,8 @@ public:
 	virtual bool is_broadcast_ready(int num_neighbors) = 0;
 	virtual void broadcast_successful(int type) = 0;
 	virtual Frame *get_frame() = 0;
-	virtual bool createLegacy(uint8_t *buffer,uint32_t *ppsMillis);
+	virtual bool createLegacy(uint8_t *buffer);
+	
 
 	/* air -> device */
 	virtual void handle_acked(bool ack, MacAddr &addr) = 0;
@@ -200,23 +217,22 @@ private:
 	void handleTx();
 	void handleTxLegacy();
 	void handleRx();
-	void sendLegacy();
-	void switchLora();
-	void switchFSK(float frequency);  
+	void switchMode(uint8_t mode);
 	uint8_t getAddressType(uint8_t manuId);
   //void coord2payload_absolut(float lat, float lon, uint8_t *buf);
 
 	bool isNeighbor(MacAddr addr);
 	//int16_t checkLegacyPaket(void *legacy_pkt, ufo_t *this_aircraft, ufo_t *fop);
-	uint8_t _enableLegacyTx;
-	bool _fskMode;
+	uint8_t _RfMode;
+	uint8_t _actMode = 0;
+	//bool _fskMode;
 	LoRaClass radio;
 
-	bool bLegacyFrequ2 = false;
 	void sendUdpData(const uint8_t *buffer,int len);
 	uint32_t long legacy_next_tx = 0;
 	uint8_t LegacyBuffer [26];
-	uint32_t ppsMillis = 0;
+	uint32_t _ppsMillis = 0;
+	uint8_t _ppsCount = 0;
 
 public:
 
@@ -241,7 +257,8 @@ public:
 
 	uint16_t numNeighbors(void) { return neighbors.size(); }
 	uint16_t numTrackingNeighbors(void);
-	void setLegacy(uint8_t enableTx);
+	void setRfMode(uint8_t mode);
+	void setPps(uint32_t *ppsMillis);
 	/* Addr */
 	const MacAddr &myAddr;
 	bool setAddr(MacAddr addr);

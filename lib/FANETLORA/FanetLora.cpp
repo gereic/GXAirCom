@@ -60,7 +60,7 @@ bool FanetLora::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset,
     return false;
   }
 
-  fmac.setLegacy(_enableLegacyTx);
+  fmac.setRfMode(_RfMode);
   return true;
 }
 
@@ -442,8 +442,8 @@ void FanetLora::run(void){
   fmac.handle();
 }
 
-void FanetLora::setLegacy(uint8_t enableTx){ 
-    _enableLegacyTx = enableTx;
+void FanetLora::setRFMode(uint8_t mode){ 
+    _RfMode = mode;
 }
 
 Frame *FanetLora::get_frame()
@@ -455,10 +455,6 @@ Frame *FanetLora::get_frame()
 		{
 			frm->type = FRM_TYPE_TRACKING;
 			frm->payload_length = serialize_tracking(&_myData,frm->payload);
-
-      if (_enableLegacyTx>0)
-        createLegacyPkt(&_myData,fmac.geoidAlt,Legacy_Buffer);
-        fmac.bSendLegacy = true; //send Legacy-Information
 		}
 		else
 		{
@@ -764,7 +760,7 @@ MacAddr FanetLora::getMacFromDevId(uint32_t devId){
   return adr;
 }
 
-bool FanetLora::createLegacy(uint8_t *buffer,uint32_t *ppsMillis){
+bool FanetLora::createLegacy(uint8_t *buffer){
   if ((!autobroadcast) || (onGround)) //autobroadcast not enabled or on ground
     return false;
   //we create the complete legacy-packet ready for sending
@@ -773,7 +769,6 @@ bool FanetLora::createLegacy(uint8_t *buffer,uint32_t *ppsMillis){
 	uint16_t crc16 = getLegacyCkSum(buffer,24);
 	buffer[24]=(crc16 >>8);
   buffer[25]=crc16;
-  *ppsMillis = _ppsMillis; //milliseconds from PPS-Pin for checking transmitting-time
   return true;
 }
 
@@ -1070,15 +1065,6 @@ void FanetLora::sendTracking(trackingData *tData){
   Frame *frm = new Frame(fmac.myAddr);
   frm->type = FRM_TYPE_TRACKING;
   frm->payload_length = serialize_tracking(tData,frm->payload);
-
-  if (_enableLegacyTx>0)
-  {
-    int oldid = tData->devId;
-    tData->devId=_myData.devId;
-    //createLegacyPkt(tData,fmac.geoidAlt,Legacy_Buffer);
-    tData->devId=oldid;
-  }
-
   frm2txBuffer(frm);
 }
 
@@ -1219,6 +1205,7 @@ void FanetLora::setMyTrackingData(trackingData *tData,float geoidAlt,uint32_t pp
     fmac.geoidAlt = geoidAlt;
     fmac.bPPS = true;
     _ppsMillis = ppsMillis;
+    fmac.setPps(&_ppsMillis); 
     _geoIdAltitude = geoidAlt;
     valid_until = millis() + FANET_LORA_VALID_STATE_MS;
     //log_i("valid_until %lu",valid_until);

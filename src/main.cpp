@@ -1468,7 +1468,7 @@ void printSettings(){
   log_i("OGN-Livetracking=%d",setting.OGNLiveTracking);
   log_i("Traccar-Livetracking=%d",setting.traccarLiveTracking);
   log_i("Traccar-Address=%s",setting.TraccarSrv.c_str());
-  log_i("LegacyMode=%d",setting.LegacyMode);
+  log_i("RF-Mode=%d",setting.RFMode);
   
   //vario
   log_i("VarioSinkingThreshold=%0.2f",setting.vario.sinkingThreshold);
@@ -2110,10 +2110,10 @@ bool initModem(){
   if (!modem.restart()) return false;
   #ifdef TINY_GSM_MODEM_SIM7000
     modem.disableGPS();
-    log_i("set NetworkMode to LTE");
-    modem.setNetworkMode(38); //set mode to LTE
-    log_i("set preferredMode to CAT-M and NB-IoT");
-    modem.setPreferredMode(3); //set to CAT-M and NB-IoT
+    //log_i("set NetworkMode to LTE");
+    //modem.setNetworkMode(38); //set mode to LTE
+    //log_i("set preferredMode to CAT-M and NB-IoT");
+    //modem.setPreferredMode(3); //set to CAT-M and NB-IoT
   #endif
   modem.sleepEnable(false); //set sleepmode off
   log_i("Waiting for network...");
@@ -2502,7 +2502,7 @@ void taskBaro(void *pvParameters){
       tStart = millis();
       if ((tStart - tLog) >= 1000){
         tLog = tStart;
-        if (tMax >= 50){
+        if (tMax >= 100){
           log_w("baro max=%dms",tMax);
           tMax = 0;
         }
@@ -3645,8 +3645,8 @@ void taskStandard(void *pvParameters){
   long frequency = FREQUENCY868;
   //bool begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset, int dio0,long frequency,uint8_t outputPower);
   if (setting.band == BAND915)frequency = FREQUENCY915; 
-  //setting.LegacyMode = 2; //send an receive legacy-data
-  fanet.setLegacy(setting.LegacyMode);
+  //setting.RFM = 2; //send an receive legacy-data
+  fanet.setRFMode(setting.RFMode);
   uint8_t radioChip = RADIO_SX1276;
   if (setting.boardType == BOARD_T_BEAM_SX1262) radioChip = RADIO_SX1262;
   fanet.begin(PinLora_SCK, PinLora_MISO, PinLora_MOSI, PinLora_SS,PinLoraRst, PinLoraDI0,frequency,setting.LoraPower,radioChip);

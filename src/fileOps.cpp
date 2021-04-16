@@ -44,7 +44,7 @@ void load_configFile(SettingsData* pSetting){
   pSetting->OGNLiveTracking = preferences.getUChar("OGN_LIVE",0);
   pSetting->screenNumber = preferences.getUChar("SCREEN",0);
   pSetting->displayType = preferences.getUChar("Display",0);
-  pSetting->LegacyMode = preferences.getUChar("LegacyMode",0);
+  pSetting->RFMode = preferences.getUChar("RFM",1);
   pSetting->traccarLiveTracking = preferences.getUChar("TRACCAR_LIVE",0);
   pSetting->TraccarSrv = preferences.getString("TRACCAR_SRV","");
   
@@ -144,7 +144,7 @@ void write_configFile(SettingsData* pSetting){
   //live-tracking
   preferences.putUChar("OGN_LIVE",pSetting->OGNLiveTracking);
   preferences.putUChar("Display",pSetting->displayType);
-  preferences.putUChar("LegacyMode",pSetting->LegacyMode);
+  preferences.putUChar("RFM",pSetting->RFMode);
   preferences.putUChar("TRACCAR_LIVE",pSetting->traccarLiveTracking);
   preferences.putString("TRACCAR_SRV",pSetting->TraccarSrv);
   

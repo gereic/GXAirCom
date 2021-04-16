@@ -235,39 +235,28 @@ void FanetMac::frameReceived(int length)
 		return;
 	}
 	int rssi = radio.getRSSI();
-	int snr = 0;
-	if (_fskMode){
-		snr = rssi + 120;
-	}else{
-		snr = rssi + 120;
-	}
+	int snr = 0;	
+	snr = rssi + 120;
 	if (snr < 0) snr = 0;
-	/*
-	if (_fskMode){
-		snr = rssi + 157;
-	}else{
-		snr = radio.getSNR();
-	}
-	*/
 	
 
 	/* build frame from stream */
 	Frame *frm;
-  if (_fskMode){
+  if (_actMode != MODE_LORA){
 		char Buffer[500];
 		int len = 0;
-		if (fmac._enableLegacyTx == 3){
-      time_t now;
+		#if RX_DEBUG > 10
+      time_t tUnix;
       char strftime_buf[64];
       struct tm timeinfo;
-      time(&now);
-			len += sprintf(Buffer+len,"T=%d;",now);
+      time(&tUnix);
+			len += sprintf(Buffer+len,"T=%d;",tUnix);
 			//log_i("l=%d,%s",len,Buffer);
-      localtime_r(&now, &timeinfo);
+      localtime_r(&tUnix, &timeinfo);
       strftime(strftime_buf, sizeof(strftime_buf), "%F %T", &timeinfo);   
 			len += sprintf(Buffer+len,"%s;",strftime_buf);
 			//log_i("l=%d,%s",len,Buffer);
-			if (fmac.bLegacyFrequ2){
+			if (_actMode == MODE_FSK_8684){
 				len += sprintf(Buffer+len,"F=868.4;");
 			}else{
 				len += sprintf(Buffer+len,"F=868.2;");
@@ -286,7 +275,7 @@ void FanetMac::frameReceived(int length)
 			fmac.sendUdpData((uint8_t *)Buffer,len);
 			//log_i("%s",Buffer);
 			//log_i("l=%d;%s",len,Buffer);
-		}
+		#endif
     if (length != 26){ //FSK-Frame is fixed 26Bytes long
 			return;
 		}
@@ -299,7 +288,7 @@ void FanetMac::frameReceived(int length)
   	uint16_t crc16 =  getLegacyCkSum(rx_frame,24);
     uint16_t crc16_2 = (uint16_t(rx_frame[24]) << 8) + uint16_t(rx_frame[25]);
     if (crc16 != crc16_2){
-      log_e("Legacy: wrong Checksum %04X!=%04X",crc16,crc16_2);
+      log_e("%d Legacy: wrong Checksum %04X!=%04X",millis(),crc16,crc16_2);
       delete frm;
       return;
     }
@@ -401,7 +390,7 @@ bool FanetMac::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset, 
 	setup_frequency=frequency;
 	_ss = ss;
 	_reset = reset;
-	_fskMode = false;
+	_actMode = MODE_LORA;
 
 	// address 
 	_myAddr = readAddr();
@@ -422,7 +411,6 @@ bool FanetMac::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset, 
 	//LoRaClass radio = new LoRaClass(&SPI,ss,33,reset,32);
 	//radio.setPins(&SPI,ss,33,reset,32);
 	
-	//_fskMode = true;
 	if (radioChip == RADIO_SX1262){
 		radio.setPins(&SPI,ss,dio0,reset,32);
 	}else{
@@ -454,64 +442,107 @@ bool FanetMac::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset, 
 	return true;
 }
 
-void FanetMac::switchLora(){
-	uint32_t tBegin = millis();
-	radio.switchLORA();
-	radio.startReceive();
-  _fskMode = false;
-  //log_i("LORA-Mode On %d",millis()-tBegin);
-}
-
-void FanetMac::switchFSK(float frequency){
-
+void FanetMac::switchMode(uint8_t mode){
   uint32_t tBegin = micros();
-	radio.switchFSK(frequency);
-	//if (bSendLegacy) sendLegacy(); //we send the legacy-msg, and switch then to receive
+	if (mode == MODE_LORA){
+		radio.switchLORA();
+	}else if (mode == MODE_FSK_8682){
+		radio.switchFSK(868.2);
+	}else if (mode == MODE_FSK_8684){
+		radio.switchFSK(868.4);
+	}
 	radio.startReceive();
-  _fskMode = true;
-  log_i("FSK-Mode %.1f On %d",frequency,micros()-tBegin);
+	_actMode = mode;
+	#if RX_DEBUG > 0
+	log_i("%d switch to mode %d in %dus pps=%d",millis(),mode,micros()-tBegin,_ppsMillis);
+	#endif
 }
-
-
 
 /* wrapper to fit callback into c++ */
 void FanetMac::stateWrapper()
 {
 	//return;
 	static uint32_t tSwitch = millis();
-	static uint32_t tNewTime = LORA_TIME + random(MAC_FORWARD_DELAY_MIN, MAC_FORWARD_DELAY_MAX);
+	static uint8_t ppsCount = 0;
+	static uint32_t ppsMillis = 0;
 	uint32_t tAct = millis();
 	fmac.handleIRQ();
-	if (fmac._enableLegacyTx == 2){
-		if (fmac._fskMode){
-			if ((tAct - tSwitch) >= tNewTime){ // 2.2sec in FSK-Mode
-				fmac.switchLora();
-				tSwitch = tAct;
-				tNewTime = LORA_TIME + random(MAC_FORWARD_DELAY_MIN, MAC_FORWARD_DELAY_MAX);
+	if (fmac._RfMode == RF_MODE_FANET_RX_TX_LEG_RX_TX){
+		if (fmac._actMode == MODE_LORA){
+			if ((fmac._ppsCount - ppsCount) >= 4){
+				if ((millis() - fmac._ppsMillis) >= (LEGACY_8682_BEGIN - LEGACY_RANGE)){
+					ppsMillis = fmac._ppsMillis;
+					ppsCount = fmac._ppsCount;
+					fmac.switchMode(MODE_FSK_8682); //start now with FSK8682
+					#if RX_DEBUG > 0
+					log_i("**** %d start FSK 868.2 %d %d",millis(),millis() - ppsMillis,fmac._ppsCount);
+					#endif
+				}
 			}
-		}else{
-			if ((tAct - tSwitch) >= tNewTime){ // 5.5sec. in FANET-Mode
-				fmac.switchFSK(868.2);
-				tSwitch = tAct;
-				tNewTime = FSK_TIME + random(MAC_FORWARD_DELAY_MIN, MAC_FORWARD_DELAY_MAX);
-			}
+		}else if (fmac._actMode == MODE_FSK_8682){
+				if ((millis() - ppsMillis) >= (LEGACY_8684_BEGIN - LEGACY_RANGE)){
+					fmac.switchMode(MODE_FSK_8684); //start now with FSK8682
+					#if RX_DEBUG > 0
+					log_i("**** %d start FSK 868.4 %d %d",millis(),millis() - ppsMillis,fmac._ppsCount);
+					#endif
+				}
+		}else if (fmac._actMode == MODE_FSK_8684){
+				if (((millis() - ppsMillis) >= (LEGACY_8684_END + LEGACY_RANGE)) && ((fmac._ppsCount - ppsCount) >= 1)){
+					fmac.switchMode(MODE_LORA); //Back to Lora again
+					#if RX_DEBUG > 0
+					log_i("**** %d finisched FSK-Mode %d",millis(),millis() - ppsMillis,fmac._ppsCount);
+					#endif
+					ppsCount = fmac._ppsCount;
+				}
 		}
-	}
-	if (fmac._enableLegacyTx == 3){ //this is a testmode only receiving on 2 frequencys of legacy
-		if ((tAct - tSwitch) >= tNewTime){ //switch every 5sec.
-			if (!fmac.bLegacyFrequ2){
-				fmac.switchFSK(868.4);
-				fmac.bLegacyFrequ2 = true;
+	}else if ((fmac._RfMode == RF_MODE_LEG_RX) || (fmac._RfMode == RF_MODE_FANET_TX_LEG_RX)){ //only receiving switch every 1 second
+		if ((tAct - tSwitch) >= 1000){ //switch every 1sec.
+			if (fmac._actMode != MODE_FSK_8684){
+				fmac.switchMode(MODE_FSK_8684);
 			}else{
-				fmac.switchFSK(868.2);
-				fmac.bLegacyFrequ2 = false;
+				fmac.switchMode(MODE_FSK_8682);
 			}
 			tSwitch = tAct;
-			tNewTime = 5000; 
+		}
+	}
+	else if ((fmac._RfMode == RF_MODE_FANET_TX_LEG_RX_TX) || (fmac._RfMode == RF_MODE_LEG_RX_TX)){
+		if (fmac._actMode != MODE_FSK_8682){
+				if ((millis() - fmac._ppsMillis) >= (LEGACY_8682_BEGIN - LEGACY_RANGE) && ((fmac._ppsCount - ppsCount) >= 1)){
+					ppsMillis = fmac._ppsMillis;
+					ppsCount = fmac._ppsCount;
+					fmac.switchMode(MODE_FSK_8682); //start now with FSK8682
+					#if RX_DEBUG > 0
+					log_i("**** %d start FSK 868.2 %d %d",millis(),millis() - ppsMillis,fmac._ppsCount);
+					#endif
+				}
+		}else{
+			if ((millis() - ppsMillis) >= (LEGACY_8684_BEGIN - LEGACY_RANGE)){
+				fmac.switchMode(MODE_FSK_8684); //start now with FSK8682
+				#if RX_DEBUG > 0
+				log_i("**** %d start FSK 868.4 %d %d",millis(),millis() - ppsMillis,fmac._ppsCount);
+				#endif
+			}
 		}
 	}
   fmac.handleRx();
-	if (!fmac._fskMode){  	
+	if ((fmac._RfMode == RF_MODE_FANET_TX_LEG_RX_TX) || (fmac._RfMode == RF_MODE_FANET_TX_LEG_RX)){
+		if (millis() >= fmac.csma_next_tx){
+			if ((fmac.tx_fifo.size() > 0) || (fmac.myApp->is_broadcast_ready(fmac.neighbors.size()))){
+				uint8_t oldMode = fmac._actMode;
+				if (fmac._actMode != MODE_LORA){
+					fmac.switchMode(MODE_LORA); //switch to Lora to send Messages
+				}								
+				#if RX_DEBUG > 0
+				log_i("******************* %d handle FanetTx *****************",millis());
+				#endif
+				fmac.handleTx();
+				if (oldMode != MODE_LORA){
+					fmac.switchMode(oldMode); //switch back to old mode
+				}				
+			}
+		}
+	}
+	if (fmac._actMode == MODE_LORA){  	
     fmac.handleTx();
   }
 	fmac.handleTxLegacy();
@@ -705,58 +736,53 @@ void dumpBuffer(uint8_t * data, int len,Stream& out)
 }
 
 
-void FanetMac::setLegacy(uint8_t enableTx){
-    _enableLegacyTx = enableTx;
+void FanetMac::setRfMode(uint8_t mode){
+    _RfMode = mode;
 }
 
-void FanetMac::sendLegacy(){
-	//encrypt_legacy(Legacy_Buffer,now());
-	
-	//uint16_t crc16 =  getLegacyCkSum(Legacy_Buffer,24);
-
-	//byte byteArr[26];
-	//for (int i=0;i<24;i++)
-	//	byteArr[i]=Legacy_Buffer[i];
-	
-	//byteArr[24]=(crc16 >>8);
-  //byteArr[25]=crc16;
-	//int16_t state = radio.transmit(byteArr, 26);
-	//if (state != ERR_NONE){
-	//	log_e("error TX state=%d",state);
-	//}	
-	//log_i("sending Legacy");
-	//bSendLegacy = false; //legacy sent !!
-	int16_t state = radio.transmit(LegacyBuffer, sizeof(LegacyBuffer));
-	if (state != ERR_NONE){
-		log_e("error TX state=%d",state);
-	}	
-	log_i("%d sending Legacy",millis());
+void FanetMac::setPps(uint32_t *ppsMillis){
+	_ppsMillis = *ppsMillis;
+	_ppsCount++;
+	//log_i("%d ppsCount=%d",millis(),_ppsCount);
 }
 
 void FanetMac::handleTxLegacy()
 {
-	if (_enableLegacyTx == 0) return; //legacy disabled
+	static uint32_t tMillis = 0;
+	if ((_RfMode == RF_MODE_FANET_RX_TX_LEG_TX) || (_RfMode == RF_MODE_FANET_RX_TX_LEG_RX_TX) || (_RfMode == RF_MODE_FANET_TX_LEG_RX_TX) || (_RfMode == RF_MODE_LEG_RX_TX)){
+
+	}else{
+		return; //legacy disabled
+	} 
 	if (legacy_next_tx == 0){
-		if (myApp->createLegacy(LegacyBuffer,&ppsMillis)){
+		if (myApp->createLegacy(LegacyBuffer)){
 			//log_i("get Legacy-packet");
-			if ((millis() - ppsMillis) <= LEGACY_SEND_MIN){
-				legacy_next_tx = ppsMillis + uint32_t(random(LEGACY_SEND_MIN,LEGACY_SEND_MAX));
-				log_i("calc legNextTx=%d,pps=%d",legacy_next_tx,ppsMillis);
+			if ((millis() - _ppsMillis) <= LEGACY_8684_BEGIN){
+				tMillis = _ppsMillis;
+				legacy_next_tx = tMillis + uint32_t(random(LEGACY_8684_BEGIN,LEGACY_8684_END));
+				//log_i("calc legNextTx=%d,pps=%d",legacy_next_tx,tMillis);
 			}
 		}
 	}else if (millis() >= legacy_next_tx){		
 		uint32_t tStart = micros();
-		log_i("sending legacy %d",millis() - ppsMillis);
-		radio.switchFSK(868.4);		
-		sendLegacy();
-		if (_fskMode){
-			//radio.switchLORA();
-			radio.startReceive();
-		}else{
-			radio.switchLORA();
-			radio.startReceive();
+		//log_i("sending legacy %d",millis() - tMillis);
+		uint8_t oldMode = _actMode;
+		if (_actMode != MODE_FSK_8684){
+			fmac.switchMode(MODE_FSK_8684);
 		}
+		int16_t state = radio.transmit(LegacyBuffer, sizeof(LegacyBuffer));
+		if (state != ERR_NONE){
+			log_e("error TX state=%d",state);
+		}	
+		//log_i("%d sending Legacy",millis());
+		if (_actMode != oldMode){
+			fmac.switchMode(oldMode); //switch back to old mode and receive
+		}else{
+			radio.startReceive();
+		}		
+		#if RX_DEBUG > 0
 		log_i("leg_Tx=%d",micros()-tStart);
+		#endif
 		legacy_next_tx = 0;
 	}
 }
@@ -885,11 +911,6 @@ void FanetMac::handleTx()
 	delete[] buffer;
 
 	if (tx_ret == TX_OK){
-		//if ((_enableLegacyTx == 1) && (bSendLegacy)){
-		//	handleTxLegacy();
-    //}
-		
-
 #if MAC_debug_mode > 0
 		Serial.printf("done.\n");
 #endif
