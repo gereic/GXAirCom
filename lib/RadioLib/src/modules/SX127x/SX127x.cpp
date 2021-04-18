@@ -1153,10 +1153,14 @@ int16_t SX127x::setMode(uint8_t mode) {
   //uint32_t tstart = millis();
   int16_t ret = _mod->SPIsetRegValue(SX127X_REG_OP_MODE, mode, 2, 0, 10);
   //log_i("ret=%d,mode=%d;t=%d",ret,mode,millis()-tstart);
-  //delay(1);
-  if (mode != 0){
-    delay(1); //wait 1millisecond, until modem has switched his state
-  }
+  //delayu(2);
+  //delayMicroseconds(2000);
+  //delay(5);
+  
+  //if (mode != 0){
+  //  delay(5); //wait 1millisecond, until modem has switched his state
+  //}
+  
   return(ret);
 }
 

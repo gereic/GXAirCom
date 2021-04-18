@@ -101,6 +101,8 @@ void onWebSocketEvent(uint8_t client_num,
           doc["gpsGAlt"] = String(status.GPS_geoidAlt,1);
           doc["fanetTx"] = status.fanetTx;
           doc["fanetRx"] = status.fanetRx;
+          doc["legTx"] = status.legTx;
+          doc["legRx"] = status.legRx;
           doc["tLoop"] = status.tLoop;
           doc["tMaxLoop"] = status.tMaxLoop;
           doc["freeHeap"] = xPortGetFreeHeapSize();
@@ -966,6 +968,16 @@ void Web_loop(void){
       bSend = true;
       mStatus.fanetRx = status.fanetRx;
       doc["fanetRx"] = status.fanetRx;
+    }    
+    if (mStatus.legTx != status.legTx){
+      bSend = true;
+      mStatus.legTx = status.legTx;
+      doc["legTx"] = status.legTx;
+    }    
+    if (mStatus.legRx != status.legRx){
+      bSend = true;
+      mStatus.legRx = status.legRx;
+      doc["legRx"] = status.legRx;
     }    
     if (mStatus.tLoop != status.tLoop){
       bSend = true;

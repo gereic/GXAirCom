@@ -269,8 +269,7 @@ public:
   void sendMSG(String msg);
   void coord2payload_absolut(float lat, float lon, uint8_t *buf);
   uint8_t getFlarmAircraftType(trackingData *tData);
-  uint16_t txCount;
-  uint16_t rxCount;
+  void getRxTxCount(uint16_t *pFntRx,uint16_t *pFntTx,uint16_t *pLegRx,uint16_t *pLegTx);
   neighbour neighbours[MAXNEIGHBOURS];
   weatherData weatherDatas[MAXWEATHERDATAS];
   uint8_t weathercount;

@@ -52,6 +52,7 @@ bool FanetLora::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset,
     neighbours[i].devId = 0; 
   }
 
+  fmac.setRfMode(_RfMode);
   bool bRet = fmac.begin(sck, miso, mosi, ss, reset, dio0,*fa,frequency,outputPower,radio);
   _myData.devId = ((uint32_t)fmac.myAddr.manufacturer << 16) + (uint32_t)fmac.myAddr.id;
   log_i("myDevId:%02X%04X",fmac.myAddr.manufacturer,fmac.myAddr.id);
@@ -60,7 +61,6 @@ bool FanetLora::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset,
     return false;
   }
 
-  fmac.setRfMode(_RfMode);
   return true;
 }
 
@@ -474,7 +474,6 @@ void FanetLora::handle_acked(bool ack, MacAddr &addr)
 	snprintf(buf, sizeof(buf), "%s,%X,%X", ack?"#FNR ACK":"#FNR NACK", addr.manufacturer, addr.id);
   //log_i("%s",buf);
   add2ActMsg(buf);
-  rxCount++;
 }
 
 String FanetLora::CreateFNFMSG(Frame *frm){
@@ -738,7 +737,13 @@ void FanetLora::handle_frame(Frame *frm){
   }
   //log_i("%s",msg.c_str());
   add2ActMsg(msg);
-  rxCount++;
+}
+
+void FanetLora::getRxTxCount(uint16_t *pFntRx,uint16_t *pFntTx,uint16_t *pLegRx,uint16_t *pLegTx){
+  *pFntRx = fmac.rxFntCount;
+  *pFntTx = fmac.txFntCount;
+  *pLegRx = fmac.rxLegCount;
+  *pLegTx = fmac.txLegCount;
 }
 
 void FanetLora::add2ActMsg(String s){
@@ -811,6 +816,9 @@ int FanetLora::serialize_name(String name,uint8_t*& buffer){
 bool FanetLora::frm2txBuffer(Frame *frm){
   //log_i("payload_length=%i",frm->payload_length);
   //log_i("%s",CreateFNFMSG(frm).c_str());
+  if (!fmac.bFanetTxEn){
+    return true; //FanetTx not enabled --> skip
+  }
   if(!fmac.txQueueHasFreeSlots()){
     log_e("TX-buffer full");
     return false;
@@ -818,7 +826,6 @@ bool FanetLora::frm2txBuffer(Frame *frm){
   /* pass to mac */
   if(fmac.transmit(frm) == 0){
 		//if(!LoRa.isArmed()) log_e("power down");
-    txCount++;
     return true;
   }else{
 		delete frm;
@@ -860,7 +867,6 @@ void FanetLora::sendPilotName(uint32_t tAct){
 void FanetLora::broadcast_successful(int type){ 
   last_tx = millis(); 
   //log_i("ready");
-  txCount++; 
 }
 
 String FanetLora::getAircraftType(aircraft_t type){

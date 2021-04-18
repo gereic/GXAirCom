@@ -23,6 +23,19 @@ void IRAM_ATTR setFlag(void)
 }
 
 bool LoRaClass::isRxMessage(){
+  /*
+  switch (radioType){
+    case RADIO_SX1262:
+      //getIRQFlags
+      break;
+    case RADIO_SX1276:
+      uint16_t flags = pSx1276Radio->getIRQFlags();
+      if ((flags != 0)  && (flags != 16600)){
+        log_i("irqFlags=%d",flags);
+      }
+      break;
+  }
+  */
   if (receivedFlag){
     rxCount++;
     //log_i("new message arrived %d",rxCount);
@@ -185,6 +198,7 @@ int16_t LoRaClass::switchFSK(float frequency){
       //payload-size = 26 * 2 --> Manchester encoding
       ret = pSx1262Radio->setPacketParaFSK(1,SX126X_GFSK_CRC_OFF,sizeof(syncWord),0x00,0x00,0x00,26*2,SX126X_GFSK_PREAMBLE_DETECT_8);
       //log_i("setPacketParaFSK %d",ret);
+      ret = pSx1262Radio->setDataShaping(RADIOLIB_SHAPING_0_5); //set gaussian filter to 0.5)
 
       break;
     case RADIO_SX1276:
@@ -296,6 +310,7 @@ int16_t LoRaClass::switchFSK(float frequency){
       //log_i("setWhitening %d",ret);
       ret = pSx1276Radio->setPreambleLength(2);
       //log_i("setPreambleLength %d",ret);
+      ret = pSx1276Radio->setDataShaping(RADIOLIB_SHAPING_0_5); //set gaussian filter to 0.5
 
       break;
   }
@@ -305,6 +320,20 @@ int16_t LoRaClass::switchFSK(float frequency){
   //log_i("FSK-Mode On %d",micros()-tBegin);
   return ret;
 }
+
+bool LoRaClass::isReceiving(){
+  switch (radioType){
+    case RADIO_SX1262:
+      return false;
+      break;
+    case RADIO_SX1276:
+      uint8_t reg = pModule->SPIgetRegValue(SX127X_REG_IRQ_FLAGS_1);
+      log_i("regIRQ=%d",reg);
+      return false;
+      break;
+  }
+}
+
 int16_t LoRaClass::switchLORA(){
   int16_t ret;
   switch (radioType){
@@ -392,6 +421,7 @@ float LoRaClass::get_airlimit(void)
 
 int16_t LoRaClass::startReceive(){
   int16_t iRet = 0;
+  //delay(5);
   switch (radioType){
     case RADIO_SX1262:
       iRet = pSx1262Radio->startReceive();
@@ -402,6 +432,7 @@ int16_t LoRaClass::startReceive(){
   }
   receivedFlag = false;
   enableInterrupt = true;
+  //log_i("start Receive");
   return iRet;
 }
 
@@ -442,6 +473,8 @@ int16_t LoRaClass::setCodingRate(uint8_t cr){
 }
 
 int16_t LoRaClass::transmit(uint8_t* data, size_t len){
+  enableInterrupt = false;
+  receivedFlag = false;
   if (!_fskMode){
     /* update air time */
     sx_airtime += expectedAirTime_ms(len);

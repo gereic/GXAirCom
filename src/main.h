@@ -430,6 +430,8 @@ struct statusData{
   float ClimbRate;
   uint16_t fanetTx;
   uint16_t fanetRx;
+  uint16_t legTx;
+  uint16_t legRx;
   bool bHasAXP192;
   VarioStatus vario;
   bool bWUBroadCast;

@@ -3933,8 +3933,9 @@ void taskStandard(void *pvParameters){
       fanet.onGround = true; //ground-tracking
     }
     fanet.run();
-    status.fanetRx = fanet.rxCount;
-    status.fanetTx = fanet.txCount;
+    //status.fanetRx = fanet.rxCount;
+    //status.fanetTx = fanet.txCount;
+    fanet.getRxTxCount(&status.fanetRx,&status.fanetTx,&status.legRx,&status.legTx);
     if (fanet.isNewMsg()){
       //write msg to udp !!      
       String msg = fanet.getactMsg() + "\n";

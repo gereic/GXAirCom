@@ -108,7 +108,7 @@
 #define LORA_TIME 5000
 #define FSK_TIME 2000
 
-#define LEGACY_RANGE 20
+#define LEGACY_RANGE 50
 #define LEGACY_8682_BEGIN		400
 #define LEGACY_8682_END			800
 #define LEGACY_8684_BEGIN		900
@@ -217,13 +217,13 @@ private:
 	void handleTx();
 	void handleTxLegacy();
 	void handleRx();
-	void switchMode(uint8_t mode);
+	void switchMode(uint8_t mode,bool bStartReceive = true);
 	uint8_t getAddressType(uint8_t manuId);
   //void coord2payload_absolut(float lat, float lon, uint8_t *buf);
 
 	bool isNeighbor(MacAddr addr);
 	//int16_t checkLegacyPaket(void *legacy_pkt, ufo_t *this_aircraft, ufo_t *fop);
-	uint8_t _RfMode;
+	uint8_t _RfMode;	
 	uint8_t _actMode = 0;
 	//bool _fskMode;
 	LoRaClass radio;
@@ -241,8 +241,11 @@ public:
   float lon = 0;
   float geoidAlt = 0;
   bool bPPS = false;
-	bool bSendLegacy = false;	
-	
+	bool bFanetTxEn = false;
+	uint16_t txFntCount = 0;
+	uint16_t rxFntCount = 0;
+	uint16_t txLegCount = 0;
+	uint16_t rxLegCount = 0;
 
 	FanetMac() : myTimer(MAC_SLOT_MS, stateWrapper), myAddr(_myAddr) { }
 	~FanetMac() { }

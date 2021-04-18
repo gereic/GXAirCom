@@ -33,6 +33,7 @@ public:
   float getSNR();
   int16_t startReceive();
   size_t getPacketLength();
+  bool isReceiving();
   int16_t setCodingRate(uint8_t cr);
   int16_t transmit(uint8_t* data, size_t len);
   bool isRxMessage();
