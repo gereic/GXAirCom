@@ -311,9 +311,9 @@ void FanetMac::frameReceived(int length)
 			if (ret == 0){				
 				float dist = distance(myAircraft.latitude,myAircraft.longitude,air.latitude,air.longitude, 'K');      
       	if ((dist <= 100) && (air.addr != 0) && (air.aircraft_type != 0)){
-					len = sprintf(Buffer,"T=%dadr=%06X;adrType=%d;airType=%d,lat=%.06f,lon=%.06f,alt=%.01f,speed=%.01f,course=%.01f,climb=%.01f\n", millis()-fmac._ppsMillis, air.addr,air.addr_type,air.aircraft_type,air.latitude,air.longitude,air.altitude,air.speed,air.course,air.vs);
-					fmac.sendUdpData((uint8_t *)Buffer,len);
-					Serial.print(Buffer);
+					//len = sprintf(Buffer,"T=%dadr=%06X;adrType=%d;airType=%d,lat=%.06f,lon=%.06f,alt=%.01f,speed=%.01f,course=%.01f,climb=%.01f\n", millis()-fmac._ppsMillis, air.addr,air.addr_type,air.aircraft_type,air.latitude,air.longitude,air.altitude,air.speed,air.course,air.vs);
+					//fmac.sendUdpData((uint8_t *)Buffer,len);
+					//Serial.print(Buffer);
 
 					bOk = true;
 					break;
