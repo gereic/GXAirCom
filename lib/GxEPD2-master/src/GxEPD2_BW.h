@@ -14,6 +14,7 @@
 
 // uncomment next line to use class GFX of library GFX_Root instead of Adafruit_GFX
 //#include <GFX.h>
+#define ENABLE_GxEPD2_GFX 1
 
 #ifndef ENABLE_GxEPD2_GFX
 // default is off
@@ -40,19 +41,24 @@
 #include "epd/GxEPD2_213_B72.h"
 #include "epd/GxEPD2_213_B73.h"
 #include "epd/GxEPD2_213_flex.h"
+#include "epd/GxEPD2_213_M21.h"
 #include "epd/GxEPD2_260.h"
+#include "epd/GxEPD2_260_M01.h"
 #include "epd/GxEPD2_290.h"
 #include "epd/GxEPD2_290_T5.h"
+#include "epd/GxEPD2_290_M06.h"
 #include "epd/GxEPD2_290_T94.h"
 #include "epd/GxEPD2_270.h"
 #include "epd/GxEPD2_371.h"
 #include "epd/GxEPD2_420.h"
+#include "epd/GxEPD2_420_M01.h"
 #include "epd/GxEPD2_583.h"
 #include "epd/GxEPD2_583_T8.h"
 #include "epd/GxEPD2_750.h"
 #include "epd/GxEPD2_750_T7.h"
 #include "epd/GxEPD2_1248.h"
 #include "it8951/GxEPD2_it60.h"
+#include "it8951/GxEPD2_it60_1448x1072.h"
 
 template<typename GxEPD2_Type, const uint16_t page_height>
 class GxEPD2_BW : public GxEPD2_GFX_BASE_CLASS
@@ -68,6 +74,7 @@ class GxEPD2_BW : public GxEPD2_GFX_BASE_CLASS
       _page_height = page_height;
       _pages = (HEIGHT / _page_height) + ((HEIGHT % _page_height) > 0);
       _reverse = (epd2_instance.panel == GxEPD2::GDE0213B1);
+      _mirror = false;
       _using_partial_mode = false;
       _current_page = 0;
       setFullWindow();
@@ -160,7 +167,8 @@ class GxEPD2_BW : public GxEPD2_GFX_BASE_CLASS
     // display buffer content to screen, useful for full screen buffer
     void display(bool partial_update_mode = false)
     {
-      epd2.writeImage(_buffer, 0, 0, WIDTH, _page_height);
+      if (partial_update_mode) epd2.writeImage(_buffer, 0, 0, WIDTH, _page_height);
+      else epd2.writeImageForFullRefresh(_buffer, 0, 0, WIDTH, _page_height);
       epd2.refresh(partial_update_mode);
       if (epd2.hasFastPartialUpdate)
       {
@@ -243,7 +251,7 @@ class GxEPD2_BW : public GxEPD2_GFX_BASE_CLASS
         }
         else // full update
         {
-          epd2.writeImage(_buffer, 0, 0, WIDTH, HEIGHT);
+          epd2.writeImageForFullRefresh(_buffer, 0, 0, WIDTH, HEIGHT);
           epd2.refresh(false);
           if (epd2.hasFastPartialUpdate)
           {
@@ -297,7 +305,7 @@ class GxEPD2_BW : public GxEPD2_GFX_BASE_CLASS
       }
       else // full update
       {
-        if (!_second_phase) epd2.writeImage(_buffer, 0, page_ys, WIDTH, gx_uint16_min(_page_height, HEIGHT - page_ys));
+        if (!_second_phase) epd2.writeImageForFullRefresh(_buffer, 0, page_ys, WIDTH, gx_uint16_min(_page_height, HEIGHT - page_ys));
         else epd2.writeImageAgain(_buffer, 0, page_ys, WIDTH, gx_uint16_min(_page_height, HEIGHT - page_ys));
         _current_page++;
         if (_current_page == _pages)
@@ -342,7 +350,7 @@ class GxEPD2_BW : public GxEPD2_GFX_BASE_CLASS
         }
         else // full update
         {
-          epd2.writeImage(_buffer, 0, 0, WIDTH, HEIGHT);
+          epd2.writeImageForFullRefresh(_buffer, 0, 0, WIDTH, HEIGHT);
           epd2.refresh(false);
           if (epd2.hasFastPartialUpdate)
           {
@@ -384,7 +392,7 @@ class GxEPD2_BW : public GxEPD2_GFX_BASE_CLASS
           uint16_t page_ys = _current_page * _page_height;
           fillScreen(GxEPD_WHITE);
           drawCallback(pv);
-          epd2.writeImage(_buffer, 0, page_ys, WIDTH, gx_uint16_min(_page_height, HEIGHT - page_ys));
+          epd2.writeImageForFullRefresh(_buffer, 0, page_ys, WIDTH, gx_uint16_min(_page_height, HEIGHT - page_ys));
         }
         epd2.refresh(false); // full update after first phase
         if (epd2.hasFastPartialUpdate)

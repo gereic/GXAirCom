@@ -225,6 +225,7 @@ SCL 14
 #define NO_DISPLAY 0
 #define OLED0_96 1
 #define EINK2_9  2
+#define EINK2_9_V2  3
 
 //defines for Mode
 #define MODE_AIR_MODULE 0

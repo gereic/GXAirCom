@@ -356,25 +356,32 @@ bool setupUbloxConfig(void);
 
 void readFuelSensor(uint32_t tAct){
   static uint32_t tRead = millis();
-  if (timeOver(tAct,tRead,FUELSENDINTERVALL)){
+  static uint32_t tSend = millis();
+  static bool bFirst = false;
+  if (timeOver(tAct,tRead,100)){ //every 100ms
     tRead = tAct;
     // multisample ADC
     const byte NO_OF_SAMPLES = 4;
     uint32_t adc_reading = 0;
-    float fFuel = 0.0;
-
     analogRead(PinFuelSensor); // First measurement has the biggest difference on my board, this line just skips the first measurement
     for (int i = 0; i < NO_OF_SAMPLES; i++) {
       uint16_t thisReading = analogRead(PinFuelSensor);
       adc_reading += thisReading;
     }
     adc_reading /= NO_OF_SAMPLES;
-
-    status.fuelSensor = 3.3 * float(adc_reading) / 1023.0f;
-    //log_i("adc=%d, Fuel=%.3f",adc_reading,fFuel);
+    float fFuel = 3.3 * float(adc_reading) / 1023.0f;
+    if (!bFirst){
+      status.fuelSensor = fFuel;
+      bFirst = true;
+    }
+    status.fuelSensor = calcExpAvgf(status.fuelSensor,fFuel,128);
+  }  
+  if (timeOver(tAct,tSend,FUELSENDINTERVALL)){
+    tSend = tAct;
     String s = "$FUEL," + String(status.fuelSensor,3) + ",";    
     sendData2Client(flarm.addChecksum(s));
   }
+  
 }
 
 
@@ -4262,7 +4269,7 @@ void powerOff(){
 
 #ifdef EINK
 void taskEInk(void *pvParameters){
-  if (status.displayType != EINK2_9){
+  if ((status.displayType != EINK2_9) && (status.displayType != EINK2_9_V2)){
     log_i("stop task");
     vTaskDelete(xHandleEInk);
     return;
@@ -4272,7 +4279,11 @@ void taskEInk(void *pvParameters){
     delay(100);
   }
   Screen screen;
-  screen.begin();
+  if (setting.displayType == EINK2_9_V2){
+    screen.begin(1); //display-type 1
+  }else{
+    screen.begin(0);
+  }  
   while(1){
     screen.run();
     delay(10);

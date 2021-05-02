@@ -31,8 +31,10 @@
 
 #include "GxEPD2_EPD.h"
 #include "epd3c/GxEPD2_154c.h"
+#include "epd3c/GxEPD2_154_Z90c.h"
 #include "epd3c/GxEPD2_213c.h"
 #include "epd3c/GxEPD2_290c.h"
+#include "epd3c/GxEPD2_290_C90c.h"
 #include "epd3c/GxEPD2_270c.h"
 #include "epd3c/GxEPD2_420c.h"
 #include "epd3c/GxEPD2_583c.h"
@@ -54,6 +56,7 @@ class GxEPD2_3C : public GxEPD2_GFX_BASE_CLASS
     {
       _page_height = page_height;
       _pages = (HEIGHT / _page_height) + ((HEIGHT % _page_height) > 0);
+      _mirror = false;
       _using_partial_mode = false;
       _current_page = 0;
       setFullWindow();
