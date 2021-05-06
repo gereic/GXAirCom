@@ -4,12 +4,12 @@ GxAircom aims to be a complete and open source implementation of the [FANET+ (Fa
 
 For information and documentation see:
 
-- [The PDF quick guide](/doc/20200908%20-%20GXAirCom%20-%20Quick%20Guide.pdf) and the [The PDF Documentation](/doc/20200723%20-%20GXAirCom%20-%20A%20LoRa%20communication%20device%20for%20free%20flying.pdf)
-- Further information can be found in [the wiki](/wiki) and [the docs folder](/docs/). E.g.:
-    - [The list of supported hardware](/wiki/Hardware-supported)
-    - [The list of supported smartphone software](/wiki/Software)
-    - [How to update the firmware](/wiki/Upgrading---updating-the-firmware-using-the-internal-web-interface-and-a-cellphone.)
-    - [See the video tutorials](/wiki/Video-Tutorials)
+- [The PDF quick guide](doc/20200908%20-%20GXAirCom%20-%20Quick%20Guide.pdf) and the [The PDF Documentation](doc/20200723%20-%20GXAirCom%20-%20A%20LoRa%20communication%20device%20for%20free%20flying.pdf)
+- Further information can be found in [the wiki](https://github.com/gereic/GXAirCom/wiki) and [the docs folder](doc/). E.g.:
+    - [The list of supported hardware](https://github.com/gereic/GXAirCom/wiki/Hardware-supported)
+    - [The list of supported smartphone software](https://github.com/gereic/GXAirCom/wiki/Software)
+    - [How to update the firmware](https://github.com/gereic/GXAirCom/wiki/Upgrading---updating-the-firmware-using-the-internal-web-interface-and-a-cellphone.)
+    - [See the video tutorials](https://github.com/gereic/GXAirCom/wiki/Video-Tutorials)
 
 Similar/ related projects are:
 
