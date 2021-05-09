@@ -220,6 +220,7 @@ void onWebSocketEvent(uint8_t client_num,
           doc["sFWD"] = setting.wd.sendFanet;
           doc["wdTempOffset"] = setting.wd.tempOffset;
           doc["wdWDirOffset"] = setting.wd.windDirOffset;
+          doc["wdRain"] = setting.wd.RainSensor;
           doc["bHasVario"] = (uint8_t)status.vario.bHasVario;
           doc["bHasMPU"] = (uint8_t)status.vario.bHasMPU;
           doc["vSinkTh"] = serialized(String(setting.vario.sinkingThreshold,2));
@@ -389,6 +390,7 @@ void onWebSocketEvent(uint8_t client_num,
         if (newSetting.wd.avgFactorWU <= 0) newSetting.wd.avgFactorWU = 128; //prevent division 0
         if (root.containsKey("WIWU")) newSetting.wd.WUUploadIntervall = doc["WIWU"].as<uint32_t>() * 1000;        
         if (newSetting.wd.WUUploadIntervall <= 10000) newSetting.wd.WUUploadIntervall = 10000;
+        if (root.containsKey("wdRain")) newSetting.wd.RainSensor = doc["wdRain"].as<uint8_t>();        
         //vario
         if (root.containsKey("vSinkTh")) newSetting.vario.sinkingThreshold = doc["vSinkTh"].as<float>();
         if (root.containsKey("vClimbTh")) newSetting.vario.climbingThreshold = doc["vClimbTh"].as<float>();

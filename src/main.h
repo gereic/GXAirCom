@@ -337,6 +337,7 @@ struct WeatherSettings{
   uint32_t FanetUploadInterval;
   float avgFactorWU;
   uint32_t WUUploadIntervall;
+  uint8_t RainSensor;
 };
 
 struct GsmSettings{

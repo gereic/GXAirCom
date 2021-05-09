@@ -1491,6 +1491,7 @@ void printSettings(){
   //general
   log_i("WD tempoffset=%.1f [°]",setting.wd.tempOffset);
   log_i("WD windDirOffset=%d [°]",setting.wd.windDirOffset);
+  log_i("WD rainSensor=%d",setting.wd.RainSensor);
   // FANET
   log_i("WD FANET-Weatherdata=%d",setting.wd.sendFanet);
   log_i("WD FANET-Interval=%d [msec]",setting.wd.FanetUploadInterval);
@@ -2316,8 +2317,13 @@ void taskWeather(void *pvParameters){
           avg[i].temp = calcExpAvgf(avg[i].temp,wData.temp,fAvg);
         }
         //log_i("wDir=%f,wDir0=%f,wDir1=%f",wData.WindDir,avg[0].Winddir,avg[1].Winddir);
-        status.weather.rain1h = wData.rain1h;
-        status.weather.rain1d = wData.rain1d;
+        if (setting.wd.RainSensor == 1){
+          status.weather.rain1h = wData.rain1h;
+          status.weather.rain1d = wData.rain1d;
+        }else{
+          status.weather.rain1h = 0;
+          status.weather.rain1d = 0;
+        }
         status.weather.temp = avg[0].temp;
         status.weather.Humidity = avg[0].Humidity;
         status.weather.Pressure = avg[0].Pressure;
@@ -2343,7 +2349,11 @@ void taskWeather(void *pvParameters){
             wuData.humidity = avg[1].Humidity;
             wuData.temp = avg[1].temp;
             wuData.pressure = avg[1].Pressure;
-            wuData.bRain = true;
+            if (setting.wd.RainSensor == 1){
+              wuData.bRain = true;
+            }else{
+              wuData.bRain = false;
+            }
             wuData.rain1h = wData.rain1h ;
             wuData.raindaily = wData.rain1d;
             log_i("wuData:wDir=%f;wSpeed=%f,gust=%f,temp=%f,h=%f,p=%f",wuData.winddir,wuData.windspeed,wuData.windgust,wuData.temp,wuData.humidity,wuData.pressure);
@@ -2365,7 +2375,11 @@ void taskWeather(void *pvParameters){
             wiData.humidity = avg[1].Humidity;
             wiData.temp = avg[1].temp;
             wiData.pressure = avg[1].Pressure;
-            wiData.bRain = true;
+            if (setting.wd.RainSensor == 1){
+              wiData.bRain = true;
+            }else{
+              wiData.bRain = false;
+            }
             wiData.rain1h = wData.rain1h ;
             wiData.raindaily = wData.rain1d;
             wi.sendData(setting.WindyUpload.ID,setting.WindyUpload.KEY,&wiData);
@@ -3916,7 +3930,11 @@ void taskStandard(void *pvParameters){
         wData.Baro = status.weather.Pressure;
         wData.bHumidity = true;
         wData.Humidity = status.weather.Humidity;
-        wData.bRain = true;
+        if (setting.wd.RainSensor == 1){
+          wData.bRain = true;
+        }else{
+          wData.bRain = false;
+        }
         wData.rain1h = status.weather.rain1h;
         wData.rain24h = status.weather.rain1d;
         wData.bTemp = true;

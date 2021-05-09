@@ -398,6 +398,7 @@ function sendValues(){
   sFWD : Number(document.getElementById("sFWD").checked),
   wdTempOffset : Number(document.getElementById("wdTempOffset").value),  
   wdWDirOffset : Number(document.getElementById("wdWDirOffset").value),  
+  wdRain : Number(document.getElementById("wdRain").checked),
 
   WUUlEnable : Number(document.getElementById("WUUlEnable").checked),
   WUUlID : document.getElementById("WUUlID").value,  
@@ -810,6 +811,10 @@ window.addEventListener("load", init, false);
           <tr>
             <th>offset wind direction [°]</th>
             <td><input type="number" id="wdWDirOffset" step="1"></td>
+          </tr>
+          <tr>
+            <th>weather-station with rain-sensor</th>
+            <td><input type="checkbox" id="wdRain"></td>
           </tr>
         </tbody>      
       </table>
