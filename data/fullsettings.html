@@ -79,6 +79,7 @@ function setVis(){
   document.getElementById("visAccTemp2").style.display='none';  
   document.getElementById("visSigmaP").style.display='none';  
   document.getElementById("visSigmaA").style.display='none';  
+  document.getElementById("VisFuelSensor").style.display='none'; //set FuelSensor invisible
   if (document.getElementById("setView").value > 0){ //we are advanced user
     document.getElementById("visSigmaP").style.display='';  
     document.getElementById("visSigmaA").style.display='';  
@@ -127,7 +128,6 @@ function setVis(){
       document.getElementById("VisBattType").style.display = 'none';
     } 
     document.getElementById("VisExtPowerSw").style.display = 'none';
-    document.getElementById("VisFuelSensor").style.display='none'; //set FuelSensor invisible
   }else{
     document.getElementById("VisAirCraftType").style.display='';
     document.getElementById("tName").innerHTML='Pilot name';
@@ -398,6 +398,7 @@ function sendValues(){
   sFWD : Number(document.getElementById("sFWD").checked),
   wdTempOffset : Number(document.getElementById("wdTempOffset").value),  
   wdWDirOffset : Number(document.getElementById("wdWDirOffset").value),  
+  wdRain : Number(document.getElementById("wdRain").checked),
 
   WUUlEnable : Number(document.getElementById("WUUlEnable").checked),
   WUUlID : document.getElementById("WUUlID").value,  
@@ -543,7 +544,8 @@ window.addEventListener("load", init, false);
             <td><select id="disp">
               <option value="0">no display</option>
               <option value="1">0.96' OLED</option>
-              <option value="2">2.9' E-Ink</option>              
+              <option value="2">2.9' E-Ink</option>
+              <option value="3">2.9' E-Ink V2</option>              
             </select></td>
           </tr>
           <tr>
@@ -809,6 +811,10 @@ window.addEventListener("load", init, false);
           <tr>
             <th>offset wind direction [°]</th>
             <td><input type="number" id="wdWDirOffset" step="1"></td>
+          </tr>
+          <tr>
+            <th>weather-station with rain-sensor</th>
+            <td><input type="checkbox" id="wdRain"></td>
           </tr>
         </tbody>      
       </table>

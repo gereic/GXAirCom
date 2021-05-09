@@ -16,10 +16,10 @@ SCL 22
 
 ******* E-Ink *********
 BUSY     33
-RST      4
+RST      VCC
 DC       32
 CS       15
-CLK      0
+CLK      4
 DIN      2
 
 ******** BARO *********
@@ -55,10 +55,10 @@ SCL 22
 
 ******* E-Ink *********
 BUSY     33
-RST      4
+RST      VCC
 DC       32
 CS       15
-CLK      25
+CLK      4
 DIN      2
 
 ******** BARO *********

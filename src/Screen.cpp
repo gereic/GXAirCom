@@ -6,37 +6,47 @@
 
 #include "Screen.h"
 
+
 GxEPD2_BW<GxEPD2_290, GxEPD2_290::HEIGHT> e_ink(GxEPD2_290(EINK_CS, EINK_DC, EINK_RST, EINK_BUSY));
-//GxEPD2_BW<GxEPD2_290_T94, GxEPD2_290_T94::HEIGHT> e_ink(GxEPD2_290_T94(EINK_CS, EINK_DC, EINK_RST, EINK_BUSY));
+GxEPD2_BW<GxEPD2_290_T94, GxEPD2_290_T94::HEIGHT> e_ink2(GxEPD2_290_T94(EINK_CS, EINK_DC, EINK_RST, EINK_BUSY));
 
 Screen::Screen(){
 }
 
-bool Screen::begin(void){
-    bInit = false;
+bool Screen::begin(uint8_t type){
+  bInit = false;
+  if (type == 1){
+    e_ink2.epd2.init(EINK_CLK, EINK_DIN, 0, true, false); // define or replace SW_SCK, SW_MOSI
+    e_ink2.init(0); // needed to init upper level
+    pEInk = &e_ink2;
+    log_i("display-type 2.9 V2");
+  }else{
     e_ink.epd2.init(EINK_CLK, EINK_DIN, 0, true, false); // define or replace SW_SCK, SW_MOSI
     e_ink.init(0); // needed to init upper level
-    return true;
+    pEInk = &e_ink;
+    log_i("display-type 2.9 V1");
+  }
+  return true;
 }
 
 void Screen::end(void){
-    e_ink.setRotation(1);
-    e_ink.setFont(&FreeMonoBold9pt7b);
-    e_ink.setTextColor(GxEPD_BLACK);
-    e_ink.setFullWindow();
-    e_ink.firstPage();
+    pEInk->setRotation(1);
+    pEInk->setFont(&FreeMonoBold9pt7b);
+    pEInk->setTextColor(GxEPD_BLACK);    
+    pEInk->setFullWindow();
+    pEInk->firstPage();
     do
     {
-        e_ink.fillScreen(GxEPD_WHITE);
-        e_ink.drawXBitmap(84,34,G_Logo_bits,G_Logo_width,G_Logo_height,GxEPD_BLACK);
-        e_ink.drawXBitmap(114,34,X_Logo_bits,X_Logo_width,X_Logo_height,GxEPD_BLACK);
-        e_ink.drawXBitmap(153,34,AirCom_Logo_bits,AirCom_Logo_width,AirCom_Logo_height,GxEPD_BLACK);
-        e_ink.setCursor(169,92);
-        e_ink.print(VERSION);
-        e_ink.setCursor(80,92);
-        e_ink.print(setting.myDevId);
+        pEInk->fillScreen(GxEPD_WHITE);
+        pEInk->drawXBitmap(84,34,G_Logo_bits,G_Logo_width,G_Logo_height,GxEPD_BLACK);
+        pEInk->drawXBitmap(114,34,X_Logo_bits,X_Logo_width,X_Logo_height,GxEPD_BLACK);
+        pEInk->drawXBitmap(153,34,AirCom_Logo_bits,AirCom_Logo_width,AirCom_Logo_height,GxEPD_BLACK);
+        pEInk->setCursor(169,92);
+        pEInk->print(VERSION);
+        pEInk->setCursor(80,92);
+        pEInk->print(setting.myDevId);
     }
-    while (e_ink.nextPage());
+    while (pEInk->nextPage());
     bInit = false;
 
 }
@@ -57,49 +67,49 @@ void Screen::doInitScreen(void){
     switch (step)
     {
     case 0:
-        e_ink.setRotation(1);
-        e_ink.setFont(&FreeMonoBold9pt7b);
-        e_ink.setTextColor(GxEPD_BLACK);
-        e_ink.firstPage();
+        pEInk->setRotation(1);
+        pEInk->setFont(&FreeMonoBold9pt7b);
+        pEInk->setTextColor(GxEPD_BLACK);
+        pEInk->firstPage();
         do
         {
-            e_ink.fillScreen(GxEPD_WHITE);
-            e_ink.drawXBitmap(84,34,G_Logo_bits,G_Logo_width,G_Logo_height,GxEPD_BLACK);
+            pEInk->fillScreen(GxEPD_WHITE);
+            pEInk->drawXBitmap(84,34,G_Logo_bits,G_Logo_width,G_Logo_height,GxEPD_BLACK);
         }
-        while (e_ink.nextPage());
+        while (pEInk->nextPage());
         tTimeStamp = millis();
         step ++;
         break;
     case 1:
         if (timeOver(tAct,tTimeStamp,500)){
-            e_ink.setPartialWindow(0,0,e_ink.width(),e_ink.height());
+            pEInk->setPartialWindow(0,0,pEInk->width(),pEInk->height());
             do
             {
-                e_ink.fillScreen(GxEPD_WHITE);
-                e_ink.drawXBitmap(84,34,G_Logo_bits,G_Logo_width,G_Logo_height,GxEPD_BLACK);
-                e_ink.drawXBitmap(114,34,X_Logo_bits,X_Logo_width,X_Logo_height,GxEPD_BLACK);
+                pEInk->fillScreen(GxEPD_WHITE);
+                pEInk->drawXBitmap(84,34,G_Logo_bits,G_Logo_width,G_Logo_height,GxEPD_BLACK);
+                pEInk->drawXBitmap(114,34,X_Logo_bits,X_Logo_width,X_Logo_height,GxEPD_BLACK);
             }
-            while (e_ink.nextPage());
+            while (pEInk->nextPage());
             tTimeStamp = millis();
             step ++;
         }
         break;
     case 2:
         if (timeOver(tAct,tTimeStamp,500)){
-            e_ink.setPartialWindow(0,0,e_ink.width(),e_ink.height());
-            //e_ink.firstPage();
+            pEInk->setPartialWindow(0,0,pEInk->width(),pEInk->height());
+            //pEInk->firstPage();
             do
             {
-                e_ink.fillScreen(GxEPD_WHITE);
-                e_ink.drawXBitmap(84,34,G_Logo_bits,G_Logo_width,G_Logo_height,GxEPD_BLACK);
-                e_ink.drawXBitmap(114,34,X_Logo_bits,X_Logo_width,X_Logo_height,GxEPD_BLACK);
-                e_ink.drawXBitmap(153,34,AirCom_Logo_bits,AirCom_Logo_width,AirCom_Logo_height,GxEPD_BLACK);
-                e_ink.setCursor(169,92);
-                e_ink.print(VERSION);
-                e_ink.setCursor(80,92);
-                e_ink.print(setting.myDevId);
+                pEInk->fillScreen(GxEPD_WHITE);
+                pEInk->drawXBitmap(84,34,G_Logo_bits,G_Logo_width,G_Logo_height,GxEPD_BLACK);
+                pEInk->drawXBitmap(114,34,X_Logo_bits,X_Logo_width,X_Logo_height,GxEPD_BLACK);
+                pEInk->drawXBitmap(153,34,AirCom_Logo_bits,AirCom_Logo_width,AirCom_Logo_height,GxEPD_BLACK);
+                pEInk->setCursor(169,92);
+                pEInk->print(VERSION);
+                pEInk->setCursor(80,92);
+                pEInk->print(setting.myDevId);
             }
-            while (e_ink.nextPage());
+            while (pEInk->nextPage());
             tTimeStamp = millis();
             step ++;
         }
@@ -178,25 +188,25 @@ void Screen::drawCompass(int16_t x, int16_t y, int16_t width, int16_t height,flo
     String sText = String(value,0);
     String sDir = getWDir(value);
     int16_t tbx, tby, posx, posy; uint16_t tbw, tbh;
-    e_ink.getTextBounds(sText.c_str(), 0, height, &tbx, &tby, &tbw, &tbh);
+    pEInk->getTextBounds(sText.c_str(), 0, height, &tbx, &tby, &tbw, &tbh);
     posx = x+width-tbw-tbx;
     posy = y+height-1;
-    e_ink.setCursor(x,posy);
-    e_ink.print(sDir.c_str());
-    e_ink.setCursor(posx,posy);
-    e_ink.print(sText.c_str());
+    pEInk->setCursor(x,posy);
+    pEInk->print(sDir.c_str());
+    pEInk->setCursor(posx,posy);
+    pEInk->print(sText.c_str());
 }
 
 void Screen::drawValue(int16_t x, int16_t y, int16_t width, int16_t height,float value,uint8_t decimals){
     String sText = String(value,decimals);
     //log_i("%.2f = %s",value,sText.c_str());
     int16_t tbx, tby, posx, posy; uint16_t tbw, tbh;
-    e_ink.getTextBounds(sText.c_str(), 0, height, &tbx, &tby, &tbw, &tbh);
+    pEInk->getTextBounds(sText.c_str(), 0, height, &tbx, &tby, &tbw, &tbh);
     posx = x+width-tbw-tbx;
     posy = y+height-1;
     //log_i("%d %d %d %d %d %d",tbx, tby, tbw, tbh,posx,posy);
-    e_ink.setCursor(posx,posy);
-    e_ink.print(sText.c_str());
+    pEInk->setCursor(posx,posy);
+    pEInk->print(sText.c_str());
 }
 void Screen::drawBatt(int16_t x, int16_t y, int16_t width, int16_t height,uint8_t value){
     static uint8_t DrawValue = 0;
@@ -209,30 +219,30 @@ void Screen::drawBatt(int16_t x, int16_t y, int16_t width, int16_t height,uint8_
     switch (DrawValue)
     {
     case 1:
-        e_ink.drawInvertedBitmap(x, y, bat1icons, width, height, GxEPD_BLACK);   //GxEPD_BLACK);    
+        pEInk->drawInvertedBitmap(x, y, bat1icons, width, height, GxEPD_BLACK);   //GxEPD_BLACK);    
         break;
     case 2:
-        e_ink.drawInvertedBitmap(x, y, bat2icons, width, height, GxEPD_BLACK);   //GxEPD_BLACK);    
+        pEInk->drawInvertedBitmap(x, y, bat2icons, width, height, GxEPD_BLACK);   //GxEPD_BLACK);    
         break;
     case 3:
-        e_ink.drawInvertedBitmap(x, y, bat3icons, width, height, GxEPD_BLACK);   //GxEPD_BLACK);    
+        pEInk->drawInvertedBitmap(x, y, bat3icons, width, height, GxEPD_BLACK);   //GxEPD_BLACK);    
         break;
     case 4:
-        e_ink.drawInvertedBitmap(x, y, bat4icons, width, height, GxEPD_BLACK);   //GxEPD_BLACK);    
+        pEInk->drawInvertedBitmap(x, y, bat4icons, width, height, GxEPD_BLACK);   //GxEPD_BLACK);    
         break;
     default:
-        e_ink.drawInvertedBitmap(x, y, bat0icons, width, height, GxEPD_BLACK);   //GxEPD_BLACK);    
+        pEInk->drawInvertedBitmap(x, y, bat0icons, width, height, GxEPD_BLACK);   //GxEPD_BLACK);    
         break;
     }
 }
 void Screen::drawSatCount(int16_t x, int16_t y, int16_t width, int16_t height,uint8_t value){
-    e_ink.setFont(&FreeSansBold9pt7b);
+    pEInk->setFont(&FreeSansBold9pt7b);
     if (value == 0){
-        e_ink.drawXBitmap(x, y,gpsoff_bits,  16, 16, GxEPD_BLACK);
+        pEInk->drawXBitmap(x, y,gpsoff_bits,  16, 16, GxEPD_BLACK);
     }else{
-        e_ink.drawXBitmap(x, y,gpsOn_bits,  16, 16, GxEPD_BLACK);
-        e_ink.setCursor(x+17,y+height-2);
-        e_ink.print(String(value));
+        pEInk->drawXBitmap(x, y,gpsOn_bits,  16, 16, GxEPD_BLACK);
+        pEInk->setCursor(x+17,y+height-2);
+        pEInk->print(String(value));
     }
 }
 
@@ -241,7 +251,7 @@ void Screen::getTextPositions(int16_t *posx, int16_t *posy,int16_t x, int16_t y,
     *posy = 0;
     int16_t tbx, tby; 
     uint16_t tbw, tbh;
-    e_ink.getTextBounds(sText.c_str(),x, y, &tbx, &tby, &tbw, &tbh);
+    pEInk->getTextBounds(sText.c_str(),x, y, &tbx, &tby, &tbw, &tbh);
     *posx = x + (width-(tbx + tbw)) / 2;
     *posy = y + height-1;
     //log_i("%s x=%d,y=%d,w=%d,h=%d,tbx=%d,tby=%d,tbw=%d,tbh=%d,posx=%d,posy=%d",sText.c_str(),x,y,width,height,tbx, tby, tbw, tbh,*posx,*posy);
@@ -358,98 +368,103 @@ void Screen::drawMainScreen(void){
         //log_i("fullUpdate=%d UpdateScreen=%d time=%d",bFullUpdate,UpdateScreen,millis()-tOldUpate);
         //tOldUpate = millis();
         tAct = millis();
-        e_ink.setTextColor(GxEPD_BLACK);
-        e_ink.setRotation(0); 
-        e_ink.setTextSize(1);       
-        
+        pEInk->setTextColor(GxEPD_BLACK);
+        pEInk->setRotation(0); 
+        //pEInk->setRotation(1); 
+        pEInk->setTextSize(1);       
+        //if (countFullRefresh >= 10){
+        //  bFullUpdate = true;
+        //}
         if (bFullUpdate){
-            e_ink.setFullWindow();
-            e_ink.firstPage();
+            pEInk->setFullWindow();
+            pEInk->firstPage();
+            countFullRefresh = 0;
         }else{
-            e_ink.setPartialWindow(0,0,e_ink.width(),e_ink.height());
+            pEInk->setPartialWindow(0,0,pEInk->width(),pEInk->height());
+            countFullRefresh++;
         }
-        e_ink.setFont(&NotoSansBold6pt7b);
+        pEInk->setFont(&NotoSansBold6pt7b);
         getTextPositions(&posx,&posy,0,35,128,10,setting.PilotName);        
         do
         {
-            e_ink.fillScreen(GxEPD_WHITE);
+            pEInk->fillScreen(GxEPD_WHITE);
             drawspeaker(49,0,16,16,data.volume);
             drawflying(67,0,16,16,data.flying);
-            if (data.wifi) e_ink.drawXBitmap(85, 4,WIFI_bits,  14, 8, GxEPD_BLACK);
+            if (data.wifi) pEInk->drawXBitmap(85, 4,WIFI_bits,  14, 8, GxEPD_BLACK);
             if (data.bluetooth == 1){
-                e_ink.drawXBitmap(101, 3,BT_bits,  8, 10, GxEPD_BLACK);
+                pEInk->drawXBitmap(101, 3,BT_bits,  8, 10, GxEPD_BLACK);
             }else if (data.bluetooth == 2){
-                e_ink.fillRect(101, 3, 8, 10, GxEPD_BLACK);
-                e_ink.drawXBitmap(101, 3,BT_bits,  8, 10, GxEPD_WHITE);
+                pEInk->fillRect(101, 3, 8, 10, GxEPD_BLACK);
+                pEInk->drawXBitmap(101, 3,BT_bits,  8, 10, GxEPD_WHITE);
             }  
             drawBatt(111,4,17,8,data.battPercent);
             switch (setting.AircraftType)
            {
            case FanetLora::paraglider :
-               e_ink.drawXBitmap(0, 0, Paraglider16_bits, 16, 16, GxEPD_BLACK);   //GxEPD_BLACK);
+               pEInk->drawXBitmap(0, 0, Paraglider16_bits, 16, 16, GxEPD_BLACK);   //GxEPD_BLACK);
                break;
            case FanetLora::hangglider :
-               e_ink.drawXBitmap(0, 0, Hangglider16_bits, 16, 16, GxEPD_BLACK);   //GxEPD_BLACK);
+               pEInk->drawXBitmap(0, 0, Hangglider16_bits, 16, 16, GxEPD_BLACK);   //GxEPD_BLACK);
                break;
            case FanetLora::balloon :
-               e_ink.drawXBitmap(0, 0, Ballon16_bits, 16, 16, GxEPD_BLACK);   //GxEPD_BLACK);
+               pEInk->drawXBitmap(0, 0, Ballon16_bits, 16, 16, GxEPD_BLACK);   //GxEPD_BLACK);
                break;
            case FanetLora::glider :
-               e_ink.drawXBitmap(0, 0, Sailplane16_bits, 16, 16, GxEPD_BLACK);   //GxEPD_BLACK);
+               pEInk->drawXBitmap(0, 0, Sailplane16_bits, 16, 16, GxEPD_BLACK);   //GxEPD_BLACK);
                break;
            case FanetLora::poweredAircraft :
-               e_ink.drawXBitmap(0, 0, Airplane16_bits, 16, 16, GxEPD_BLACK);   //GxEPD_BLACK);
+               pEInk->drawXBitmap(0, 0, Airplane16_bits, 16, 16, GxEPD_BLACK);   //GxEPD_BLACK);
                break;
            case FanetLora::helicopter :
-               e_ink.drawXBitmap(0, 0, Helicopter16_bits, 16, 16, GxEPD_BLACK);   //GxEPD_BLACK);
+               pEInk->drawXBitmap(0, 0, Helicopter16_bits, 16, 16, GxEPD_BLACK);   //GxEPD_BLACK);
                break;
            case FanetLora::uav :
-               e_ink.drawXBitmap(0, 0, UAV16_bits, 16, 16, GxEPD_BLACK);   //GxEPD_BLACK);
+               pEInk->drawXBitmap(0, 0, UAV16_bits, 16, 16, GxEPD_BLACK);   //GxEPD_BLACK);
                break;
            
            default:
-               e_ink.drawXBitmap(0, 0, UFO16_bits, 16, 16, GxEPD_BLACK);   //GxEPD_BLACK);
+               pEInk->drawXBitmap(0, 0, UFO16_bits, 16, 16, GxEPD_BLACK);   //GxEPD_BLACK);
                break;
            }
             drawSatCount(18,0,26,16,data.SatCount);
-            e_ink.drawFastHLine(0,52,e_ink.width(),GxEPD_BLACK);
-            e_ink.setFont(&gnuvarioe23pt7b);
+            pEInk->drawFastHLine(0,52,pEInk->width(),GxEPD_BLACK);
+            pEInk->setFont(&gnuvarioe23pt7b);
             drawValue(0,65,96,34,data.alt,0);
-            e_ink.drawFastHLine(0,101,e_ink.width(),GxEPD_BLACK);
-            e_ink.setFont(&gnuvarioe23pt7b);
+            pEInk->drawFastHLine(0,101,pEInk->width(),GxEPD_BLACK);
+            pEInk->setFont(&gnuvarioe23pt7b);
             drawValue(0,114,96,34,data.vario,1);
-            e_ink.drawFastHLine(0,150,e_ink.width(),GxEPD_BLACK);
-            e_ink.setFont(&gnuvarioe23pt7b);
+            pEInk->drawFastHLine(0,150,pEInk->width(),GxEPD_BLACK);
+            pEInk->setFont(&gnuvarioe23pt7b);
             drawValue(0,163,96,34,data.speed,0);
-            e_ink.drawFastHLine(0,198,e_ink.width(),GxEPD_BLACK);
+            pEInk->drawFastHLine(0,198,pEInk->width(),GxEPD_BLACK);
             drawFlightTime(0,213,128,34,data.flightTime);
-            e_ink.drawFastHLine(0,248,e_ink.width(),GxEPD_BLACK);
-            e_ink.setFont(&gnuvarioe18pt7b);
+            pEInk->drawFastHLine(0,248,pEInk->width(),GxEPD_BLACK);
+            pEInk->setFont(&gnuvarioe18pt7b);
             drawCompass(0,261,128,31,data.compass);
-            //e_ink.setFont(&FreeSansBold9pt7b);            
-            e_ink.setFont(&NotoSansBold6pt7b);
-            e_ink.setCursor(posx,posy);
-            e_ink.print(setting.PilotName);
-            e_ink.setFont(&NotoSans6pt7b);
-            e_ink.setCursor(40,30);
-            e_ink.print(setting.myDevId);
-            e_ink.setCursor(5,62);
-            e_ink.print("Altitude");
-            e_ink.setCursor(98, 97);
-            e_ink.print('m');
-            e_ink.setCursor(5,111);
-            e_ink.print("Vario");
-            e_ink.drawBitmap(98, 120, msicons, 24, 24, GxEPD_BLACK);   //GxEPD_BLACK);
-            e_ink.setCursor(5,160);
-            e_ink.print("Speed");
-            e_ink.drawBitmap(98, 170, kmhicons, 24, 24, GxEPD_BLACK);   //GxEPD_BLACK);
-            e_ink.setCursor(5,208);
-            e_ink.print("Flight time");
-            e_ink.setCursor(5,258);
-            e_ink.print("Compass");
+            //pEInk->setFont(&FreeSansBold9pt7b);            
+            pEInk->setFont(&NotoSansBold6pt7b);
+            pEInk->setCursor(posx,posy);
+            pEInk->print(setting.PilotName);
+            pEInk->setFont(&NotoSans6pt7b);
+            pEInk->setCursor(40,30);
+            pEInk->print(setting.myDevId);
+            pEInk->setCursor(5,62);
+            pEInk->print("Altitude");
+            pEInk->setCursor(98, 97);
+            pEInk->print('m');
+            pEInk->setCursor(5,111);
+            pEInk->print("Vario");
+            pEInk->drawBitmap(98, 120, msicons, 24, 24, GxEPD_BLACK);   //GxEPD_BLACK);
+            pEInk->setCursor(5,160);
+            pEInk->print("Speed");
+            pEInk->drawBitmap(98, 170, kmhicons, 24, 24, GxEPD_BLACK);   //GxEPD_BLACK);
+            pEInk->setCursor(5,208);
+            pEInk->print("Flight time");
+            pEInk->setCursor(5,258);
+            pEInk->print("Compass");
 
         }
-        while (e_ink.nextPage());
+        while (pEInk->nextPage());
         //log_i("update e-ink %dms",millis() - tAct);
         bFullUpdate = false;
         UpdateScreen = false;
@@ -461,9 +476,9 @@ void Screen::drawMainScreen(void){
 
 void Screen::drawflying(int16_t x, int16_t y, int16_t width, int16_t height,bool flying){
     if (flying){
-        e_ink.drawXBitmap(x, y,flying_bits,  width, height, GxEPD_BLACK);
+        pEInk->drawXBitmap(x, y,flying_bits,  width, height, GxEPD_BLACK);
     }else{
-        e_ink.drawXBitmap(x, y,not_flying_bits,  width, height, GxEPD_BLACK);
+        pEInk->drawXBitmap(x, y,not_flying_bits,  width, height, GxEPD_BLACK);
     }
 }
 
@@ -471,16 +486,16 @@ void Screen::drawspeaker(int16_t x, int16_t y, int16_t width, int16_t height,uin
     switch (volume)
     {
     case 1:
-        e_ink.drawXBitmap(x, y,speakerlow_bits,  16, 16, GxEPD_BLACK);
+        pEInk->drawXBitmap(x, y,speakerlow_bits,  16, 16, GxEPD_BLACK);
         break;
     case 2:
-        e_ink.drawXBitmap(x, y,speakermid_bits,  16, 16, GxEPD_BLACK);
+        pEInk->drawXBitmap(x, y,speakermid_bits,  16, 16, GxEPD_BLACK);
         break;
     case 3:
-        e_ink.drawXBitmap(x, y,speakerhigh_bits,  16, 16, GxEPD_BLACK);
+        pEInk->drawXBitmap(x, y,speakerhigh_bits,  16, 16, GxEPD_BLACK);
         break;        
     default:
-        e_ink.drawXBitmap(x, y,speakeroff_bits,  16, 16, GxEPD_BLACK);
+        pEInk->drawXBitmap(x, y,speakeroff_bits,  16, 16, GxEPD_BLACK);
         break;
     }
 }
@@ -488,27 +503,27 @@ void Screen::drawspeaker(int16_t x, int16_t y, int16_t width, int16_t height,uin
 void Screen::drawFlightTime(int16_t x, int16_t y, int16_t width, int16_t height,uint32_t tTime){
     uint8_t min = (tTime / 60) % 60;
     uint8_t hours =  tTime / 3600;
-    e_ink.setFont(&gnuvarioe23pt7b);
-    e_ink.drawBitmap(x + (width / 2) - 8, y + (height / 2) - 8, hicons, 16, 16, GxEPD_BLACK);   //GxEPD_BLACK);    
-    e_ink.setCursor(x + (width / 2) - 54,y + height -1);
-    e_ink.printf("%02d",hours);
-    e_ink.setCursor(x + (width / 2) + 8,y + height -1);
-    e_ink.printf("%02d",min);
+    pEInk->setFont(&gnuvarioe23pt7b);
+    pEInk->drawBitmap(x + (width / 2) - 8, y + (height / 2) - 8, hicons, 16, 16, GxEPD_BLACK);   //GxEPD_BLACK);    
+    pEInk->setCursor(x + (width / 2) - 54,y + height -1);
+    pEInk->printf("%02d",hours);
+    pEInk->setCursor(x + (width / 2) + 8,y + height -1);
+    pEInk->printf("%02d",min);
 }
 
 void Screen::webUpdate(void){
-    e_ink.setRotation(1);
-    e_ink.setFullWindow();
-    e_ink.setFont(&FreeMonoBold24pt7b);
-    e_ink.setTextColor(GxEPD_BLACK);
-    e_ink.firstPage();
+    pEInk->setRotation(1);
+    pEInk->setFullWindow();
+    pEInk->setFont(&FreeMonoBold24pt7b);
+    pEInk->setTextColor(GxEPD_BLACK);
+    pEInk->firstPage();
     do
     {
-        e_ink.setCursor(10,40);
-        e_ink.print("FW-UPDATE");
-        e_ink.setCursor(10,90);
-        e_ink.print("wait...");
+        pEInk->setCursor(10,40);
+        pEInk->print("FW-UPDATE");
+        pEInk->setCursor(10,90);
+        pEInk->print("wait...");
     }
-    while (e_ink.nextPage());
+    while (pEInk->nextPage());
 
 }

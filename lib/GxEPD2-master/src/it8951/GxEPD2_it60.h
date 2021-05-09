@@ -43,7 +43,7 @@ class GxEPD2_it60 : public GxEPD2_EPD
     GxEPD2_it60(int8_t cs, int8_t dc, int8_t rst, int8_t busy);
     // methods (virtual)
     void init(uint32_t serial_diag_bitrate = 0); // serial_diag_bitrate = 0 : disabled
-    void init(uint32_t serial_diag_bitrate, bool initial, bool pulldown_rst_mode = false);
+    void init(uint32_t serial_diag_bitrate, bool initial, uint16_t reset_duration = 20, bool pulldown_rst_mode = false);
     //  Support for Bitmaps (Sprites) to Controller Buffer and to Screen
     void clearScreen(uint8_t value = 0x33); // init controller memory and screen (default white)
     void writeScreenBuffer(uint8_t value = 0x33); // init controller memory (default white)

@@ -56,6 +56,7 @@ void load_configFile(SettingsData* pSetting){
   pSetting->wd.FanetUploadInterval = preferences.getULong("FanetWDInt",40000);
   pSetting->wd.avgFactorWU = preferences.getFloat("avgWU",128);
   pSetting->wd.WUUploadIntervall = preferences.getULong("WUIntervall",300000);
+  pSetting->wd.RainSensor = preferences.getUChar("wdRain",0);
 
 
   //vario
@@ -168,6 +169,7 @@ void write_configFile(SettingsData* pSetting){
   preferences.putULong("FanetWDInt",pSetting->wd.FanetUploadInterval);
   preferences.putFloat("avgWU",pSetting->wd.avgFactorWU);
   preferences.putULong("WUIntervall",pSetting->wd.WUUploadIntervall);
+  preferences.putUChar("wdRain",pSetting->wd.RainSensor);
 
   //wu-upload
   preferences.putUChar("WUUlEnable",pSetting->WUUpload.enable);
