@@ -14,7 +14,7 @@ void load_configFile(SettingsData* pSetting){
   pSetting->LoraPower = preferences.getUChar("LORA_POWER",10);//
   pSetting->awLiveTracking = preferences.getUChar("AWLIVE",0); //
   pSetting->bOutputSerial = preferences.getUChar("OSerial",0); //
-  pSetting->outputLK8EX1 = preferences.getUChar("OLK8EX1",1); //
+  pSetting->outputModeVario = preferences.getUChar("OVario",1); //
   pSetting->outputFLARM = preferences.getUChar("OFLARM",1); //
   pSetting->outputGPS = preferences.getUChar("OGPS",1); //
   pSetting->outputFANET = preferences.getUChar("OFANET",1); //
@@ -117,7 +117,7 @@ void write_configFile(SettingsData* pSetting){
   preferences.putUChar("LORA_POWER",pSetting->LoraPower);//
   preferences.putUChar("AWLIVE",pSetting->awLiveTracking); //
   preferences.putUChar("OSerial",pSetting->bOutputSerial); //
-  preferences.putUChar("OLK8EX1",pSetting->outputLK8EX1); //
+  preferences.putUChar("OVario",pSetting->outputModeVario); //
   preferences.putUChar("OFLARM",pSetting->outputFLARM); //
   preferences.putUChar("OGPS",pSetting->outputGPS); //
   preferences.putUChar("OFANET",pSetting->outputFANET); //

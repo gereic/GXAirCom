@@ -277,6 +277,11 @@ SCL 14
 #define SETTING_ADVANCED 100
 #define SETTING_EXPERT 200
 
+#define OVARIO_NONE 0
+#define OVARIO_LK8EX1 1
+#define OVARIO_LXPW 2
+
+
 
 struct weatherupload{
   bool enable;
@@ -365,7 +370,7 @@ struct SettingsData{
   String myDevId; //my device-ID
   uint8_t band;
   uint8_t LoraPower; //output-Power 5-20db
-  uint8_t outputLK8EX1;
+  uint8_t outputModeVario;
   uint8_t outputFLARM;
   uint8_t outputGPS;
   uint8_t outputFANET;

@@ -346,7 +346,7 @@ function sendValues(){
   oGPS : Number(document.getElementById("oGPS").checked),
   oFlarm : Number(document.getElementById("oFlarm").checked),
   oFanet : Number(document.getElementById("oFanet").checked),
-  oLK8EX1 : Number(document.getElementById("oLK8EX1").checked),
+  oVario : Number(document.getElementById("oVario").value),
   awlive : Number(document.getElementById("awlive").checked),
   UDPServerIP : document.getElementById("UDPServerIP").value,
   UDPSendPort : Number(document.getElementById("UDPSendPort").value),
@@ -694,8 +694,12 @@ window.addEventListener("load", init, false);
             <td><input type="checkbox" id="oFanet" ></td>
           </tr>
           <tr>
-            <th>output LK8EX1</th>
-            <td><input type="checkbox" id="oLK8EX1" ></td>
+            <th>output Vario</th>
+            <td><select id="oVario">
+              <option value="0">no output</option>
+              <option value="1">LK8EX1</option>
+              <option value="2">LXPW</option>
+            </select></td>
           </tr>
           <tr id="VisUdpIp">
             <th>UDP-IP</th>

@@ -21,4 +21,5 @@ String getWDir(float dir);
 float kmh2mph(float f);
 float deg2f(float f);
 double dewPointFast(double celsius, double humidity);
+bool checkValueDiff(float f1, float f2, uint8_t decimals);
 #endif

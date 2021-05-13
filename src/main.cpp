@@ -331,6 +331,7 @@ void sendData2Client(String data);
 eFlarmAircraftType Fanet2FlarmAircraft(FanetLora::aircraft_t aircraft);
 void Fanet2FlarmData(FanetLora::trackingData *FanetData,FlarmtrackingData *FlarmDataData);
 void sendLK8EX(uint32_t tAct);
+void sendLXPW(uint32_t tAct);
 void powerOff();
 esp_sleep_wakeup_cause_t print_wakeup_reason();
 void WiFiEvent(WiFiEvent_t event);
@@ -1446,7 +1447,7 @@ void printSettings(){
 
 
   log_i("Serial-output=%d",setting.bOutputSerial);
-  log_i("OUTPUT LK8EX1=%d",setting.outputLK8EX1);
+  log_i("OUTPUT Vario=%d",setting.outputModeVario);
   log_i("OUTPUT FLARM=%d",setting.outputFLARM);
   log_i("OUTPUT GPS=%d",setting.outputGPS);
   log_i("OUTPUT FANET=%d",setting.outputFANET);
@@ -3510,9 +3511,45 @@ void Fanet2FlarmData(FanetLora::trackingData *FanetData,FlarmtrackingData *Flarm
   FlarmDataData->speed = FanetData->speed;
 }
 
+void sendLXPW(uint32_t tAct){
+  // $LXWP0,logger_stored, airspeed, airaltitude,
+  //   v1[0],v1[1],v1[2],v1[3],v1[4],v1[5], hdg, windspeed*CS<CR><LF>
+  //
+  // 0 loger_stored : [Y|N] (not used in LX1600)
+  // 1 IAS [km/h] ----> Condor uses TAS!
+  // 2 baroaltitude [m]
+  // 3-8 vario values [m/s] (last 6 measurements in last second)
+  // 9 heading of plane (not used in LX1600)
+  // 10 windcourse [deg] (not used in LX1600)
+  // 11 windspeed [km/h] (not used in LX1600)
+  //
+  // e.g.:
+  // $LXWP0,Y,222.3,1665.5,1.71,,,,,,239,174,10.1
+  static uint32_t tOld = millis();
+  if (setting.outputModeVario != OVARIO_LXPW) return; //not output
+  if ((tAct - tOld) >= 250){
+    String s = "$LXWP0,N,";
+    if (status.GPS_Fix){
+      s += String(status.GPS_speed,1);
+    }
+    s += ",";
+    if (status.vario.bHasVario){
+      s += String(status.varioAlt,1) + "," + String(status.ClimbRate,2); // altitude in meters, relative to QNH 1013.25
+    }
+    s+=  + ",,,,,,";
+    if (status.GPS_Fix){
+      s += String(status.GPS_course,1);
+    }
+    s +=  ",,";
+    s = flarm.addChecksum(s);
+    sendData2Client(s);
+    tOld = tAct;
+  }
+}
+
 void sendLK8EX(uint32_t tAct){
   static uint32_t tOld = millis();
-  if (!setting.outputLK8EX1) return; //not output
+  if (setting.outputModeVario != OVARIO_LK8EX1) return; //not output
   if ((tAct - tOld) >= 250){
     //String s = "$LK8EX1,101300,99999,99999,99,999,";
     String s = "$LK8EX1,";
@@ -4029,6 +4066,7 @@ void taskStandard(void *pvParameters){
     }    
     flarm.run();
     sendLK8EX(tAct);
+    sendLXPW(tAct);
     #ifdef AIRMODULE
     if (setting.Mode == MODE_AIR_MODULE){
       if (!status.bHasAXP192){

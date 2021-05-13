@@ -21,14 +21,14 @@ def copy_file(*args, **kwargs):
     print(target.split(os.path.sep)[-3])    
     print(version)
     if filename == "firmware.bin":
-        savefile = 'bin/dev/firmware_{}_{}.bin'.format(version,platform)
+        savefile = 'bin/firmware_{}_{}.bin'.format(version,platform)
     elif filename == "spiffs.bin":
-        savefile = 'bin/dev/spiffs_{}.bin'.format(version)
+        savefile = 'bin/spiffs_{}.bin'.format(version)
     else:
-        savefile = 'bin/dev/{}'.format(filename)
+        savefile = 'bin/{}'.format(filename)
     print("********  copy file " + target + " to " + savefile + " *******")
     copyfile(target, savefile)
-    f = open("bin/dev/_version.txt", "w")
+    f = open("bin/_version.txt", "w")
     f.write(version)
     f.close()
     print("Done.")

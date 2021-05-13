@@ -5,6 +5,7 @@
  */
 
 #include "Screen.h"
+#include "tools.h"
 
 
 GxEPD2_BW<GxEPD2_290, GxEPD2_290::HEIGHT> e_ink(GxEPD2_290(EINK_CS, EINK_DC, EINK_RST, EINK_BUSY));
@@ -271,6 +272,7 @@ void Screen::drawMainScreen(void){
 
     //copy values
     actData.alt = (status.GPS_Fix) ? status.GPS_alt : status.varioAlt;
+    //log_i("%d,%.01f,%.01f",status.GPS_Fix,status.GPS_alt,status.varioAlt);
     actData.vario = status.ClimbRate;
     actData.speed = status.GPS_speed;
     //actData.compass = (status.GPS_speed <= 5.0) ? status.varioHeading : status.GPS_course ;
@@ -302,12 +304,12 @@ void Screen::drawMainScreen(void){
         stepCount++;
         break;
     case 1:
-        if ((abs(data.SatCount - actData.SatCount) >= 1) || (bForceUpdate)){
+        if ((data.SatCount != actData.SatCount) || (bForceUpdate)){
             data.SatCount = actData.SatCount;
             //log_i("update SatCount");
             UpdateScreen = true;
         }
-        if ((abs(data.battPercent - actData.battPercent) >= 1) || (bForceUpdate)){
+        if ((data.battPercent != actData.battPercent) || (bForceUpdate)){
             data.battPercent = actData.battPercent;
             //log_i("update Batt");
             UpdateScreen = true;
@@ -318,16 +320,17 @@ void Screen::drawMainScreen(void){
                 UpdateScreen = true;
             }
         }
-        if ((abs(data.alt - actData.alt) >= 1.0) || (bForceUpdate)){
+        if (checkValueDiff(data.alt,actData.alt,0) || (bForceUpdate)){
             data.alt = actData.alt;
             UpdateScreen = true;
         }
-        if ((abs(data.vario - actData.vario) >= 0.1) || (bForceUpdate)){
+        //if ((abs(data.vario - actData.vario) >= 0.1) || (bForceUpdate)){
+        if (checkValueDiff(data.vario,actData.vario,1) || (bForceUpdate)){
             data.vario = actData.vario;
             //log_i("update Vario");
             UpdateScreen = true;
         }
-        if ((abs(data.speed - actData.speed) >= 1.0) || (bForceUpdate)){
+        if (checkValueDiff(data.speed,actData.speed,0) || (bForceUpdate)){
             data.speed = actData.speed;
             //log_i("update Speed");
             UpdateScreen = true;
@@ -337,7 +340,7 @@ void Screen::drawMainScreen(void){
             //log_i("update flightTime");
             UpdateScreen = true;
         }
-        if ((abs(data.compass - actData.compass) >= 1.0) || (bForceUpdate)){
+        if (checkValueDiff(data.compass,actData.compass,0) || (bForceUpdate)){
             data.compass = actData.compass;
             //log_i("update Compass");
             UpdateScreen = true;
@@ -367,6 +370,8 @@ void Screen::drawMainScreen(void){
         }
         //log_i("fullUpdate=%d UpdateScreen=%d time=%d",bFullUpdate,UpdateScreen,millis()-tOldUpate);
         //tOldUpate = millis();
+        //data = actData; //copy values
+        //data.flightTime = (actData.flightTime / 60) * 60; //only fixed minutes
         tAct = millis();
         pEInk->setTextColor(GxEPD_BLACK);
         pEInk->setRotation(0); 

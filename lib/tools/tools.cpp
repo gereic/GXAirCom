@@ -9,6 +9,14 @@ bool timeOver(uint32_t tAct,uint32_t timestamp,uint32_t tTime){
     }
 }
 
+bool checkValueDiff(float f1, float f2, uint8_t decimals){
+    int32_t i1 = int32_t(round(f1 * pow(10,decimals)));
+    int32_t i2 = int32_t(round(f2 * pow(10,decimals)));
+    //log_i("%.02f,%.02f,%d,%d",f1,f2,i1,i2);
+    if (i1 != i2) return true;
+    return false;
+}
+
 uint32_t gettimeElapsed(uint32_t tAct,uint32_t timestamp){
     return (tAct - timestamp);
 }

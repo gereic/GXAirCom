@@ -168,7 +168,7 @@ void onWebSocketEvent(uint8_t client_num,
           doc["oGPS"] = setting.outputGPS;
           doc["oFlarm"] = setting.outputFLARM;
           doc["oFanet"] = setting.outputFANET;
-          doc["oLK8EX1"] = setting.outputLK8EX1;
+          doc["oVario"] = setting.outputModeVario;
           doc["awlive"] = setting.awLiveTracking;
           doc["UDPServerIP"] = setting.UDPServerIP;
           doc["UDPSendPort"] = setting.UDPSendPort;
@@ -275,7 +275,7 @@ void onWebSocketEvent(uint8_t client_num,
           doc["oGPS"] = setting.outputGPS;
           doc["oFlarm"] = setting.outputFLARM;
           doc["oFanet"] = setting.outputFANET;
-          doc["oLK8EX1"] = setting.outputLK8EX1;
+          doc["oVario"] = setting.outputModeVario;
           doc["awlive"] = setting.awLiveTracking;
           doc["UDPServerIP"] = setting.UDPServerIP;
           doc["UDPSendPort"] = setting.UDPSendPort;
@@ -357,7 +357,7 @@ void onWebSocketEvent(uint8_t client_num,
         if (root.containsKey("oGPS")) newSetting.outputGPS = doc["oGPS"].as<uint8_t>();
         if (root.containsKey("oFlarm")) newSetting.outputFLARM = doc["oFlarm"].as<uint8_t>();
         if (root.containsKey("oFanet")) newSetting.outputFANET = doc["oFanet"].as<uint8_t>();
-        if (root.containsKey("oLK8EX1")) newSetting.outputLK8EX1 = doc["oLK8EX1"].as<uint8_t>();
+        if (root.containsKey("oVario")) newSetting.outputModeVario = doc["oVario"].as<uint8_t>();
         if (root.containsKey("awlive")) newSetting.awLiveTracking = doc["awlive"].as<uint8_t>();
         if (root.containsKey("wifioff")) newSetting.wifi.tWifiStop = doc["wifioff"].as<uint32_t>();
         if (root.containsKey("UDPServerIP")) newSetting.UDPServerIP = doc["UDPServerIP"].as<String>();

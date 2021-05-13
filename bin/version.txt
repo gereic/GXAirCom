@@ -288,3 +288,6 @@ v4.8.0
 added support for Waveshare 2.9 E-Ink V2 (see Label on Backside of E-Ink)
 added average for fuel-sensor
 added setting for rain-sensor connected
+
+v4.9.0
+added new protocol LXWP0 for support of XCSoar
