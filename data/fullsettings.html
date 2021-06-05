@@ -601,6 +601,7 @@ window.addEventListener("load", init, false);
             <td><select id="RFM">
               <option value="0">FANET(RX/TX)</option>
               <option value="1">FANET(RX/TX),LEGACY(TX)</option>
+              <option value="7">FANET(RX/TX),LEGACY(RX)</option>
               <option value="2">FANET(RX/TX),LEGACY(RX/TX)</option>
               <option value="3">FANET(TX),LEGACY(RX/TX)</option>
               <option value="4">FANET(TX),LEGACY(RX)</option>
@@ -801,7 +802,7 @@ window.addEventListener("load", init, false);
     <p></p>
     <p></p>
     <fieldset id="VisWD">
-      <legend><b>Weather-data settings</b></legend>
+      <legend><b>Weather-Station settings</b></legend>
       <table style="width:100&#37;">
         <tbody>
           <tr>
@@ -817,7 +818,7 @@ window.addEventListener("load", init, false);
             <td><input type="number" id="wdWDirOffset" step="1"></td>
           </tr>
           <tr>
-            <th>weather-station with rain-sensor</th>
+            <th>rain-sensor avaiable</th>
             <td><input type="checkbox" id="wdRain"></td>
           </tr>
         </tbody>      

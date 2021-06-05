@@ -291,3 +291,9 @@ added setting for rain-sensor connected
 
 v4.9.0
 added new protocol LXWP0 for support of XCSoar
+
+v4.10.0
+added some checks, when forwarding FANET-Weatherstations
+added local IP in info.html
+added some checks for Legacy
+changed Strings to char-array (much faster)

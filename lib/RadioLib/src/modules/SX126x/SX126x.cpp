@@ -160,6 +160,7 @@ int16_t SX126x::switchFSK(float br, float freqDev, float rxBw, uint16_t preamble
   RADIOLIB_ASSERT(state);
 
   state = setDio2AsRfSwitch(false);
+
   RADIOLIB_ASSERT(state);
 
   return(state);
@@ -564,6 +565,9 @@ int16_t SX126x::startTransmit(uint8_t* data, size_t len, uint8_t addr) {
 int16_t SX126x::startReceive(uint32_t timeout) {
   int16_t state = startReceiveCommon();
   RADIOLIB_ASSERT(state);
+
+  uint8_t rxGain = 0x96; //Rx Boosted gain
+  SPIwriteCommand(SX126X_REG_RX_GAIN, &rxGain, 1, false);
 
   // set RF switch (if present)
   _mod->setRfSwitchState(HIGH, LOW);

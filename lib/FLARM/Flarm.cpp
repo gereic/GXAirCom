@@ -56,8 +56,7 @@ String Flarm::addChecksum(String s){
 
 }
 
-String Flarm::writeFlarmData(FlarmtrackingData *myData,FlarmtrackingData *movePilotData){
-    
+int Flarm::writeFlarmData(char *buffer, size_t size,FlarmtrackingData *myData,FlarmtrackingData *movePilotData){
     float pilotBearing = CalcBearingA( myData->lat, myData->lon,movePilotData->lat,movePilotData->lon);
     float pilotDistance = distance(myData->lat, myData->lon,movePilotData->lat,movePilotData->lon, 'K') ;
     float rads = deg2rad(pilotBearing);
@@ -85,6 +84,27 @@ String Flarm::writeFlarmData(FlarmtrackingData *myData,FlarmtrackingData *movePi
     Serial.print("relNorth=");Serial.println(relNorth);
     Serial.print("relEast=");Serial.println(relEast);
     */
+    snprintf(buffer,size,"$PFLAA,0,%d,%d,%d,2,%s,%d,0,%.01f,%.01f,%X",(int32_t)round(relNorth),(int32_t)round(relEast),(int32_t)round(relVert),movePilotData->DevId.c_str(),(int32_t)round(movePilotData->heading),currentSpeed,movePilotData->climb,uint8_t(movePilotData->aircraftType));
+    return addChecksum(buffer,size);
+    //String movingpilotData = "$PFLAA,0," + String((int32_t)round(relNorth)) + "," + String((int32_t)round(relEast)) + "," + String((int32_t)round(relVert)) + ",2," +
+    //		                    movePilotData->DevId + "," + (int32_t)round(movePilotData->heading) + ",0,"  +
+	//							 String(currentSpeed,1) + "," + String(movePilotData->climb,1) + ","+ getHexFromByte1(uint8_t(movePilotData->aircraftType));
+    //Serial.println(getHexFromByte((uint8_t)movePilotData->aircraftType));
+    //Serial.println(movingpilotData);
+    //return addChecksum(movingpilotData);
+
+}
+
+/*
+String Flarm::writeFlarmData(FlarmtrackingData *myData,FlarmtrackingData *movePilotData){
+    
+    float pilotBearing = CalcBearingA( myData->lat, myData->lon,movePilotData->lat,movePilotData->lon);
+    float pilotDistance = distance(myData->lat, myData->lon,movePilotData->lat,movePilotData->lon, 'K') ;
+    float rads = deg2rad(pilotBearing);
+    float relNorth=cos(rads) * pilotDistance * 1000;
+    float relEast=sin(rads) * pilotDistance * 1000;
+    float relVert = movePilotData->altitude - myData->altitude;
+    float currentSpeed = movePilotData->speed/KMPH_TO_MS;
     String movingpilotData = "$PFLAA,0," + String((int32_t)round(relNorth)) + "," + String((int32_t)round(relEast)) + "," + String((int32_t)round(relVert)) + ",2," +
     		                    movePilotData->DevId + "," + (int32_t)round(movePilotData->heading) + ",0,"  +
 								 String(currentSpeed,1) + "," + String(movePilotData->climb,1) + ","+ getHexFromByte1(uint8_t(movePilotData->aircraftType));
@@ -92,15 +112,41 @@ String Flarm::writeFlarmData(FlarmtrackingData *myData,FlarmtrackingData *movePi
     //Serial.println(movingpilotData);
     return addChecksum(movingpilotData);
 }
+*/
 
 
 
-String Flarm::writeDataPort(void){
-    String s = "$PFLAU," + String(neighbors) + ",1," + String(GPSState) + ",1,0,0,0,0,0";
-    //return addChecksum("$PFLAU,6,1,2,1,0,144,0,235,446");
-    return addChecksum(s);
+int Flarm::writeDataPort(char *buffer, size_t size){
+    snprintf(buffer,size,"$PFLAU,%d,1,%d,1,0,0,0,0,0",neighbors,GPSState);
+    return addChecksum(buffer,size);
+    //Serial.printf("length=%d\r\n",strlen(buffer));
 }
 
+int Flarm::addChecksum(char *buffer, size_t size){
+    uint8_t chk = 0;
+    uint16_t tSize = 0;   
+    while(*buffer){
+        buffer++; //skip first char
+        chk ^= *buffer;
+        tSize++;
+    }
+    //Serial.printf("size=%d,tSize=%d,",size,tSize);
+    tSize += snprintf(buffer,size-tSize,"*%02X\r\n",chk);
+    //Serial.printf("tSize2=%d\r\n",tSize);
+    return tSize;
+}
+
+int Flarm::writeVersion(char *buffer, size_t size){
+    snprintf(buffer,size,"$PFLAV,A,1.00,1.00,GXAircom");
+    return addChecksum(buffer,size);
+}
+
+int Flarm::writeSelfTestResult(char *buffer, size_t size){
+    snprintf(buffer,size,"$PFLAE,A,0,0"); //no error 
+    return addChecksum(buffer,size);
+}
+
+/*
 String Flarm::writeVersion(void){
     String s = "$PFLAV,A,1.00,1.00,GXAircom";
     return addChecksum(s);
@@ -110,6 +156,14 @@ String Flarm::writeSelfTestResult(void){
     String s = "$PFLAE,A,0,0"; //no error 
     return addChecksum(s);
 }
+
+String Flarm::writeDataPort(void){
+    String s = "$PFLAU," + String(neighbors) + ",1," + String(GPSState) + ",1,0,0,0,0,0";
+    //return addChecksum("$PFLAU,6,1,2,1,0,144,0,235,446");
+    return addChecksum(s);
+}
+*/
+
 
 void Flarm::run(void){    
     //uint32_t tAct = millis();

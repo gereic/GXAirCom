@@ -214,7 +214,7 @@ void FanetMac::sendUdpData(const uint8_t *buffer,int len){
 	if ((WiFi.status() == WL_CONNECTED) || (WiFi.softAPgetStationNum() > 0)){ //connected to wifi or a client is connected to me
 		//log_i("sending udp");
 		WiFiUDP udp;
-		udp.beginPacket("192.168.0.10",10110);
+		udp.beginPacket("192.168.0.178",10110);
 		udp.write(buffer,len);
 		udp.endPacket();    
 	}
@@ -235,6 +235,7 @@ void FanetMac::frameReceived(int length)
 		return;
 	}
 	int rssi = radio.getRSSI();
+	//log_i("%d rssi=%d",millis(),rssi);
 	int snr = 0;	
 	snr = rssi + 120;
 	if (snr < 0) snr = 0;
@@ -309,18 +310,23 @@ void FanetMac::frameReceived(int length)
 			int8_t ret = legacy_decode(newPacket,&myAircraft,&air);
 			//if (legacy_decode(newPacket,&myAircraft,&air) == 0){
 			if (ret == 0){				
-				float dist = distance(myAircraft.latitude,myAircraft.longitude,air.latitude,air.longitude, 'K');      
-      	if ((dist <= 100) && (air.addr != 0) && (air.aircraft_type != 0)){
-					//len = sprintf(Buffer,"T=%dadr=%06X;adrType=%d;airType=%d,lat=%.06f,lon=%.06f,alt=%.01f,speed=%.01f,course=%.01f,climb=%.01f\n", millis()-fmac._ppsMillis, air.addr,air.addr_type,air.aircraft_type,air.latitude,air.longitude,air.altitude,air.speed,air.course,air.vs);
-					//fmac.sendUdpData((uint8_t *)Buffer,len);
-					//Serial.print(Buffer);
+				//float dist = distance(myAircraft.latitude,myAircraft.longitude,air.latitude,air.longitude, 'K');      
+				//len = sprintf(Buffer,"T=%dadr=%06X;adrType=%d;airType=%d,lat=%.06f,lon=%.06f,alt=%.01f,speed=%.01f,course=%.01f,climb=%.01f\n", millis()-fmac._ppsMillis,air.addr,air.addr_type,air.aircraft_type,air.latitude,air.longitude,air.altitude,air.speed,air.course,air.vs);
+				//fmac.sendUdpData((uint8_t *)Buffer,len);
+				//Serial.print(Buffer);
+				//legacy_packet_t *pkt = (legacy_packet_t *) newPacket;
+				//len = sprintf(Buffer,"unk0=%d,unk1=%d,unk2=%d,unk3=%d,\n", pkt->_unk0,pkt->_unk1,pkt->_unk2,pkt->_unk3);
+				//fmac.sendUdpData((uint8_t *)Buffer,len);
+				//Serial.print(Buffer);
 
-					bOk = true;
-					break;
-				}
-			}else if (ret == -2){
-				//unknown message
+      	//if ((dist <= 100) && (air.addr != 0) && (air.aircraft_type != 0)){
+				//if ((air.addr != 0) && (air.aircraft_type != 0)){
+				//if ((pkt->_unk0 == 0) && (pkt->_unk1 == 0) && (pkt->_unk2 == 0) && (pkt->_unk3 == 0)){
+			  bOk = true;
 				break;
+			//}else if (ret == -2){
+				//unknown message
+			//	break;
 			}
 			//log_i("Legacy-Packet not valid ts=%d;offset=%d",tNow,tOffset);
 			if (i == 0){
@@ -338,7 +344,11 @@ void FanetMac::frameReceived(int length)
 			frm->src.id = uint16_t(air.addr & 0x0000FFFF);
 			frm->dest = MacAddr();
 			frm->forward = false;
+			//if (air.onGround){
+			//	frm->type = FRM_TYPE_GROUNDTRACKING_LEGACY;
+			//}else{
 			frm->type = FRM_TYPE_TRACKING_LEGACY;
+			//}			
 			frm->AddressType = air.addr_type;
 			frm->legacyAircraftType = air.aircraft_type;
 			frm->timeStamp = tNow + tOffset;
@@ -394,7 +404,7 @@ bool FanetMac::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset, 
 	_reset = reset;
 	_actMode = MODE_LORA;
 	bFanetTxEn = false;
-	if ((_RfMode == RF_MODE_FANET_RX_TX) || (_RfMode == RF_MODE_FANET_RX_TX_LEG_TX) || (_RfMode == RF_MODE_FANET_RX_TX_LEG_RX_TX) || (_RfMode == RF_MODE_FANET_TX_LEG_RX_TX) || (_RfMode == RF_MODE_FANET_TX_LEG_RX)){
+	if ((_RfMode == RF_MODE_FANET_RX_TX) || (_RfMode == RF_MODE_FANET_RX_TX_LEG_TX) || (_RfMode == RF_MODE_FANET_RX_TX_LEG_RX) || (_RfMode == RF_MODE_FANET_RX_TX_LEG_RX_TX) || (_RfMode == RF_MODE_FANET_TX_LEG_RX_TX) || (_RfMode == RF_MODE_FANET_TX_LEG_RX)){
 		bFanetTxEn = true;
 	}
 
@@ -562,6 +572,7 @@ void FanetMac::stateWrapper()
     fmac.handleTx();
   }
 	fmac.handleTxLegacy();
+	fmac.radio.run(); //run Radio, to recalib image it temp changes
 }
 
 bool FanetMac::isNeighbor(MacAddr addr)
@@ -662,6 +673,8 @@ void FanetMac::handleRx()
 		neighbors.add(new NeighborNode(frm->src, frm->type == FRM_TYPE_TRACKING || frm->type == FRM_TYPE_GROUNDTRACKING));
 	}
   if (frm->type == FRM_TYPE_TRACKING_LEGACY) frm->type = FRM_TYPE_TRACKING; //if we have a Legacy-Tracking, we don't count it in neighbors, so switch back tracking-type
+	//if (frm->type == FRM_TYPE_GROUNDTRACKING_LEGACY) frm->type = FRM_TYPE_GROUNDTRACKING; //if we have a Legacy-Tracking, we don't count it in neighbors, so switch back tracking-type
+
 
 	/* is the frame a forwarded one and is it still in the tx queue? */
 	Frame *frm_list = tx_fifo.frame_in_list(frm);

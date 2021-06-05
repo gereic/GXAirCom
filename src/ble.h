@@ -96,11 +96,11 @@ void BLESendChunks(String str)
 			substr = str.substring(k, k + _min(str.length() - k, 20));
 			//pCharacteristic->setValue(substr.c_str());
 			pCharacteristic->sNotify = std::string(substr.c_str());
-			pCharacteristic->notify();
+			pCharacteristic->notify();			
 			vTaskDelay(5);
 		}
 	}
-	vTaskDelay(20);
+	//vTaskDelay(20);
 }
 
 void NEMEA_Checksum(String *sentence)

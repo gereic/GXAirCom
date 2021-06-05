@@ -22,6 +22,8 @@
 
 #define FSK_FREQUENCY 868.2
 
+#define RX_DEBUG 0
+
 class LoRaClass {
 public:
   //LoRaClass(SPIClass *_spi,uint8_t cs, uint8_t irq, uint8_t rst, uint8_t gpio);
@@ -42,9 +44,11 @@ public:
   float get_airlimit(void);
   int16_t setFrequency(float frequency);
   uint8_t gain = 0; //0 --> auto-gain, 1--> highest gain; 6 --> lowest gain
+  void run(); //has to be called cyclic
 
 private:
 	float expectedAirTime_ms(int pktLen);
+  float rssiValue = 0.0;
   void invertba(byte* ba, int len);
   Module *pModule = NULL;
 	SX1262 *pSx1262Radio = NULL;

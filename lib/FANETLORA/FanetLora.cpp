@@ -766,10 +766,11 @@ MacAddr FanetLora::getMacFromDevId(uint32_t devId){
 }
 
 bool FanetLora::createLegacy(uint8_t *buffer){
-  if ((!autobroadcast) || (onGround)) //autobroadcast not enabled or on ground
+  //if ((!autobroadcast) || (onGround)) //autobroadcast not enabled or on ground
+  if ((!autobroadcast)) //autobroadcast not enabled or on ground
     return false;
   //we create the complete legacy-packet ready for sending
-  createLegacyPkt(&_myData,_geoIdAltitude,buffer);
+  createLegacyPkt(&_myData,_geoIdAltitude,onGround,buffer);
   encrypt_legacy(buffer,_myData.timestamp);
 	uint16_t crc16 = getLegacyCkSum(buffer,24);
 	buffer[24]=(crc16 >>8);

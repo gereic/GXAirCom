@@ -44,7 +44,8 @@ typedef struct {
     // unsigned int magic:8;
     /********************/
     int vs:10;
-    unsigned int _unk2:2;
+    unsigned int onGround:1;
+    unsigned int _unk2:1;
     unsigned int airborne:1;
     unsigned int stealth:1;
     unsigned int no_track:1;
@@ -80,6 +81,7 @@ typedef struct UFO {
 
     bool      stealth;
     bool      no_track;
+    bool      onGround;
 
     int8_t    ns[4];
     int8_t    ew[4];
@@ -87,7 +89,7 @@ typedef struct UFO {
     float     geoid_separation; /* metres */
 } ufo_t;
 
-void createLegacyPkt(FanetLora::trackingData *Data,float geoidAlt,uint8_t * buffer);
+void createLegacyPkt(FanetLora::trackingData *Data,float geoidAlt,bool onGround,uint8_t * buffer);
 extern uint8_t Legacy_Buffer [24];
 
 size_t encrypt_legacy(void *legacy_pkt, long timestamp);

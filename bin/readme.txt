@@ -39,6 +39,11 @@ FUEL-SENSO 39
 ******** external Power Switch (only for direct use with kobo to switch on an off automatically) *********
 PinExtPowerOnOff 36
 
+******** Aneometer (Davis 6410) *********
+WINDDIR_PIN 36
+WINDSPEED_PIN 39
+
+
 
 ************* Pins for TTGO-TBeam V07 ***************
 ******* LORA ********

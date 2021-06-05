@@ -56,11 +56,16 @@ public:
     void run(void); //has to be called cyclic
     uint8_t neighbors;
     uint8_t GPSState;
-    String writeFlarmData(FlarmtrackingData *myData,FlarmtrackingData *movePilotData);
-    String writeDataPort(void);
-    String writeVersion(void);
-    String writeSelfTestResult(void);
+    int writeFlarmData(char *buffer, size_t size,FlarmtrackingData *myData,FlarmtrackingData *movePilotData);
+    int writeDataPort(char *buffer, size_t size);
+    int writeVersion(char *buffer, size_t size);
+    int writeSelfTestResult(char *buffer, size_t size);
+    //String writeFlarmData(FlarmtrackingData *myData,FlarmtrackingData *movePilotData);
+    //String writeDataPort(void);
+    //String writeVersion(void);
+    //String writeSelfTestResult(void);
     String addChecksum(String s);
+    int addChecksum(char *buffer, size_t size);
 protected:
     
     String getHexFromByte(uint8_t val);

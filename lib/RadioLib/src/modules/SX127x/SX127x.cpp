@@ -1160,6 +1160,7 @@ int16_t SX127x::setMode(uint8_t mode) {
   //if (mode != 0){
   //  delay(5); //wait 1millisecond, until modem has switched his state
   //}
+  //delay(5);
   
   return(ret);
 }

@@ -237,8 +237,18 @@ void Ogn::sendWeatherData(weatherData *wData){
         send += buff;
     }
     if (wData->bRain){
-        sprintf (buff,"r%03dp%03d",int(wData->rain1h * 10),int(wData->rain24h * 10));
-        send += buff;
+        if (wData->rain1h >= 100){
+            send += "r999";
+        }else{
+            sprintf (buff,"r%03d",int(wData->rain1h * 10));
+            send += buff;
+        }
+        if (wData->rain24h >= 100){
+            send += "p999";
+        }else{
+            sprintf (buff,"p%03d",int(wData->rain24h * 10));
+            send += buff;
+        }
     }
     if (wData->bHumidity){
         sprintf (buff,"h%02d",mHum);

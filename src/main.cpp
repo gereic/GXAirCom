@@ -176,7 +176,7 @@ volatile float BattCurrent = 0.0;
 //bool newStationConnected = false;
 
 #define AIRWHERE_UDP_PORT 5555
-String airwhere_web_ip = "37.128.187.9";
+const char* airwhere_web_ip = "37.128.187.9";
 
 
 
@@ -326,8 +326,7 @@ void IRAM_ATTR ppsHandler(void);
 void printSettings();
 void listSpiffsFiles();
 String setStringSize(String s,uint8_t sLen);
-//void writeTrackingData(uint32_t tAct);
-void sendData2Client(String data);
+void sendData2Client(char *buffer,int iLen);
 eFlarmAircraftType Fanet2FlarmAircraft(FanetLora::aircraft_t aircraft);
 void Fanet2FlarmData(FanetLora::trackingData *FanetData,FlarmtrackingData *FlarmDataData);
 void sendLK8EX(uint32_t tAct);
@@ -379,8 +378,11 @@ void readFuelSensor(uint32_t tAct){
   }  
   if (timeOver(tAct,tSend,FUELSENDINTERVALL)){
     tSend = tAct;
-    String s = "$FUEL," + String(status.fuelSensor,3) + ",";    
-    sendData2Client(flarm.addChecksum(s));
+    char sOut[MAXSTRING];
+    int pos = 0;
+    pos += snprintf(&sOut[pos],MAXSTRING-pos,"$FUEL,%.03f,",status.fuelSensor);
+    pos = flarm.addChecksum(sOut,MAXSTRING);
+    sendData2Client(sOut,pos);
   }
   
 }
@@ -698,8 +700,12 @@ void sendFlarmData(uint32_t tAct){
 
   if (timeOver(tAct,tSendStatus,FLARM_UPDATE_STATE)){
     tSendStatus = tAct;
-    sendData2Client(flarm.writeVersion());
-    sendData2Client(flarm.writeSelfTestResult());
+    char sOut[MAXSTRING];
+    int pos = 0;
+    pos = flarm.writeVersion(sOut,MAXSTRING);
+    sendData2Client(sOut,pos);
+    pos = flarm.writeSelfTestResult(sOut,MAXSTRING);
+    sendData2Client(sOut,pos);
   }
 
   if (timeOver(tAct,tSend,FLARM_UPDATE_RATE)){
@@ -717,7 +723,9 @@ void sendFlarmData(uint32_t tAct){
           tFanetData.lon = fanet.neighbours[i].lon;
           tFanetData.speed = fanet.neighbours[i].speed;
           Fanet2FlarmData(&tFanetData,&PilotFlarmData);
-          sendData2Client(flarm.writeFlarmData(&myFlarmData,&PilotFlarmData));    
+          char sOut[MAXSTRING];
+          int pos = flarm.writeFlarmData(sOut,MAXSTRING,&myFlarmData,&PilotFlarmData);
+          sendData2Client(sOut,pos);
           countNeighbours++;    
         }
       }
@@ -726,7 +734,9 @@ void sendFlarmData(uint32_t tAct){
       flarm.GPSState = FLARM_NO_GPS;
     }
     flarm.neighbors = countNeighbours;
-    sendData2Client(flarm.writeDataPort());
+    char sDataPort[MAXSTRING];
+    int iLen = flarm.writeDataPort(&sDataPort[0],sizeof(sDataPort));
+    sendData2Client(&sDataPort[0],iLen);
   }
 }
 
@@ -851,6 +861,9 @@ void drawBluetoothstat(int16_t x, int16_t y){
 
 void printGSData(uint32_t tAct){
   static uint8_t index = 0;
+  static uint16_t fanetRx = 0;
+  static uint16_t legacyRx = 0;
+  static uint8_t received = 0;
   char buf[10];
   oledPowerOn();
   display.clearDisplay();
@@ -863,7 +876,16 @@ void printGSData(uint32_t tAct){
   display.setTextSize(1);
 
   display.setCursor(78,0);
-  sprintf(buf, "%d", uint8_t(status.fanetRx) % 10);
+  if (fanetRx != status.fanetRx){
+    fanetRx = status.fanetRx;
+    received++;
+  }
+  if (legacyRx != status.legRx){
+    legacyRx = status.legRx;
+    received++;
+  }
+
+  sprintf(buf, "%d", received % 10);
   display.print(buf);
 
 
@@ -1142,7 +1164,7 @@ void sendAWUdp(String msg){
   if (WiFi.status() == WL_CONNECTED){
     //log_i("%s",msg.c_str());
     WiFiUDP udp;
-    udp.beginPacket(airwhere_web_ip.c_str(),AIRWHERE_UDP_PORT);
+    udp.beginPacket(airwhere_web_ip,AIRWHERE_UDP_PORT);
     udp.write((uint8_t *)msg.c_str(),msg.length());
     udp.endPacket();
   }else{
@@ -1150,27 +1172,29 @@ void sendAWUdp(String msg){
   }      
 }
 
-void sendData2Client(String data){
+void sendData2Client(char *buffer,int iLen){
+  //size_t bufLen = strlen(buffer);
   if (setting.outputMode == OUTPUT_UDP){
     //output via udp
     if ((WiFi.status() == WL_CONNECTED) || (WiFi.softAPgetStationNum() > 0)){ //connected to wifi or a client is connected to me
       //log_i("sending udp");
+      
       WiFiUDP udp;
       udp.beginPacket(setting.UDPServerIP.c_str(),setting.UDPSendPort);
-      udp.write((uint8_t *)data.c_str(),data.length());
+      udp.write((uint8_t *)buffer,iLen);
       udp.endPacket();    
     }
   }
   if ((setting.outputMode == OUTPUT_SERIAL) || (setting.bOutputSerial)){//output over serial-connection
-    Serial.print(data); 
+    Serial.print(buffer); 
   }
   if (setting.outputMode == OUTPUT_BLE){ //output over ble-connection
     if (xHandleBluetooth){
-      if ((ble_data.length() + data.length()) <512){
+      if ((ble_data.length() + iLen) <512){
         while(ble_mutex){
-          delay(100);
+          delay(1);
         };
-        ble_data=ble_data+data;
+        ble_data=ble_data+buffer;
       }else{
         if (!ble_mutex){
           ble_data="";
@@ -1181,23 +1205,8 @@ void sendData2Client(String data){
       ble_mutex = false;
     }
   }
-}
 
-/*
-void writeTrackingData(uint32_t tAct){
-  static uint32_t tSend = millis();
-  if (status.GPS_Fix == 1){
-    if ((tAct - tSend) >= 5000){
-      MyFanetData.aircraftType = fanet.getAircraftType();
-      fanet.setMyTrackingData(&MyFanetData);
-      tSend = tAct;
-    }
-  }else{
-    tSend = tAct;
-  }
 }
-*/
-
 
 
 static void IRAM_ATTR AXP192_Interrupt_handler() {
@@ -1799,8 +1808,13 @@ void setup() {
     //V3.0.0 changed from PIN 0 to PIN 25
     PinBuzzer = 25;
 
-    if (setting.bHasExtPowerSw){
-      PinExtPowerOnOff = 36;
+    if (setting.Mode == MODE_GROUND_STATION){
+      PinWindDir = 36;
+      PinWindSpeed = 39;
+    }else{
+      if (setting.bHasExtPowerSw){
+        PinExtPowerOnOff = 36;
+      }
     }
 
     sButton[1].PinButton = 38;
@@ -1838,10 +1852,14 @@ void setup() {
     //V3.0.0 changed from PIN 0 to PIN 25
     PinBuzzer = 25;
 
-    if (setting.bHasExtPowerSw){
-      PinExtPowerOnOff = 36;
+    if (setting.Mode == MODE_GROUND_STATION){
+      PinWindDir = 36;
+      PinWindSpeed = 39;
+    }else{
+      if (setting.bHasExtPowerSw){
+        PinExtPowerOnOff = 36;
+      }
     }
-
     sButton[1].PinButton = 38;
     //PinButton[1] = 38;
 
@@ -2074,11 +2092,7 @@ xOutputMutex = xSemaphoreCreateMutex();
 #ifdef EINK
   xTaskCreatePinnedToCore(taskEInk, "taskEInk", 6500, NULL, 8, &xHandleEInk, ARDUINO_RUNNING_CORE1); //background EInk
 #endif  
-  //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
   xTaskCreatePinnedToCore(taskBackGround, "taskBackGround", 6500, NULL, 5, &xHandleBackground, ARDUINO_RUNNING_CORE1); //background task
-  //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
-  //xTaskCreatePinnedToCore(taskMemory, "taskMemory", 4096, NULL, 1, &xHandleMemory, ARDUINO_RUNNING_CORE1);
-  //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
   xTaskCreatePinnedToCore(taskBluetooth, "taskBluetooth", 4096, NULL, 7, &xHandleBluetooth, ARDUINO_RUNNING_CORE1);
 
 #ifdef GSMODULE  
@@ -2692,7 +2706,8 @@ void taskBluetooth(void *pvParameters) {
 		   ble_data="";
 		   ble_mutex=false;
 	   }
-     vTaskDelay(100);
+     delay(10);
+     //vTaskDelay(100);
 	   if ((WebUpdateRunning) || (bPowerOff)){
         stop_ble();
         break;
@@ -3443,7 +3458,7 @@ void readGPS(){
         i++;
       }
       delete cstr; //delete allocated String
-      if (setting.outputGPS) sendData2Client(sNmeaIn);
+      if (setting.outputGPS) sendData2Client(cstr,sNmeaIn.length()); //sendData2Client(sNmeaIn);
       sNmeaIn = "";
     }else{
       sNmeaIn = ""; //we have a gps --> don't take data from external GPS
@@ -3460,8 +3475,7 @@ void readGPS(){
       lineBuffer[recBufferIndex] = '\n';
       recBufferIndex++;
       lineBuffer[recBufferIndex] = 0; //zero-termination
-      String s = lineBuffer;
-      if (setting.outputGPS) sendData2Client(s);
+      if (setting.outputGPS) sendData2Client(lineBuffer,recBufferIndex);
       recBufferIndex = 0;
       tGpsOk = millis();
       status.bHasGPS = true;
@@ -3526,8 +3540,27 @@ void sendLXPW(uint32_t tAct){
   // e.g.:
   // $LXWP0,Y,222.3,1665.5,1.71,,,,,,239,174,10.1
   static uint32_t tOld = millis();
-  if (setting.outputModeVario != OVARIO_LXPW) return; //not output
   if ((tAct - tOld) >= 250){
+    char sOut[MAXSTRING];
+    int pos = 0;
+    pos += snprintf(&sOut[pos],MAXSTRING-pos,"$LXWP0,N,");
+    if (status.GPS_Fix){
+      pos += snprintf(&sOut[pos],MAXSTRING-pos,"%.01f",status.GPS_speed);
+    }
+    pos += snprintf(&sOut[pos],MAXSTRING-pos,",");
+    if (status.vario.bHasVario){
+      pos += snprintf(&sOut[pos],MAXSTRING-pos,"%.01f,%.02f",status.varioAlt,status.ClimbRate); // altitude in meters, relative to QNH 1013.25
+    }else{
+      pos += snprintf(&sOut[pos],MAXSTRING-pos,",");
+    }
+    pos += snprintf(&sOut[pos],MAXSTRING-pos,",,,,,,");
+    if (status.GPS_Fix){
+      pos += snprintf(&sOut[pos],MAXSTRING-pos,"%.01f",status.GPS_course);
+    }
+    pos += snprintf(&sOut[pos],MAXSTRING-pos,",,");
+    pos = flarm.addChecksum(sOut,MAXSTRING);
+    sendData2Client(sOut,pos);
+    /*
     String s = "$LXWP0,N,";
     if (status.GPS_Fix){
       s += String(status.GPS_speed,1);
@@ -3543,15 +3576,33 @@ void sendLXPW(uint32_t tAct){
     s +=  ",,";
     s = flarm.addChecksum(s);
     sendData2Client(s);
+    */
     tOld = tAct;
   }
 }
 
 void sendLK8EX(uint32_t tAct){
   static uint32_t tOld = millis();
-  if (setting.outputModeVario != OVARIO_LK8EX1) return; //not output
   if ((tAct - tOld) >= 250){
     //String s = "$LK8EX1,101300,99999,99999,99,999,";
+    char sOut[MAXSTRING];
+    int pos = 0;
+    pos += snprintf(&sOut[pos],MAXSTRING-pos,"$LK8EX1,");
+    if (status.vario.bHasVario){
+      pos += snprintf(&sOut[pos],MAXSTRING-pos,"%d,",(uint32_t)status.pressure);
+      if (status.GPS_Fix){
+        pos += snprintf(&sOut[pos],MAXSTRING-pos,"%.02f,",status.GPS_alt);
+      }else{
+        pos += snprintf(&sOut[pos],MAXSTRING-pos,"%.02f,",status.varioAlt);
+      }
+      pos += snprintf(&sOut[pos],MAXSTRING-pos,"%d,%.01f,",(int32_t)(status.ClimbRate * 100.0),status.varioTemp);
+    }else{
+      pos += snprintf(&sOut[pos],MAXSTRING-pos,"999999,%.02f,%d,99,",status.GPS_alt,(int32_t)(status.ClimbRate * 100.0));
+    }
+    pos += snprintf(&sOut[pos],MAXSTRING-pos,"%.02f,",(float)status.vBatt / 1000.);
+    pos = flarm.addChecksum(sOut,MAXSTRING);
+    sendData2Client(sOut,pos);
+    /*
     String s = "$LK8EX1,";
 
     if (status.vario.bHasVario){
@@ -3574,6 +3625,7 @@ void sendLK8EX(uint32_t tAct){
     s += String((float)status.vBatt / 1000.,2) + ",";
     s = flarm.addChecksum(s);
     sendData2Client(s);
+    */
     tOld = tAct;
   }
 }
@@ -3637,11 +3689,12 @@ bool setupUbloxConfig(){
 
 
 void taskStandard(void *pvParameters){
-  static uint32_t tLoop = millis();
+  static uint32_t tLoop = micros();
   static float oldAlt = 0.0;
   static uint32_t tOldPPS = millis();
   static uint32_t tLastPPS = millis();
   static uint32_t tDisplay = millis();
+  static uint32_t tMaxLoop = millis();
   #ifdef TEST
   static uint32_t tSend = millis();
   #endif
@@ -3769,7 +3822,7 @@ void taskStandard(void *pvParameters){
 #endif
 
   //udp.begin(UDPPORT);
-  tLoop = millis();
+  tLoop = micros();
   while(1){    
     // put your main code here, to run repeatedly:
     uint32_t tAct = millis();
@@ -3783,10 +3836,14 @@ void taskStandard(void *pvParameters){
     }
     #endif
 
-    status.tLoop = tAct - tLoop;
-    tLoop = tAct;
+    status.tLoop = micros() - tLoop;
+    tLoop = micros();
+    if (timeOver(tAct,tMaxLoop,10000)){
+      //Serial.printf("tMax=%d\r\n",status.tMaxLoop);
+      status.tMaxLoop = 0; //reset every 10seconds max-looptime
+      tMaxLoop = tAct;
+    }
     if (status.tMaxLoop < status.tLoop) status.tMaxLoop = status.tLoop;
-
     #ifdef AIRMODULE    
     if (command.ConfigGPS == 1){      
       if (setupUbloxConfig()){
@@ -3864,7 +3921,10 @@ void taskStandard(void *pvParameters){
         fanet.writeMsgType3(fanetDstId,s);
         fanetDstId = 0;
       }
-      sendData2Client(s);
+      char * cstr = new char [s.length()+1];
+      strcpy (cstr, s.c_str());      
+      sendData2Client(cstr,s.length());
+      delete cstr; //delete allocated String
     }
 
     #ifdef AIRMODULE
@@ -4001,8 +4061,12 @@ void taskStandard(void *pvParameters){
     if (fanet.isNewMsg()){
       //write msg to udp !!      
       String msg = fanet.getactMsg() + "\n";
-      //log_i("new MSG:%s",msg.c_str());
-      if (setting.outputFANET) sendData2Client(msg);
+      if (setting.outputFANET){
+        char * cstr = new char [msg.length()+1];
+        strcpy (cstr, msg.c_str());      
+        sendData2Client(cstr,msg.length());//sendData2Client(msg);
+        delete cstr; //delete allocated String
+      } 
     }
     FanetLora::nameData nameData;
     if (fanet.getNameData(&nameData)){
@@ -4046,8 +4110,11 @@ void taskStandard(void *pvParameters){
         wData.wGust = weatherData.wGust;
         wData.wHeading = weatherData.wHeading;
         wData.wSpeed = weatherData.wSpeed;
-        wData.snr = (float)weatherData.snr / 10.0;      
-        ogn.sendWeatherData(&wData);
+        wData.snr = (float)weatherData.snr / 10.0;   
+        if ((wData.wHeading >= 0) && (wData.wHeading <= 360) && (wData.bWind) && (wData.wSpeed >= 0) && (wData.wSpeed <= 300) && (wData.wGust >= 0) && (wData.wGust <= 300)){
+          ogn.sendWeatherData(&wData);
+        }
+        
       }
     }    
     if (fanet.getTrackingData(&tFanetData)){
@@ -4065,8 +4132,8 @@ void taskStandard(void *pvParameters){
       }
     }    
     flarm.run();
-    sendLK8EX(tAct);
-    sendLXPW(tAct);
+    if (setting.outputModeVario == OVARIO_LK8EX1) sendLK8EX(tAct);
+    if (setting.outputModeVario == OVARIO_LXPW) sendLXPW(tAct); //not output 
     #ifdef AIRMODULE
     if (setting.Mode == MODE_AIR_MODULE){
       if (!status.bHasAXP192){

@@ -204,6 +204,7 @@ window.addEventListener("load", init, false);
       <noscript>JavaScript aktivieren um GXAirCom benutzen zu können<br></noscript>
       <h1>%APPNAME%-%VERSION%</h1>
       <h3>build-date: %BUILD%</h3>
+      <h3>local IP: %SOCKETIP%</h3>
       <h3>%PILOT%</h3>      
     </div>
     <fieldset>
@@ -287,11 +288,11 @@ window.addEventListener("load", init, false);
             <td><input type="text" id="wifiRssi" disabled></td>
           </tr>
           <tr>
-            <th>current loop-time [ms]</th>
+            <th>current loop-time [us]</th>
             <td><input type="text" id="tLoop" disabled></td>
           </tr>
           <tr>
-            <th>max loop-time [ms]</th>
+            <th>max loop-time [us]</th>
             <td><input type="text" id="tMaxLoop" disabled></td>
           </tr>
           <tr>

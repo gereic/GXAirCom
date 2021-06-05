@@ -125,6 +125,7 @@
 #define RF_MODE_FANET_TX_LEG_RX 4
 #define RF_MODE_LEG_RX_TX 5
 #define RF_MODE_LEG_RX 6
+#define RF_MODE_FANET_RX_TX_LEG_RX 7
 
 
 

@@ -174,9 +174,29 @@ int8_t legacy_decode(void *legacy_pkt, ufo_t *this_aircraft, ufo_t *fop) {
 
   
   //log_i("unk0=%02X,unk1=%02X",pkt->_unk0,pkt->_unk1);
+  if (pkt->addr == 0){
+    //log_e("addr = 0");
+    return -8;    
+  }
+  if (pkt->aircraft_type == 0){
+    //log_e("aircraft_type = 0");
+    return -9;    
+  }
   if (pkt->_unk0 != 0){
-    log_e("unknown message unk0=%02X",pkt->_unk0);
-    return -2;
+    //log_e("unknown message unk0=%02X",pkt->_unk0);
+    return -10;
+  }
+  if (pkt->_unk1 != 0){
+    //log_e("unknown message unk1=%02X",pkt->_unk0);
+    return -11;
+  }
+  if (pkt->_unk2 != 0){
+    //log_e("unknown message unk2=%02X",pkt->_unk0);
+    return -12;
+  }
+  if (pkt->_unk3 != 0){
+    //log_e("unknown message unk3=%02X",pkt->_unk0);
+    return -13;
   }
 
   for (ndx = 0; ndx < sizeof (legacy_packet_t); ndx++) {
@@ -184,11 +204,11 @@ int8_t legacy_decode(void *legacy_pkt, ufo_t *this_aircraft, ufo_t *fop) {
   }
   
   if (pkt_parity % 2) {
-    log_i("bad parity of decoded packet: %02X",pkt_parity % 2);        
+    //log_i("bad parity of decoded packet: %02X",pkt_parity % 2);        
     return -1;
   }
 
-
+  //Serial.printf("onGround=%d,unk0=%d,unk1=%d,unk2=%d,unk3=%d\r\n",pkt->onGround,pkt->_unk0,pkt->_unk1,pkt->_unk2,pkt->_unk3);
 
   int32_t round_lat = (int32_t) (ref_lat * 1e7) >> 7;
   int32_t lat = (pkt->lat - round_lat) % (uint32_t) 0x080000;
@@ -230,6 +250,7 @@ int8_t legacy_decode(void *legacy_pkt, ufo_t *this_aircraft, ufo_t *fop) {
   //fop->vs = ((float) vs10) * (_GPS_FEET_PER_METER * 6.0);
   fop->vs = ((float) vs10) / 10.0;
   fop->aircraft_type = pkt->aircraft_type;
+  fop->onGround = pkt->onGround;
   fop->stealth = pkt->stealth;
   fop->no_track = pkt->no_track;
   fop->ns[0] = pkt->ns[0]; fop->ns[1] = pkt->ns[1];
@@ -297,6 +318,7 @@ pkt->addr_type = ADDR_TYPE_ANONYMOUS;
 
     pkt->parity = 0;
 
+    pkt->onGround = this_aircraft->onGround;
     pkt->stealth = this_aircraft->stealth;
     pkt->no_track = this_aircraft->no_track;
 
@@ -404,7 +426,7 @@ eFlarmAircraftType LP_Fanet2FlarmAircraft(FanetLora::aircraft_t aircraft){
 }
 
 
-void createLegacyPkt(FanetLora::trackingData *Data,float geoidAlt,uint8_t * buffer)
+void createLegacyPkt(FanetLora::trackingData *Data,float geoidAlt,bool onGround,uint8_t * buffer)
 {
     FlarmtrackingData FlarmDataData;
     ufo_t air={0};
@@ -423,6 +445,7 @@ void createLegacyPkt(FanetLora::trackingData *Data,float geoidAlt,uint8_t * buff
     air.speed= Data->speed;
     //air.speed = 37.5;
     //legacyLogAircraft(&air);
+    air.onGround = onGround;
     legacy_encode(buffer,&air);
 
 }

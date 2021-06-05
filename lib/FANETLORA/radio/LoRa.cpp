@@ -22,6 +22,32 @@ void IRAM_ATTR setFlag(void)
     receivedFlag = true;
 }
 
+void LoRaClass::run(){
+  static uint32_t tLast = millis();
+  uint32_t tAct = millis();
+  if ((tAct - tLast) >= 1000){
+    tLast = tAct;
+    switch (radioType){
+      case RADIO_SX1262:
+        break;
+      case RADIO_SX1276:
+        if (_fskMode){
+          uint8_t ret = pModule->SPIgetRegValue(SX127X_REG_IMAGE_CAL);
+          if (ret != 0) log_i("REG_IMAGE_CAL=%d",ret);
+          if (ret & 0x08){
+            log_i("start calib image");
+            pSx1276Radio->setActiveModem(SX127X_FSK_OOK);
+            //calib image
+            pModule->SPIsetRegValue(SX127X_REG_IMAGE_CAL, 0x40);
+            while ( pModule->SPIgetRegValue(SX127X_REG_IMAGE_CAL) & 0x20 );      
+            startReceive(); //start receive again !!
+          }
+        }
+        break;
+    }
+  }
+}
+
 bool LoRaClass::isRxMessage(){
   /*
   switch (radioType){
@@ -38,7 +64,9 @@ bool LoRaClass::isRxMessage(){
   */
   if (receivedFlag){
     rxCount++;
-    //log_i("new message arrived %d",rxCount);
+	  #if RX_DEBUG > 10
+    log_i("new message arrived %d",rxCount);
+    #endif
     enableInterrupt = false;
     receivedFlag = false;
     return true;
@@ -97,10 +125,14 @@ int16_t LoRaClass::begin(float freq, float bw, uint8_t sf, uint8_t cr, uint8_t s
       if (state == ERR_NONE) {
         log_i("SX1276 Radio found !");
         pSx1276Radio->setDio0Action(setFlag);	
+        //calib image
+        pSx1276Radio->setActiveModem(SX127X_FSK_OOK);
+        pModule->SPIsetRegValue(SX127X_REG_IMAGE_CAL, 0x00); //set Temperature monitoring on 5°C#
+        pSx1276Radio->setActiveModem(SX127X_LORA);
         radioType = RADIO_SX1276;
         return state;
       } else {
-          log_i("failed, code %d",state);
+          log_e("failed, code %d",state);
           return state;
       }
       break;
@@ -135,12 +167,29 @@ int16_t LoRaClass::readData(uint8_t* data, size_t len){
 
       if (_fskMode){
         // put module to standby
-        pSx1276Radio->standby();
+        //pSx1276Radio->standby();        
+        if (len == 26){
+          uint8_t rx_frame[len*2];
+          pModule->SPIreadRegisterBurst(SX127X_REG_FIFO, len*2, rx_frame);
+          uint8_t val1, val2;
+          for (int i = 0;i < len * 2; i++){
+            val1 = ManchesterDecode[rx_frame[i]];
+            val2 = ManchesterDecode[rx_frame[i+1]];
+            data[i>>1] = ((val1 & 0x0F) << 4) | (val2 & 0x0F);
+            //data[i>>1] = ~data[i>>1];
+            i++;
+          }
+          return 0;
+        }else{
+          return ERR_UNKNOWN;
+        }
+        /*
         pModule->SPIreadRegisterBurst(SX127X_REG_FIFO, len, data);
         //clear irqflags
         pModule->SPIwriteRegister(SX127X_REG_IRQ_FLAGS_1, 0b11111111);
         pModule->SPIwriteRegister(SX127X_REG_IRQ_FLAGS_2, 0b11111111);        
         invertba(data,len); //invert complete Frame
+        */
       }else{
         ret = pSx1276Radio->readData(data,len);
       }
@@ -154,8 +203,11 @@ float LoRaClass::getRSSI(){
       return pSx1262Radio->getRSSI();
       break;
     case RADIO_SX1276:
-      return pSx1276Radio->getRSSI();
-
+      if (_fskMode){
+        return rssiValue;
+      }else{
+        return pSx1276Radio->getRSSI();
+      }
   }
 }
 
@@ -202,6 +254,42 @@ int16_t LoRaClass::switchFSK(float frequency){
 
       break;
     case RADIO_SX1276:
+
+      /*
+      ret = pSx1276Radio->beginFSK(frequency,100.0,50.0,125.0,_power,8,false);
+      //ret = pSx1276Radio->beginFSK();
+      if (ret) log_e("beginFSK %d",ret);
+      //ret = pSx1276Radio->setFrequency(frequency);
+      //if (ret) log_e("setFrequency %d",ret);
+      //ret = pSx1276Radio->setBitRate(100.0);
+      //if (ret) log_e("setBitRate %d",ret);
+      //ret = pSx1276Radio->setFrequencyDeviation(50.0);
+      //if (ret) log_e("setBandwidth %d",ret);
+      //ret = pSx1276Radio->setRxBandwidth(125.0);
+      //if (ret) log_e("setRxBandwidth %d",ret);
+      //ret = pSx1276Radio->setOutputPower(_power);
+      //if (ret) log_e("setOutputPower %d",ret);
+      //ret = pSx1276Radio->setCurrentLimit(100);
+      //if (ret) log_e("setCurrentLimit %d",ret);
+      ret = pSx1276Radio->setDataShaping(RADIOLIB_SHAPING_0_5); //set gaussian filter to 0.5
+      if (ret) log_e("setDataShaping %d",ret);
+      ret = pSx1276Radio->setSyncWord(syncWord,sizeof(syncWord));
+      if (ret) log_e("setSyncWord %d",ret);
+      ret = pSx1276Radio->setOOK(false);
+      if (ret) log_e("setOOK %d",ret);
+      //ret = pSx1276Radio->setGain(1); //set highest Gain
+      //if (ret) log_e("setGain %d",ret);
+      ret = pSx1276Radio->fixedPacketLengthMode(FSK_PACKET_LENGTH);
+      if (ret) log_e("fixedPacketLengthMode %d",ret);
+      ret = pSx1276Radio->setCRC(false);
+      if (ret) log_e("setCRC %d",ret);
+      ret = pSx1276Radio->setRSSIConfig(2);
+      if (ret) log_e("setRSSIConfig %d",ret);
+      ret = pSx1276Radio->setEncoding(RADIOLIB_ENCODING_MANCHESTER);      
+      if (ret) log_e("setWhitening %d",ret);
+      //ret = pSx1276Radio->setPreambleLength(2);
+      //if (ret) log_e("setPreambleLength %d",ret);
+      */
 
 
       /*
@@ -282,35 +370,103 @@ int16_t LoRaClass::switchFSK(float frequency){
       pModule->SPIsetRegValue(SX127X_REG_PA_RAMP, 0x49); 
       */
 
+      
+
+      /*
       ret = pSx1276Radio->setActiveModem(SX127X_FSK_OOK);
-      //log_i("setActiveModem %d",ret);
+      if (ret) log_e("setActiveModem %d",ret);
       //ret = pSx1276Radio->setOOK(false);
       //log_i("setOOK %d",ret);
       ret = pSx1276Radio->setFrequency(frequency);
-      //log_i("setOOK %d",ret);
+      if (ret) log_e("setOOK %d",ret);
       ret = pSx1276Radio->setBitRate(100.0);
-      //log_i("setBitRate %d",ret);
+      if (ret) log_e("setBitRate %d",ret);
       ret = pSx1276Radio->setFrequencyDeviation(50.0);
-      //log_i("setBandwidth %d",ret);
+      if (ret) log_e("setBandwidth %d",ret);
       ret = pSx1276Radio->setRxBandwidth(125.0);
-      //log_i("setRxBandwidth %d",ret);
-      ret = pSx1276Radio->setGain(1); //set highest Gain
-      //log_i("setRxBandwidth %d",ret);
+      if (ret) log_e("setRxBandwidth %d",ret);
+      // set LNA gain
+      //pModule->SPIsetRegValue(SX127X_REG_LNA, LNA_RX_GAIN);
+      pModule->SPIsetRegValue(SX127X_REG_LNA, 0x20 | 0x03); // max gain, boost enable
+      //pModule->SPIsetRegValue(SX127X_REG_LNA, 0x20 | 0x00); // max gain, default LNA current
+      //pModule->SPIsetRegValue(SX127X_REG_LNA, 0x60 | 0x00); // -12dB gain, default LNA current
+      //pModule->SPIsetRegValue(SX127X_REG_LNA, 0x80 | 0x00); // -24dB gain, default LNA current
+      //pModule->SPIsetRegValue(SX127X_REG_LNA, 0xC0 | 0x00); // -48dB gain, default LNA current
+
+      // configure receiver
+      //pModule->SPIsetRegValue(SX127X_REG_RX_CONFIG, 0x1E); // AFC auto, AGC, trigger on preamble?!?
+      pModule->SPIsetRegValue(SX127X_REG_RX_CONFIG, 0x0E); // AFC off, AGC on, trigger on preamble?!?
+      //pModule->SPIsetRegValue(SX127X_REG_RX_CONFIG, 0x06); // AFC off, AGC off, trigger on preamble?!?
+      //pModule->SPIsetRegValue(SX127X_REG_AFC_BW, 0x11); // 166.6kHz SSB
+      //ret = pSx1276Radio->setGain(1); //set highest Gain
+      //if (ret) log_e("setGain %d",ret);
       ret = pSx1276Radio->setSyncWord(syncWord,sizeof(syncWord));
-      //log_i("setSyncWord %d",ret);
+      if (ret) log_e("setSyncWord %d",ret);
       ret = pSx1276Radio->setOutputPower(_power);
-      //log_i("setOutputPower %d",ret);
+      if (ret) log_e("setOutputPower %d",ret);
       ret = pSx1276Radio->fixedPacketLengthMode(FSK_PACKET_LENGTH);
-      //log_i("fixedPacketLengthMode %d",ret);
+      if (ret) log_e("fixedPacketLengthMode %d",ret);
       ret = pSx1276Radio->setCRC(false);
-      //log_i("setCRC %d",ret);
+      if (ret) log_e("setCRC %d",ret);
       ret = pSx1276Radio->setRSSIConfig(2);
-      //log_i("setRSSIConfig %d",ret);
+      if (ret) log_e("setRSSIConfig %d",ret);
       ret = pSx1276Radio->setEncoding(RADIOLIB_ENCODING_MANCHESTER);      
-      //log_i("setWhitening %d",ret);
+      if (ret) log_e("setWhitening %d",ret);
       ret = pSx1276Radio->setPreambleLength(2);
-      //log_i("setPreambleLength %d",ret);
+      if (ret) log_e("setPreambleLength %d",ret);
       ret = pSx1276Radio->setDataShaping(RADIOLIB_SHAPING_0_5); //set gaussian filter to 0.5
+      if (ret) log_e("setDataShaping %d",ret);
+      //pModule->SPIsetRegValue(SX127X_REG_AFC_BW, 0x11); // 166.6kHz SSB
+      */
+      ret = pSx1276Radio->setActiveModem(SX127X_FSK_OOK);
+      if (ret) log_e("setActiveModem %d",ret);
+      //ret = pSx1276Radio->setOOK(false);
+      //log_i("setOOK %d",ret);
+      ret = pSx1276Radio->setFrequency(frequency);
+      if (ret) log_e("setFrequency %d",ret);
+      ret = pSx1276Radio->setBitRate(100.0);
+      if (ret) log_e("setBitRate %d",ret);
+      ret = pSx1276Radio->setFrequencyDeviation(50.0);
+      if (ret) log_e("setFrequencyDeviation %d",ret);
+      ret = pSx1276Radio->setRxBandwidth(125.0);
+      if (ret) log_e("setRxBandwidth %d",ret);
+      ret = pSx1276Radio->setSyncWord(syncWord,sizeof(syncWord));
+      if (ret) log_e("setSyncWord %d",ret);
+      ret = pSx1276Radio->setOutputPower(_power);
+      if (ret) log_e("setOutputPower %d",ret);
+      //ret = pSx1276Radio->fixedPacketLengthMode(FSK_PACKET_LENGTH);
+      ret = pSx1276Radio->fixedPacketLengthMode(FSK_PACKET_LENGTH*2);
+      if (ret) log_e("fixedPacketLengthMode %d",ret);
+      ret = pSx1276Radio->setCRC(false);
+      if (ret) log_e("setCRC %d",ret);
+      ret = pSx1276Radio->setRSSIConfig(2);
+      if (ret) log_e("setRSSIConfig %d",ret);
+      //ret = pSx1276Radio->setEncoding(RADIOLIB_ENCODING_MANCHESTER);      
+      ret = pSx1276Radio->setEncoding(RADIOLIB_ENCODING_NRZ);
+      if (ret) log_e("setEncoding %d",ret);
+      ret = pSx1276Radio->setPreambleLength(8);
+      if (ret) log_e("setPreambleLength %d",ret);
+      ret = pSx1276Radio->setDataShaping(RADIOLIB_SHAPING_0_5); //set gaussian filter to 0.5     
+      if (ret) log_e("setDataShaping %d",ret);
+      // set LNA gain
+      pModule->SPIsetRegValue(SX127X_REG_LNA, 0x20 | 0x03); // max gain, boost enable
+      // configure receiver
+      pModule->SPIsetRegValue(SX127X_REG_RX_CONFIG, 0x0E); // AFC off, AGC on, trigger on preamble?!?
+      pModule->SPIsetRegValue(SX127X_REG_AFC_BW, 0x11); // 166.6kHz SSB
+      pModule->SPIsetRegValue(SX127X_REG_PREAMBLE_DETECT,  0x85);  // enable, 1 bytes, 5 chip errors
+      pModule->SPIsetRegValue(SX127X_REG_SYNC_CONFIG, 0x30 + sizeof(syncWord) - 1);
+  
+
+      uint8_t ret = pModule->SPIgetRegValue(SX127X_REG_IMAGE_CAL);
+      if (ret & 0x08){
+        log_i("start calib image");
+        //calib image
+        pModule->SPIsetRegValue(SX127X_REG_IMAGE_CAL, 0x40);
+        while ( pModule->SPIgetRegValue(SX127X_REG_IMAGE_CAL) & 0x20 );      
+      }        
+      //calib image
+      //pModule->SPIsetRegValue(SX127X_REG_IMAGE_CAL, 0x40);
+      //while ( pModule->SPIgetRegValue(SX127X_REG_IMAGE_CAL) & 0x20 );      
 
       break;
   }
@@ -428,11 +584,14 @@ int16_t LoRaClass::startReceive(){
       break;
     case RADIO_SX1276:
       iRet = pSx1276Radio->startReceive();
+      if (_fskMode) rssiValue = pSx1276Radio->getRSSI();
       break;
   }
   receivedFlag = false;
   enableInterrupt = true;
-  //log_i("start Receive");
+  #if RX_DEBUG > 10
+  log_i("%d start Receive",millis());
+  #endif
   return iRet;
 }
 
@@ -475,7 +634,14 @@ int16_t LoRaClass::setCodingRate(uint8_t cr){
 int16_t LoRaClass::transmit(uint8_t* data, size_t len){
   enableInterrupt = false;
   receivedFlag = false;
-  if (!_fskMode){
+  uint8_t tx_frame[FSK_PACKET_LENGTH*2];
+  if (_fskMode){
+    for (int i = 0;i < FSK_PACKET_LENGTH * 2; i++){            
+      tx_frame[i] = ManchesterEncode[(data[i>>1] >> 4) & 0x0F];
+      tx_frame[i+1] = ManchesterEncode[(data[i>>1]) & 0x0F];
+      i++;
+    }    
+  }else{
     /* update air time */
     sx_airtime += expectedAirTime_ms(len);
   } 	
@@ -483,13 +649,7 @@ int16_t LoRaClass::transmit(uint8_t* data, size_t len){
     case RADIO_SX1262:
       if (_fskMode){
         if (len == 26){
-          uint8_t tx_frame[len*2];
-          for (int i = 0;i < len * 2; i++){            
-            tx_frame[i] = ManchesterEncode[(data[i>>1] >> 4) & 0x0F];
-            tx_frame[i+1] = ManchesterEncode[(data[i>>1]) & 0x0F];
-            i++;
-          }
-          return pSx1262Radio->transmit(tx_frame,len*2);
+          return pSx1262Radio->transmit(tx_frame,FSK_PACKET_LENGTH*2);
         }else{
           return ERR_UNKNOWN;
         }        
@@ -498,11 +658,14 @@ int16_t LoRaClass::transmit(uint8_t* data, size_t len){
       }      
     case RADIO_SX1276:
       if (_fskMode){
-        invertba(data,len);        
-      //}else{
-      //  return 0; // GE only for testing FSK_MODE !!
-      } 
-      return pSx1276Radio->transmit(data,len);
+        if (len == 26){
+          return pSx1276Radio->transmit(tx_frame,FSK_PACKET_LENGTH*2);
+        }else{
+          return ERR_UNKNOWN;
+        }        
+      }else{
+        return pSx1276Radio->transmit(data,len);
+      }      
   }
 }
 

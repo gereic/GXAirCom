@@ -4,6 +4,8 @@
 #ifndef __MAIN_H__
 #define __MAIN_H__
 
+#define MAXSTRING 255
+
 /*
 ************* Pins for TTGO-TBeam V1.0 / V1.1 ***************
 ******* LORA ********
