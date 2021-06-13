@@ -297,3 +297,6 @@ added some checks, when forwarding FANET-Weatherstations
 added local IP in info.html
 added some checks for Legacy
 changed Strings to char-array (much faster)
+
+v4.10.1
+time for autocalibration of sx1276 changed 1sek. --> 5min.

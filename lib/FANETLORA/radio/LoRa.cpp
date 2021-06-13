@@ -25,7 +25,7 @@ void IRAM_ATTR setFlag(void)
 void LoRaClass::run(){
   static uint32_t tLast = millis();
   uint32_t tAct = millis();
-  if ((tAct - tLast) >= 1000){
+  if ((tAct - tLast) >= 300000){ //every 5min.
     tLast = tAct;
     switch (radioType){
       case RADIO_SX1262:
