@@ -473,6 +473,8 @@ struct statusData{
   uint32_t tRestart;
   float fuelSensor; //ads of fuel-sensor
   uint8_t calibAccStat;
+  uint8_t FanetMsgCount;
+  String lastFanetMsg;
 };
 
 #endif

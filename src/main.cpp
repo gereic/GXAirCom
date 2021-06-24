@@ -3379,6 +3379,10 @@ void checkSystemCmd(char *ch_str){
     //log_i("sending 2 client");
     add2OutputString("#SYC FNTPWR=" + String(setting.LoraPower) + "\r\n");
   }
+  if (line.indexOf("#SYC DOUPDATE") >= 0){
+    status.updateState = 50; //check for Update automatic
+    add2OutputString("Check for update\r\n");
+  }
   iPos = getStringValue(line,"#SYC FNTPWR=","\r",0,&sRet);
   if (iPos >= 0){
     uint8_t u8 = atoi(sRet.c_str());
@@ -3950,9 +3954,12 @@ void taskStandard(void *pvParameters){
       xSemaphoreGive(xOutputMutex);
       //log_i("sending 2 client %s",s.c_str());
       if (fanetDstId > 0){ //send msg back to dst via fanet
-        //log_i("sending back to %s:%s",fanet.getDevId(fanetDstId),s.c_str()); 
+        log_i("sending back to %s:%s",fanet.getDevId(fanetDstId),s.c_str()); 
+        log_i("updatestate=%d",status.updateState);
         fanet.writeMsgType3(fanetDstId,s);
-        fanetDstId = 0;
+        if (status.updateState != 50){
+          fanetDstId = 0;
+        }        
       }
       char * cstr = new char [s.length()+1];
       strcpy (cstr, s.c_str());      
@@ -4109,6 +4116,8 @@ void taskStandard(void *pvParameters){
     }
     FanetLora::msgData msgData;
     if (fanet.getlastMsgData(&msgData)){
+      status.lastFanetMsg = msgData.msg;
+      status.FanetMsgCount++;
       if (msgData.dstDevId == fanet._myData.devId){
         String sRet = "";
         int pos = getStringValue(msgData.msg,"P","#",0,&sRet);
@@ -4304,7 +4313,8 @@ void taskStandard(void *pvParameters){
     }
 
     delay(1);
-    if ((WebUpdateRunning) || (bPowerOff)) break;
+    //if ((WebUpdateRunning) || (bPowerOff)) break;
+    if (bPowerOff) break;
   }
   log_i("stop task");
   #ifdef OLED
@@ -4501,6 +4511,30 @@ void handleUpdate(uint32_t tAct){
       if (updater.checkVersionNewer()){
         status.updateState = 10; //we can update --> newer Version
       }
+    }
+  }else if (status.updateState == 50){ //autoupdate via FANET !!
+    if (updater.checkVersion()){
+      status.sNewVersion = updater.getVersion();
+      if (updater.checkVersionNewer()){
+        add2OutputString("update to " + status.sNewVersion + "\r\n");
+        WebUpdateRunning = true;
+        delay(500); //wait 1 second until tasks are stopped
+        if (updater.updateVersion()){ //update to newest version  
+          add2OutputString("update complete\r\n");
+          status.updateState = 60;
+          status.tRestart = millis();
+        }else{
+          add2OutputString("update failed\r\n");
+          status.updateState = 60;
+          status.tRestart = millis();
+        }
+      }else{
+        add2OutputString("no new Version avaiable\r\n");
+        status.updateState = 60;
+      }
+    }else{
+      add2OutputString("no connection to server\r\n");
+      status.updateState = 60;
     }
   }else if (status.updateState == 100){
     status.updateState = 110;
