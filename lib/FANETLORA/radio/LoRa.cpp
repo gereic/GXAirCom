@@ -83,7 +83,7 @@ LoRaClass::LoRaClass(){
 
 //LoRaClass::LoRaClass(SPIClass *_spi,uint8_t cs, uint8_t irq, uint8_t rst, uint8_t gpio){
 void LoRaClass::setPins(SPIClass *_spi,uint8_t cs, uint8_t irq, uint8_t rst, uint8_t gpio){
-  log_i("cs=%d,irq=%d,rst=%d,gpio=%d",cs, irq, rst, gpio);
+  //log_i("cs=%d,irq=%d,rst=%d,gpio=%d",cs, irq, rst, gpio);
   //SPISettings _spiSettings(8E6, MSBFIRST, SPI_MODE0);
   SPISettings _spiSettings = SPISettings(8000000, MSBFIRST, SPI_MODE0);
   pModule = new Module(cs, irq, rst, gpio,*_spi,_spiSettings);
@@ -112,6 +112,13 @@ int16_t LoRaClass::begin(float freq, float bw, uint8_t sf, uint8_t cr, uint8_t s
         log_i("SX1262 Radio found !");
         pSx1262Radio->setDio1Action(setFlag);	
         radioType = RADIO_SX1262;
+        pSx1262Radio->standby();
+        //uint8_t rxGain = 0x96; //Rx Boosted gain
+        //pModule->SPIwriteRegister(SX126X_REG_RX_GAIN, &rxGain);
+        //uint8_t cmd[] = { SX126X_CMD_WRITE_REGISTER, (uint8_t)((SX126X_REG_RX_GAIN >> 8) & 0xFF), (uint8_t)(SX126X_REG_RX_GAIN & 0xFF) };
+        //pModule->SPItransfer(cmd, 3, &rxGain, 1));
+
+
         return state;
       } else {
           log_i("failed, code %d",state);
@@ -120,7 +127,7 @@ int16_t LoRaClass::begin(float freq, float bw, uint8_t sf, uint8_t cr, uint8_t s
       break;
     case RADIO_SX1276:
       pSx1276Radio = new SX1276(pModule);
-      log_i("freq=%f,bw=%f,sf=%d,cr=%d",freq,bw,sf,cr);
+      //log_i("freq=%f,bw=%f,sf=%d,cr=%d",freq,bw,sf,cr);
       state = pSx1276Radio->begin(freq,bw,sf,cr,syncWord,power,_preambleLength);
       if (state == ERR_NONE) {
         log_i("SX1276 Radio found !");

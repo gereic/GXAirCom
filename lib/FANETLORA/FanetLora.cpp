@@ -64,6 +64,10 @@ bool FanetLora::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset,
   return true;
 }
 
+void FanetLora::setGPS(bool bHasGps){
+  fmac.bHasGPS = bHasGps;
+}
+
 
 String FanetLora::getNeighbourName(uint32_t devId){
   for (int i = 0; i < MAXNEIGHBOURS; i++){
@@ -436,7 +440,7 @@ bool FanetLora::isNewMsg(){
 void FanetLora::run(void){    
   uint32_t tAct = millis();
   clearNeighboursWeather(millis());
-  if (autobroadcast){
+  if (autoSendName){
     sendPilotName(tAct);
   }
   fmac.handle();
@@ -696,6 +700,7 @@ void FanetLora::handle_frame(Frame *frm){
     actTrackingData.snr = frm->snr;
     actTrackingData.type = 0x11;
     actTrackingData.addressType = frm->AddressType;
+    actTrackingData.timestamp = frm->timeStamp; //copy timestamp
     getTrackingInfo(payload,frm);
     insertDataToNeighbour(actTrackingData.devId,&actTrackingData);
   }else if (frm->type == 2){      
@@ -732,6 +737,7 @@ void FanetLora::handle_frame(Frame *frm){
     actTrackingData.rssi = frm->rssi;
     actTrackingData.snr = frm->snr;
     actTrackingData.addressType = frm->AddressType;
+    actTrackingData.timestamp = frm->timeStamp; //copy timestamp
     getGroundTrackingInfo(frm->payload,frm->payload_length);
     insertDataToNeighbour(actTrackingData.devId,&actTrackingData);
   }
@@ -767,8 +773,10 @@ MacAddr FanetLora::getMacFromDevId(uint32_t devId){
 
 bool FanetLora::createLegacy(uint8_t *buffer){
   //if ((!autobroadcast) || (onGround)) //autobroadcast not enabled or on ground
-  if ((!autobroadcast)) //autobroadcast not enabled or on ground
+  if ((!autobroadcast)) //autobroadcast not enabled
     return false;
+	if(millis() > valid_until || isnan(_myData.lat) || isnan(_myData.lon))
+		return false;
   //we create the complete legacy-packet ready for sending
   createLegacyPkt(&_myData,_geoIdAltitude,onGround,buffer);
   encrypt_legacy(buffer,_myData.timestamp);
@@ -817,7 +825,7 @@ int FanetLora::serialize_name(String name,uint8_t*& buffer){
 bool FanetLora::frm2txBuffer(Frame *frm){
   //log_i("payload_length=%i",frm->payload_length);
   //log_i("%s",CreateFNFMSG(frm).c_str());
-  if (!fmac.bFanetTxEn){
+  if (!fmac._RfMode.bits.FntTx){
     return true; //FanetTx not enabled --> skip
   }
   if(!fmac.txQueueHasFreeSlots()){
@@ -985,7 +993,6 @@ void FanetLora::getTrackingInfo(String line,Frame *frm){
     char arPayload[23];
 
     //log_i("getTrackingInfo");
-    actTrackingData.timestamp = frm->timeStamp; //copy timestamp
     line.toCharArray(arPayload,sizeof(arPayload));
 
     // integer values /

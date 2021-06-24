@@ -119,6 +119,11 @@ bool gxUpdater::getVersion(tVersion *v,String s){
   return bRet;
 }
 
+// used to extract header value from headers for ota update
+String gxUpdater::getHeaderValue(String header, String headerName) {
+  return header.substring(strlen(headerName.c_str()));
+}
+
 bool gxUpdater::doUpdate(bool spiffs){
   bool bRet = true;
   if (xMutex == NULL){ //create new Mutex
@@ -164,6 +169,7 @@ bool gxUpdater::doUpdate(bool spiffs){
         if (!Update.begin(length,command)) {
           Update.printError(Serial);
           http.stop();
+          client->flush();
           client->stop();
           xSemaphoreGive( *xMutex );
           return false;
@@ -171,6 +177,7 @@ bool gxUpdater::doUpdate(bool spiffs){
 
         uint32_t bytesRead = 0;
         // Whilst we haven't timed out & haven't reached the end of the body        
+        //Serial.printf("%02X",client->read());
         bytesRead = Update.writeStream(*client);  
         log_i("bytes-read=%d",bytesRead);
         if (length == bytesRead){
@@ -182,6 +189,9 @@ bool gxUpdater::doUpdate(bool spiffs){
           }
         }else{
           log_i("error length error %d!=%d",length,bytesRead);
+          Serial.println("Error Occurred! \nError: " + String(Update.getError()) + " " + String(Update.errorString()) );
+          Serial.println("Will try to update again at a different time.\n");
+
           bRet = false;
         }
       }
@@ -190,6 +200,7 @@ bool gxUpdater::doUpdate(bool spiffs){
     log_e("failed to connect=%d",httpResponseCode);
     bRet = false;
   }
+  client->flush();
   http.stop();
   client->stop();
   xSemaphoreGive( *xMutex );
@@ -200,7 +211,7 @@ bool gxUpdater::doUpdate(bool spiffs){
 bool gxUpdater::updateVersion(void){
   bool bRet = false;
   for (int i = 0;i < 3; i++){ //we try 3 times, because of gsm-modem
-    if (doUpdate(true)){ //update spiffs
+    if (doUpdate(false)){ //update firmware  
       bRet = true;
       break;
     }
@@ -210,7 +221,7 @@ bool gxUpdater::updateVersion(void){
   bRet = false;
   delay(500); //wait 500ms sec. before next
   for (int i = 0;i < 3; i++){ //we try 3 times, because of gsm-modem
-    if (doUpdate(false)){ //update firmware    
+    if (doUpdate(true)){  //update spiffs 
       bRet = true;
       break;
     }

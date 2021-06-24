@@ -189,6 +189,15 @@ public:
 class FanetMac
 {
 private:
+	struct rfModeBits
+	{
+			unsigned FntRx:1, FntTx:1, LegRx:1, LegTx:1, b4:1, b5:1, b6:1, b7:1;
+	};
+	union uRfMode
+	{
+			rfModeBits bits;
+			uint8_t mode;
+	};
 	TimerObject myTimer;
 	MacFifo tx_fifo;
 	MacFifo rx_fifo;
@@ -224,7 +233,6 @@ private:
 
 	bool isNeighbor(MacAddr addr);
 	//int16_t checkLegacyPaket(void *legacy_pkt, ufo_t *this_aircraft, ufo_t *fop);
-	uint8_t _RfMode;	
 	uint8_t _actMode = 0;
 	//bool _fskMode;
 	LoRaClass radio;
@@ -242,7 +250,8 @@ public:
   float lon = 0;
   float geoidAlt = 0;
   bool bPPS = false;
-	bool bFanetTxEn = false;
+	bool bHasGPS = true;
+	uRfMode _RfMode;	
 	uint16_t txFntCount = 0;
 	uint16_t rxFntCount = 0;
 	uint16_t txLegCount = 0;

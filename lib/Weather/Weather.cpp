@@ -76,7 +76,7 @@ bool Weather::begin(TwoWire *pi2c, float height,int8_t oneWirePin, int8_t windDi
   bNewWeather = false;
   actHour = 0;
   actDay = 0;
-  log_i("onewire pin=%d",oneWirePin);
+  //log_i("onewire pin=%d",oneWirePin);
   if (oneWirePin >= 0){
     oneWire.begin(oneWirePin);
     sensors.setOneWire(&oneWire);
@@ -266,13 +266,13 @@ void Weather::checkRainSensor(void){
   uint8_t u8Hour = hour(now);
   if (actHour != u8Hour){
     rainTipCount1h = rainCount;
-    log_i("hour changed %d->%d %d",actHour,u8Hour,rainTipCount1h);
+    //log_i("hour changed %d->%d %d",actHour,u8Hour,rainTipCount1h);
     actHour = u8Hour;
   }
   uint8_t u8Day = day(now);
   if (actDay != u8Day){
     rainTipCount1d = rainCount;
-    log_i("day changed %d->%d %d",actDay,u8Day,rainTipCount1d);
+    //log_i("day changed %d->%d %d",actDay,u8Day,rainTipCount1d);
     actDay = u8Day;
   }
   _weather.rain1h = float(rainCount - rainTipCount1h) * Bucket_Size;

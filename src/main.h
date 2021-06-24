@@ -351,6 +351,7 @@ struct GsmSettings{
   String apn;
   String user;
   String pwd;
+  uint8_t NetworkMode;
 };
 
 struct WifiSettings{
@@ -418,6 +419,12 @@ struct commandData{
   uint8_t CalibGyro; //command calibrate Gyro
 };
 
+struct gsmStatus{
+  bool bHasGSM;
+  int16_t SignalQuality;
+  int16_t networkstat;
+};
+
 struct statusData{
   uint8_t displayType;
   String myIP; //my IP-Adress
@@ -458,8 +465,7 @@ struct statusData{
   uint8_t modemstatus; //status of mobile-device (sim800)
   bool bInternetConnected;
   bool bTimeOk;
-  bool bHasGSM;
-  int16_t GSMSignalQuality;
+  gsmStatus gsm;
   uint8_t displayStat; //stat of display
   bool bHasGPS;
   uint8_t updateState; //state of update

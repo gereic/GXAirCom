@@ -70,7 +70,7 @@ void onWebSocketEvent(uint8_t client_num,
           doc["power"] = setting.LoraPower;
           doc["mode"] = setting.Mode;
           doc["type"] = (uint8_t)setting.AircraftType;
-          doc["bHasGSM"] = (uint8_t)status.bHasGSM;
+          doc["bHasGSM"] = (uint8_t)status.gsm.bHasGSM;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
 
@@ -78,8 +78,9 @@ void onWebSocketEvent(uint8_t client_num,
           doc["wifiRssi"] = String(status.wifiRssi);
           doc["wifiStat"] = String(status.wifiStat);
         #ifdef GSM_MODULE
-          doc["GSMRssi"] = String(status.GSMSignalQuality);
-          doc["GSMStat"] = String(status.modemstatus);
+          doc["GSMRssi"] = status.gsm.SignalQuality;
+          doc["GSMStat"] = status.modemstatus;
+          doc["GSMMode"] = status.gsm.networkstat;
         #endif
           doc["climbrate"] = String(status.ClimbRate,1);
           doc["vTemp"] = String(status.varioTemp,1);
@@ -249,10 +250,11 @@ void onWebSocketEvent(uint8_t client_num,
           webSocket.sendTXT(client_num, msg_buf);
 
           doc.clear();
-          doc["bHasGSM"] = (uint8_t)status.bHasGSM;
+          doc["bHasGSM"] = (uint8_t)status.gsm.bHasGSM;
           doc["GSMAPN"] = setting.gsm.apn;
           doc["GSMUSER"] = setting.gsm.user;
           doc["GSMPWD"] = setting.gsm.pwd;
+          doc["GSMMODE"] = setting.gsm.NetworkMode;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
 
@@ -424,6 +426,7 @@ void onWebSocketEvent(uint8_t client_num,
         if (root.containsKey("GSMAPN")) newSetting.gsm.apn = doc["GSMAPN"].as<String>();
         if (root.containsKey("GSMUSER")) newSetting.gsm.user = doc["GSMUSER"].as<String>();
         if (root.containsKey("GSMPWD")) newSetting.gsm.pwd = doc["GSMPWD"].as<String>();
+        if (root.containsKey("GSMMODE")) newSetting.gsm.NetworkMode = doc["GSMMODE"].as<uint8_t>();
         //fuel-sensor
         if (root.containsKey("fuelSensor")) newSetting.bHasFuelSensor = doc["fuelSensor"].as<uint8_t>();
 
@@ -1014,15 +1017,20 @@ void Web_loop(void){
       doc["wifiStat"] = String(status.wifiStat);
     }    
     #ifdef GSM_MODULE
-    if (mStatus.GSMSignalQuality != status.GSMSignalQuality){
+    if (mStatus.gsm.SignalQuality != status.gsm.SignalQuality){
       bSend = true;
-      mStatus.GSMSignalQuality = status.GSMSignalQuality;
-      doc["GSMRssi"] = String(status.GSMSignalQuality);
+      mStatus.gsm.SignalQuality = status.gsm.SignalQuality;
+      doc["GSMRssi"] = status.gsm.SignalQuality;
     }    
+    if (mStatus.gsm.networkstat != status.gsm.networkstat){
+      bSend = true;
+      mStatus.gsm.networkstat = status.gsm.networkstat;
+      doc["GSMMode"] = status.gsm.networkstat;
+    }        
     if (mStatus.modemstatus != status.modemstatus){
       bSend = true;
       mStatus.modemstatus = status.modemstatus;
-      doc["GSMStat"] = String(status.modemstatus);
+      doc["GSMStat"] = status.modemstatus;
     }    
     #endif
     if (bSend){

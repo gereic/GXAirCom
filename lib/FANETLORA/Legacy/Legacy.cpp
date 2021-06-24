@@ -173,7 +173,6 @@ int8_t legacy_decode(void *legacy_pkt, ufo_t *this_aircraft, ufo_t *fop) {
   uint8_t pkt_parity=0;
 
   
-  //log_i("unk0=%02X,unk1=%02X",pkt->_unk0,pkt->_unk1);
   if (pkt->addr == 0){
     //log_e("addr = 0");
     return -8;    
@@ -198,6 +197,7 @@ int8_t legacy_decode(void *legacy_pkt, ufo_t *this_aircraft, ufo_t *fop) {
     //log_e("unknown message unk3=%02X",pkt->_unk0);
     return -13;
   }
+  //log_i("%d unk0=%02X,unk1=%02X,unk2=%02X,unk3=%02X,onground=%02X,AirBorne=%d",millis(),pkt->_unk0,pkt->_unk1,pkt->_unk2,pkt->_unk3,pkt->onGround,pkt->airborne);
 
   for (ndx = 0; ndx < sizeof (legacy_packet_t); ndx++) {
     pkt_parity += parity(*(((unsigned char *) pkt) + ndx));
@@ -232,6 +232,7 @@ int8_t legacy_decode(void *legacy_pkt, ufo_t *this_aircraft, ufo_t *fop) {
                                     450.0 - direction);
   }
 
+  //log_i("vs=%d,mult=%d",pkt->vs,pkt->smult);
   uint16_t vs_u16 = pkt->vs;
   int16_t vs_i16 = (int16_t) (vs_u16 | (vs_u16 & (1<<9) ? 0xFC00U : 0));
   int16_t vs10 = vs_i16 << pkt->smult;
@@ -319,6 +320,7 @@ pkt->addr_type = ADDR_TYPE_ANONYMOUS;
     pkt->parity = 0;
 
     pkt->onGround = this_aircraft->onGround;
+    //pkt->onGround = false;
     pkt->stealth = this_aircraft->stealth;
     pkt->no_track = this_aircraft->no_track;
 
@@ -442,10 +444,15 @@ void createLegacyPkt(FanetLora::trackingData *Data,float geoidAlt,bool onGround,
     air.longitude=Data->lon;
     air.vs=Data->climb;
     //air.vs=-12.3;
-    air.speed= Data->speed;
     //air.speed = 37.5;
     //legacyLogAircraft(&air);
     air.onGround = onGround;
+    if (air.onGround){
+      air.speed = 0.0;
+    }else{
+      air.speed= Data->speed;
+    }
+    //log_i("%d onGround=%d",millis(),air.onGround);
     legacy_encode(buffer,&air);
 
 }

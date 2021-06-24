@@ -188,6 +188,44 @@ function setCalibState(StateId,state){
   }
 }
 
+function getRfMode(){
+  var Ret = 0;
+  if (document.getElementById("FntRx").checked) Ret += 1;
+  if (document.getElementById("FntTx").checked) Ret += 2;
+  if (document.getElementById("LegRx").checked) Ret += 4;
+  if (document.getElementById("LegTx").checked) Ret += 8;
+  return Ret;
+}
+
+function setRfMode(mode){
+  //document.getElementById("FntRx");
+  console.log("RF-Mode=" + mode);
+  e = document.getElementById("FntRx");
+  if (mode & 1){
+    e.checked = true;
+  }else{
+    e.checked = false;
+  }
+  e = document.getElementById("FntTx");
+  if (mode & 2){
+    e.checked = true;
+  }else{
+    e.checked = false;
+  }
+  e = document.getElementById("LegRx");
+  if (mode & 4){
+    e.checked = true;
+  }else{
+    e.checked = false;
+  }
+  e = document.getElementById("LegTx");
+  if (mode & 8){
+    e.checked = true;
+  }else{
+    e.checked = false;
+  }
+}
+
 function setBtnCalib(BtnId,state){
   e = document.getElementById(BtnId);
   switch(state){
@@ -358,7 +396,8 @@ function sendValues(){
   ognlive : Number(document.getElementById("ognlive").checked),
   traccar_live : Number(document.getElementById("traccar_live").checked),
   traccarsrv : document.getElementById("traccarsrv").value,
-  RFM : Number(document.getElementById("RFM").value),
+  //RFM : Number(document.getElementById("RFM").value),
+  RFM : getRfMode(),
   sigmaP : parseFloat(document.getElementById("sigmaP").value),
   sigmaA : parseFloat(document.getElementById("sigmaA").value),
   vSinkTh : parseFloat(document.getElementById("vSinkTh").value),
@@ -418,6 +457,7 @@ function sendValues(){
   GSMAPN : document.getElementById("GSMAPN").value,  
   GSMUSER : document.getElementById("GSMUSER").value,  
   GSMPWD : document.getElementById("GSMPWD").value,    
+  GSMMODE : document.getElementById("GSMMODE").value,    
   save : 2
 	};
   doSend(JSON.stringify(obj));
@@ -459,6 +499,9 @@ function onMessage(evt) {
         }else if (key == "calibGyro"){
           setBtnCalib("btnCalibGyro",myObj[key]);
           continue;          
+        }else if (key == "RFM"){
+          setRfMode(myObj[key]);
+          continue;
         }else if (key == "calibAcc"){
           calibBtnState = myObj[key];
           setBtnCalib("btnCalibAcc",myObj[key]);
@@ -549,22 +592,6 @@ window.addEventListener("load", init, false);
             </select></td>
           </tr>
           <tr>
-            <th>Radio Frequency</th>
-            <td><select id="band">
-              <option value="0">868mhz</option>
-              <option value="1">915mhz</option>
-            </select></td>
-          </tr>
-          <tr>
-            <th>output-power</th>
-            <td><select id="power">
-              <option value="5">LOW</option>
-              <option value="10">MID</option>
-              <option value="14">HIGH</option>
-              <!--<option value="17">MAX</option>-->
-            </select></td>
-          </tr>
-          <tr>
             <th>operating-mode</th>
             <td><select onchange="setVis()" id="mode">
               <option value="0">AIR-Module</option>
@@ -596,19 +623,55 @@ window.addEventListener("load", init, false);
               <option value="7">UAV</option>
             </select></td>
           </tr>	
-          <tr>
-            <th>RF-Mode<br>Note: for Legacy TX, GPS is needed<br>because PPS-Signal from GPS is<br>essential for transmit<br></th>
-            <td><select id="RFM">
-              <option value="0">FANET(RX/TX)</option>
-              <option value="1">FANET(RX/TX),LEGACY(TX)</option>
-              <option value="7">FANET(RX/TX),LEGACY(RX)</option>
-              <option value="2">FANET(RX/TX),LEGACY(RX/TX)</option>
-              <option value="3">FANET(TX),LEGACY(RX/TX)</option>
-              <option value="4">FANET(TX),LEGACY(RX)</option>
-              <option value="5">LEGACY(RX/TX)</option>
-              <option value="6">LEGACY(RX)</option>
-            </select></td>
+          <tr id="VisExtPowerSw">
+            <th>external power swtich (pin36) only for kobo</th>
+            <td><input type="checkbox" id="expwsw"></td>
+          </tr>
+          <tr id="VisFuelSensor">
+            <th>Fuel-sensor available</th>
+            <td><input type="checkbox" id="fuelSensor" ></td>
           </tr>	
+        </tbody>      
+      </table>
+    </fieldset>
+    <p></p>
+    <p></p>
+    <fieldset>
+      <legend><b>RF-Module settings</b></legend>
+      <table style="width:100&#37;">
+        <tbody>
+          <tr>
+            <th>Radio Frequency</th>
+            <td><select id="band">
+              <option value="0">868mhz</option>
+              <option value="1">915mhz</option>
+            </select></td>
+          </tr>
+          <tr>
+            <th>output-power</th>
+            <td><select id="power">
+              <option value="5">LOW</option>
+              <option value="10">MID</option>
+              <option value="14">HIGH</option>
+              <!--<option value="17">MAX</option>-->
+            </select></td>
+          </tr>
+          <tr>
+            <th>FANET RX (receiving Fanet-MSG)</th>
+            <td><input type="checkbox" id="FntRx"></td>
+          </tr>
+          <tr>
+            <th>FANET TX (sending Fanet-MSG)</th>
+            <td><input type="checkbox" id="FntTx"></td>
+          </tr>
+          <tr>
+            <th>Legacy RX (receiving Legacy-MSG)</th>
+            <td><input type="checkbox" id="LegRx"></td>
+          </tr>
+          <tr>
+            <th>Legacy TX (sending Legacy-MSG)</th>
+            <td><input type="checkbox" id="LegTx"></td>
+          </tr>
           <tr id="VisFanetTracking">
             <th>fanet-tracking-mode</th>
             <td><select id="fntMode">
@@ -620,14 +683,6 @@ window.addEventListener("load", init, false);
             <th>fanet Pin for fanet-commands</th>
             <td><input type="number" id="fntPin" min="0000" max="9999" step="1"></td>
           </tr>
-          <tr id="VisExtPowerSw">
-            <th>external power swtich (pin36) only for kobo</th>
-            <td><input type="checkbox" id="expwsw"></td>
-          </tr>
-          <tr id="VisFuelSensor">
-            <th>Fuel-sensor available</th>
-            <td><input type="checkbox" id="fuelSensor" ></td>
-          </tr>	
         </tbody>      
       </table>
     </fieldset>
@@ -1003,6 +1058,15 @@ window.addEventListener("load", init, false);
           <tr>
             <th>PWD</th>
             <td><input type="text" id="GSMPWD"></td>
+          </tr>
+          <tr>
+            <th>Network-Mode</th>
+            <td><select id="GSMMODE">
+              <option value="2">automatic</option>
+              <option value="13">GSM only</option>
+              <option value="38">LTE only</option>
+              <option value="51">GSM and LTE only</option>
+            </select></td>
           </tr>
         </tbody>      
       </table>

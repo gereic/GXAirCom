@@ -249,6 +249,7 @@ public:
   void setPilotname(String name);
   void setAircraftType(aircraft_t type);
   void setMyTrackingData(trackingData *tData,float geoidAlt,uint32_t ppsMillis);
+  void setGPS(bool bHasGps);
   void writeMsgType1(trackingData *tData);
   void writeMsgType2(String name);
   void writeMsgType3(uint32_t devId,String msg);
@@ -275,6 +276,7 @@ public:
   uint8_t weathercount;
   trackingData _myData;
   bool autobroadcast = false; //autobroadcast
+  bool autoSendName = false; //send Fanet-name
   bool doOnlineTracking = true; //online-tracking
   bool onGround = false;
   status_t state = hiking;

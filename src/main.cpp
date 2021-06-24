@@ -30,9 +30,14 @@
 #include "gxUpdater.h"
 #include <AceButton.h>
 #include "../lib/FANETLORA/Legacy/Legacy.h"
+//#include <esp_task_wdt.h>
 
 
 //#define TEST
+
+#define TINY_GSM_RX_BUFFER 1024
+
+#define WDT_TIMEOUT 15
 
 #ifdef GSM_MODULE
 
@@ -590,12 +595,19 @@ void drawWifiStat(int wifiStat)
 void setAllTime(tm &timeinfo){
   tmElements_t tm;          // a cache of time elements
   //fill time-structure
-  tm.Year = timeinfo.tm_year+1900 - 1970;
+  
+  //tm.Year = timeinfo.tm_year+1900 - 1970;
+  //if( timeinfo.tm_year > 99){
+  tm.Year = uint8_t(timeinfo.tm_year + 1900 - 1970);
+  //}else{
+  //  tm.Year = timeinfo.tm_year + 30;    
+  //}      
   tm.Month = timeinfo.tm_mon+1;
   tm.Day = timeinfo.tm_mday;
   tm.Hour = timeinfo.tm_hour;
   tm.Minute = timeinfo.tm_min;
   tm.Second = timeinfo.tm_sec;
+  //log_i("y1=%d,y=%d,m=%d,d=%d,h=%d,m=%d,s=%d",timeinfo.tm_year,tm.Year,tm.Month,tm.Day,tm.Hour,tm.Minute,tm.Second);
   time_t t =  makeTime(tm);  
   setTime(t); //set time of timelib
   timeval epoch = {(int32_t)t, 0};
@@ -1637,6 +1649,9 @@ void setup() {
   
   // put your setup code here, to run once:  
   //Serial.begin(57600);
+  //esp_task_wdt_init(WDT_TIMEOUT, true); //enable panic so ESP32 restarts
+  //esp_task_wdt_add(NULL); //add current thread to WDT watch
+
   Serial.begin(115200);
 
   status.bPowerOff = false;
@@ -1646,8 +1661,10 @@ void setup() {
   status.bTimeOk = false;
   status.modemstatus = MODEM_DISCONNECTED;
   command.ConfigGPS = 0;
-  status.bHasGPS = true; //we have our own GPS-Module
+  status.bHasGPS = false;
+  fanet.setGPS(false);
   status.tRestart = 0;
+
 
   //log_e("error");
 
@@ -1715,9 +1732,9 @@ void setup() {
     log_i("only Air-Mode compiled");
     setting.Mode = MODE_AIR_MODULE;
   #endif
-  status.bHasGSM = false;
+  status.gsm.bHasGSM = false;
   #ifdef GSM_MODULE
-    status.bHasGSM = true;
+    status.gsm.bHasGSM = true;
   #endif
 
   //esp_wifi_stop();
@@ -2133,17 +2150,19 @@ bool initModem(){
   if (!modem.restart()) return false;
   #ifdef TINY_GSM_MODEM_SIM7000
     modem.disableGPS();
-    //log_i("set NetworkMode to LTE");
-    //modem.setNetworkMode(38); //set mode to LTE
+    log_i("set NetworkMode to %d",setting.gsm.NetworkMode);
+   modem.setNetworkMode(setting.gsm.NetworkMode); //set mode
     //log_i("set preferredMode to CAT-M and NB-IoT");
-    //modem.setPreferredMode(3); //set to CAT-M and NB-IoT
+    //log_i("set NB-IOT");
+    //modem.setPreferredMode(2); //set to NB-IoT
   #endif
   modem.sleepEnable(false); //set sleepmode off
   log_i("Waiting for network...");
-  if (!modem.waitForNetwork(120000L)) return false;
+  if (!modem.waitForNetwork(600000L)) return false;
   log_i("signal quality %d",modem.getSignalQuality());
   if (!connectGPRS()) return false;
-  log_i("connected successfully");
+  status.myIP = modem.getLocalIP();
+  log_i("connected successfully IP:%s",status.myIP.c_str());
   return true;
 }
 
@@ -2187,16 +2206,13 @@ void taskGsm(void *pvParameters){
     if (modem.isGprsConnected()){
       status.modemstatus = MODEM_CONNECTED;
       xLastWakeTime = xTaskGetTickCount (); //get actual tick-count
-      status.GSMSignalQuality = modem.getSignalQuality();
-      /*
-      modem.sendAT(GF("+CNSMOD?"));      
-      String res;
-      if (modem.waitResponse(GF("+CNSMOD:")) == 1){
-        modem.streamSkipUntil(',');  // Skip context id
-        String res = modem.stream.readStringUntil('\r');
-        log_i("network system mode %s",res.c_str());
+      status.gsm.SignalQuality = modem.getSignalQuality();
+      bool bAutoreport;
+      if (modem.getNetworkSystemMode(bAutoreport,status.gsm.networkstat)){        
+        //log_i("network system mode %d",status.gsm.networkstat);
+      }else{
+        log_e("can't get Networksystemmode");
       }
-      */
     }else{
       status.modemstatus = MODEM_CONNECTING;
       if (modem.isNetworkConnected()){  
@@ -2565,15 +2581,17 @@ void taskBaro(void *pvParameters){
         bInitCalib = true;
       }
       if (command.CalibAcc == 11){
-        if (baro.calibrate(bInitCalib)){
-          status.calibAccStat = 0;
-          command.CalibAcc = 2; //calibrating finished --> reboot
-          delay(2000);
-          esp_restart();
-          
+        if (baro.calibrate(bInitCalib,status.calibAccStat)){
+          bInitCalib = false;
+          if (status.calibAccStat == 6){
+            status.calibAccStat = 0;
+            command.CalibAcc = 2; //calibrating finished --> reboot
+            delay(2000);
+            esp_restart();
+          }else{
+            status.calibAccStat++;
+          }          
         }
-        bInitCalib = false;
-        status.calibAccStat++;
         command.CalibAcc = 10;
       }
         /*
@@ -2631,8 +2649,9 @@ void taskBaro(void *pvParameters){
 #endif
 
 void loop() {
-  // put your main code here, to run repeatedly:
-  //delay(1000); //wait 1second
+  //log_i("Resetting WDT...");
+  //esp_task_wdt_reset();  
+  //delay(10000);
 }
 
 void taskMemory(void *pvParameters) {
@@ -2819,8 +2838,8 @@ void printWeather(uint32_t tAct){
     drawWifiStat(status.wifiStat);
     drawBluetoothstat(101,0);
     drawBatt(111, 0,(status.BattCharging) ? 255 : status.BattPerc);
-    if (status.bHasGSM){
-      drawSignal(60,0,status.GSMSignalQuality);
+    if (status.gsm.bHasGSM){
+      drawSignal(60,0,status.gsm.SignalQuality);
     }    
     display.setTextSize(3); //set Textsize
     display.setCursor(0,21);
@@ -3435,7 +3454,7 @@ void readGPS(){
   static uint16_t recBufferIndex = 0;
   static uint32_t tGpsOk = millis();
   
-  if (sNmeaIn.length() > 0){
+  if (sNmeaIn.length() > 0){ //String received by Bluetooth
     if (!status.bHasGPS){
       char * cstr = new char [sNmeaIn.length()+1];
       strcpy (cstr, sNmeaIn.c_str());
@@ -3464,29 +3483,42 @@ void readGPS(){
       sNmeaIn = ""; //we have a gps --> don't take data from external GPS
     }
   }
-  while(NMeaSerial.available()){
-    if (recBufferIndex >= 255) recBufferIndex = 0; //Buffer overrun
-    lineBuffer[recBufferIndex] = NMeaSerial.read();
-    //log_i("GPS %c",lineBuffer[recBufferIndex]);
-    nmea.process(lineBuffer[recBufferIndex]);
-    if (lineBuffer[recBufferIndex] == '\n'){
-      lineBuffer[recBufferIndex] = '\r';
-      recBufferIndex++;
-      lineBuffer[recBufferIndex] = '\n';
-      recBufferIndex++;
-      lineBuffer[recBufferIndex] = 0; //zero-termination
-      if (setting.outputGPS) sendData2Client(lineBuffer,recBufferIndex);
-      recBufferIndex = 0;
-      tGpsOk = millis();
-      status.bHasGPS = true;
-    }else{
-      if (lineBuffer[recBufferIndex] != '\r'){
+  if (setting.Mode == MODE_AIR_MODULE){
+    //in Ground-Station-Mode you have to setup GPS-Position manually
+    while(NMeaSerial.available()){
+      if (recBufferIndex >= 255) recBufferIndex = 0; //Buffer overrun
+      lineBuffer[recBufferIndex] = NMeaSerial.read();
+      //log_i("GPS %c",lineBuffer[recBufferIndex]);
+      nmea.process(lineBuffer[recBufferIndex]);
+      if (lineBuffer[recBufferIndex] == '\n'){
+        lineBuffer[recBufferIndex] = '\r';
         recBufferIndex++;
+        lineBuffer[recBufferIndex] = '\n';
+        recBufferIndex++;
+        lineBuffer[recBufferIndex] = 0; //zero-termination
+        if (setting.outputGPS) sendData2Client(lineBuffer,recBufferIndex);
+        recBufferIndex = 0;
+        tGpsOk = millis();
+        if (!status.bHasGPS){
+          fanet.setGPS(true);
+          status.bHasGPS = true;
+          log_i("GPS detected --> enable GPS");
+        }
+        
+      }else{
+        if (lineBuffer[recBufferIndex] != '\r'){
+          recBufferIndex++;
+        }
       }
     }  
   }
   if (timeOver(millis(),tGpsOk,10000)){
-    status.bHasGPS = false;
+    if (status.bHasGPS) {
+      fanet.setGPS(false);
+      status.bHasGPS = false;
+      //no GPS for more then 10seconds --> set GPS to false
+      log_i("no GPS detected");
+    }
   }
 }
 #endif
@@ -3763,11 +3795,12 @@ void taskStandard(void *pvParameters){
   fanet.begin(PinLora_SCK, PinLora_MISO, PinLora_MOSI, PinLora_SS,PinLoraRst, PinLoraDI0,frequency,setting.LoraPower,radioChip);
   fanet.setPilotname(setting.PilotName);
   fanet.setAircraftType(setting.AircraftType);
-  //if (setting.Mode == MODE_GROUND_STATION){
-  //  fanet.autobroadcast = false;
-  //}else{
+  fanet.autoSendName = true;
+  if (setting.Mode == MODE_GROUND_STATION){
+    fanet.autobroadcast = false;
+  }else{
     fanet.autobroadcast = true;
-  //}
+  }
   //if (setting.Mode != MODE_DEVELOPER){ //
     
   //}else{
@@ -3927,11 +3960,11 @@ void taskStandard(void *pvParameters){
       delete cstr; //delete allocated String
     }
 
-    #ifdef AIRMODULE
-    if (setting.Mode == MODE_AIR_MODULE){
-      readGPS();
-    }
-    #endif    
+    //#ifdef AIRMODULE
+    //if (setting.Mode == MODE_AIR_MODULE){
+    readGPS();
+    //}
+    //#endif    
     sendFlarmData(tAct);
     #ifdef OLED
     if (status.displayType == OLED0_96){
@@ -4225,6 +4258,28 @@ void taskStandard(void *pvParameters){
         status.GPS_geoidAlt = 0.0;
         status.GPS_course = 0.0;
         status.GPS_NumSat = 0;
+      }
+    }else{
+      if (!status.bHasGPS){
+        if ((tAct - tOldPPS) >= 1000){
+          ppsMillis = millis();
+          ppsTriggered = true;
+          
+        }
+      }
+      if (ppsTriggered){
+        ppsTriggered = false;
+        tOldPPS = tAct;
+        MyFanetData.climb = status.ClimbRate;
+        MyFanetData.lat = status.GPS_Lat;
+        MyFanetData.lon = status.GPS_Lon;
+        MyFanetData.altitude = status.GPS_alt;
+        MyFanetData.speed = 0; //speed in cm/s --> we need km/h
+        MyFanetData.addressType = ADDRESSTYPE_OGN;
+        MyFanetData.heading = 0;
+        MyFanetData.aircraftType = fanet.getAircraftType();        
+        fanet.setMyTrackingData(&MyFanetData,status.GPS_geoidAlt,ppsMillis); //set Data on fanet
+
       }
     }
     #endif
@@ -4565,7 +4620,7 @@ void taskBackGround(void *pvParameters){
         adjustTime(0);
         struct tm timeinfo;
         if(getLocalTime(&timeinfo)){
-          //log_i("h=%d,min=%d,sec=%d,day=%d,month=%d,year=%d",timeinfo.tm_hour,timeinfo.tm_min, timeinfo.tm_sec, timeinfo.tm_mday,timeinfo.tm_mon+1, timeinfo.tm_year + 1900);
+          log_i("h=%d,min=%d,sec=%d,day=%d,month=%d,year=%d",timeinfo.tm_hour,timeinfo.tm_min, timeinfo.tm_sec, timeinfo.tm_mday,timeinfo.tm_mon+1, timeinfo.tm_year + 1900);
           setAllTime(timeinfo);
           struct tm now;
           getLocalTime(&now,0);
@@ -4599,7 +4654,7 @@ void taskBackGround(void *pvParameters){
           xSemaphoreTake( xGsmMutex, portMAX_DELAY );
           bool bret = modem.getNetworkTime(&year3, &month3, &day3, &hour3, &min3, &sec3,&timezone);
           xSemaphoreGive( xGsmMutex );
-          log_i("h=%d,min=%d,sec=%d,day=%d,month=%d,year=%d,ret=%d",hour3,min3, sec3, day3,month3, year3,bret);
+          //log_i("h=%d,min=%d,sec=%d,day=%d,month=%d,year=%d,ret=%d",hour3,min3, sec3, day3,month3, year3,bret);
           if (bret){
             //log_i("set time");
             adjustTime(0);

@@ -38,6 +38,7 @@ private:
   String _version;
   bool getVersion(tVersion *v,String s);
   bool doUpdate(bool spiffs);
+  String getHeaderValue(String header, String headerName);
 };
 
 #endif

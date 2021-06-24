@@ -566,8 +566,8 @@ int16_t SX126x::startReceive(uint32_t timeout) {
   int16_t state = startReceiveCommon();
   RADIOLIB_ASSERT(state);
 
-  uint8_t rxGain = 0x96; //Rx Boosted gain
-  SPIwriteCommand(SX126X_REG_RX_GAIN, &rxGain, 1, false);
+  //uint8_t rxGain = 0x96; //Rx Boosted gain
+  //SPIwriteCommand(SX126X_REG_RX_GAIN, &rxGain, 1, false);
 
   // set RF switch (if present)
   _mod->setRfSwitchState(HIGH, LOW);

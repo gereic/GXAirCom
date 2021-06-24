@@ -44,7 +44,7 @@ void load_configFile(SettingsData* pSetting){
   pSetting->OGNLiveTracking = preferences.getUChar("OGN_LIVE",0);
   pSetting->screenNumber = preferences.getUChar("SCREEN",0);
   pSetting->displayType = preferences.getUChar("Display",0);
-  pSetting->RFMode = preferences.getUChar("RFM",1);
+  pSetting->RFMode = preferences.getUChar("RFM",11); //default FntRx + FntTx + LegTx
   pSetting->traccarLiveTracking = preferences.getUChar("TRACCAR_LIVE",0);
   pSetting->TraccarSrv = preferences.getString("TRACCAR_SRV","");
   
@@ -84,6 +84,7 @@ void load_configFile(SettingsData* pSetting){
   pSetting->gsm.apn = preferences.getString("GSMAPN","");
   pSetting->gsm.user = preferences.getString("GSMUSER","");
   pSetting->gsm.pwd = preferences.getString("GSMKEY","");
+  pSetting->gsm.NetworkMode = preferences.getUChar("GSMMODE",2);
 
   //fuel-sensor
   pSetting->bHasFuelSensor = preferences.getUChar("fuelSensor",0);
@@ -185,6 +186,7 @@ void write_configFile(SettingsData* pSetting){
   preferences.putString("GSMAPN",pSetting->gsm.apn);
   preferences.putString("GSMUSER",pSetting->gsm.user);
   preferences.putString("GSMKEY",pSetting->gsm.pwd);
+  preferences.putUChar("GSMMODE",pSetting->gsm.NetworkMode);
 
   //fuel-sensor
   preferences.putUChar("fuelSensor",pSetting->bHasFuelSensor);
