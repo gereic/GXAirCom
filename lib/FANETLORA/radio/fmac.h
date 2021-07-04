@@ -19,7 +19,8 @@
 /* Debug */
 #define MAC_debug_mode				0
 //#define MAC_debug_mode				100
-#define RX_DEBUG 0
+#define RX_DEBUG 1
+#define TX_DEBUG 0
 
 
 //define the pins used by the LoRa transceiver module
@@ -262,7 +263,7 @@ public:
 
 	bool begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset, int dio0,Fapp &app,long frequency,uint8_t level,uint8_t radioChip);
 	void end();
-	void handle() { myTimer.Update(); }
+	void handle() { radio.run(); myTimer.Update();  }
 
 	bool txQueueDepleted(void) { return (tx_fifo.size() == 0); }
 	bool txQueueHasFreeSlots(void){ return (tx_fifo.size() < MAC_FIFO_SIZE); }

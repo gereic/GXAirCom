@@ -314,6 +314,9 @@ int16_t FanetLora::getneighbourIndex(uint32_t devId,bool getEmptyEntry){
     memset(&neighbours[iRet],0,sizeof(neighbours[iRet])); //clear slot
     return iRet; //we give back an empty slot
   }else{
+    if (iOldestEntry >= 0){
+      memset(&neighbours[iOldestEntry],0,sizeof(neighbours[iOldestEntry])); //clear slot
+    }    
     return iOldestEntry; //we tell the oldest entry to override !! (only if we to much traffic)
   }
 }
@@ -352,10 +355,14 @@ void FanetLora::insertDataToNeighbour(uint32_t devId, trackingData *Data){
   if (index < 0) return;
   neighbours[index].devId = devId;
   neighbours[index].tLastMsg = millis();
-  neighbours[index].aircraftType = Data->aircraftType;
+  if (Data->aircraftType != 0){
+    neighbours[index].aircraftType = Data->aircraftType;
+  }  
   neighbours[index].lat = Data->lat;
   neighbours[index].lon = Data->lon;
-  neighbours[index].altitude = Data->altitude;
+  if (Data->altitude != 0){
+    neighbours[index].altitude = Data->altitude;
+  }
   neighbours[index].speed = Data->speed;
   neighbours[index].climb = Data->climb;
   neighbours[index].heading = Data->heading;
@@ -439,7 +446,7 @@ bool FanetLora::isNewMsg(){
 
 void FanetLora::run(void){    
   uint32_t tAct = millis();
-  clearNeighboursWeather(millis());
+  clearNeighboursWeather(tAct);
   if (autoSendName){
     sendPilotName(tAct);
   }

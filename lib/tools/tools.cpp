@@ -31,7 +31,7 @@ int32_t getStringValue(String s,String begin,String end,int32_t fromIndex,String
     int pos = s.indexOf(begin,fromIndex);
     if (pos < 0) return -1;
     pos += begin.length();
-    int pos2 = s.indexOf(end);
+    int pos2 = s.indexOf(end,pos);
     if (pos2 < 0) return -1;
     *sRet = s.substring(pos,pos2);
     return pos2;

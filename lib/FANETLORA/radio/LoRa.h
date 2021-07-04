@@ -48,6 +48,7 @@ public:
 
 private:
 	float expectedAirTime_ms(int pktLen);
+  void printReg(uint8_t reg);
   float rssiValue = 0.0;
   void invertba(byte* ba, int len);
   Module *pModule = NULL;
@@ -64,6 +65,8 @@ private:
   bool _fskMode;
 	float sx_airtime = 0.0f;
   uint8_t rxCount = 0;
+  bool bCalibrated = false;
+  uint8_t prevIrqFlags;
 
 
 };

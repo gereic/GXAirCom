@@ -25,22 +25,39 @@ void IRAM_ATTR setFlag(void)
 void LoRaClass::run(){
   static uint32_t tLast = millis();
   uint32_t tAct = millis();
-  if ((tAct - tLast) >= 300000){ //every 5min.
+  if ((radioType == RADIO_SX1276) && (_fskMode)){
+    uint8_t irqFlags = pModule->SPIgetRegValue(SX127X_REG_IRQ_FLAGS_1);
+    irqFlags &= SX127X_FLAG_SYNC_ADDRESS_MATCH;
+    if (prevIrqFlags != irqFlags){
+      prevIrqFlags = irqFlags;
+      if (irqFlags){
+        uint8_t regValue = pModule->SPIreadRegister(SX127X_REG_RSSI_VALUE_FSK);
+        rssiValue = pSx1276Radio->getRSSI();
+        //log_i("rssiValue=%.02f %d",rssiValue,regValue);
+      }
+    }
+  }
+  if ((tAct - tLast) >= 100){ //check every 100ms
     tLast = tAct;
     switch (radioType){
       case RADIO_SX1262:
         break;
       case RADIO_SX1276:
         if (_fskMode){
-          uint8_t ret = pModule->SPIgetRegValue(SX127X_REG_IMAGE_CAL);
-          if (ret != 0) log_i("REG_IMAGE_CAL=%d",ret);
-          if (ret & 0x08){
-            log_i("start calib image");
-            pSx1276Radio->setActiveModem(SX127X_FSK_OOK);
-            //calib image
-            pModule->SPIsetRegValue(SX127X_REG_IMAGE_CAL, 0x40);
-            while ( pModule->SPIgetRegValue(SX127X_REG_IMAGE_CAL) & 0x20 );      
-            startReceive(); //start receive again !!
+          if (bCalibrated){
+            uint8_t ret = pModule->SPIgetRegValue(SX127X_REG_IMAGE_CAL);
+            if (ret != 0) log_i("REG_IMAGE_CAL=%d",ret);
+            if (ret & 0x08){
+              bCalibrated = false; //we calibrate the image on next start receive
+              /*
+              log_i("start calib image");
+              pSx1276Radio->setActiveModem(SX127X_FSK_OOK);
+              //calib image
+              pModule->SPIsetRegValue(SX127X_REG_IMAGE_CAL, 0x40);
+              while ( pModule->SPIgetRegValue(SX127X_REG_IMAGE_CAL) & 0x20 );      
+              startReceive(); //start receive again !!
+              */
+            }
           }
         }
         break;
@@ -67,6 +84,13 @@ bool LoRaClass::isRxMessage(){
 	  #if RX_DEBUG > 10
     log_i("new message arrived %d",rxCount);
     #endif
+    /*
+    if ((_fskMode) && (radioType == RADIO_SX1276)){
+      uint8_t regValue = pModule->SPIreadRegister(SX127X_REG_RSSI_VALUE_FSK);
+      rssiValue = pSx1276Radio->getRSSI();
+      log_i("rssiValue=%.02f %d",rssiValue,regValue);
+    } 
+    */    
     enableInterrupt = false;
     receivedFlag = false;
     return true;
@@ -93,6 +117,7 @@ void LoRaClass::setPins(SPIClass *_spi,uint8_t cs, uint8_t irq, uint8_t rst, uin
 int16_t LoRaClass::begin(float freq, float bw, uint8_t sf, uint8_t cr, uint8_t syncWord, int8_t power,uint8_t radioChip){
 	receivedFlag = false;
 	//enableInterrupt = false;
+  bCalibrated = false;
   radioType = radioChip;
   int state = 0;
   _freq = freq;
@@ -225,6 +250,11 @@ float LoRaClass::getSNR(){
     case RADIO_SX1276:
       return pSx1276Radio->getSNR();
   }
+}
+
+void LoRaClass::printReg(uint8_t reg){
+	uint8_t regVal = pModule->SPIreadRegister(reg);
+	Serial.printf("%02X:%02X\n",reg,regVal);
 }
 
 int16_t LoRaClass::setFrequency(float frequency){
@@ -451,10 +481,12 @@ int16_t LoRaClass::switchFSK(float frequency){
       //ret = pSx1276Radio->setEncoding(RADIOLIB_ENCODING_MANCHESTER);      
       ret = pSx1276Radio->setEncoding(RADIOLIB_ENCODING_NRZ);
       if (ret) log_e("setEncoding %d",ret);
-      ret = pSx1276Radio->setPreambleLength(8);
+      ret = pSx1276Radio->setPreambleLength(2);
       if (ret) log_e("setPreambleLength %d",ret);
       ret = pSx1276Radio->setDataShaping(RADIOLIB_SHAPING_0_5); //set gaussian filter to 0.5     
       if (ret) log_e("setDataShaping %d",ret);
+      ret = pSx1276Radio->setCurrentLimit(100);
+      if (ret) log_e("setCurrentLimit %d",ret);
       // set LNA gain
       pModule->SPIsetRegValue(SX127X_REG_LNA, 0x20 | 0x03); // max gain, boost enable
       // configure receiver
@@ -464,13 +496,30 @@ int16_t LoRaClass::switchFSK(float frequency){
       pModule->SPIsetRegValue(SX127X_REG_SYNC_CONFIG, 0x30 + sizeof(syncWord) - 1);
   
 
+      /*
       uint8_t ret = pModule->SPIgetRegValue(SX127X_REG_IMAGE_CAL);
       if (ret & 0x08){
         log_i("start calib image");
         //calib image
         pModule->SPIsetRegValue(SX127X_REG_IMAGE_CAL, 0x40);
         while ( pModule->SPIgetRegValue(SX127X_REG_IMAGE_CAL) & 0x20 );      
-      }        
+      } 
+      */       
+
+      /*
+      for (int i = 0x00;i <= 0x44;i++){
+        printReg(i);
+      }
+      printReg(0x4B);
+      printReg(0x4D);
+      printReg(0x5B);
+      printReg(0x5D);
+      printReg(0x61);
+      printReg(0x62);
+      printReg(0x63);
+      printReg(0x64);
+      printReg(0x70);
+      */
       //calib image
       //pModule->SPIsetRegValue(SX127X_REG_IMAGE_CAL, 0x40);
       //while ( pModule->SPIgetRegValue(SX127X_REG_IMAGE_CAL) & 0x20 );      
@@ -585,13 +634,22 @@ float LoRaClass::get_airlimit(void)
 int16_t LoRaClass::startReceive(){
   int16_t iRet = 0;
   //delay(5);
+  prevIrqFlags = 0;
   switch (radioType){
     case RADIO_SX1262:
       iRet = pSx1262Radio->startReceive();
       break;
     case RADIO_SX1276:
+      if ((!bCalibrated) && (_fskMode)){
+        log_i("start calib image");
+        pSx1276Radio->setActiveModem(SX127X_FSK_OOK);
+        //calib image
+        pModule->SPIsetRegValue(SX127X_REG_IMAGE_CAL, 0x40);
+        while ( pModule->SPIgetRegValue(SX127X_REG_IMAGE_CAL) & 0x20 );      
+        bCalibrated = true;
+      }
       iRet = pSx1276Radio->startReceive();
-      if (_fskMode) rssiValue = pSx1276Radio->getRSSI();
+      //if (_fskMode) rssiValue = pSx1276Radio->getRSSI();
       break;
   }
   receivedFlag = false;

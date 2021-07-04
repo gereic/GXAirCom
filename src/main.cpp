@@ -111,6 +111,10 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &i2cOLED);
 
 #define USE_BEEPER
 
+#ifdef SENDFLARMDIRECT
+  uint8_t flarmCount = 0;
+#endif
+
 char nmeaBuffer[100];
 MicroNMEA nmea(nmeaBuffer, sizeof(nmeaBuffer));
 
@@ -294,6 +298,8 @@ void taskEInk(void *pvParameters);
 #endif
 #ifdef GSM_MODULE
 void taskGsm(void *pvParameters);
+//void readSMS();
+//void sendStatus();
 #endif
 #ifdef OLED
 void startOLED();
@@ -723,9 +729,11 @@ void sendFlarmData(uint32_t tAct){
   if (timeOver(tAct,tSend,FLARM_UPDATE_RATE)){
     tSend = tAct;
     if (status.GPS_Fix){
+      #ifndef SENDFLARMDIRECT
       Fanet2FlarmData(&fanet._myData,&myFlarmData);
       for (int i = 0; i < MAXNEIGHBOURS; i++){
-        if (fanet.neighbours[i].devId){
+        //if ((fanet.neighbours[i].devId) && (fanet.neighbours[i].type == 0x11)){ //we have a ID an we are flying !!
+        if (fanet.neighbours[i].devId){ //we have a ID an we are flying !!
           tFanetData.aircraftType = fanet.neighbours[i].aircraftType;
           tFanetData.altitude = fanet.neighbours[i].altitude;
           tFanetData.climb = fanet.neighbours[i].climb;
@@ -741,11 +749,23 @@ void sendFlarmData(uint32_t tAct){
           countNeighbours++;    
         }
       }
-      flarm.GPSState = FLARM_GPS_FIX3d_AIR;
+      #endif
+
+      if (status.flying){
+        flarm.GPSState = FLARM_GPS_FIX3d_AIR;
+      }else{
+        flarm.GPSState = FLARM_GPS_FIX3d_GROUND;
+      }      
     }else{
       flarm.GPSState = FLARM_NO_GPS;
     }
-    flarm.neighbors = countNeighbours;
+    #ifdef SENDFLARMDIRECT
+      flarm.neighbors = flarmCount;
+      flarmCount = 0;
+    #else
+      flarm.neighbors = countNeighbours;
+    #endif
+    
     char sDataPort[MAXSTRING];
     int iLen = flarm.writeDataPort(&sDataPort[0],sizeof(sDataPort));
     sendData2Client(&sDataPort[0],iLen);
@@ -902,7 +922,7 @@ void printGSData(uint32_t tAct){
 
 
   //get next index
-  for (int i = 0;i <= MAXNEIGHBOURS;i++){
+  for (int i = 0;i < MAXNEIGHBOURS;i++){
     if (fanet.neighbours[index].devId) break;
     index ++;
     if (index >= MAXNEIGHBOURS) index = 0;
@@ -1666,6 +1686,21 @@ void setup() {
   status.tRestart = 0;
 
 
+  /*
+  String sTest = "+CMGL: 1,\"REC READ\",\"00436509946563\",,\"21/06/25,19:59:20+00\"";
+  String sRet = "";
+  String sNumber = "";
+  int32_t pos = getStringValue(sTest,String("+CMGL: "),String(",\""),0,&sRet);
+  if (pos >= 0){     
+    uint8_t index = atoi(sRet.c_str());
+    pos += 2;
+    log_i("pos=%d",pos);
+    pos = getStringValue(sTest,String("\",\""),String("\""),pos,&sNumber);
+    if (pos >= 0){
+      log_i("index=%d,number=%s",index,sNumber.c_str());
+    }      
+  }
+  */
   //log_e("error");
 
   /*
@@ -2129,9 +2164,8 @@ xOutputMutex = xSemaphoreCreateMutex();
 #ifdef GSM_MODULE
 
 bool connectGPRS(){
-  log_i("Connecting to internet");
+  log_i("Connecting to internet apn=%s,user=%s,pw=%s",setting.gsm.apn.c_str(),setting.gsm.user.c_str(),setting.gsm.pwd.c_str());
   return modem.gprsConnect(setting.gsm.apn.c_str(), setting.gsm.user.c_str(), setting.gsm.pwd.c_str());
-
 }
 
 
@@ -2157,9 +2191,20 @@ bool initModem(){
     //modem.setPreferredMode(2); //set to NB-IoT
   #endif
   modem.sleepEnable(false); //set sleepmode off
+  modem.sendAT(GF("+CMGF=1"));
+  modem.waitResponse();
   log_i("Waiting for network...");
   if (!modem.waitForNetwork(600000L)) return false;
-  log_i("signal quality %d",modem.getSignalQuality());
+  status.gsm.SignalQuality = modem.getSignalQuality();
+  //log_i("signal quality %d",status.gsm.SignalQuality);
+  status.gsm.sOperator = modem.getOperator();
+  //log_i("operator=%s",status.gsm.sOperator.c_str());
+  bool bAutoreport;
+  if (modem.getNetworkSystemMode(bAutoreport,status.gsm.networkstat)){        
+    //log_i("network system mode %d",status.gsm.networkstat);
+  }else{
+    log_e("can't get Networksystemmode");
+  }
   if (!connectGPRS()) return false;
   status.myIP = modem.getLocalIP();
   log_i("connected successfully IP:%s",status.myIP.c_str());
@@ -2198,34 +2243,53 @@ void taskGsm(void *pvParameters){
   #endif
   */
   GsmSerial.begin(115200,SERIAL_8N1,PinGsmRx,PinGsmTx,false); //baud, config, rx, tx, invert
-  const TickType_t xDelay = 60000 / portTICK_PERIOD_MS;   //only every 60sek.
-  TickType_t xLastWakeTime = xTaskGetTickCount (); //get actual tick-count
+  //const TickType_t xDelay = 60000 / portTICK_PERIOD_MS;   //only every 60sek.
+  //TickType_t xLastWakeTime = xTaskGetTickCount (); //get actual tick-count
   //bool status;
+  uint32_t tAct = millis();
+  static uint32_t tCheckConn = millis() - GSM_CHECK_TIME_CON; //check every 60sec.
+  static uint32_t tCheckSms = millis() - GSM_CHECK_TIME_SMS;
+  // Set preferred message format to text mode
+
   while(1){
-    xSemaphoreTake( xGsmMutex, portMAX_DELAY );
-    if (modem.isGprsConnected()){
-      status.modemstatus = MODEM_CONNECTED;
-      xLastWakeTime = xTaskGetTickCount (); //get actual tick-count
-      status.gsm.SignalQuality = modem.getSignalQuality();
-      bool bAutoreport;
-      if (modem.getNetworkSystemMode(bAutoreport,status.gsm.networkstat)){        
-        //log_i("network system mode %d",status.gsm.networkstat);
+    tAct = millis();
+    if (timeOver(tAct,tCheckConn,GSM_CHECK_TIME_CON)){
+      tCheckConn = tAct;
+      //log_i("%d Check GSM-Connection",tCheckConn);
+      xSemaphoreTake( xGsmMutex, portMAX_DELAY );
+      if (modem.isGprsConnected()){
+        status.modemstatus = MODEM_CONNECTED;
+        //xLastWakeTime = xTaskGetTickCount (); //get actual tick-count
+        tCheckConn = millis();
+        status.gsm.SignalQuality = modem.getSignalQuality();
+        bool bAutoreport;
+        if (modem.getNetworkSystemMode(bAutoreport,status.gsm.networkstat)){        
+          //log_i("network system mode %d",status.gsm.networkstat);
+        }else{
+          log_e("can't get Networksystemmode");
+        }
+        
       }else{
-        log_e("can't get Networksystemmode");
-      }
-    }else{
-      status.modemstatus = MODEM_CONNECTING;
-      if (modem.isNetworkConnected()){  
-        connectGPRS();
-      }else{
-        initModem(); //init modem
-      }
+        status.modemstatus = MODEM_CONNECTING;
+        if (modem.isNetworkConnected()){  
+          connectGPRS();
+        }else{
+          initModem(); //init modem
+        }
+      }          
+      xSemaphoreGive( xGsmMutex );
     }
-    xSemaphoreGive( xGsmMutex );
+    /*
+    if (timeOver(tAct,tCheckSms,GSM_CHECK_TIME_SMS)){
+      tCheckSms = tAct;
+      readSMS();
+    }
+    */
     //if ((WebUpdateRunning) || (bGsmOff)) break;
     if (bGsmOff) break; //we need GSM for webupdate
     //delay(1);
-    vTaskDelayUntil( &xLastWakeTime, xDelay); //wait until next cycle
+    delay(1000);
+    //vTaskDelayUntil( &xLastWakeTime, xDelay); //wait until next cycle
   }
   //modem.stop(15000L);
   status.modemstatus = MODEM_DISCONNECTED;
@@ -4172,6 +4236,16 @@ void taskStandard(void *pvParameters){
           ogn.sendGroundTrackingData(tFanetData.timestamp,tFanetData.lat,tFanetData.lon,fanet.getDevId(tFanetData.devId),tFanetData.type,tFanetData.addressType,(float)tFanetData.snr);
         } 
       }
+      #ifdef SENDFLARMDIRECT
+      FlarmtrackingData myFlarmData;
+      FlarmtrackingData PilotFlarmData;
+      Fanet2FlarmData(&fanet._myData,&myFlarmData);
+      Fanet2FlarmData(&tFanetData,&PilotFlarmData);
+      char sOut[MAXSTRING];
+      int pos = flarm.writeFlarmData(sOut,MAXSTRING,&myFlarmData,&PilotFlarmData);
+      sendData2Client(sOut,pos);
+      flarmCount++;
+      #endif
     }    
     flarm.run();
     if (setting.outputModeVario == OVARIO_LK8EX1) sendLK8EX(tAct);
@@ -4551,6 +4625,89 @@ void handleUpdate(uint32_t tAct){
   }
 }
 
+#ifdef GSM_MODULE
+
+/*
+void sendStatus(){
+  //modem.sendAT(GF("+CMGS=\"","06509946563")); //Number for sending SMS
+  log_i("send status");
+  String sStatus = "WDIR=" + String(status.weather.WindDir,1) + "\r\nWSPEED=" + String(status.weather.WindSpeed,1) + "\r\nWGUST=" + String(status.weather.WindGust,1) + "\r\nTEMP=" + String(status.weather.temp,1) + "\r\nPRESS=" + String(status.weather.Pressure,1);
+  if (!modem.sendSMS("00436769440910",sStatus.c_str())){
+    log_i("error sending SMS");
+  }
+
+}
+
+void readSMS(){
+  //log_i("read SMS");
+  xSemaphoreTake( xGsmMutex, portMAX_DELAY );
+  //log_i("check SMS");
+  String data;
+  //modem.sendAT(GF("+CMGL=\"REC UNREAD\""));  //don't change status of SMS
+  uint8_t NewSms = 0;
+  uint8_t index;
+  GsmSerial.setTimeout(5000);
+  modem.sendAT(GF("+CMGL=\"ALL\""));  //don't change status of SMS
+  String Text = "";
+  String sNumber = "";
+  int32_t pos = 0;
+  while(1) {
+    data = modem.stream.readStringUntil('\n');
+    pos = data.indexOf('\r');
+    if (pos >= 0){
+      //log_i("cr found");
+      data.replace("\r","");
+    } 
+    String sRet = "";
+    pos = getStringValue(data,String("+CMGL: "),String(",\""),0,&sRet);
+    if (pos >= 0){     
+     if (NewSms == 0){
+      index = atoi(sRet.c_str());
+      pos += 3;
+      log_i("pos=%d",pos);
+      pos = getStringValue(data,String("\",\""),String("\""),pos,&sNumber);
+      if (pos >= 0){
+        log_i("index=%d,number=%s",index,sNumber.c_str());
+      }      
+      NewSms = 1; //new SMS received
+      Text = ""; //clear Text
+     }else{
+       NewSms = 2;
+     }
+    }else{
+      if (NewSms == 1){
+        Text = data;
+        NewSms = 2;
+      }
+    }
+
+    log_i("%s",data.c_str());
+    if (data.length() <= 0){
+      break;
+    }
+  }
+  if (NewSms > 0){
+    log_i("SMS=%s",Text.c_str());
+    if (Text == "status"){
+      //send status
+      sendStatus();      
+    }else if (Text == "update"){
+      //do online update !!
+      log_i("do update");
+    }
+
+    
+    //delete SMS
+    log_i("delete SMS %d",index);
+    modem.sendAT(GF("+CMGD="), index); //delete SMS
+    modem.waitResponse();
+  }
+  GsmSerial.setTimeout(1000);
+  xSemaphoreGive( xGsmMutex );
+}
+*/
+#endif
+
 void taskBackGround(void *pvParameters){
   static uint32_t tWifiCheck = millis();
   static uint32_t warning_time=0;
@@ -4587,7 +4744,7 @@ void taskBackGround(void *pvParameters){
       Web_loop();
     }
     handleUpdate(tAct);
-    #ifdef GSMODULE
+    #ifdef GSMODULE    
     if (setting.Mode == MODE_GROUND_STATION){
       if (status.bTimeOk == true){
         if (day() != actDay){

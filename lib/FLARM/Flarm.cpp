@@ -117,6 +117,7 @@ String Flarm::writeFlarmData(FlarmtrackingData *myData,FlarmtrackingData *movePi
 
 
 int Flarm::writeDataPort(char *buffer, size_t size){
+    if (neighbors > 99) neighbors = 99; //no more then 99 neighbors
     snprintf(buffer,size,"$PFLAU,%d,1,%d,1,0,0,0,0,0",neighbors,GPSState);
     return addChecksum(buffer,size);
     //Serial.printf("length=%d\r\n",strlen(buffer));

@@ -82,6 +82,7 @@ typedef struct UFO {
     bool      stealth;
     bool      no_track;
     bool      onGround;
+    bool      airborne;
 
     int8_t    ns[4];
     int8_t    ew[4];

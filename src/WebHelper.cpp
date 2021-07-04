@@ -83,6 +83,7 @@ void onWebSocketEvent(uint8_t client_num,
           doc["GSMRssi"] = status.gsm.SignalQuality;
           doc["GSMStat"] = status.modemstatus;
           doc["GSMMode"] = status.gsm.networkstat;
+          doc["GSMCOPS"] = status.gsm.sOperator;
         #endif
           doc["climbrate"] = String(status.ClimbRate,1);
           doc["vTemp"] = String(status.varioTemp,1);
@@ -261,7 +262,7 @@ void onWebSocketEvent(uint8_t client_num,
           doc["GSMAPN"] = setting.gsm.apn;
           doc["GSMUSER"] = setting.gsm.user;
           doc["GSMPWD"] = setting.gsm.pwd;
-          doc["GSMMODE"] = setting.gsm.NetworkMode;
+          doc["GSMMODE"] = setting.gsm.NetworkMode;          
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
 

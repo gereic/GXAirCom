@@ -45,7 +45,7 @@ typedef struct {
 
 
 #define FLARM_NO_GPS 0
-#define FLARM_GPS_FIX3d_GROUND 2
+#define FLARM_GPS_FIX3d_GROUND 1
 #define FLARM_GPS_FIX3d_AIR 2
 
 

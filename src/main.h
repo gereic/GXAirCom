@@ -165,8 +165,13 @@ SCL 14
 
 #define APPNAME "GXAirCom"
 
+//#define SENDFLARMDIRECT //send Flarm-msg, when received
+
 #define BLE_LOW_HEAP 10000
 #define MAX_BLE_LOW_HEAP_TIME 30000
+
+#define GSM_CHECK_TIME_CON 60000
+#define GSM_CHECK_TIME_SMS 5000
 
 #define OLED_SLAVE_ADDRESS (0x3C)
 
@@ -421,8 +426,9 @@ struct commandData{
 
 struct gsmStatus{
   bool bHasGSM;
-  int16_t SignalQuality;
-  int16_t networkstat;
+  int16_t SignalQuality; //signalquality
+  int16_t networkstat; //networkstatus
+  String sOperator; //Operator
 };
 
 struct statusData{
