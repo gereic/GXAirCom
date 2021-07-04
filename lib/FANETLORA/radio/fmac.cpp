@@ -498,7 +498,7 @@ void FanetMac::switchMode(uint8_t mode,bool bStartReceive){
 	}else if (mode == MODE_FSK_8684){
 		len += sprintf(Buffer+len,"FSK868.4 ");
 	}
-	len += sprintf(Buffer+len,"in %dus pps=%d\n",micros()-tBegin,_ppsMillis);
+	len += sprintf(Buffer+len,"in %dus pps=%d\n",micros()-tBegin,millis() - _ppsMillis);
 	//log_i("%d switch to mode %d in %dus pps=%d",millis(),mode,micros()-tBegin,_ppsMillis);
 	Serial.print(Buffer);
 	#endif
@@ -830,27 +830,30 @@ void FanetMac::handleTxLegacy()
 {
 	static uint32_t tMillis = 0;
 	static bool bSend8682 = false;
+	static uint8_t ppsCount = 0;
 	if (!_RfMode.bits.LegTx){
 		return; //legacy disabled
 	} 
 	if (legacy_next_tx == 0){
 		if (_RfMode.bits.FntTx){
 			//send only on 868.4 if Fanet is enabled
-			if ((millis() - _ppsMillis) >= LEGACY_8684_BEGIN-100){
-				tMillis = _ppsMillis;				
+			if (((millis() - _ppsMillis) >= LEGACY_8684_BEGIN-LEGACY_RANGE) && (ppsCount != _ppsCount)){
+				tMillis = _ppsMillis;		
+				ppsCount = _ppsCount;		
 				if (myApp->createLegacy(LegacyBuffer)){
 					//send Legacy 868.4 Mhz
-					legacy_next_tx = tMillis + uint32_t(random(LEGACY_8684_BEGIN,LEGACY_8684_END));
+					legacy_next_tx = tMillis + uint32_t(random(LEGACY_8684_BEGIN,LEGACY_8684_END - LEGACY_SEND_TIME));
 					bSend8682 = false;
 				}
 			}
 		}else{
 			//send on 868.2 and 868.4 (PowerFlarm)
-			if ((millis() - _ppsMillis) >= LEGACY_8682_BEGIN-100){
-				tMillis = _ppsMillis;				
+			if (((millis() - _ppsMillis) >= LEGACY_8682_BEGIN-LEGACY_RANGE) && (ppsCount != _ppsCount)){
+				tMillis = _ppsMillis;	
+				ppsCount = _ppsCount;			
 				if (myApp->createLegacy(LegacyBuffer)){
 					//send Legacy 868.4 Mhz
-					legacy_next_tx = tMillis + uint32_t(random(LEGACY_8682_BEGIN,LEGACY_8682_END));
+					legacy_next_tx = tMillis + uint32_t(random(LEGACY_8682_BEGIN,LEGACY_8682_END - LEGACY_SEND_TIME));
 					bSend8682 = true;
 				}
 			}
@@ -913,7 +916,7 @@ void FanetMac::handleTxLegacy()
 		if (bSend8682){
 			//we have sent on 868.2 --> calc send-time on 868.4
 		  //send also on 8684
-			legacy_next_tx = tMillis + uint32_t(random(LEGACY_8684_BEGIN,LEGACY_8684_END));
+			legacy_next_tx = tMillis + uint32_t(random(LEGACY_8684_BEGIN,LEGACY_8684_END - LEGACY_SEND_TIME));
 			bSend8682 = false;
 			//log_i("calc legNextTx=%d,pps=%d 868.2=%d",legacy_next_tx,tMillis,bSend8682);
 		}else{
