@@ -511,15 +511,18 @@ void FanetMac::stateWrapper()
 	static uint32_t tSwitch = millis();
 	static uint8_t ppsCount = 0;
 	static uint32_t ppsMillis = 0;
+	static uint8_t actPPsDiff = 3; 
 	uint32_t tAct = millis();
-	uint8_t ppsDiff = 0;
 	fmac.handleIRQ();
-	ppsDiff = fmac._ppsCount - ppsCount;  //we have to calc diff here, because in if, it will be calculated as int
+	uint8_t ppsDiff = fmac._ppsCount - ppsCount;  //we have to calc diff here, because in if, it will be calculated as int
 	if (fmac.bHasGPS){
 		if (fmac._RfMode.bits.FntRx && fmac._RfMode.bits.LegRx){
 			if (fmac._actMode == MODE_LORA){
-				if ((ppsDiff) > 4){
+				if ((ppsDiff) > actPPsDiff){
 					if ((millis() - fmac._ppsMillis) >= (LEGACY_8682_BEGIN - LEGACY_RANGE)){
+						actPPsDiff ++; //we count from 3 to 5 with pps-diff, so we are never in same cylce and will receive more Lora
+						if (actPPsDiff > 5) actPPsDiff = 3;
+						//log_i("actPPsDiff=%d",actPPsDiff);
 						ppsMillis = fmac._ppsMillis;
 						ppsCount = fmac._ppsCount;
 						fmac.switchMode(MODE_FSK_8682); //start now with FSK8682
@@ -600,7 +603,7 @@ void FanetMac::stateWrapper()
 		}
 	}
   fmac.handleRx();
-	if (fmac._RfMode.bits.FntTx){
+	if ((fmac._RfMode.bits.FntTx) && (!fmac._RfMode.bits.FntRx)){
 		if (millis() >= fmac.csma_next_tx){
 			if ((fmac.tx_fifo.size() > 0) || (fmac.myApp->is_broadcast_ready(fmac.neighbors.size()))){
 				uint8_t oldMode = fmac._actMode;

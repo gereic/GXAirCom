@@ -3439,6 +3439,23 @@ void checkSystemCmd(char *ch_str){
       esp_restart();
     }
   }
+  if (line.indexOf("#SYC RFMODE?") >= 0){
+    //log_i("sending 2 client");
+    add2OutputString("#SYC RFMODE=" + String(setting.RFMode) + "\r\n");
+  }
+  iPos = getStringValue(line,"#SYC RFMODE=","\r",0,&sRet);
+  if (iPos >= 0){
+    uint8_t u8 = atoi(sRet.c_str());
+    u8 = constrain(u8,0,3);
+    add2OutputString("#SYC OK\r\n");
+    if (u8 != setting.RFMode){
+      setting.RFMode = u8;
+      write_RFMode();
+      delay(500); //we have to restart in case, the mode is changed
+      log_e("ESP Restarting !");
+      esp_restart();
+    }
+  }
   if (line.indexOf("#SYC FNTPWR?") >= 0){
     //log_i("sending 2 client");
     add2OutputString("#SYC FNTPWR=" + String(setting.LoraPower) + "\r\n");
@@ -4297,7 +4314,12 @@ void taskStandard(void *pvParameters){
           MyFanetData.lon = status.GPS_Lon;
           MyFanetData.altitude = status.GPS_alt;
           //log_i("lat=%.6f;lon=%.6f;alt=%.1f;geoAlt=%.1f",status.GPS_Lat,status.GPS_Lon,status.GPS_alt,geoidalt/1000.);
-          MyFanetData.speed = status.GPS_speed; //speed in cm/s --> we need km/h
+          if (fanet.onGround){
+            MyFanetData.speed = 0.0;
+          }else{
+            MyFanetData.speed = status.GPS_speed; //speed in cm/s --> we need km/h
+            if (MyFanetData.speed < 1.0) MyFanetData.speed = 1.0;
+          }
           MyFanetData.addressType = ADDRESSTYPE_OGN;
           if ((status.GPS_speed <= 5.0) && (status.vario.bHasVario)){
             MyFanetData.heading = status.varioHeading;

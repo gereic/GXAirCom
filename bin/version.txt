@@ -300,3 +300,16 @@ changed Strings to char-array (much faster)
 
 v4.10.1
 time for autocalibration of sx1276 changed 1sek. --> 5min.
+
+v4.11.0
+new systemcommands over bluetooth
+#SYC RFMODE?  get RF-Mode
+#SYC RFMODE=11  set RF-Mode
+                Bit 0 .... FANET Receive enable
+                Bit 1 .... FANET Transmit enable
+                Bit 2 .... Legacy Receive enable
+                Bit 3 .... Legacy Transmit enable
+                default 11 --> Fanet Receive/Transmit and Legacy-Transmit
+added random switching of Fanet to Legacy (every 3,4,5 second) to be sure, that we receive also fanet.
+forced groundspeed of 1kmh when in air-mode.
+forced groundspee to 0kmh when on-ground.

@@ -12,6 +12,7 @@ void load_configFile(SettingsData* pSetting){
   pSetting->band = preferences.getUChar("BAND",BAND868); //
   pSetting->bHasExtPowerSw = preferences.getUChar("EXTPWSW",0); //external power-switch
   pSetting->LoraPower = preferences.getUChar("LORA_POWER",10);//
+  pSetting->RFMode = preferences.getUChar("RFM",11); //default FntRx + FntTx + LegTx
   pSetting->awLiveTracking = preferences.getUChar("AWLIVE",0); //
   pSetting->bOutputSerial = preferences.getUChar("OSerial",0); //
   pSetting->outputModeVario = preferences.getUChar("OVario",1); //
@@ -44,7 +45,6 @@ void load_configFile(SettingsData* pSetting){
   pSetting->OGNLiveTracking = preferences.getUChar("OGN_LIVE",0);
   pSetting->screenNumber = preferences.getUChar("SCREEN",0);
   pSetting->displayType = preferences.getUChar("Display",0);
-  pSetting->RFMode = preferences.getUChar("RFM",11); //default FntRx + FntTx + LegTx
   pSetting->traccarLiveTracking = preferences.getUChar("TRACCAR_LIVE",0);
   pSetting->TraccarSrv = preferences.getString("TRACCAR_SRV","");
   
@@ -116,6 +116,7 @@ void write_configFile(SettingsData* pSetting){
   preferences.putUChar("BAND",pSetting->band); //
   preferences.putUChar("EXTPWSW",pSetting->bHasExtPowerSw); //
   preferences.putUChar("LORA_POWER",pSetting->LoraPower);//
+  preferences.putUChar("RFM",pSetting->RFMode);
   preferences.putUChar("AWLIVE",pSetting->awLiveTracking); //
   preferences.putUChar("OSerial",pSetting->bOutputSerial); //
   preferences.putUChar("OVario",pSetting->outputModeVario); //
@@ -146,7 +147,6 @@ void write_configFile(SettingsData* pSetting){
   //live-tracking
   preferences.putUChar("OGN_LIVE",pSetting->OGNLiveTracking);
   preferences.putUChar("Display",pSetting->displayType);
-  preferences.putUChar("RFM",pSetting->RFMode);
   preferences.putUChar("TRACCAR_LIVE",pSetting->traccarLiveTracking);
   preferences.putString("TRACCAR_SRV",pSetting->TraccarSrv);
   
@@ -246,6 +246,12 @@ void write_AirMode(void){
 void write_Mode(void){
   preferences.begin("settings", false);
   preferences.putUChar("Mode",setting.Mode);
+  preferences.end();
+}
+
+void write_RFMode(void){
+  preferences.begin("settings", false);
+  preferences.putUChar("RFM",setting.RFMode);
   preferences.end();
 }
 

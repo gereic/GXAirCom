@@ -15,6 +15,7 @@ void write_PilotName(void);
 void write_AircraftType(void);
 void write_AirMode(void);
 void write_Mode(void);
+void write_RFMode(void);
 void write_OutputMode(void);
 void write_LoraPower(void);
 void write_fuelsensor(void);

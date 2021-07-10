@@ -456,6 +456,7 @@ void createLegacyPkt(FanetLora::trackingData *Data,float geoidAlt,bool onGround,
       air.onGround = false;
       air.airborne = true;
       air.speed= Data->speed;
+      //if (air.speed < 1) air.speed = 1;
     }
     /*
     if (air.onGround){
