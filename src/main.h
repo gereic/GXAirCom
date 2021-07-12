@@ -367,6 +367,15 @@ struct WifiSettings{
   uint32_t tWifiStop; //time after wifi will be stopped to save energy 0 --> never
 };
 
+	struct OgnModeBits
+	{
+			unsigned liveTracking:1, sendWeather:1, fwdWeather:1, fwdName:1, b4:1, b5:1, b6:1, b7:1;
+	};
+	union uOgnMode
+	{
+			OgnModeBits bits;
+			uint8_t mode;
+	};
 
 
 struct SettingsData{
@@ -392,7 +401,7 @@ struct SettingsData{
   uint8_t outputMode; //output-mode
   GSSettings gs;
   VarioSettings vario; //variosettings
-  uint8_t OGNLiveTracking; //OGN-Live-Tracking
+  uOgnMode OGNLiveTracking; //OGN-Live-Tracking
   uint8_t screenNumber; //number of default-screen
   uint8_t RFMode; //RF-Mode
   uint8_t traccarLiveTracking; //Traccar live-tracking

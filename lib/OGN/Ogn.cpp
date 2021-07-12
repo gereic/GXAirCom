@@ -206,7 +206,7 @@ void Ogn::sendNameData(String devId,String name,float snr){
     xSemaphoreTake( *xMutex, portMAX_DELAY );
     client->print(buff);                
     xSemaphoreGive( *xMutex );
-    //log_i("%s",buff);
+    log_i("%s",buff);
 
 }
 
@@ -266,7 +266,7 @@ void Ogn::sendWeatherData(weatherData *wData){
     xSemaphoreTake( *xMutex, portMAX_DELAY );
     client->print(send.c_str());                
     xSemaphoreGive( *xMutex );
-    //log_i("%s",send.c_str());
+    log_i("%s",send.c_str());
 
 }
 

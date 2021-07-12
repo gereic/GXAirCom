@@ -269,7 +269,9 @@ void Screen::drawMainScreen(void){
     bool UpdateScreen = false;
     static bool bFullUpdate = false;
     static uint32_t tCharging = millis();
+    static uint32_t tRun = millis();
 
+    tAct = millis();
     //copy values
     actData.alt = (status.GPS_Fix) ? status.GPS_alt : status.varioAlt;
     //log_i("%d,%.01f,%.01f",status.GPS_Fix,status.GPS_alt,status.varioAlt);
@@ -304,6 +306,10 @@ void Screen::drawMainScreen(void){
         stepCount++;
         break;
     case 1:
+        if ((tAct - tRun) >= EINK_FULL_UPDATE){
+            tRun = tAct;
+            bFullUpdate = true;
+        }
         if ((data.SatCount != actData.SatCount) || (bForceUpdate)){
             data.SatCount = actData.SatCount;
             //log_i("update SatCount");
@@ -372,7 +378,6 @@ void Screen::drawMainScreen(void){
         //tOldUpate = millis();
         //data = actData; //copy values
         //data.flightTime = (actData.flightTime / 60) * 60; //only fixed minutes
-        tAct = millis();
         pEInk->setTextColor(GxEPD_BLACK);
         pEInk->setRotation(0); 
         //pEInk->setRotation(1); 

@@ -42,7 +42,7 @@ void load_configFile(SettingsData* pSetting){
   pSetting->gs.PowerSave = preferences.getUChar("GSPS",0);
 
   //live-tracking
-  pSetting->OGNLiveTracking = preferences.getUChar("OGN_LIVE",0);
+  pSetting->OGNLiveTracking.mode = preferences.getUChar("OGN_LIVE",0);
   pSetting->screenNumber = preferences.getUChar("SCREEN",0);
   pSetting->displayType = preferences.getUChar("Display",0);
   pSetting->traccarLiveTracking = preferences.getUChar("TRACCAR_LIVE",0);
@@ -145,7 +145,7 @@ void write_configFile(SettingsData* pSetting){
   preferences.putUChar("GSPS",pSetting->gs.PowerSave);
 
   //live-tracking
-  preferences.putUChar("OGN_LIVE",pSetting->OGNLiveTracking);
+  preferences.putUChar("OGN_LIVE",pSetting->OGNLiveTracking.mode);
   preferences.putUChar("Display",pSetting->displayType);
   preferences.putUChar("TRACCAR_LIVE",pSetting->traccarLiveTracking);
   preferences.putString("TRACCAR_SRV",pSetting->TraccarSrv);

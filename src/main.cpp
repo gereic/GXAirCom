@@ -1514,7 +1514,7 @@ void printSettings(){
   
   
   log_i("AirWhere-Livetracking=%d",setting.awLiveTracking);
-  log_i("OGN-Livetracking=%d",setting.OGNLiveTracking);
+  log_i("OGN-Livetracking=%d",setting.OGNLiveTracking.mode);
   log_i("Traccar-Livetracking=%d",setting.traccarLiveTracking);
   log_i("Traccar-Address=%s",setting.TraccarSrv.c_str());
   log_i("RF-Mode=%d",setting.RFMode);
@@ -3898,7 +3898,7 @@ void taskStandard(void *pvParameters){
     flarm.begin();
   }
   #endif
-  if (setting.OGNLiveTracking){
+  if (setting.OGNLiveTracking.mode > 0){
     #ifdef GSMODULE
       if (setting.Mode == MODE_GROUND_STATION){
         ogn.setAirMode(false); //set airmode
@@ -4015,7 +4015,7 @@ void taskStandard(void *pvParameters){
 
     if (setting.bHasFuelSensor) readFuelSensor(tAct);
 
-    if (setting.OGNLiveTracking){
+    if (setting.OGNLiveTracking.mode > 0){
       if (status.vario.bHasVario){
         ogn.setStatusData(status.pressure ,status.varioTemp,NAN,(float)status.vBatt / 1000.,status.BattPerc);
       }else if ((status.vario.bHasBME) || (status.bWUBroadCast)){
@@ -4139,7 +4139,7 @@ void taskStandard(void *pvParameters){
     if (sendWeatherData){ //we have to send weatherdata
       //log_i("sending weatherdata");
       fanet.writeMsgType4(&fanetWeatherData);
-      if (setting.OGNLiveTracking){
+      if (setting.OGNLiveTracking.bits.sendWeather) {
         Ogn::weatherData wData;
         wData.devId = fanet.getMyDevId();
         wData.lat = status.GPS_Lat;
@@ -4191,7 +4191,7 @@ void taskStandard(void *pvParameters){
     }
     FanetLora::nameData nameData;
     if (fanet.getNameData(&nameData)){
-      if (setting.OGNLiveTracking){
+      if (setting.OGNLiveTracking.bits.fwdName){
         ogn.sendNameData(fanet.getDevId(nameData.devId),nameData.name,(float)nameData.snr / 10.0);
       }
     }
@@ -4215,7 +4215,7 @@ void taskStandard(void *pvParameters){
     }
     FanetLora::weatherData weatherData;
     if (fanet.getWeatherData(&weatherData)){
-      if (setting.OGNLiveTracking){
+      if (setting.OGNLiveTracking.bits.fwdWeather){
         Ogn::weatherData wData;
         wData.devId = fanet.getDevId(weatherData.devId);
         wData.lat = weatherData.lat;
@@ -4243,13 +4243,13 @@ void taskStandard(void *pvParameters){
     if (fanet.getTrackingData(&tFanetData)){
       //log_i("new Tracking-Data");
       if (tFanetData.type == 0x11){ //online-tracking
-        if (setting.OGNLiveTracking){
+        if (setting.OGNLiveTracking.bits.liveTracking){
           ogn.sendTrackingData(tFanetData.timestamp ,tFanetData.lat ,tFanetData.lon,tFanetData.altitude,tFanetData.speed,tFanetData.heading,tFanetData.climb,fanet.getDevId(tFanetData.devId) ,(Ogn::aircraft_t)fanet.getFlarmAircraftType(&tFanetData),tFanetData.addressType,tFanetData.OnlineTracking,(float)tFanetData.snr);
         } 
         sendAWTrackingdata(&tFanetData);
         sendTraccarTrackingdata(&tFanetData);
       }else if (tFanetData.type >= 0x70){ //ground-tracking
-        if (setting.OGNLiveTracking){
+        if (setting.OGNLiveTracking.bits.liveTracking){
           ogn.sendGroundTrackingData(tFanetData.timestamp,tFanetData.lat,tFanetData.lon,fanet.getDevId(tFanetData.devId),tFanetData.type,tFanetData.addressType,(float)tFanetData.snr);
         } 
       }
@@ -4327,7 +4327,7 @@ void taskStandard(void *pvParameters){
             MyFanetData.heading = status.GPS_course;
           }
           MyFanetData.aircraftType = fanet.getAircraftType();        
-          if (setting.OGNLiveTracking){
+          if (setting.OGNLiveTracking.bits.liveTracking){
             ogn.setGPS(status.GPS_Lat,status.GPS_Lon,status.GPS_alt,status.GPS_speed,MyFanetData.heading);
             if (fanet.onGround){
               ogn.sendGroundTrackingData(now(),status.GPS_Lat,status.GPS_Lon,fanet.getDevId(tFanetData.devId),fanet.state,MyFanetData.addressType,0.0);
@@ -4427,7 +4427,7 @@ void taskStandard(void *pvParameters){
   }
   #endif
   fanet.end();
-  if (setting.OGNLiveTracking) ogn.end();
+  if (setting.OGNLiveTracking.mode > 0) ogn.end();
   vTaskDelete(xHandleStandard); //delete standard-task
 }
 

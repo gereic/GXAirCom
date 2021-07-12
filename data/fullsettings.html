@@ -226,6 +226,44 @@ function setRfMode(mode){
   }
 }
 
+function getOGNMode(){
+  var Ret = 0;
+  if (document.getElementById("ognlive").checked) Ret += 1;
+  if (document.getElementById("ognWeather").checked) Ret += 2;
+  if (document.getElementById("ognFwdWeather").checked) Ret += 4;
+  if (document.getElementById("ognNameData").checked) Ret += 8;  
+  return Ret;
+}
+
+function setOGNMode(mode){
+  //document.getElementById("FntRx");
+  console.log("OGN-Mode=" + mode);
+  e = document.getElementById("ognlive");
+  if (mode & 1){
+    e.checked = true;
+  }else{
+    e.checked = false;
+  }
+  e = document.getElementById("ognWeather");
+  if (mode & 2){
+    e.checked = true;
+  }else{
+    e.checked = false;
+  }
+  e = document.getElementById("ognFwdWeather");
+  if (mode & 4){
+    e.checked = true;
+  }else{
+    e.checked = false;
+  }
+  e = document.getElementById("ognNameData");
+  if (mode & 8){
+    e.checked = true;
+  }else{
+    e.checked = false;
+  }
+}
+
 function setBtnCalib(BtnId,state){
   e = document.getElementById(BtnId);
   switch(state){
@@ -393,7 +431,7 @@ function sendValues(){
   doSend(JSON.stringify(obj));
   
   var obj = {  
-  ognlive : Number(document.getElementById("ognlive").checked),
+  ognlive : getOGNMode(),
   traccar_live : Number(document.getElementById("traccar_live").checked),
   traccarsrv : document.getElementById("traccarsrv").value,
   //RFM : Number(document.getElementById("RFM").value),
@@ -501,6 +539,9 @@ function onMessage(evt) {
           continue;          
         }else if (key == "RFM"){
           setRfMode(myObj[key]);
+          continue;
+        }else if (key == "ognlive"){
+          setOGNMode(myObj[key]);
           continue;
         }else if (key == "calibAcc"){
           calibBtnState = myObj[key];
@@ -689,6 +730,31 @@ window.addEventListener("load", init, false);
     <p></p>
     <p></p>
     <fieldset>
+      <legend><b>Open Glider Network (OGN)</b></legend>
+      <table style="width:100&#37;">
+        <tbody>
+          <tr>
+            <th>send live-tracking</th>
+            <td><input type="checkbox" id="ognlive" ></td>
+          </tr>
+          <tr>
+            <th>send my weatherdata</th>
+            <td><input type="checkbox" id="ognWeather" ></td>
+          </tr>
+          <tr>
+            <th>send received-weatherdata</th>
+            <td><input type="checkbox" id="ognFwdWeather" ></td>
+          </tr>
+          <tr>
+            <th>send received FANET-Names</th>
+            <td><input type="checkbox" id="ognNameData" ></td>
+          </tr>
+        </tbody>      
+      </table>
+    </fieldset>
+    <p></p>
+    <p></p>
+    <fieldset>
       <legend><b>Live tracking settings</b></legend>
       <table style="width:100&#37;">
         <tbody>
@@ -697,11 +763,6 @@ window.addEventListener("load", init, false);
             <td><input type="checkbox" id="awlive" ></td>
             <td></td>
           </tr>
-          <tr>
-            <th>OGN live-tracking</th>
-            <td><input type="checkbox" id="ognlive" ></td>
-          </tr>
-          <td></td>	  
           <tr>
             <th>Traccar Server</th>
             <td><input type="checkbox" id="traccar_live" ></td>

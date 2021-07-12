@@ -162,7 +162,7 @@ void onWebSocketEvent(uint8_t client_num,
           doc["mode"] = setting.Mode;
           doc["type"] = (uint8_t)setting.AircraftType;
           doc["PilotName"] = setting.PilotName;
-          doc["ognlive"] = setting.OGNLiveTracking;
+          doc["ognlive"] = setting.OGNLiveTracking.mode;
           doc["traccar_live"] = setting.traccarLiveTracking;
           doc["traccarsrv"]= setting.TraccarSrv;
           doc["fntMode"] = setting.fanetMode;
@@ -382,7 +382,7 @@ void onWebSocketEvent(uint8_t client_num,
         
         if (root.containsKey("mode")) newSetting.Mode = doc["mode"].as<uint8_t>();
         
-        if (root.containsKey("ognlive")) newSetting.OGNLiveTracking = doc["ognlive"].as<uint8_t>();
+        if (root.containsKey("ognlive")) newSetting.OGNLiveTracking.mode = doc["ognlive"].as<uint8_t>();
         if (root.containsKey("traccar_live")) newSetting.traccarLiveTracking = doc["traccar_live"].as<uint8_t>();
         if (root.containsKey("traccarsrv")) newSetting.TraccarSrv = doc["traccarsrv"].as<String>();
         if (root.containsKey("RFM")) newSetting.RFMode = doc["RFM"].as<uint8_t>();

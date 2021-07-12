@@ -34,6 +34,8 @@ extern struct statusData status;
 #define EINK_CLK      4
 #define EINK_DIN      2
 
+#define EINK_FULL_UPDATE 300000 //every 5min do a full-update because of ghosting
+
 class Screen {
 public:
   Screen(); //constructor

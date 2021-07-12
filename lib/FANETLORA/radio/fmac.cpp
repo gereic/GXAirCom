@@ -500,7 +500,7 @@ void FanetMac::switchMode(uint8_t mode,bool bStartReceive){
 	}
 	len += sprintf(Buffer+len,"in %dus pps=%d\n",micros()-tBegin,millis() - _ppsMillis);
 	//log_i("%d switch to mode %d in %dus pps=%d",millis(),mode,micros()-tBegin,_ppsMillis);
-	Serial.print(Buffer);
+	//Serial.print(Buffer);
 	#endif
 }
 
