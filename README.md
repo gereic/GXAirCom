@@ -8,7 +8,7 @@ For information and documentation see:
 - Further information can be found in [the wiki](https://github.com/gereic/GXAirCom/wiki) and [the docs folder](doc/). E.g.:
     - [The list of supported hardware](https://github.com/gereic/GXAirCom/wiki/Hardware-supported)
     - [The list of supported smartphone software](https://github.com/gereic/GXAirCom/wiki/Software)
-    - [How to update the firmware](https://github.com/gereic/GXAirCom/wiki/Upgrading---updating-the-firmware-using-the-internal-web-interface-and-a-cellphone.)
+    - [How to update the firmware](https://github.com/gereic/GXAirCom/wiki/Upgrading---updating-the-firmware-using-the-internal-web-interface-and-a-cellphone)
     - [See the video tutorials](https://github.com/gereic/GXAirCom/wiki/Video-Tutorials)
 
 Similar/ related projects are:
