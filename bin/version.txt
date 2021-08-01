@@ -313,3 +313,6 @@ new systemcommands over bluetooth
 added random switching of Fanet to Legacy (every 3,4,5 second) to be sure, that we receive also fanet.
 forced groundspeed of 1kmh when in air-mode.
 forced groundspee to 0kmh when on-ground.
+
+v4.11.1
+BLE GPS-Bug when sending GPS-Data via bluetooth to heltec-board (xcguide)
