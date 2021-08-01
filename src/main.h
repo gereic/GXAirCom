@@ -198,6 +198,8 @@ SCL 14
 #define BAND915 1
 
 #define BATTPINOK 1000 //1 Volt for Batt-pinOK
+#define BATTSLEEPTIME 3600 //check every 1h if Battery is full again
+#define BATTPERCSTART 10 //percent, where esp starts normal in addition to min. percentage
 
 #define MAXSCREENS 2
 
@@ -245,11 +247,6 @@ SCL 14
 #define WIFI_CONNECT_ONCE 1
 #define WIFI_CONNECT_ALWAYS 2
 
-//defines for battery
-#define BATT_TYPE_1S_LIPO 0
-#define BATT_TYPE_12V_LEAD 1
-
-
 #define FANET_CMD_START			"#FN"
 #define FANET_CMD_TRANSMIT	"#FNT"
 #define FANET_CMD_GROUND_TYPE	"#FNG"
@@ -274,6 +271,7 @@ SCL 14
 
 #define GS_POWER_ALWAYS_ON 0
 #define GS_POWER_SAFE 1
+#define GS_POWER_BATT_LIFE 2
 
 #define FN_GROUNT_AIR_TRACKING 0
 #define FN_AIR_TRACKING 1
@@ -383,7 +381,8 @@ struct SettingsData{
   uint8_t boardType;
   uint8_t Mode; //Air-Module, GS-Station,
   uint8_t displayType;
-  uint8_t BattType; //type of battery
+  float BattVoltOffs; //offset for Battery-multiplier
+  uint8_t minBattPercent;
   String myDevId; //my device-ID
   uint8_t band;
   uint8_t LoraPower; //output-Power 5-20db

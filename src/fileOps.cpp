@@ -8,7 +8,6 @@ void load_configFile(SettingsData* pSetting){
   pSetting->settingsView = preferences.getUChar("setView",SETTING_BASIC); //
   pSetting->wifi.appw = preferences.getString("APPW","12345678");
   pSetting->boardType = preferences.getUChar("BOARDTYPE",BOARD_UNKNOWN); //
-  pSetting->BattType = preferences.getUChar("BATT_TYPE",BATT_TYPE_1S_LIPO); //
   pSetting->band = preferences.getUChar("BAND",BAND868); //
   pSetting->bHasExtPowerSw = preferences.getUChar("EXTPWSW",0); //external power-switch
   pSetting->LoraPower = preferences.getUChar("LORA_POWER",10);//
@@ -40,6 +39,8 @@ void load_configFile(SettingsData* pSetting){
 
   pSetting->gs.SreenOption = preferences.getUChar("GSSCR",0);
   pSetting->gs.PowerSave = preferences.getUChar("GSPS",0);
+  pSetting->BattVoltOffs = preferences.getFloat("BATOFFS",0.0);
+  pSetting->minBattPercent = preferences.getUChar("BattMinPerc",0);
 
   //live-tracking
   pSetting->OGNLiveTracking.mode = preferences.getUChar("OGN_LIVE",0);
@@ -112,7 +113,6 @@ void write_configFile(SettingsData* pSetting){
   preferences.putUChar("setView",pSetting->settingsView); //
   preferences.putString("APPW",pSetting->wifi.appw);
   preferences.putUChar("BOARDTYPE",pSetting->boardType); //
-  preferences.putUChar("BATT_TYPE",pSetting->BattType); //battery-type
   preferences.putUChar("BAND",pSetting->band); //
   preferences.putUChar("EXTPWSW",pSetting->bHasExtPowerSw); //
   preferences.putUChar("LORA_POWER",pSetting->LoraPower);//
@@ -273,3 +273,14 @@ void write_fuelsensor(void){
   preferences.end();
 }
 
+void write_battOffset(void){
+  preferences.begin("settings", false);
+  preferences.putFloat("BATOFFS",setting.BattVoltOffs);
+  preferences.end();
+}
+
+void write_battMinPerc(void){
+  preferences.begin("settings", false);
+  preferences.putUChar("BattMinPerc",setting.minBattPercent);
+  preferences.end();
+}

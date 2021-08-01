@@ -122,12 +122,6 @@ function setVis(){
     document.getElementById("VisVario").style.display='none';
     document.getElementById("VisFanetTracking").style.display='none'; //fanet-tracking mode in ground-station is important 
     //document.getElementById("VisOutputSettings").style.display='none'; //output-settings are not usefull in ground-station
-    if (document.getElementById("board").value == 1){ //only on HELTEC and TTGO-Board
-      document.getElementById("VisBattType").style.display = '';
-    }else{
-      document.getElementById("VisBattType").style.display = 'none';
-    } 
-    document.getElementById("VisExtPowerSw").style.display = 'none';
   }else{
     document.getElementById("VisAirCraftType").style.display='';
     document.getElementById("tName").innerHTML='Pilot name';
@@ -139,7 +133,6 @@ function setVis(){
     }else{
       document.getElementById("VisVario").style.display='';
     }
-    document.getElementById("VisBattType").style.display = 'none';
     document.getElementById("VisFuelSensor").style.display=''; //set FuelSensor visible
   }
   if (document.getElementById("output").value == 1){
@@ -302,6 +295,14 @@ function calibGyro(){
   doSend(JSON.stringify(obj));
 }
 
+function setBattVoltOffs(){
+  var obj = {
+    BATOFFS : Number(document.getElementById("BATOFFS").value)
+  };
+  doSend(JSON.stringify(obj));
+
+}
+
 //send calibcalibAcc
 function calibAcc(){  
   var value = 1;
@@ -381,7 +382,6 @@ function sendValues(){
   var obj = {
   setView : Number(document.getElementById("setView").value),
   board : Number(document.getElementById("board").value),
-  bType : Number(document.getElementById("bType").value),
   disp : Number(document.getElementById("disp").value),
   band : Number(document.getElementById("band").value),
   power : Number(document.getElementById("power").value),
@@ -644,12 +644,10 @@ window.addEventListener("load", init, false);
             <th id="tName">PilotName</th>
             <td><input type="text" id="PilotName"></td>
           </tr>
-          <tr id="VisBattType">
-            <th>Battery Type</th>
-            <td><select id="bType">
-              <option value="0">1S Lipo</option>
-              <option value="1">12V lead battery</option>
-            </select></td>
+          <tr id="VisBattOffs">
+            <th>Battery Voltage calib</th>
+            <td><input type="text" id="vBatt" disabled></td>
+            <td><input type="number" onchange="setBattVoltOffs()" id="BATOFFS" min="-1.00" max="1.00" step="0.01"></td>
           </tr>
           <tr id="VisAirCraftType">
             <th>Aircraft Type</th>
@@ -910,6 +908,7 @@ window.addEventListener("load", init, false);
             <td><select id="gsPs">
               <option value="0">always on</option>
               <option value="1">only on between sunset and sunrise</option>
+              <option value="2">battery life algorithm mode</option>
             </select></td>
           </tr>
         </tbody>      

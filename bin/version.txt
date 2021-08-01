@@ -319,3 +319,7 @@ BLE GPS-Bug when sending GPS-Data via bluetooth to heltec-board (xcguide)
 
 v4.11.2
 Bugfix in ble-command #SYC RFMODE=
+
+v4.12.0
+added setting to adjust battery-voltage
+bugfix bluetooth GPS no Fix (xcguide)

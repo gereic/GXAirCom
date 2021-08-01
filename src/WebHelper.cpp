@@ -154,7 +154,6 @@ void onWebSocketEvent(uint8_t client_num,
           doc.clear();
           doc["setView"] = setting.settingsView;                  
           doc["board"] = setting.boardType;
-          doc["bType"] = setting.BattType;
           doc["disp"] = setting.displayType;
           doc["band"] = setting.band;
           doc["expwsw"] = setting.bHasExtPowerSw;
@@ -268,6 +267,8 @@ void onWebSocketEvent(uint8_t client_num,
 
           doc.clear();
           doc["fuelSensor"] = (uint8_t)setting.bHasFuelSensor;
+          doc["vBatt"] = String((float)status.vBatt/1000.,2);
+          doc["BATOFFS"] = setting.BattVoltOffs;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
           
@@ -344,6 +345,9 @@ void onWebSocketEvent(uint8_t client_num,
         command.CalibAcc = doc["calibAcc"].as<uint8_t>(); //calibrate accelerometer
       }else if (root.containsKey("updateState")){
         status.updateState = doc["updateState"].as<uint8_t>();
+      }else if (root.containsKey("BATOFFS")){
+        setting.BattVoltOffs = doc["BATOFFS"].as<float>();
+        write_battOffset();
       }else if (root.containsKey("save")){
         //save settings-page
         value = doc["save"];
@@ -355,7 +359,6 @@ void onWebSocketEvent(uint8_t client_num,
         if (root.containsKey("ssid")) newSetting.wifi.ssid = doc["ssid"].as<String>();
         if (root.containsKey("password")) newSetting.wifi.password = doc["password"].as<String>();
         if (root.containsKey("board")) newSetting.boardType = doc["board"].as<uint8_t>();          
-        if (root.containsKey("bType")) newSetting.BattType = doc["bType"].as<uint8_t>();          
         if (root.containsKey("disp")) newSetting.displayType = doc["disp"].as<uint8_t>();          
         if (root.containsKey("power")) newSetting.LoraPower = constrain(doc["power"].as<uint8_t>(),0,20);          
         if (root.containsKey("band")) newSetting.band = doc["band"].as<uint8_t>();          
@@ -1085,6 +1088,11 @@ void sendPage(uint8_t pageNr){
       //site fullsettings
       doc.clear();
       bSend = false;
+      if (mStatus.vBatt != status.vBatt){
+        bSend = true;
+        mStatus.vBatt = status.vBatt;
+        doc["vBatt"] = String((float)status.vBatt/1000.,2);
+      }    
       if (mCommand.ConfigGPS != command.ConfigGPS){
         bSend = true;
         mCommand.ConfigGPS = command.ConfigGPS;
