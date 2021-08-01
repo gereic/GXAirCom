@@ -3561,8 +3561,8 @@ void readGPS(){
         }
         i++;
       }
-      delete cstr; //delete allocated String
       if (setting.outputGPS) sendData2Client(cstr,sNmeaIn.length()); //sendData2Client(sNmeaIn);
+      delete cstr; //delete allocated String
       sNmeaIn = "";
     }else{
       sNmeaIn = ""; //we have a gps --> don't take data from external GPS
