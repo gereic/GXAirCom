@@ -120,17 +120,6 @@
 #define MODE_FSK_8682 2
 #define MODE_FSK_8684 3
 
-#define RF_MODE_FANET_RX_TX 0
-#define RF_MODE_FANET_RX_TX_LEG_TX 1
-#define RF_MODE_FANET_RX_TX_LEG_RX_TX 2
-#define RF_MODE_FANET_TX_LEG_RX_TX 3
-#define RF_MODE_FANET_TX_LEG_RX 4
-#define RF_MODE_LEG_RX_TX 5
-#define RF_MODE_LEG_RX 6
-#define RF_MODE_FANET_RX_TX_LEG_RX 7
-
-
-
 
 //#include "main.h"
 #include "lib/LinkedList2.h"

@@ -3446,7 +3446,7 @@ void checkSystemCmd(char *ch_str){
   iPos = getStringValue(line,"#SYC RFMODE=","\r",0,&sRet);
   if (iPos >= 0){
     uint8_t u8 = atoi(sRet.c_str());
-    u8 = constrain(u8,0,3);
+    u8 = constrain(u8,0,15);
     add2OutputString("#SYC OK\r\n");
     if (u8 != setting.RFMode){
       setting.RFMode = u8;

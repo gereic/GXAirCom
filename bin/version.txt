@@ -316,3 +316,6 @@ forced groundspee to 0kmh when on-ground.
 
 v4.11.1
 BLE GPS-Bug when sending GPS-Data via bluetooth to heltec-board (xcguide)
+
+v4.11.2
+Bugfix in ble-command #SYC RFMODE=
