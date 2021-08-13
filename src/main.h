@@ -381,8 +381,10 @@ struct SettingsData{
   uint8_t boardType;
   uint8_t Mode; //Air-Module, GS-Station,
   uint8_t displayType;
+  uint8_t displayRotation; //displayrotation 0-3;
   float BattVoltOffs; //offset for Battery-multiplier
   uint8_t minBattPercent;
+  uint8_t restartBattPercent;
   String myDevId; //my device-ID
   uint8_t band;
   uint8_t LoraPower; //output-Power 5-20db

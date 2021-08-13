@@ -92,6 +92,7 @@ void onWebSocketEvent(uint8_t client_num,
 
           doc.clear();
           doc["vBatt"] = String((float)status.vBatt/1000.,2);
+          doc["Battperc"] = status.BattPerc;
           #ifdef AIRMODULE
           if (setting.Mode == MODE_AIR_MODULE){
             doc["gpsFix"] = status.GPS_Fix;
@@ -155,6 +156,7 @@ void onWebSocketEvent(uint8_t client_num,
           doc["setView"] = setting.settingsView;                  
           doc["board"] = setting.boardType;
           doc["disp"] = setting.displayType;
+          doc["dispRot"] = setting.displayRotation;
           doc["band"] = setting.band;
           doc["expwsw"] = setting.bHasExtPowerSw;
           doc["power"] = setting.LoraPower;
@@ -199,6 +201,8 @@ void onWebSocketEvent(uint8_t client_num,
           doc["gsGeoAlt"] = setting.gs.geoidAlt;
           doc["gsScr"] = setting.gs.SreenOption;
           doc["gsPs"] = setting.gs.PowerSave;
+          doc["MinBatPerc"] = setting.minBattPercent;
+          doc["restartBattPerc"] = setting.restartBattPercent;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
 
@@ -360,6 +364,7 @@ void onWebSocketEvent(uint8_t client_num,
         if (root.containsKey("password")) newSetting.wifi.password = doc["password"].as<String>();
         if (root.containsKey("board")) newSetting.boardType = doc["board"].as<uint8_t>();          
         if (root.containsKey("disp")) newSetting.displayType = doc["disp"].as<uint8_t>();          
+        if (root.containsKey("dispRot")) newSetting.displayRotation = doc["dispRot"].as<uint8_t>();          
         if (root.containsKey("power")) newSetting.LoraPower = constrain(doc["power"].as<uint8_t>(),0,20);          
         if (root.containsKey("band")) newSetting.band = doc["band"].as<uint8_t>();          
         if (root.containsKey("expwsw")) newSetting.bHasExtPowerSw = doc["expwsw"].as<uint8_t>();
@@ -382,6 +387,8 @@ void onWebSocketEvent(uint8_t client_num,
         if (root.containsKey("gsGeoAlt")) newSetting.gs.geoidAlt = doc["gsGeoAlt"].as<float>();
         if (root.containsKey("gsScr")) newSetting.gs.SreenOption = doc["gsScr"].as<uint8_t>();
         if (root.containsKey("gsPs")) newSetting.gs.PowerSave = doc["gsPs"].as<uint8_t>();
+        if (root.containsKey("MinBatPerc")) newSetting.minBattPercent = doc["MinBatPerc"].as<uint8_t>();
+        if (root.containsKey("restartBattPerc")) newSetting.restartBattPercent = doc["restartBattPerc"].as<uint8_t>();
         
         if (root.containsKey("mode")) newSetting.Mode = doc["mode"].as<uint8_t>();
         
@@ -532,6 +539,15 @@ String processor(const String& var){
         }
         sRet +=  " [" + fanet.getDevId(fanet.neighbours[i].devId) + "]</option>\r\n";
         //sRet += "<option value=\"" + fanet.getDevId(fanet.neighbours[i].devId) + "\">" + fanet.neighbours[i].name + " " + fanet.getDevId(fanet.neighbours[i].devId) + "</option>\r\n";
+      }
+    }
+    for (int i = 0; i < MAXWEATHERDATAS; i++){
+      if (fanet.weatherDatas[i].devId){
+        sRet += "<option value=\"" + fanet.getDevId(fanet.weatherDatas[i].devId) + "\">";
+        if (fanet.weatherDatas[i].name.length() > 0){
+          sRet += fanet.weatherDatas[i].name;
+        }
+        sRet +=  " [" + fanet.getDevId(fanet.weatherDatas[i].devId) + "]</option>\r\n";
       }
     }
     return sRet;
@@ -848,6 +864,11 @@ void sendPage(uint8_t pageNr){
         mStatus.vBatt = status.vBatt;
         doc["vBatt"] = String((float)status.vBatt/1000.,2);
       }    
+      if (mStatus.BattPerc != status.BattPerc){
+        bSend = true;
+        mStatus.BattPerc = status.BattPerc;
+        doc["Battperc"] = status.BattPerc;
+      }          
       #ifdef AIRMODULE
       if (setting.Mode == MODE_AIR_MODULE){
         if (mStatus.GPS_Fix != status.GPS_Fix){

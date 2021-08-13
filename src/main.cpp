@@ -203,6 +203,15 @@ uint32_t fanetDstId = 0;
 
 //PIN-Definition
 
+//e-ink
+int8_t PinEink_Busy   =  33;
+int8_t PinEink_Rst    =  -1;
+int8_t PinEink_Dc     =  32;
+int8_t PinEink_Cs     =  15;
+int8_t PinEink_Clk    =  4;
+int8_t PinEink_Din    =  2;
+
+
 //LED
 int8_t PinUserLed = -1;
 
@@ -221,6 +230,10 @@ int8_t PinLora_SCK = -1;
 int8_t PinGsmRst = -1;
 int8_t PinGsmTx = -1;
 int8_t PinGsmRx = -1;
+
+//GPS
+int8_t PinGPSRX = -1;
+int8_t PinGPSTX = -1;
 
 //OLED-Display / AXP192
 int8_t PinOledRst = -1;
@@ -1472,6 +1485,7 @@ void printSettings(){
   log_i("Access-point password=%s",setting.wifi.appw.c_str());
   log_i("Board-Type=%d",setting.boardType);
   log_i("Display-Type=%d",setting.displayType);
+  log_i("Display-Rotation=%d",setting.displayRotation);
   //log_i("AXP192=%d",uint8_t(status.bHasAXP192));
   if (setting.band == 0){
     log_i("BAND=868mhz");
@@ -2007,6 +2021,16 @@ void setup() {
     break;
   case BOARD_TTGO_TSIM_7000:
     log_i("Board=TTGO_TSIM_7000");
+
+    //E-Ink
+    PinEink_Busy   =  39;
+    PinEink_Rst    =  25;
+    PinEink_Dc     =  15;
+    PinEink_Cs     =  13;
+    PinEink_Clk    =  14;
+    PinEink_Din    =  2;
+
+
     PinLoraRst = 12;
     PinLoraDI0 = 32;
     PinLora_SS = 5;
@@ -2027,7 +2051,12 @@ void setup() {
     PinBaroSDA = 21;
     PinBaroSCL = 22;
 
-    PinOneWire = 25;    
+    if (setting.displayType > 1){
+      PinOneWire = -1; //no one-wire if display is eink, cause we need that pin
+    }else{
+      PinOneWire = 25;    
+    }
+    
 
     PinWindDir = 33;
     PinWindSpeed = 34;
@@ -2089,9 +2118,10 @@ void setup() {
 
   #ifdef GSMODULE
   if (setting.Mode == MODE_GROUND_STATION){
-    if ((reason2 == ESP_SLEEP_WAKEUP_TIMER) && (setting.gs.PowerSave == GS_POWER_BATT_LIFE)){
+    //if ((reason2 == ESP_SLEEP_WAKEUP_TIMER) && (setting.gs.PowerSave == GS_POWER_BATT_LIFE)){
+      if (setting.gs.PowerSave == GS_POWER_BATT_LIFE){
       printBattVoltage(millis()); //read Battery-level
-      if (status.BattPerc <= (setting.minBattPercent + BATTPERCSTART)){
+      if ((status.BattPerc < (setting.minBattPercent + setting.restartBattPercent)) || (status.BattPerc >= 80)){
         //go again to sleep
         printLocalTime();
         log_i("batt-voltage to less --> going to sleep again for 30min.");
@@ -2125,6 +2155,7 @@ xOutputMutex = xSemaphoreCreateMutex();
 
   //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
 #ifdef AIRMODULE
+  
   if (setting.Mode == MODE_AIR_MODULE){
     xTaskCreatePinnedToCore(taskBaro, "taskBaro", 6500, NULL, 9, &xHandleBaro, ARDUINO_RUNNING_CORE1); //high priority task
   }
@@ -2132,6 +2163,7 @@ xOutputMutex = xSemaphoreCreateMutex();
   //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
   xTaskCreatePinnedToCore(taskStandard, "taskStandard", 6500, NULL, 10, &xHandleStandard, ARDUINO_RUNNING_CORE1); //standard task
   //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
+
 #ifdef EINK
   xTaskCreatePinnedToCore(taskEInk, "taskEInk", 6500, NULL, 8, &xHandleEInk, ARDUINO_RUNNING_CORE1); //background EInk
 #endif  
@@ -2148,7 +2180,6 @@ xOutputMutex = xSemaphoreCreateMutex();
   //start Gsm-task
   xTaskCreatePinnedToCore(taskGsm, "taskGsm", 4096, NULL, 3, &xHandleGsm, ARDUINO_RUNNING_CORE1);
 #endif
-
 }
 
 
@@ -2159,6 +2190,24 @@ bool connectGPRS(){
   return modem.gprsConnect(setting.gsm.apn.c_str(), setting.gsm.user.c_str(), setting.gsm.pwd.c_str());
 }
 
+bool connectModem(){
+  log_i("Waiting for network...");
+  if (!modem.waitForNetwork(600000L)) return false;
+  status.gsm.SignalQuality = modem.getSignalQuality();
+  //log_i("signal quality %d",status.gsm.SignalQuality);
+  status.gsm.sOperator = modem.getOperator();
+  //log_i("operator=%s",status.gsm.sOperator.c_str());
+  bool bAutoreport;
+  if (modem.getNetworkSystemMode(bAutoreport,status.gsm.networkstat)){        
+    //log_i("network system mode %d",status.gsm.networkstat);
+  }else{
+    log_e("can't get Networksystemmode");
+  }
+  if (!connectGPRS()) return false;
+  status.myIP = modem.getLocalIP();
+  log_i("connected successfully IP:%s",status.myIP.c_str());
+  return true;
+}
 
 bool initModem(){
   //reset modem
@@ -2183,7 +2232,8 @@ bool initModem(){
   #endif
   modem.sleepEnable(false); //set sleepmode off
   modem.sendAT(GF("+CMGF=1"));
-  modem.waitResponse();
+  modem.waitResponse();  
+  /*
   log_i("Waiting for network...");
   if (!modem.waitForNetwork(600000L)) return false;
   status.gsm.SignalQuality = modem.getSignalQuality();
@@ -2199,6 +2249,7 @@ bool initModem(){
   if (!connectGPRS()) return false;
   status.myIP = modem.getLocalIP();
   log_i("connected successfully IP:%s",status.myIP.c_str());
+  */
   return true;
 }
 
@@ -2209,15 +2260,14 @@ void PowerOffModem(){
   log_i("stop gprs connection");
   modem.gprsDisconnect();
   log_i("switch radio off");
+  //modem.sleepEnable(false); // required in case sleep was activated and will apply after reboot
+  //modem.poweroff();
   modem.radioOff();  
 
   #ifdef TINY_GSM_MODEM_SIM7000
     digitalWrite(5,HIGH);
-  #endif
-  //digitalWrite(PinGsmRst,HIGH);
-  
-  #ifdef TINY_GSM_MODEM_SIM7000
     //Power-off SIM7000-module
+    modem.sleepEnable(false); // required in case sleep was activated and will apply after reboot
     for (int i = 0; i < 10;i++){
       log_i("power off modem");
       if (modem.poweroff()) break;
@@ -2230,6 +2280,7 @@ void PowerOffModem(){
     modem.sendAT(GF("+CSCLK=2"));
     delay(1000);
   #endif
+  digitalWrite(PinGsmRst,LOW);
   xSemaphoreGive( xGsmMutex );
 
 }
@@ -2257,7 +2308,8 @@ void taskGsm(void *pvParameters){
     //  digitalWrite(PinGsmRst,LOW);
     //}
     log_i("stop task");
-    PowerOffModem();
+    initModem();
+    PowerOffModem();    
     vTaskDelete(xHandleGsm); //delete weather-task
     return;
   }
@@ -2287,6 +2339,7 @@ void taskGsm(void *pvParameters){
           connectGPRS();
         }else{
           initModem(); //init modem
+          connectModem(); //connect modem to network
         }
       }          
       xSemaphoreGive( xGsmMutex );
@@ -2842,7 +2895,7 @@ void printBattVoltage(uint32_t tAct){
     //log_i("Batt =%dV",status.vBatt);
     status.BattPerc = scale(status.vBatt,battEmpty,battFull,0,100);
     //log_i("Batt =%d%%",status.BattPerc);
-    log_i("Batt %dV; %d%%",status.vBatt,status.BattPerc);
+    //log_i("Batt %dV; %d%%",status.vBatt,status.BattPerc);
   }
 }
 
@@ -3408,6 +3461,11 @@ void checkSystemCmd(char *ch_str){
       esp_restart();
     }
   }
+  if (line.indexOf("#SYC RESTART") >= 0){
+      delay(500); //we have to restart in case, the mode is changed
+      log_e("ESP Restarting !");
+      esp_restart();
+  }
   if (line.indexOf("#SYC OUTMODE?") >= 0){
     //log_i("sending 2 client");
     add2OutputString("#SYC OUTMODE=" + String(setting.outputMode) + "\r\n");
@@ -3811,12 +3869,20 @@ void taskStandard(void *pvParameters){
   MyFanetData.rssi = 0;
 
   #ifdef AIRMODULE
-  if (status.bHasAXP192){
-    NMeaSerial.begin(GPSBAUDRATE,SERIAL_8N1,34,12,false);
-    log_i("GPS Baud=9600,8N1,RX=34,TX=12");
-  }else{
+  PinGPSRX = -1;
+  PinGPSTX = -1;
+  if (setting.boardType != BOARD_TTGO_TSIM_7000){
+    if (status.bHasAXP192){
+      PinGPSRX = 34;
+      PinGPSTX = 12;
+    }else{
+      PinGPSRX = 12;
+      PinGPSTX = 15;
+    }
+  }
+  if (PinGPSRX >= 0){
     NMeaSerial.begin(GPSBAUDRATE,SERIAL_8N1,12,15,false);
-    log_i("GPS Baud=9600,8N1,RX=12,TX=15");
+    log_i("GPS Baud=9600,8N1,RX=%d,TX=%d",PinGPSRX,PinGPSTX);
   }
   
   //setupUbloxConfig();
@@ -4544,15 +4610,17 @@ void taskEInk(void *pvParameters){
     vTaskDelete(xHandleEInk);
     return;
   }
+  /*
   while(1){
     if (setting.myDevId.length() > 0) break; //now we are ready
     delay(100);
   }
+  */
   Screen screen;
   if (setting.displayType == EINK2_9_V2){
-    screen.begin(1); //display-type 1
+    screen.begin(1,PinEink_Cs,PinEink_Dc,PinEink_Rst,PinEink_Busy,PinEink_Clk,PinEink_Din); //display-type 1
   }else{
-    screen.begin(0);
+    screen.begin(0,PinEink_Cs,PinEink_Dc,PinEink_Rst,PinEink_Busy,PinEink_Clk,PinEink_Din);
   }  
   while(1){
     screen.run();
@@ -4746,6 +4814,7 @@ void taskBackGround(void *pvParameters){
     }
   #endif
 
+  tBattEmpty = millis();
   while (1){
     uint32_t tAct = millis();
     if  (status.wifiStat){
@@ -4938,33 +5007,30 @@ void taskBackGround(void *pvParameters){
       powerOff(); //power off, when battery is empty !!
     }
     //if ((status.BattPerc < setting.minBattPercent) && (status.vBatt >= BATTPINOK)) { // if Batt-voltage is below 1V, maybe the resistor is missing.
-    //if (setting.gs.PowerSave == GS_POWER_BATT_LIFE){
+    if (setting.gs.PowerSave == GS_POWER_BATT_LIFE){
       if ((status.BattPerc <= setting.minBattPercent) && (status.vBatt >= BATTPINOK)){
-        if (timeOver(tAct,tBattEmpty,10000)){ //min 60sek. below
+        if (timeOver(tAct,tBattEmpty,60000)){ //min 60sek. below
           log_i("Batt empty voltage=%d.%dV",status.vBatt/1000,status.vBatt%1000);
           log_i("sleep for 30min. --> then check again batt-voltage");
-          esp_sleep_enable_timer_wakeup((uint64_t)BATTSLEEPTIME * uS_TO_S_FACTOR); //set Timer for wakeup        
+          esp_sleep_enable_timer_wakeup((uint64_t)10 * uS_TO_S_FACTOR); //set Timer for wakeup        
+          //esp_sleep_enable_timer_wakeup((uint64_t)BATTSLEEPTIME * uS_TO_S_FACTOR); //set Timer for wakeup        
           powerOff();
         }
       }else{
         tBattEmpty = millis();
       }
-    //}
-    //}else{
-    //  tBattEmpty = millis();
-    //}
-    
-    /*
-    if (status.bHasAXP192){ //power off only if we have an AXP192, otherwise, we can't switch on again.
-      if ((status.vBatt < battEmpty) && (status.vBatt >= BATTPINOK)) { // if Batt-voltage is below 1V, maybe the resistor is missing.
-        if (timeOver(tAct,tBattEmpty,60000)){ //min 60sek. below
-          log_i("Batt empty voltage=%d.%dV",status.vBatt/1000,status.vBatt%1000);
-          powerOff(); //power off, when battery is empty !!
+    }else{
+      if (status.bHasAXP192){ //power off only if we have an AXP192, otherwise, we can't switch on again.
+        if ((status.vBatt < battEmpty) && (status.vBatt >= BATTPINOK)) { // if Batt-voltage is below 1V, maybe the resistor is missing.
+          if (timeOver(tAct,tBattEmpty,60000)){ //min 60sek. below
+            log_i("Batt empty voltage=%d.%dV",status.vBatt/1000,status.vBatt%1000);
+            powerOff(); //power off, when battery is empty !!
+          }
+        }else{
+          tBattEmpty = millis();
         }
-      }else{
-        tBattEmpty = millis();
       }
-    }*/
+    }
     checkExtPowerOff(tAct);
     delay(1);
 	}

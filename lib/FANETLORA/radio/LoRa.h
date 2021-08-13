@@ -45,6 +45,7 @@ public:
   int16_t setFrequency(float frequency);
   uint8_t gain = 0; //0 --> auto-gain, 1--> highest gain; 6 --> lowest gain
   void run(); //has to be called cyclic
+  void end();
 
 private:
 	float expectedAirTime_ms(int pktLen);

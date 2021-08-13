@@ -404,7 +404,7 @@ void FanetMac::frameRxWrapper(int length)
 void FanetMac::end()
 {
   // stop LoRa class
-  //LoRa.end();
+  radio.end();
   SPI.end();
   //if (_ss >= 0) digitalWrite(_ss,LOW);
   //if (_reset >= 0) digitalWrite(_reset,HIGH);

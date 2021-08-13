@@ -40,12 +40,14 @@ void load_configFile(SettingsData* pSetting){
   pSetting->gs.SreenOption = preferences.getUChar("GSSCR",0);
   pSetting->gs.PowerSave = preferences.getUChar("GSPS",0);
   pSetting->BattVoltOffs = preferences.getFloat("BATOFFS",0.0);
-  pSetting->minBattPercent = preferences.getUChar("BattMinPerc",0);
+  pSetting->minBattPercent = preferences.getUChar("BattMinPerc",20);
+  pSetting->restartBattPercent = preferences.getUChar("restartBattPerc",20);
 
   //live-tracking
   pSetting->OGNLiveTracking.mode = preferences.getUChar("OGN_LIVE",0);
   pSetting->screenNumber = preferences.getUChar("SCREEN",0);
   pSetting->displayType = preferences.getUChar("Display",0);
+  pSetting->displayRotation = preferences.getUChar("DispRot",0);
   pSetting->traccarLiveTracking = preferences.getUChar("TRACCAR_LIVE",0);
   pSetting->TraccarSrv = preferences.getString("TRACCAR_SRV","");
   
@@ -143,10 +145,13 @@ void write_configFile(SettingsData* pSetting){
   preferences.putFloat("GSGEOALT",pSetting->gs.geoidAlt);
   preferences.putUChar("GSSCR",pSetting->gs.SreenOption);
   preferences.putUChar("GSPS",pSetting->gs.PowerSave);
+  preferences.putUChar("BattMinPerc",setting.minBattPercent);
+  preferences.putUChar("restartBattPerc",setting.restartBattPercent);
 
   //live-tracking
   preferences.putUChar("OGN_LIVE",pSetting->OGNLiveTracking.mode);
   preferences.putUChar("Display",pSetting->displayType);
+  preferences.putUChar("DispRot",pSetting->displayRotation);
   preferences.putUChar("TRACCAR_LIVE",pSetting->traccarLiveTracking);
   preferences.putString("TRACCAR_SRV",pSetting->TraccarSrv);
   

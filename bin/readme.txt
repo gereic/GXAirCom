@@ -163,6 +163,16 @@ FUEL-SENSO 39
 
 
 ************* Pins for TTGO-TSIM7000G ***************
+
+******* E-Ink *********
+BUSY     39  (if e-ink is selected, rain-sensor is not supported)
+RST      25  (if e-ink is selected, ds18b20 is not supported)
+DC       15
+CS       13
+CLK      14
+DIN      2
+
+
 ******* LORA ********
 SCK 18
 MISO 19
@@ -183,7 +193,7 @@ SDA 21
 SCL 22 
 
 ******** Temperature-sensor DS18B20 for Ground-station *********
-TEMP_PIN 25
+TEMP_PIN 25  (if e-ink is selected, no ds18b20 is supported)
 
 ******** Aneometer (Davis 6410) *********
 WINDDIR_PIN 33
@@ -191,8 +201,10 @@ WINDSPEED_PIN 34
 
 ******** RAIN-Sensor VENTUS W174 *********
 RAIN_PIN 39   (need 10K Pull-Up-Resistor) Bucket-Size 0.5l
+              (if e-ink is selected, rain-sensor is not supported)
 
-
+******** BATTERY-Voltate *******
+BATT_VOLT_PIN 35
 
 
 

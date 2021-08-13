@@ -740,3 +740,15 @@ void LoRaClass::invertba(byte* ba, int len)
     ba[i] =~ba[i];
 } 
 
+void LoRaClass::end(){
+  //set radio to sleep-mode
+  switch (radioType){
+    case RADIO_SX1262:
+      pSx1262Radio->sleep();
+      break;
+    case RADIO_SX1276:
+      pSx1276Radio->sleep();
+      break;
+  }
+}
+

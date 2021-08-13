@@ -27,19 +27,21 @@ extern struct statusData status;
 #include <icons.h>
 #include <string.h>
 
+/*
 #define EINK_BUSY     33
 #define EINK_RST      0
 #define EINK_DC       32
 #define EINK_CS       15
 #define EINK_CLK      4
 #define EINK_DIN      2
+*/
 
 #define EINK_FULL_UPDATE 300000 //every 5min do a full-update because of ghosting
 
 class Screen {
 public:
   Screen(); //constructor
-  bool begin(uint8_t type);
+  bool begin(uint8_t type,int8_t cs,int8_t dc,int8_t rst,int8_t busy,int8_t clk, int8_t din);
   void end(void);
   void run(void); //has to be called cyclic
   void webUpdate(void);
@@ -48,6 +50,7 @@ private:
   bool bInit;
   void doInitScreen(void);
   void drawMainScreen(void);
+  void drawWeatherScreen(void);
   void drawFlightTime(int16_t x, int16_t y, int16_t width, int16_t height,uint32_t tTime);
   void drawValue(int16_t x, int16_t y, int16_t width, int16_t height,float value,uint8_t decimals);
   void drawCompass(int16_t x, int16_t y, int16_t width, int16_t height,float value);

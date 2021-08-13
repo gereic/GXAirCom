@@ -323,3 +323,6 @@ Bugfix in ble-command #SYC RFMODE=
 v4.12.0
 added setting to adjust battery-voltage
 bugfix bluetooth GPS no Fix (xcguide)
+added support for E-Ink on ground-Station (T-Sim7000)
+added battery-life-power-option
+added turning for E-Ink in ground-station-mode

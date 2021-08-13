@@ -383,6 +383,7 @@ function sendValues(){
   setView : Number(document.getElementById("setView").value),
   board : Number(document.getElementById("board").value),
   disp : Number(document.getElementById("disp").value),
+  dispRot : Number(document.getElementById("dispRot").value),
   band : Number(document.getElementById("band").value),
   power : Number(document.getElementById("power").value),
   type : Number(document.getElementById("type").value),
@@ -402,6 +403,8 @@ function sendValues(){
   gsGeoAlt : Number(document.getElementById("gsGeoAlt").value),
   gsScr : Number(document.getElementById("gsScr").value),
   gsPs : Number(document.getElementById("gsPs").value),
+  MinBatPerc : Number(document.getElementById("MinBatPerc").value),
+  restartBattPerc : Number(document.getElementById("restartBattPerc").value),
   save : 1
   };
   doSend(JSON.stringify(obj));
@@ -630,6 +633,15 @@ window.addEventListener("load", init, false);
               <option value="1">0.96' OLED</option>
               <option value="2">2.9' E-Ink</option>
               <option value="3">2.9' E-Ink V2</option>              
+            </select></td>
+          </tr>
+          <tr>
+            <th>Display Rotation</th>
+            <td><select id="dispRot">
+              <option value="0">0&deg;</option>
+              <option value="1">90&deg;</option>
+              <option value="2">180&deg;</option>
+              <option value="3">270&deg;</option>
             </select></td>
           </tr>
           <tr>
@@ -910,6 +922,14 @@ window.addEventListener("load", init, false);
               <option value="1">only on between sunset and sunrise</option>
               <option value="2">battery life algorithm mode</option>
             </select></td>
+          </tr>
+          <tr>
+            <th>Min battery charging state [&#037;]</th>
+            <td><input type="number" id="MinBatPerc" min="0" max="50" step="1"></td>
+          </tr>
+          <tr>
+            <th>Min battery restart state [&#037;]</th>
+            <td><input type="number" id="restartBattPerc" min="10" max="100" step="1"></td>
           </tr>
         </tbody>      
       </table>
