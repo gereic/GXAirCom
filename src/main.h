@@ -197,7 +197,7 @@ SCL 14
 #define BAND868 0
 #define BAND915 1
 
-#define BATTPINOK 1000 //1 Volt for Batt-pinOK
+#define BATTPINOK 2000 //2 Volt for Batt-pinOK
 #define BATTSLEEPTIME 3600 //check every 1h if Battery is full again
 #define BATTPERCSTART 10 //percent, where esp starts normal in addition to min. percentage
 

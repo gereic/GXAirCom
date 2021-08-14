@@ -504,7 +504,7 @@ function sendValues(){
   doSend(JSON.stringify(obj));
 
   document.getElementById("btnsave").innerText  = "rebooting ..."
-  var delay = 5000;
+  var delay = 10000;
   setTimeout( callMainPage, delay )
 }
  
@@ -924,11 +924,11 @@ window.addEventListener("load", init, false);
             </select></td>
           </tr>
           <tr>
-            <th>Min battery charging state [&#037;]</th>
+            <th>min. battery capacity [&#037;]</th>
             <td><input type="number" id="MinBatPerc" min="0" max="50" step="1"></td>
           </tr>
           <tr>
-            <th>Min battery restart state [&#037;]</th>
+            <th>additional battery capacity for restart [&#037;]</th>
             <td><input type="number" id="restartBattPerc" min="10" max="100" step="1"></td>
           </tr>
         </tbody>      

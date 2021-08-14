@@ -205,7 +205,7 @@ uint32_t fanetDstId = 0;
 
 //e-ink
 int8_t PinEink_Busy   =  33;
-int8_t PinEink_Rst    =  -1;
+int8_t PinEink_Rst    =  0;
 int8_t PinEink_Dc     =  32;
 int8_t PinEink_Cs     =  15;
 int8_t PinEink_Clk    =  4;
@@ -1793,7 +1793,6 @@ void setup() {
         //log_i("time to sleep = %d",tSleep);
         log_i("time to sleep = %d --> %02d:%02d:%02d",tSleep,tSleep/60/60,(tSleep/60)%60,(tSleep)%60);
         esp_sleep_enable_timer_wakeup((uint64_t)tSleep * uS_TO_S_FACTOR); //set Timer for wakeup      
-        //esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR); //set Timer for wakeup
         esp_wifi_stop();
         esp_bluedroid_disable();
         esp_bluedroid_deinit();
@@ -2121,12 +2120,12 @@ void setup() {
     //if ((reason2 == ESP_SLEEP_WAKEUP_TIMER) && (setting.gs.PowerSave == GS_POWER_BATT_LIFE)){
       if (setting.gs.PowerSave == GS_POWER_BATT_LIFE){
       printBattVoltage(millis()); //read Battery-level
-      if ((status.BattPerc < (setting.minBattPercent + setting.restartBattPercent)) || (status.BattPerc >= 80)){
+      log_i("Batt %dV; %d%%",status.vBatt,status.BattPerc);
+      if ((status.vBatt >= BATTPINOK) && (status.BattPerc < (setting.minBattPercent + setting.restartBattPercent)) && (status.BattPerc < 80)){
         //go again to sleep
         printLocalTime();
-        log_i("batt-voltage to less --> going to sleep again for 30min.");
+        log_i("batt-voltage to less (%d%%) --> going to sleep again for 60min.",status.BattPerc);
         esp_sleep_enable_timer_wakeup((uint64_t)BATTSLEEPTIME * uS_TO_S_FACTOR); //set Timer for wakeup      
-        //esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR); //set Timer for wakeup
         esp_wifi_stop();
         esp_bluedroid_disable();
         esp_bluedroid_deinit();
@@ -3881,7 +3880,7 @@ void taskStandard(void *pvParameters){
     }
   }
   if (PinGPSRX >= 0){
-    NMeaSerial.begin(GPSBAUDRATE,SERIAL_8N1,12,15,false);
+    NMeaSerial.begin(GPSBAUDRATE,SERIAL_8N1,PinGPSRX,PinGPSTX,false);
     log_i("GPS Baud=9600,8N1,RX=%d,TX=%d",PinGPSRX,PinGPSTX);
   }
   
@@ -5012,8 +5011,7 @@ void taskBackGround(void *pvParameters){
         if (timeOver(tAct,tBattEmpty,60000)){ //min 60sek. below
           log_i("Batt empty voltage=%d.%dV",status.vBatt/1000,status.vBatt%1000);
           log_i("sleep for 30min. --> then check again batt-voltage");
-          esp_sleep_enable_timer_wakeup((uint64_t)10 * uS_TO_S_FACTOR); //set Timer for wakeup        
-          //esp_sleep_enable_timer_wakeup((uint64_t)BATTSLEEPTIME * uS_TO_S_FACTOR); //set Timer for wakeup        
+          esp_sleep_enable_timer_wakeup((uint64_t)BATTSLEEPTIME * uS_TO_S_FACTOR); //set Timer for wakeup        
           powerOff();
         }
       }else{
