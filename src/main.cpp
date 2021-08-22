@@ -1524,7 +1524,10 @@ void printSettings(){
   log_i("GS ALT=%0.2f",setting.gs.alt);
   log_i("GS SCREEN OPTION=%d",setting.gs.SreenOption);
   log_i("GS POWERSAFE=%d",setting.gs.PowerSave);
-  
+
+  log_i("BattVoltOffs=%.2f",setting.BattVoltOffs);
+  log_i("minBattPercent=%d",setting.minBattPercent);
+  log_i("restartBattPercent=%d",setting.restartBattPercent);
   
   log_i("AirWhere-Livetracking=%d",setting.awLiveTracking);
   log_i("OGN-Livetracking=%d",setting.OGNLiveTracking.mode);
