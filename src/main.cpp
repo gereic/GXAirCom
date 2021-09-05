@@ -2211,6 +2211,26 @@ bool connectModem(){
   return true;
 }
 
+bool factoryResetModem(){
+  //reset modem
+  if (PinGsmRst >= 0){
+    log_i("reset modem");
+    digitalWrite(PinGsmRst,LOW);
+    delay(500); //wait200ms
+    digitalWrite(PinGsmRst,HIGH);
+    delay(6000); //wait until modem is ok now
+  }  
+  log_i("test modem-connection");
+  if (!modem.testAT()) return false;
+  log_i("set factory-settings");
+  modem.sendAT(GF("&F"));  // Factory settings
+  modem.waitResponse();
+  if (!modem.testAT()) return false;
+  modem.sendAT(GF("&W"));  // Factory settings
+  modem.waitResponse();
+  return true;
+}
+
 bool initModem(){
   //reset modem
   if (PinGsmRst >= 0){
@@ -2290,12 +2310,8 @@ void PowerOffModem(){
 void taskGsm(void *pvParameters){  
   if (PinGsmRst >= 0){
     pinMode(PinGsmRst, OUTPUT); //set GsmReset to output
-    log_i("reset modem");
-    digitalWrite(PinGsmRst,LOW);
-    delay(500); //wait200ms
-    digitalWrite(PinGsmRst,HIGH);
-    delay(3000); //wait until modem is ok now
-  } 
+  }
+  status.gsm.sOperator = ""; 
   GsmSerial.begin(115200,SERIAL_8N1,PinGsmRx,PinGsmTx,false); //baud, config, rx, tx, invert
   //const TickType_t xDelay = 60000 / portTICK_PERIOD_MS;   //only every 60sek.
   //TickType_t xLastWakeTime = xTaskGetTickCount (); //get actual tick-count
@@ -2305,18 +2321,18 @@ void taskGsm(void *pvParameters){
   static uint32_t tCheckSms = millis() - GSM_CHECK_TIME_SMS;
   // Set preferred message format to text mode
 
+  factoryResetModem();
+  initModem();
   if (setting.wifi.connect != MODE_WIFI_DISABLED){
     //if (PinGsmRst >= 0){
     //  digitalWrite(PinGsmRst,LOW);
     //}
     log_i("stop task");
-    initModem();
     PowerOffModem();    
     vTaskDelete(xHandleGsm); //delete weather-task
     return;
   }
   
-
   while(1){
     tAct = millis();
     if (timeOver(tAct,tCheckConn,GSM_CHECK_TIME_CON)){
@@ -2328,6 +2344,9 @@ void taskGsm(void *pvParameters){
         //xLastWakeTime = xTaskGetTickCount (); //get actual tick-count
         tCheckConn = millis();
         status.gsm.SignalQuality = modem.getSignalQuality();
+        if (status.gsm.sOperator.length() == 0){
+          status.gsm.sOperator = modem.getOperator();
+        }
         bool bAutoreport;
         if (modem.getNetworkSystemMode(bAutoreport,status.gsm.networkstat)){        
           //log_i("network system mode %d",status.gsm.networkstat);
@@ -2346,6 +2365,30 @@ void taskGsm(void *pvParameters){
       }          
       xSemaphoreGive( xGsmMutex );
     }
+    /*
+    if (command.resetModem == 1){
+      xSemaphoreTake( xGsmMutex, portMAX_DELAY );
+      log_i("disconnect gprs");
+      modem.gprsDisconnect();
+      status.modemstatus = MODEM_DISCONNECTED;
+      log_i("start factory reset of modem");
+      modem.sendAT(GF("&F"));  // Factory settings
+      modem.waitResponse();
+      modem.testAT();
+      modem.sendAT(GF("&W"));  // Factory settings
+      if (modem.waitResponse() == 1){
+        log_i("factory reset ok");
+        command.resetModem = 2;
+        status.modemstatus = MODEM_CONNECTING;
+        initModem(); //init modem
+        connectModem(); //connect modem to network
+      }else{
+        log_e("error factory-reset of modem");
+        command.resetModem = 255;
+      }
+      xSemaphoreGive( xGsmMutex );
+    }
+    */
     /*
     if (timeOver(tAct,tCheckSms,GSM_CHECK_TIME_SMS)){
       tCheckSms = tAct;
