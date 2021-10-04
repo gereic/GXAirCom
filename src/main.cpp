@@ -227,6 +227,7 @@ int8_t PinLora_MOSI = -1;
 int8_t PinLora_SCK = -1;
 
 //GSM-Module
+int8_t PinGsmPower = -1;
 int8_t PinGsmRst = -1;
 int8_t PinGsmTx = -1;
 int8_t PinGsmRx = -1;
@@ -478,6 +479,14 @@ void checkBoardType(){
     setting.displayType = NO_DISPLAY;
     setting.boardType = BOARD_TTGO_TSIM_7000;
     log_i("TTGO-T-Sim7000 found");
+    write_configFile(&setting);
+    delay(1000);
+    esp_restart(); //we need to restart
+  #endif
+  #ifdef TINY_GSM_MODEM_SIM800
+    setting.displayType = NO_DISPLAY;
+    setting.boardType = BOARD_TTGO_TCALL_800;
+    log_i("TTGO-T-Sim800 found");
     write_configFile(&setting);
     delay(1000);
     esp_restart(); //we need to restart
@@ -2076,6 +2085,32 @@ void setup() {
     pinMode(PinADCVoltage, INPUT);
 
     break;
+  case BOARD_TTGO_TCALL_800:
+
+    PinLoraRst = 12;
+    PinLoraDI0 = 32;
+    PinLora_SS = 5;
+    //pinMode(5, OUTPUT);
+    //digitalWrite(5,LOW); 
+    //PinLora_SS = 16; //unused Pin, but pin5 is also for reset of GSM
+    PinLora_MISO = 19;
+    PinLora_MOSI = 17;
+    PinLora_SCK = 18;
+
+    PinBaroSDA = 21;
+    PinBaroSCL = 22;
+
+    PinGsmPower = 23;
+    PinGsmRst = 4; //is PowerKey, but IO5 is covered by Lora SS
+    PinGsmTx = 27;
+    PinGsmRx = 26;
+
+    PinADCVoltage = 35;
+    
+    adcVoltageMultiplier = 2.0f * 3.50f; // not sure if it is ok ?? don't have this kind of board
+    pinMode(PinADCVoltage, INPUT);
+
+    break;
   case BOARD_UNKNOWN:
     log_e("unknown Board --> please correct");
     break;
@@ -2121,7 +2156,7 @@ void setup() {
   #ifdef GSMODULE
   if (setting.Mode == MODE_GROUND_STATION){
     //if ((reason2 == ESP_SLEEP_WAKEUP_TIMER) && (setting.gs.PowerSave == GS_POWER_BATT_LIFE)){
-      if (setting.gs.PowerSave == GS_POWER_BATT_LIFE){
+      if ((setting.gs.PowerSave == GS_POWER_BATT_LIFE) || (setting.gs.PowerSave == GS_POWER_SAFE)){
       printBattVoltage(millis()); //read Battery-level
       log_i("Batt %dV; %d%%",status.vBatt,status.BattPerc);
       if ((status.vBatt >= BATTPINOK) && (status.BattPerc < (setting.minBattPercent + setting.restartBattPercent)) && (status.BattPerc < 80)){
@@ -2199,12 +2234,14 @@ bool connectModem(){
   //log_i("signal quality %d",status.gsm.SignalQuality);
   status.gsm.sOperator = modem.getOperator();
   //log_i("operator=%s",status.gsm.sOperator.c_str());
+  #ifdef TINY_GSM_MODEM_SIM7000
   bool bAutoreport;
   if (modem.getNetworkSystemMode(bAutoreport,status.gsm.networkstat)){        
     //log_i("network system mode %d",status.gsm.networkstat);
   }else{
     log_e("can't get Networksystemmode");
   }
+  #endif
   if (!connectGPRS()) return false;
   status.myIP = modem.getLocalIP();
   log_i("connected successfully IP:%s",status.myIP.c_str());
@@ -2215,8 +2252,10 @@ bool factoryResetModem(){
   //reset modem
   if (PinGsmRst >= 0){
     log_i("reset modem");
+    digitalWrite(PinGsmRst,HIGH);
+    delay(100);
     digitalWrite(PinGsmRst,LOW);
-    delay(500); //wait200ms
+    delay(1000);
     digitalWrite(PinGsmRst,HIGH);
     delay(6000); //wait until modem is ok now
   }  
@@ -2235,8 +2274,10 @@ bool initModem(){
   //reset modem
   if (PinGsmRst >= 0){
     log_i("reset modem");
+    digitalWrite(PinGsmRst,HIGH);
+    delay(100);
     digitalWrite(PinGsmRst,LOW);
-    delay(500); //wait200ms
+    delay(1000);
     digitalWrite(PinGsmRst,HIGH);
     delay(6000); //wait until modem is ok now
   }  
@@ -2248,30 +2289,11 @@ bool initModem(){
     modem.disableGPS();
     log_i("set NetworkMode to %d",setting.gsm.NetworkMode);
    modem.setNetworkMode(setting.gsm.NetworkMode); //set mode
-    //log_i("set preferredMode to CAT-M and NB-IoT");
-    //log_i("set NB-IOT");
-    //modem.setPreferredMode(2); //set to NB-IoT
   #endif
   modem.sleepEnable(false); //set sleepmode off
   modem.sendAT(GF("+CMGF=1"));
   modem.waitResponse();  
-  /*
-  log_i("Waiting for network...");
-  if (!modem.waitForNetwork(600000L)) return false;
-  status.gsm.SignalQuality = modem.getSignalQuality();
-  //log_i("signal quality %d",status.gsm.SignalQuality);
-  status.gsm.sOperator = modem.getOperator();
-  //log_i("operator=%s",status.gsm.sOperator.c_str());
-  bool bAutoreport;
-  if (modem.getNetworkSystemMode(bAutoreport,status.gsm.networkstat)){        
-    //log_i("network system mode %d",status.gsm.networkstat);
-  }else{
-    log_e("can't get Networksystemmode");
-  }
-  if (!connectGPRS()) return false;
-  status.myIP = modem.getLocalIP();
-  log_i("connected successfully IP:%s",status.myIP.c_str());
-  */
+  modem.sendAT("+CNETLIGHT=0"); //turn off net-light to redure Power
   return true;
 }
 
@@ -2282,8 +2304,6 @@ void PowerOffModem(){
   log_i("stop gprs connection");
   modem.gprsDisconnect();
   log_i("switch radio off");
-  //modem.sleepEnable(false); // required in case sleep was activated and will apply after reboot
-  //modem.poweroff();
   modem.radioOff();  
 
   #ifdef TINY_GSM_MODEM_SIM7000
@@ -2303,11 +2323,20 @@ void PowerOffModem(){
     delay(1000);
   #endif
   digitalWrite(PinGsmRst,LOW);
+  if (PinGsmPower >= 0){
+    // Turn off the Modem power first
+    digitalWrite(PinGsmPower, LOW);
+  }
   xSemaphoreGive( xGsmMutex );
 
 }
 
 void taskGsm(void *pvParameters){  
+  if (PinGsmPower >= 0){
+    pinMode(PinGsmPower, OUTPUT);
+    // Turn on the Modem power first
+    digitalWrite(PinGsmPower, HIGH);
+  }
   if (PinGsmRst >= 0){
     pinMode(PinGsmRst, OUTPUT); //set GsmReset to output
   }
@@ -2324,9 +2353,6 @@ void taskGsm(void *pvParameters){
   factoryResetModem();
   initModem();
   if (setting.wifi.connect != MODE_WIFI_DISABLED){
-    //if (PinGsmRst >= 0){
-    //  digitalWrite(PinGsmRst,LOW);
-    //}
     log_i("stop task");
     PowerOffModem();    
     vTaskDelete(xHandleGsm); //delete weather-task
@@ -2347,12 +2373,14 @@ void taskGsm(void *pvParameters){
         if (status.gsm.sOperator.length() == 0){
           status.gsm.sOperator = modem.getOperator();
         }
+        #ifdef TINY_GSM_MODEM_SIM7000
         bool bAutoreport;
         if (modem.getNetworkSystemMode(bAutoreport,status.gsm.networkstat)){        
           //log_i("network system mode %d",status.gsm.networkstat);
         }else{
           log_e("can't get Networksystemmode");
         }
+        #endif
         
       }else{
         status.modemstatus = MODEM_CONNECTING;
@@ -2401,11 +2429,6 @@ void taskGsm(void *pvParameters){
     delay(1000);
     //vTaskDelayUntil( &xLastWakeTime, xDelay); //wait until next cycle
   }
-  //modem.stop(15000L);
-  //GsmSerial.end();
-  //if (PinGsmRst >= 0){
-  //  digitalWrite(PinGsmRst,LOW);
-  //}
   PowerOffModem();
   log_i("stop task");
   vTaskDelete(xHandleGsm); //delete weather-task
@@ -5052,7 +5075,7 @@ void taskBackGround(void *pvParameters){
       powerOff(); //power off, when battery is empty !!
     }
     //if ((status.BattPerc < setting.minBattPercent) && (status.vBatt >= BATTPINOK)) { // if Batt-voltage is below 1V, maybe the resistor is missing.
-    if (setting.gs.PowerSave == GS_POWER_BATT_LIFE){
+    if ((setting.gs.PowerSave == GS_POWER_BATT_LIFE) || (setting.gs.PowerSave == GS_POWER_SAFE)){
       if ((status.BattPerc <= setting.minBattPercent) && (status.vBatt >= BATTPINOK)){
         if (timeOver(tAct,tBattEmpty,60000)){ //min 60sek. below
           log_i("Batt empty voltage=%d.%dV",status.vBatt/1000,status.vBatt%1000);

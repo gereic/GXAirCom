@@ -327,3 +327,4 @@ added support for E-Ink on ground-Station (T-Sim7000)
 added battery-life-power-option (going to deep-sleep if battery-capacity is below min., restart, if battery-capacity is over min. plus additional capacity.)
 added rotation for E-Ink
 added batter-percent to info-page
+added support for TTGO T-Call (still in process)

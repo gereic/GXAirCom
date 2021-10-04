@@ -7,7 +7,7 @@
 <title>GXAirCom</title>
 <script language="javascript" type="text/javascript">
  
- var url = "ws://" + window.location.host + ":1337/";
+ var url = "ws://" + window.location.hostname + ":1337/";
  var bHasBME = 0;
  var bHasVario = 0;
  var calibBtnState = 0;
@@ -623,6 +623,7 @@ window.addEventListener("load", init, false);
               <option value="5">TTGO T-Beam SX1262</option>
               <option value="1">HELTEC / TTGO LORA</option>
               <option value="4">TTGO T-SIM7000G</option>
+              <option value="6">TTGO TCall SIM800L</option>
               <option value="255">unknown</option>
             </select></td>
           </tr>
