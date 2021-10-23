@@ -342,13 +342,48 @@ function setBtnGPS(state){
 
 }
 
+function setBtnGetGpsPos(state){
+  e = document.getElementById("btnGetGpsPos");
+  switch(state){
+    case 0:
+      e.innerText = "Get GPS-Position";
+      break;
+    case 1:
+      e.innerText = "start searching GPS-signal";
+      break;
+    case 2:
+      e.innerText = "waiting for GPS-Fix, please wait ...";
+      break;
+    case 3:
+      e.innerText = "GPS fix OK --> Board will reboot";
+      document.getElementById("btnsave").innerText  = "rebooting ..."
+      var delay = 5000;
+      setTimeout( callMainPage, delay )
+      break;
+    case 255:
+      e.innerText = "error configure GPS";
+      break;
+    default:
+      break;
+  }
+
+
+}
+
+function getGpsPos(){
+  setBtnGetGpsPos(1);
+  var obj = {
+  getGpsPos : 1
+  };
+  doSend(JSON.stringify(obj));
+}
+
 function sendUbloxConfig(){
   setBtnGPS(1);
   var obj = {
   configGPS : 1
   };
   doSend(JSON.stringify(obj));
-
 }
 
 function onlyLetters(str) {
@@ -536,7 +571,10 @@ function onMessage(evt) {
           continue;          
         }else if (key == "configGPS"){
           setBtnGPS(myObj[key]);
-          continue;          
+          continue;    
+        }else if (key == "getGpsPos"){
+          setBtnGetGpsPos(myObj[key]);
+          continue;    
         }else if (key == "calibGyro"){
           setBtnCalib("btnCalibGyro",myObj[key]);
           continue;          
@@ -891,6 +929,9 @@ window.addEventListener("load", init, false);
           <tr>
             <th>lat [DD.dddddd] (ground-station)</th>
             <td><input type="number" id="gslat"></td>
+            <td>   
+              <button type="button"  onclick="getGpsPos()"  id="btnGetGpsPos" class="button byel" style="line-height: 1.7rem;">Get GPS-Position</button>
+            </td>
           </tr>
           <tr>
             <th>lon [DD.dddddd] (ground-station)</th>

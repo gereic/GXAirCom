@@ -315,6 +315,9 @@ void PowerOffModem();
 //void readSMS();
 //void sendStatus();
 #endif
+#ifdef TINY_GSM_MODEM_SIM7000
+void setupSim7000Gps();
+#endif
 #ifdef OLED
 void startOLED();
 void add2OutputString(String s);
@@ -2272,6 +2275,7 @@ bool factoryResetModem(){
 
 bool initModem(){
   //reset modem
+  command.getGpsPos = 0;
   if (PinGsmRst >= 0){
     log_i("reset modem");
     digitalWrite(PinGsmRst,HIGH);
@@ -2286,9 +2290,8 @@ bool initModem(){
   log_i("restarting modem...");  
   if (!modem.restart()) return false;
   #ifdef TINY_GSM_MODEM_SIM7000
-    modem.disableGPS();
-    log_i("set NetworkMode to %d",setting.gsm.NetworkMode);
-   modem.setNetworkMode(setting.gsm.NetworkMode); //set mode
+  log_i("set NetworkMode to %d",setting.gsm.NetworkMode);
+  modem.setNetworkMode(setting.gsm.NetworkMode); //set mode
   #endif
   modem.sleepEnable(false); //set sleepmode off
   modem.sendAT(GF("+CMGF=1"));
@@ -2331,6 +2334,25 @@ void PowerOffModem(){
 
 }
 
+#ifdef TINY_GSM_MODEM_SIM7000
+void setupSim7000Gps(){
+  xSemaphoreTake( xGsmMutex, portMAX_DELAY );
+  modem.sendAT("+SGPIO=0,4,1,1");
+  modem.waitResponse(10000L);
+  modem.enableGPS(); //enable GPS
+  xSemaphoreGive( xGsmMutex );
+  command.getGpsPos = 2; //setup GPS finished --> waiting for GPS-Position
+  //modem.disableGPS(); //disable GPS
+  //modem.sendAT(GF("+CGNSCFG=1")); //Turn on GNSS NMEA data out put to USB’s NMEA port
+  //modem.sendAT(GF("+CGNSCFG=2")); //Turn on GNSS NMEA data out put to UART3 port
+  //modem.waitResponse();
+  // CMD:AT+SGPIO=0,4,1,1
+  // Only in version 20200415 is there a function to control GPS power
+  //modem.sendAT(GF("+CGNSMOD=1,1,1,1")); //GNSS Work Mode Set
+  //modem.waitResponse();  
+}
+#endif
+
 void taskGsm(void *pvParameters){  
   if (PinGsmPower >= 0){
     pinMode(PinGsmPower, OUTPUT);
@@ -2350,17 +2372,54 @@ void taskGsm(void *pvParameters){
   static uint32_t tCheckSms = millis() - GSM_CHECK_TIME_SMS;
   // Set preferred message format to text mode
 
+  xSemaphoreTake( xGsmMutex, portMAX_DELAY );
   factoryResetModem();
   initModem();
+  xSemaphoreGive( xGsmMutex );
   if (setting.wifi.connect != MODE_WIFI_DISABLED){
     log_i("stop task");
-    PowerOffModem();    
+    xSemaphoreTake( xGsmMutex, portMAX_DELAY );
+    PowerOffModem();  
+    xSemaphoreGive( xGsmMutex );  
     vTaskDelete(xHandleGsm); //delete weather-task
     return;
   }
-  
+  xSemaphoreTake( xGsmMutex, portMAX_DELAY );
+  status.modemstatus = MODEM_CONNECTING;
+  connectModem(); //connect modem to network  
+  if (modem.isNetworkConnected()){  
+    connectGPRS();
+  }
+  xSemaphoreGive( xGsmMutex );
+  tCheckConn = millis() - GSM_CHECK_TIME_CON + 1000;
   while(1){
     tAct = millis();
+    
+    #ifdef TINY_GSM_MODEM_SIM7000
+    if (command.getGpsPos == 1){
+      setupSim7000Gps();
+    }else if (command.getGpsPos == 2){
+      float lat,  lon, speed, alt, accuracy;
+      int vsat, usat;
+      xSemaphoreTake( xGsmMutex, portMAX_DELAY );
+      if (modem.getGPS(&lat, &lon, &speed, &alt, &vsat, &usat, &accuracy)) {
+        log_i("GPS-Position: lat:%.6f lon:%.6f alt:%.2f vsat:%d usat:%d accuracy:%.2f",lat,lon,alt,vsat,usat,accuracy);
+        if (usat >= 6){ //only if we have more then 6 satellites in view
+          setting.gs.lat = lat;
+          setting.gs.lon = lon;
+          setting.gs.alt = alt;
+          command.getGpsPos = 3;
+        }        
+      }
+      xSemaphoreGive( xGsmMutex );
+    }else if (command.getGpsPos == 3){
+      write_configFile(&setting); //write config-File
+      ESP.restart();
+    }
+    #endif
+    //String gps_raw = modem.getGPSraw();
+    //log_i("GPS-Position:%s",gps_raw.c_str());
+    //xSemaphoreGive( xGsmMutex );
     if (timeOver(tAct,tCheckConn,GSM_CHECK_TIME_CON)){
       tCheckConn = tAct;
       //log_i("%d Check GSM-Connection",tCheckConn);
@@ -2393,37 +2452,6 @@ void taskGsm(void *pvParameters){
       }          
       xSemaphoreGive( xGsmMutex );
     }
-    /*
-    if (command.resetModem == 1){
-      xSemaphoreTake( xGsmMutex, portMAX_DELAY );
-      log_i("disconnect gprs");
-      modem.gprsDisconnect();
-      status.modemstatus = MODEM_DISCONNECTED;
-      log_i("start factory reset of modem");
-      modem.sendAT(GF("&F"));  // Factory settings
-      modem.waitResponse();
-      modem.testAT();
-      modem.sendAT(GF("&W"));  // Factory settings
-      if (modem.waitResponse() == 1){
-        log_i("factory reset ok");
-        command.resetModem = 2;
-        status.modemstatus = MODEM_CONNECTING;
-        initModem(); //init modem
-        connectModem(); //connect modem to network
-      }else{
-        log_e("error factory-reset of modem");
-        command.resetModem = 255;
-      }
-      xSemaphoreGive( xGsmMutex );
-    }
-    */
-    /*
-    if (timeOver(tAct,tCheckSms,GSM_CHECK_TIME_SMS)){
-      tCheckSms = tAct;
-      readSMS();
-    }
-    */
-    //if ((WebUpdateRunning) || (bGsmOff)) break;
     if (bGsmOff) break; //we need GSM for webupdate
     //delay(1);
     delay(1000);

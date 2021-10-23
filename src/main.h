@@ -433,6 +433,7 @@ struct commandData{
   uint8_t ConfigGPS; //command to configure GPS
   uint8_t CalibAcc;  //command calibrate acc
   uint8_t CalibGyro; //command calibrate Gyro
+  uint8_t getGpsPos; //command to get GPS-Position
 };
 
 struct gsmStatus{
