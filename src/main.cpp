@@ -66,6 +66,12 @@
 #include <Screen.h>
 #endif
 
+#ifdef LOGGER
+#include <Logger.h>
+#include "driver/rtc_io.h"
+#endif
+
+
 #ifdef GSMODULE
 
 #include <Dusk2Dawn.h> //for sunset and sunrise-functions
@@ -284,6 +290,7 @@ TaskHandle_t xHandleBackground = NULL;
 TaskHandle_t xHandleBluetooth = NULL;
 TaskHandle_t xHandleMemory = NULL;
 TaskHandle_t xHandleEInk = NULL;
+TaskHandle_t xHandleLogger = NULL;
 TaskHandle_t xHandleWeather = NULL;
 
 SemaphoreHandle_t xOutputMutex;
@@ -308,6 +315,9 @@ void taskBaro(void *pvParameters);
 #endif
 #ifdef EINK
 void taskEInk(void *pvParameters);
+#endif
+#ifdef LOGGER
+void taskLogger(void *pvParameters);
 #endif
 #ifdef GSM_MODULE
 void taskGsm(void *pvParameters);
@@ -584,6 +594,8 @@ void oledPowerOn(){
   //set display to full contrast
   display.ssd1306_command(SSD1306_SETCONTRAST);
   display.ssd1306_command(0xFF);
+  //added the possibility to invert BW .. whould be nice to put it in the settings TODO
+  display.invertDisplay(DISPLAY_INVERT);
   status.displayStat = DISPLAY_STAT_ON;
 }
 
@@ -1937,9 +1949,11 @@ void setup() {
     PinOledSDA = 21;
     PinOledSCL = 22;
 
-    PinBaroSDA = 13;
-    PinBaroSCL = 14;
-
+    // moving SCL SDA to different GPIO to avoid conflicts with mounted SD card on Lilygo T3 v2.1.1.6
+    PinBaroSDA = 3; //13 3;
+    PinBaroSCL = 4; //14 23;
+    // set gpio 4 as INPUT
+    pinMode(PinBaroSCL, INPUT_PULLUP);
     PinADCVoltage = 35;
 
     if (setting.bHasFuelSensor){
@@ -1948,6 +1962,9 @@ void setup() {
     }    
 
     PinBuzzer = 25;
+
+    // Lilygo T3 v2.1.1.6 extra button on 0
+    sButton[1].PinButton = 0;
 
     i2cOLED.begin(PinOledSDA, PinOledSCL);
     // voltage-divier 100kOhm and 100kOhm
@@ -2192,8 +2209,14 @@ xOutputMutex = xSemaphoreCreateMutex();
 
   //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
 #ifdef AIRMODULE
-  
+
   if (setting.Mode == MODE_AIR_MODULE){
+
+    //adding logger task
+    #ifdef LOGGER
+      xTaskCreatePinnedToCore(taskLogger, "taskLogger", 6500, NULL, 4, &xHandleLogger, ARDUINO_RUNNING_CORE1); //background Logger
+    #endif  
+
     xTaskCreatePinnedToCore(taskBaro, "taskBaro", 6500, NULL, 9, &xHandleBaro, ARDUINO_RUNNING_CORE1); //high priority task
   }
 #endif  
@@ -3944,7 +3967,8 @@ void taskStandard(void *pvParameters){
       PinGPSRX = 34;
       PinGPSTX = 12;
     }else{
-      PinGPSRX = 12;
+      // moving gpio for GPS back to 34 to avoid conflicts with SD pins on LilyGo T3 v2.1.1.6
+      PinGPSRX = 34;//12;
       PinGPSTX = 15;
     }
   }
@@ -4417,6 +4441,32 @@ void taskStandard(void *pvParameters){
           }else{
             status.GPS_speed = nmea.getSpeed()*1.852/1000.; //speed in cm/s --> we need km/h
             status.GPS_course = nmea.getCourse()/1000.;
+
+          // create a global variable for logger igc file name based on GPS datetime
+            //set today date
+            char fullDate[36];
+            char year[8];
+            // if got a correct date i.e. with year
+            if (nmea.getYear()>0){
+              itoa(nmea.getYear(), year, 10);
+              strcpy(fullDate, year);
+              strcat(fullDate, "_");
+              char month[8];
+              itoa(nmea.getMonth(), month, 10);
+              strcat(fullDate, month);
+              strcat(fullDate, "_");
+              char day[8];
+              itoa(nmea.getDay(), day, 10);
+              strcat(fullDate, day);
+              strcat(fullDate, "_");
+              char hour[8];
+              itoa(nmea.getHour(), hour, 10);
+              strcat(fullDate, hour);
+              char minute[8];
+              itoa(nmea.getMinute(), minute, 10);
+              strcat(fullDate, minute);
+              status.GPS_Date = fullDate;
+            }
           }
           long geoidalt = 0;
           nmea.getGeoIdAltitude(geoidalt);
@@ -4670,6 +4720,36 @@ void powerOff(){
   esp_deep_sleep_start();
 
 }
+
+#ifdef LOGGER
+// logger task to manage new and update of igc track log
+void taskLogger(void * pvPArameters){
+
+  Logger logger;
+
+  pinMode(2, INPUT_PULLUP);
+  pinMode(15, INPUT_PULLUP);
+  pinMode(4, OUTPUT);
+  digitalWrite(4,LOW);
+  if (!SD_MMC.begin()){
+    pinMode(2, INPUT_PULLUP);
+    pinMode(4, OUTPUT);
+    digitalWrite(4,LOW);
+    SD_MMC.begin("/sdcard", true);
+  }
+
+  logger.begin();
+  delay(10);
+  while(1){
+    logger.run();
+    delay(500);
+    if ((WebUpdateRunning) || (bPowerOff)) break;
+  }
+  if (bPowerOff) logger.end();
+  log_i("stop task");
+  vTaskDelete(xHandleLogger);
+}
+#endif
 
 #ifdef EINK
 void taskEInk(void *pvParameters){

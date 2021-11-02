@@ -522,6 +522,9 @@ String processor(const String& var){
     return VERSION;
   }else if (var == "BUILD"){
     return String(compile_date);
+  }else if (var == "IGCFILELIST"){
+    // TODO list all igc files and create link to download
+    return String("TODO ... List of IGC files to download ...");
   }else if (var == "DEVELOPER"){
     if (setting.Mode == MODE_DEVELOPER){
       return DevelopMenue;
@@ -725,6 +728,10 @@ void Web_setup(void){
     request->send(SPIFFS, request->url(), "text/html",false,processor);
   });
   server.on("/neighbours.html", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(SPIFFS, request->url(), "text/html",false,processor);
+  });
+  // new igc track logger page
+  server.on("/igclogs.html", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, request->url(), "text/html",false,processor);
   });
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
