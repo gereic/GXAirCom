@@ -10,6 +10,7 @@ uint8_t clientPages[MAXCLIENTS];
 
 String DevelopMenue = "<table style=\"width:100&#37;\"><tr><td style=\"width:100&#37;\"><button onClick=\"location.href='/developmenue.html'\">developer menue</button></td></tr></table><p></p><p></p>";
 
+Logger logger;
 /***********************************************************
  * Functions
  */
@@ -524,7 +525,15 @@ String processor(const String& var){
     return String(compile_date);
   }else if (var == "IGCFILELIST"){
     // TODO list all igc files and create link to download
-    return String("TODO ... List of IGC files to download ...");
+    logger.listFiles(SD_MMC,"/");
+    sRet = "";
+    char* d = strtok(logger.igclist, ";");
+    while (d != NULL) {
+        //Serial.println (d);
+        sRet += "<p><a href='#' download>"+String(d)+"</a></p>";
+        d = strtok(NULL, ";");
+    }
+    return sRet;
   }else if (var == "DEVELOPER"){
     if (setting.Mode == MODE_DEVELOPER){
       return DevelopMenue;

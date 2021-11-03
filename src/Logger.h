@@ -25,7 +25,8 @@ class Logger{
     bool begin();
     void end(void);
     void run(void); //has to be called cyclic
-    void listFiles(fs::FS &fs);
+    void listFiles(fs::FS &fs, const char * dirname);
+    char igclist[1000];
 
   private:
     bool lInit;

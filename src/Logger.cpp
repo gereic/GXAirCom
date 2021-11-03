@@ -14,7 +14,7 @@ bool Logger::begin(){
   lInit = false;
   lStop = true;
 
-  strcpy(igcPAth,"/default.igc");
+  strcpy(igcPAth,"/test.igc");
 
   Serial.println("initialization done.");
   uint8_t cardType = SD_MMC.cardType();
@@ -39,7 +39,7 @@ bool Logger::begin(){
 
     writeFile(SD_MMC, igcPAth, "file write test done.");
     Serial.println();
-    Serial.println("wtest.txt written.");
+    listFiles(SD_MMC,"/");
 
   return true;
 };
@@ -67,7 +67,9 @@ void Logger::run(void){
     char trackFile[32];
     strcpy(trackFile,"/");
     strcat(trackFile,status.GPS_Date);
-    strcat(trackFile,".igc");
+    // TODO this will be withouth extension and will be added when closing the igc 
+    //      to have .igc files downloadable only when closed properly with security line
+    strcat(trackFile,".igc"); 
     Serial.print("File to write: ");
     Serial.println(trackFile);
     strcpy(igcPAth,trackFile);
@@ -121,7 +123,7 @@ void Logger::updateLogger(void){
 void Logger::doStopLogger(void){
   // add igc security line
   // TODO
-  // close igc file
+  // close igc file and rename to .igc to be downloadable
 
 }
 
@@ -155,8 +157,38 @@ void Logger::appendFile(fs::FS &fs, const char * path, const char * message){
     }
 }
 
-void Logger::listFiles(fs::FS &fs){
+void Logger::listFiles(fs::FS &fs, const char * dirname){
   // TODO List all files and push to server
+  Serial.println("Listing igc files:");
+  File root = fs.open(dirname);
+      if(!root){
+        Serial.println("Failed to open directory");
+        return;
+    }
+    if(!root.isDirectory()){
+        Serial.println("Not a directory");
+        return;
+    }
+
+    File file = root.openNextFile();
+    
+    strcpy(igclist,"");
+    while(file){
+        if(!file.isDirectory()){    
+          if (  strstr(file.name(), ".igc") ){       
+            Serial.print("  FILE: ");
+            Serial.print(file.name());
+            Serial.print("  SIZE: ");
+            Serial.println(file.size());
+            strcat(igclist,file.name());
+            strcat(igclist,";");
+          }
+        }
+        file = root.openNextFile();
+    }
+    Serial.println();
+
+    return;
 }
 
 // TODO! download igcfiles form server
