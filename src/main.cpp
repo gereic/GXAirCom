@@ -4107,7 +4107,7 @@ void taskStandard(void *pvParameters){
     }
     if (status.tMaxLoop < status.tLoop) status.tMaxLoop = status.tLoop;
     #ifdef AIRMODULE    
-    if (command.ConfigGPS == 1){      
+    if (command.ConfigGPS == 1){    
       if (setupUbloxConfig()){
         command.ConfigGPS = 2; //setting ok
         delay(2000);
@@ -4445,26 +4445,33 @@ void taskStandard(void *pvParameters){
           // create a global variable for logger igc file name based on GPS datetime
             //set today date
             char fullDate[36];
-            char year[8];
+            strcpy(fullDate,"");
             // if got a correct date i.e. with year
             if (nmea.getYear()>0){
-              itoa(nmea.getYear(), year, 10);
-              strcpy(fullDate, year);
-              strcat(fullDate, "_");
-              char month[8];
-              itoa(nmea.getMonth(), month, 10);
-              strcat(fullDate, month);
-              strcat(fullDate, "_");
-              char day[8];
+              char day[2];
               itoa(nmea.getDay(), day, 10);
+              if (nmea.getDay()<10) strcat(fullDate,"0");
               strcat(fullDate, day);
-              strcat(fullDate, "_");
-              char hour[8];
-              itoa(nmea.getHour(), hour, 10);
-              strcat(fullDate, hour);
-              char minute[8];
-              itoa(nmea.getMinute(), minute, 10);
-              strcat(fullDate, minute);
+
+              char month[2];
+              itoa(nmea.getMonth(), month, 10);
+              if (nmea.getMonth()<10) strcat(fullDate,"0");
+              strcat(fullDate, month);
+
+              char year[2];
+              itoa(nmea.getYear() - 2000, year, 10);
+              strcat(fullDate, year);
+
+              // char hour[8];
+              // itoa(nmea.getHour(), hour, 10);
+              // if(nmea.getHour()<10) strcat(fullDate,"0");
+              // strcat(fullDate, hour);
+
+              // char minute[8];
+              // itoa(nmea.getMinute(), minute, 10);
+              // if(nmea.getMinute()<10) strcat(fullDate,"0");
+              // strcat(fullDate, minute);
+
               status.GPS_Date = fullDate;
             }
           }
