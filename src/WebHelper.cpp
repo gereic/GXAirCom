@@ -510,6 +510,26 @@ void onWebSocketEvent(uint8_t client_num,
   }
 }
 
+void SD_file_download(AsyncWebServerRequest *request){
+
+  int paramsNr = request->params();
+  for(int i=0;i<paramsNr;i++){
+
+    AsyncWebParameter* p = request->getParam(i);
+ 
+     Serial.print("Param name: ");
+     Serial.println(p->name());
+ 
+     Serial.print("Param value: ");
+     Serial.println(p->value());
+ 
+    File download = SD_MMC.open(p->value());
+    if (download) {
+      request->send(SD_MMC, p->value(), "text/text", true);
+    } 
+  }
+}
+
 String processor(const String& var){
   String sRet = "";
   //log_i("%s",var.c_str());
@@ -528,9 +548,11 @@ String processor(const String& var){
     logger.listFiles(SD_MMC,"/");
     sRet = "";
     char* d = strtok(logger.igclist, ";");
-    while (d != NULL) {
+    while (d != NULL ) {
         //Serial.println (d);
-        sRet += "<p><a href='#' download>"+String(d)+"</a></p>";
+        if((!String(d).startsWith("/._") && !String(d).startsWith("/test"))){
+          sRet += "<p><a href='/download?igc="+String(d)+"' download>"+String(d)+"</a></p>";
+        }
         d = strtok(NULL, ";");
     }
     return sRet;
@@ -743,6 +765,10 @@ void Web_setup(void){
   server.on("/igclogs.html", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, request->url(), "text/html",false,processor);
   });
+  server.on("/download", HTTP_GET, [](AsyncWebServerRequest *request){
+    SD_file_download(request);
+  });
+
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, "/index.html", "text/html",false,processor);
   });

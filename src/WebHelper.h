@@ -31,3 +31,4 @@ extern bool WebUpdateRunning;
 void Web_setup(void);
 void Web_stop(void);
 void Web_loop(void);
+void SD_file_download(String filename);
