@@ -550,7 +550,7 @@ String processor(const String& var){
     char* d = strtok(logger.igclist, ";");
     while (d != NULL ) {
         //Serial.println (d);
-        if((!String(d).startsWith("/._") && !String(d).startsWith("/test"))){
+        if((!String(d).startsWith("/._") )){//&& !String(d).startsWith("/test"))){
           sRet += "<p><a href='/download?igc="+String(d)+"' download>"+String(d)+"</a></p>";
         }
         d = strtok(NULL, ";");

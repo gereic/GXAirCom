@@ -3965,11 +3965,11 @@ void taskStandard(void *pvParameters){
   if (setting.boardType != BOARD_TTGO_TSIM_7000){
     if (status.bHasAXP192){
       PinGPSRX = 34;
-      PinGPSTX = 12;
+      PinGPSTX = 39;//12;
     }else{
       // moving gpio for GPS back to 34 to avoid conflicts with SD pins on LilyGo T3 v2.1.1.6
       PinGPSRX = 34;//12;
-      PinGPSTX = 15;
+      PinGPSTX = 39;//15;
     }
   }
   if (PinGPSRX >= 0){

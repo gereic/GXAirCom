@@ -37,8 +37,8 @@ bool Logger::begin(){
     uint64_t cardSize = SD_MMC.cardSize() / (1024 * 1024);
     Serial.printf("SD_MMC Card Size: %lluMB\n", cardSize);
 
-    writeFile(SD_MMC, igcPAth, igcHeaders());
-    Serial.println();
+    char* testigc = igcHeaders();
+    writeFile(SD_MMC, igcPAth, testigc);
     listFiles(SD_MMC,"/");
 
   return true;
@@ -105,8 +105,11 @@ void Logger::run(void){
 }
 
 char * Logger::igcHeaders(){
-  char headers[500] = ""; 
+  static char headers[500]; 
   strcpy(headers,IGC_ROW1);
+  #ifdef APPNAME
+    strcat(headers,APPNAME);
+  #endif
   strcat(headers,"\r");
   strcat(headers,IGC_ROW2);
   strcat(headers,"\r");
@@ -114,6 +117,11 @@ char * Logger::igcHeaders(){
   if (status.GPS_Date) strcat(headers,status.GPS_Date);
   strcat(headers,"\r");
   strcat(headers,IGC_ROW4);
+  if (setting.PilotName) {
+    char pname[100];
+    setting.PilotName.toCharArray(pname,100);
+    strcat(headers, pname);
+  } 
   strcat(headers,"\r");
   strcat(headers,IGC_ROW5);
   strcat(headers,"\r");
@@ -126,6 +134,9 @@ char * Logger::igcHeaders(){
   strcat(headers,IGC_ROW9);
   strcat(headers,"\r");
   strcat(headers,IGC_ROW10);
+  #ifdef VERSION
+    strcat(headers,VERSION);
+  #endif
   strcat(headers,"\r");
   strcat(headers,IGC_ROW11);
   strcat(headers,"\r");
@@ -142,10 +153,27 @@ void Logger::doInitLogger(const char * trackFile){
   
   //const char* headers = "...headers...\r";
   Serial.println(trackFile);
-  writeFile(SD_MMC, trackFile, igcHeaders());
+  char* newigc = igcHeaders();
+  writeFile(SD_MMC, trackFile, newigc);
 };
 
 void Logger::updateLogger(void){
+
+//   To cut to the chase a real IGC file could be as below (although most software will require additional header records):
+// B1101355206343N00006198WA0058700558
+// B1101455206259N00006295WA0059300556
+// ...
+// And to explain the basic record format, using commas to indicate the actual fields:
+// B,110135,5206343N,00006198W,A,00587,00558
+//
+// B: record type is a basic tracklog record
+// 110135: <time> tracklog entry was recorded at 11:01:35 i.e. just after 11am
+// 5206343N: <lat> i.e. 52 degrees 06.343 minutes North
+// 00006198W: <long> i.e. 000 degrees 06.198 minutes West
+// A: <alt valid flag> confirming this record has a valid altitude value
+// 00587: <altitude from pressure sensor>
+// 00558: <altitude from GPS>
+
   // TODO !!!
   const char* row = "igc row...\r";
   Serial.println(igcPAth);

@@ -18,7 +18,7 @@ extern struct statusData status;
 #include "main.h"
 
 // Manufacturer code, use XXX if you don't have one. ABC is the unique code for this logger (serial no.?), rest of line can be anything you like
-#define IGC_ROW1 "AXXXGXO GxAirCom"
+#define IGC_ROW1 "AXXXGXO "
 // fix accuracy in m 
 #define IGC_ROW2 "HFFXA035" 
 // UTC date of flight, to be completed while saving headers eg "HFDTEDATE:081021"
@@ -36,6 +36,7 @@ extern struct statusData status;
 
 // costant headers
 #define IGC_ROW9 "HFDTM100GPSDATUM:WGS-1984"
+// Firmware version
 #define IGC_ROW10 "HFRFWFIRMWAREVERSION:"
 #define IGC_ROW11 "HFRHWHARDWAREVERSION:Lilygo T3 v2.1.6.1"
 #define IGC_ROW12 "HFFTYFRTYPE:GxAirCom Logger by Gerald E."
@@ -67,7 +68,7 @@ class Logger{
     void doStopLogger(void);
     void writeFile(fs::FS &fs, const char * path, const char * message);
     void appendFile(fs::FS &fs, const char * path, const char * message);
-    char * igcHeaders();
+    char* igcHeaders();
 };
 
 #endif
