@@ -175,7 +175,11 @@ void Logger::updateLogger(void){
 // 00558: <altitude from GPS>
 
   // TODO !!!
-  const char* row = "igc row...\r";
+  static char row[256];
+  strcpy(row,"B");
+  strcat(row,status.GPS_Time);
+  strcat(row,"\r");
+  //...
   Serial.println(igcPAth);
   appendFile(SD_MMC, igcPAth, row);
 }

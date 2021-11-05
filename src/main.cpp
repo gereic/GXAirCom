@@ -4444,8 +4444,10 @@ void taskStandard(void *pvParameters){
 
           // create a global variable for logger igc file name based on GPS datetime
             //set today date
-            char fullDate[36];
+            static char fullDate[36];
+            static char fullTime[8];
             strcpy(fullDate,"");
+            strcpy(fullTime,"");
             // if got a correct date i.e. with year
             if (nmea.getYear()>0){
               char day[2];
@@ -4462,17 +4464,23 @@ void taskStandard(void *pvParameters){
               itoa(nmea.getYear() - 2000, year, 10);
               strcat(fullDate, year);
 
-              // char hour[8];
-              // itoa(nmea.getHour(), hour, 10);
-              // if(nmea.getHour()<10) strcat(fullDate,"0");
-              // strcat(fullDate, hour);
+              char hour[2];
+              itoa(nmea.getHour(), hour, 10);
+              if(nmea.getHour()<10) strcat(fullTime,"0");
+              strcat(fullTime, hour);
 
-              // char minute[8];
-              // itoa(nmea.getMinute(), minute, 10);
-              // if(nmea.getMinute()<10) strcat(fullDate,"0");
-              // strcat(fullDate, minute);
+              char minute[2];
+              itoa(nmea.getMinute(), minute, 10);
+              if(nmea.getMinute()<10) strcat(fullTime,"0");
+              strcat(fullTime, minute);
+
+              char seconds[2];
+              itoa(nmea.getSecond(), seconds, 10);
+              if(nmea.getSecond()<10) strcat(fullTime,"0");
+              strcat(fullTime, seconds);
 
               status.GPS_Date = fullDate;
+              status.GPS_Time = fullTime;
             }
           }
           long geoidalt = 0;
