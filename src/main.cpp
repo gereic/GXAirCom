@@ -4757,7 +4757,7 @@ void taskLogger(void * pvPArameters){
   delay(10);
   while(1){
     logger.run();
-    delay(500);
+    delay(900);
     if ((WebUpdateRunning) || (bPowerOff)) break;
   }
   if (bPowerOff) logger.end();

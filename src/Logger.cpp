@@ -176,9 +176,17 @@ void Logger::updateLogger(void){
 
   // TODO !!!
   static char row[256];
+  static char lat[20];
+  static char lon[20];
   strcpy(row,"B");
   strcat(row,status.GPS_Time);
   strcat(row,"\r");
+  String(status.GPS_Lat,6).toCharArray(lat,20);
+  strcat(row,lat);
+  strcat(row,"N\r");
+  String(status.GPS_Lon,6).toCharArray(lon,20);
+  strcat(row,lon);
+  strcat(row,"W\r");
   //...
   Serial.println(igcPAth);
   appendFile(SD_MMC, igcPAth, row);
