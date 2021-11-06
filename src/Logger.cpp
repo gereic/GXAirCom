@@ -169,26 +169,76 @@ void Logger::updateLogger(void){
 // B: record type is a basic tracklog record
 // 110135: <time> tracklog entry was recorded at 11:01:35 i.e. just after 11am
 // 5206343N: <lat> i.e. 52 degrees 06.343 minutes North
-// 00006198W: <long> i.e. 000 degrees 06.198 minutes West
+// 00006198E: <long> i.e. 000 degrees 06.198 minutes West
 // A: <alt valid flag> confirming this record has a valid altitude value
 // 00587: <altitude from pressure sensor>
 // 00558: <altitude from GPS>
 
   // TODO !!!
   static char row[256];
-  static char lat[20];
-  static char lon[20];
+  static char lat_d[2]; //withouth leading zero added directly to row
+  static char lon_d[3]; //withouth leading zero added directly to row
+  static char lat_m[5];
+  static char lon_m[5];
+  int ilat_d = (int)status.GPS_Lat;
+  Serial.println(status.GPS_Lat);
+  int ilat_m = (int)( round((status.GPS_Lat - ilat_d)*60.*1000) );
+  int ilon_d = (int)status.GPS_Lon;
+  int ilon_m = (int)( round((status.GPS_Lon - ilon_d)*60.*1000) );
   strcpy(row,"B");
   strcat(row,status.GPS_Time);
+  // latitude from eg. 45.xxx to 45,0.xxx*60*1000N 
+  // Degrees
+  if ( ilat_d < 10 ) strcat(row,"0");
+  itoa(ilat_d,lat_d,10);
+  strcat(row,lat_d);
+  // Minutes
+  if ( ilat_m < 10000) strcat(row,"0");
+  if ( ilat_m < 1000) strcat(row,"0");
+  if ( ilat_m < 100) strcat(row,"0");
+  if ( ilat_m < 10) strcat(row,"0");
+  itoa(ilat_m,lat_m,10);
+  strcat(row,lat_m);
+  strcat(row,"N");
+  // longitude from eg. 8.xxx to 8,0.xxx*60*1000E 
+  // Degrees
+  if ( ilon_d < 100 ) strcat(row,"0");
+  if ( ilon_d < 10 ) strcat(row,"0");
+  itoa(ilon_d,lon_d,10);
+  strcat(row,lon_d);
+  // Minutes
+  if ( ilon_m < 10000) strcat(row,"0");
+  if ( ilon_m < 1000) strcat(row,"0");
+  if ( ilon_m < 100) strcat(row,"0");
+  if ( ilon_m < 10) strcat(row,"0");
+  itoa(ilon_m,lon_m,10);
+  strcat(row,lon_m);
+  strcat(row,"E");
+
+  // Altitude
+  strcat(row,"A");
+  // Altitude from vario
+  char altvario[5];
+  int ialtvario = (int)(round(status.GPS_alt));
+  if (ialtvario < 10000) strcat(row,"0");
+  if (ialtvario < 1000) strcat(row,"0");
+  if (ialtvario < 100) strcat(row,"0");
+  if (ialtvario < 10) strcat(row,"0");
+  itoa(ialtvario,altvario,10);
+  strcat(row,altvario);
+  // ALtitude from GPS
+  char altgps[5];
+  int igpsvario = (int)(round(status.varioAlt));
+  if (igpsvario < 10000) strcat(row,"0");
+  if (igpsvario < 1000) strcat(row,"0");
+  if (igpsvario < 100) strcat(row,"0");
+  if (igpsvario < 10) strcat(row,"0");
+  itoa(igpsvario,altgps,10);
+  strcat(row,altgps);
+
   strcat(row,"\r");
-  String(status.GPS_Lat,6).toCharArray(lat,20);
-  strcat(row,lat);
-  strcat(row,"N\r");
-  String(status.GPS_Lon,6).toCharArray(lon,20);
-  strcat(row,lon);
-  strcat(row,"W\r");
-  //...
-  Serial.println(igcPAth);
+
+  Serial.println(row);
   appendFile(SD_MMC, igcPAth, row);
 }
 

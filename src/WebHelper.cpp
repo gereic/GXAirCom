@@ -548,13 +548,21 @@ String processor(const String& var){
     logger.listFiles(SD_MMC,"/");
     sRet = "";
     char* d = strtok(logger.igclist, ";");
+    sRet += "<table><thead><tr><th>Filename</th><th>Delete</th></tr></thead><tbody>";
     while (d != NULL ) {
         //Serial.println (d);
         if((!String(d).startsWith("/._") )){//&& !String(d).startsWith("/test"))){
-          sRet += "<p><a href='/download?igc="+String(d)+"' download>"+String(d)+"</a></p>";
+          sRet += "<tr><td><button class='button bsil'>";
+          sRet += "<a href='/download?igc="+String(d)+"' download>";
+          sRet += "<span style='color:black'>"+String(d)+"</span></a>";
+          sRet += "</button></td>";
+          sRet += "<td><button title='Delete' class='button bred'>";
+          sRet += "<a href='/deleteigc?igc="+String(d)+"'> X </a></button></td>";
+          sRet += "</tr>";
         }
         d = strtok(NULL, ";");
     }
+    sRet += "</tbody></table>";
     return sRet;
   }else if (var == "DEVELOPER"){
     if (setting.Mode == MODE_DEVELOPER){
@@ -763,7 +771,7 @@ void Web_setup(void){
   });
   // new igc track logger page
   server.on("/igclogs.html", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(SPIFFS, request->url(), "text/html",false,processor);
+    request->send(SPIFFS, "/igclogs.html", "text/html",false,processor);
   });
   server.on("/download", HTTP_GET, [](AsyncWebServerRequest *request){
     SD_file_download(request);
