@@ -3,6 +3,7 @@
     "files.associations": {
         "istream": "cpp",
         "ostream": "cpp",
-        "*.tpp": "cpp"
+        "*.tpp": "cpp",
+        "functional": "cpp"
     }
 }

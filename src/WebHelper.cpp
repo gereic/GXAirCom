@@ -510,6 +510,25 @@ void onWebSocketEvent(uint8_t client_num,
   }
 }
 
+void SD_file_delete(AsyncWebServerRequest *request){
+  int paramsNr = request->params();
+  for(int i=0;i<paramsNr;i++){
+
+    AsyncWebParameter* p = request->getParam(i);
+ 
+     Serial.print("Param name: ");
+     Serial.println(p->name());
+ 
+     Serial.print("Param value: ");
+     Serial.println(p->value());
+
+    char igcf[40];
+    p->value().toCharArray(igcf,40);
+    logger.deleteFile(SD_MMC, igcf);
+ 
+  }
+}
+
 void SD_file_download(AsyncWebServerRequest *request){
 
   int paramsNr = request->params();
@@ -557,7 +576,8 @@ String processor(const String& var){
           sRet += "<span style='color:black'>"+String(d)+"</span></a>";
           sRet += "</button></td>";
           sRet += "<td><button title='Delete' class='button bred'>";
-          sRet += "<a href='/deleteigc?igc="+String(d)+"'> X </a></button></td>";
+          sRet += "<a href='/deleteigc?igc="+String(d)+"' target='_blank'>";
+          sRet += " X </a></button></td>";
           sRet += "</tr>";
         }
         d = strtok(NULL, ";");
@@ -775,6 +795,10 @@ void Web_setup(void){
   });
   server.on("/download", HTTP_GET, [](AsyncWebServerRequest *request){
     SD_file_download(request);
+  });
+  server.on("/deleteigc", HTTP_GET, [](AsyncWebServerRequest *request){
+    SD_file_delete(request);
+    request->redirect("/igclogs.html");    
   });
 
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){

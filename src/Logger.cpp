@@ -279,6 +279,15 @@ void Logger::appendFile(fs::FS &fs, const char * path, const char * message){
     }
 }
 
+void Logger::deleteFile(fs::FS &fs, const char * path){
+    Serial.printf("Deleting file: %s\n", path);
+    if(fs.remove(path)){
+        Serial.println("File deleted");
+    } else {
+        Serial.println("Delete failed");
+    }
+}
+
 void Logger::listFiles(fs::FS &fs, const char * dirname){
   // TODO List all files and push to server
   Serial.println("Listing igc files:");
