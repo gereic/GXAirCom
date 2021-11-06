@@ -548,7 +548,7 @@ String processor(const String& var){
     logger.listFiles(SD_MMC,"/");
     sRet = "";
     char* d = strtok(logger.igclist, ";");
-    sRet += "<table><thead><tr><th>Filename</th><th>Delete</th></tr></thead><tbody>";
+    sRet += "<table><thead><tr><th>Download</th><th>Delete</th></tr></thead><tbody>";
     while (d != NULL ) {
         //Serial.println (d);
         if((!String(d).startsWith("/._") )){//&& !String(d).startsWith("/test"))){
