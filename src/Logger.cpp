@@ -13,29 +13,30 @@ Logger::Logger(){
 bool Logger::begin(){
   lInit = false;
   lStop = true;
+  ltest = true;
 
   strcpy(igcPAth,"/test.igc");
 
-  Serial.println("initialization done.");
+  log_i("IGC - Initialization done.");
   uint8_t cardType = SD_MMC.cardType();
 
     if(cardType == CARD_NONE){
-        Serial.println("No SD_MMC card attached");
+        log_i("No SD_MMC card attached");
     }
 
-    Serial.print("SD_MMC Card Type: ");
+    log_i("SD_MMC Card Type: ");
     if(cardType == CARD_MMC){
-        Serial.println("MMC");
+        log_i("MMC");
     } else if(cardType == CARD_SD){
-        Serial.println("SDSC");
+        log_i("SDSC");
     } else if(cardType == CARD_SDHC){
-        Serial.println("SDHC");
+        log_i("SDHC");
     } else {
-        Serial.println("UNKNOWN");
+        log_i("UNKNOWN");
     }
 
     uint64_t cardSize = SD_MMC.cardSize() / (1024 * 1024);
-    Serial.printf("SD_MMC Card Size: %lluMB\n", cardSize);
+    log_i("SD_MMC Card Size: %10dMB", cardSize);
 
     char* testigc = igcHeaders();
     writeFile(SD_MMC, igcPAth, testigc);
@@ -48,18 +49,16 @@ void Logger::end(void){
   // close logger
   lInit = false;
   lStop = true;
-  ltest = true;
 };
 
 void Logger::run(void){
-//    Serial.println(status.GPS_Date);
   if (status.flying){
     gotflytime = millis();
   }
   // if Flying i.e. also got gps fix and not initialized
   // test TODO CHANGE HERE to start recording when flying
-  if (status.GPS_Date && !lInit){
-//  if (status.flying && !lInit){
+//  if (status.GPS_Date && !lInit){
+  if ((status.flying || ltest) && !lInit && status.GPS_Date){
     lInit = true;
     lStop = false;
     // start new igc track with headers
@@ -75,33 +74,33 @@ void Logger::run(void){
       //      to have .igc files downloadable only when closed properly with security line
       strcat(trackFile,".igc"); 
       if (SD_MMC.exists(trackFile)){
-        Serial.print("File already exists: ");
-        Serial.println(trackFile);
+        log_i("File already exists: %s",trackFile);
         fnum+=1;
       }else{
-        Serial.print("File to write: ");
-        Serial.println(trackFile);
+        log_i("File to write: %s",trackFile);
         strcpy(igcPAth,trackFile);
         doInitLogger(igcPAth);
+        // write only one log for 30 seconds (ignoring flying status)
+        ltest = false;
         break;
       }
     }
   }
-    // if initilaized and flying/not but gps fix and sat > 4
-  if(lInit && ( status.flying || (status.GPS_Fix && status.GPS_NumSat > 4)) ){
+    // if initilaized and flying/not but gps fix and sat > 3
+  if(lInit && ( status.flying || (status.GPS_Fix && status.GPS_NumSat > 3)) ){
     updateLogger();
   }
 
   // if not flying (or i.e. gps fix lost) for more than 30s
-  if ( ltest && (millis() - gotflytime > 30000)){
+  if ( millis() - gotflytime > 30000 ){
     lInit = false;
-    ltest = false;
     // stop track close igc
     if (!lStop){
       lStop = true;
       doStopLogger();
     }
   }
+
 }
 
 char * Logger::igcHeaders(){
@@ -152,8 +151,12 @@ char * Logger::igcHeaders(){
 void Logger::doInitLogger(const char * trackFile){
   
   //const char* headers = "...headers...\r";
-  Serial.println(trackFile);
+  log_i("%s",trackFile);
   char* newigc = igcHeaders();
+  g_time = 0;
+  g_latlon = 0;
+  g_baroalt = 0;
+  g_gpsalt = 0;
   writeFile(SD_MMC, trackFile, newigc);
 };
 
@@ -174,19 +177,19 @@ void Logger::updateLogger(void){
 // 00587: <altitude from pressure sensor>
 // 00558: <altitude from GPS>
 
-  // TODO !!!
   static char row[256];
-  static char lat_d[2]; //withouth leading zero added directly to row
-  static char lon_d[3]; //withouth leading zero added directly to row
-  static char lat_m[5];
-  static char lon_m[5];
+
+  strcpy(row,"B");
+  strcat(row,status.GPS_Time);
+
+  static char lat_d[10]; //withouth leading zero added directly to row
+  static char lon_d[10]; //withouth leading zero added directly to row
+  static char lat_m[10];
+  static char lon_m[10];
   int ilat_d = (int)status.GPS_Lat;
-  Serial.println(status.GPS_Lat);
   int ilat_m = (int)( round((status.GPS_Lat - ilat_d)*60.*1000) );
   int ilon_d = (int)status.GPS_Lon;
   int ilon_m = (int)( round((status.GPS_Lon - ilon_d)*60.*1000) );
-  strcpy(row,"B");
-  strcat(row,status.GPS_Time);
   // latitude from eg. 45.xxx to 45,0.xxx*60*1000N 
   // Degrees
   if ( ilat_d < 10 ) strcat(row,"0");
@@ -238,66 +241,78 @@ void Logger::updateLogger(void){
 
   strcat(row,"\r");
 
-  Serial.println(row);
   appendFile(SD_MMC, igcPAth, row);
+
+  // G update
+  g_time += (int)status.GPS_Time[strlen(status.GPS_Time)-1];
+  g_latlon += (int)lat_m[strlen(lat_m)-1];
+  g_baroalt += (int)altvario[strlen(altvario)-1];
+  g_gpsalt += (int)altgps[strlen(altgps)-1];
+
 }
 
 void Logger::doStopLogger(void){
   // add igc security line
-  // TODO
   // close igc file and rename to .igc to be downloadable
+  static char row[256];
+  strcpy(row,"G");
+
+  //TODO create the algorithm to write security based on data
+
+  log_i("Closing igs file with security line G");
+  appendFile(SD_MMC, igcPAth, row);
 
 }
 
 void Logger::writeFile(fs::FS &fs, const char * path, const char * message){
-    Serial.printf("Writing file: %s\n", path);
+    log_i("Writing file: %s", path);
 
     File file = fs.open(path, FILE_WRITE);
     if(!file){
-        Serial.println("Failed to open file for writing");
+        log_i("Failed to open file for writing");
         return;
     }
     if(file.print(message)){
-        Serial.println("File written");
+        log_i("File written");
     } else {
-        Serial.println("Write failed");
+        log_i("Write failed");
     }
 }
 
 void Logger::appendFile(fs::FS &fs, const char * path, const char * message){
-    Serial.printf("Appending to file: %s\n", path);
+    log_i("Appending to file: %s", path);
 
     File file = fs.open(path, FILE_APPEND);
     if(!file){
-        Serial.println("Failed to open file for appending");
+        log_i("Failed to open file for appending");
         return;
     }
     if(file.print(message)){
-        Serial.println("Message appended");
+//        log_i("Message appended");
     } else {
-        Serial.println("Append failed");
+        log_i("Append failed");
     }
 }
 
 void Logger::deleteFile(fs::FS &fs, const char * path){
-    Serial.printf("Deleting file: %s\n", path);
+    log_i("Deleting file: %s", path);
     if(fs.remove(path)){
-        Serial.println("File deleted");
+        log_i("File deleted");
     } else {
-        Serial.println("Delete failed");
+        log_i("Delete failed");
     }
 }
 
 void Logger::listFiles(fs::FS &fs, const char * dirname){
   // TODO List all files and push to server
-  Serial.println("Listing igc files:");
+  log_i("Listing igc files:");
   File root = fs.open(dirname);
       if(!root){
-        Serial.println("Failed to open directory");
+        log_e("Failed to open directory");
         return;
     }
     if(!root.isDirectory()){
-        Serial.println("Not a directory");
+        log_i("Not a directory");
         return;
     }
 
@@ -307,17 +322,14 @@ void Logger::listFiles(fs::FS &fs, const char * dirname){
     while(file){
         if(!file.isDirectory()){    
           if (  strstr(file.name(), ".igc") ){       
-            Serial.print("  FILE: ");
-            Serial.print(file.name());
-            Serial.print("  SIZE: ");
-            Serial.println(file.size());
+            log_i("  FILE: %s", file.name());
+            log_i("  SIZE: %10d", file.size());
             strcat(igclist,file.name());
             strcat(igclist,";");
           }
         }
         file = root.openNextFile();
     }
-    Serial.println();
 
     return;
 }

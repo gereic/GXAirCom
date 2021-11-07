@@ -61,7 +61,13 @@ class Logger{
   private:
     bool lInit;
     bool lStop;
-    bool ltest;
+    uint8_t ltest;
+
+    uint32_t g_time;
+    uint32_t g_latlon;
+    uint32_t g_baroalt;
+    uint32_t g_gpsalt;
+
     char igcPAth[32];
     uint32_t gotflytime;
     void doInitLogger(const char * trackFile);
