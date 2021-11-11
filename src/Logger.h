@@ -35,7 +35,7 @@ extern struct statusData status;
 #define IGC_ROW8 "HFGIDGLIDERID:"
 
 // costant headers
-#define IGC_ROW9 "HFDTM100GPSDATUM:WGS-1984"
+#define IGC_ROW9 "HFDTM100GPSDATUM:WGS-84"
 // Firmware version
 #define IGC_ROW10 "HFRFWFIRMWAREVERSION:"
 #define IGC_ROW11 "HFRHWHARDWAREVERSION:Lilygo T3 v2.1.6.1"
@@ -44,6 +44,10 @@ extern struct statusData status;
 #define IGC_ROW13 "HFPRSPRESSALTSENSOR:BOSH,BMP280,max10000m"
 // Manufacturer of the GPS receiver inside the logger. Do we really care? Any text will work
 #define IGC_ROW14 "HFGPSuBLOX Neo6"
+//extra complusory lines
+#define IGC_ROW15 "HFALG:GEO"
+#define IGC_ROW16 "HOSITSite:?"
+#define IGC_ROW17 "HFALPALTPRESSURE:ISA"
 
 
 // File myFile;

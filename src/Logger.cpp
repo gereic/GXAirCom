@@ -48,7 +48,11 @@ bool Logger::begin(){
 void Logger::end(void){
   // close logger
   lInit = false;
-  lStop = true;
+    // stop track close igc
+    if (!lStop){
+      lStop = true;
+      doStopLogger();
+    }
 };
 
 void Logger::run(void){
@@ -144,6 +148,12 @@ char * Logger::igcHeaders(){
   strcat(headers,IGC_ROW13);
   strcat(headers,"\r");
   strcat(headers,IGC_ROW14);
+  strcat(headers,"\r");
+  strcat(headers,IGC_ROW15);
+  strcat(headers,"\r");
+  strcat(headers,IGC_ROW16);
+  strcat(headers,"\r");
+  strcat(headers,IGC_ROW17);
   strcat(headers,"\r");
   return headers;
 }

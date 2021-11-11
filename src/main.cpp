@@ -4642,14 +4642,16 @@ void powerOff(){
   eTaskState tStandard = eDeleted;
   eTaskState tGSM = eDeleted;
   eTaskState tWeather = eDeleted;
+  eTaskState tLogger = eDeleted;
   while(1){
     //wait until all tasks are stopped
+    if (xHandleLogger != NULL) tLogger = eTaskGetState(xHandleLogger);
     if (xHandleBaro != NULL) tBaro = eTaskGetState(xHandleBaro);
     if (xHandleEInk != NULL) tEInk = eTaskGetState(xHandleEInk);
     if (xHandleStandard != NULL) tStandard = eTaskGetState(xHandleStandard);
     if (xHandleWeather != NULL) tWeather = eTaskGetState(xHandleWeather);    
-    if ((tBaro == eDeleted) && (tEInk == eDeleted) && (tWeather == eDeleted) && (tStandard == eDeleted)) break; //now all tasks are stopped    
-    log_i("baro=%d,eink=%d,standard=%d,weather=%d",tBaro,tEInk,tStandard,tWeather);
+    if ((tLogger == eDeleted) && (tBaro == eDeleted) && (tEInk == eDeleted) && (tWeather == eDeleted) && (tStandard == eDeleted)) break; //now all tasks are stopped    
+    log_i("logger=%d,baro=%d,eink=%d,standard=%d,weather=%d",tLogger,tBaro,tEInk,tStandard,tWeather);
     delay(1000);
   }
   #ifdef GSM_MODULE
