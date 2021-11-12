@@ -1985,7 +1985,7 @@ void setup() {
     // voltage-divier 100kOhm and 100kOhm
     // vIn = (R1+R2)/R2 * VOut
 //    adcVoltageMultiplier = 2.0f * 3.76f; // not sure if it is ok ?? don't have this kind of board
-    adcVoltageMultiplier = 2.0f * 3.5f; // not sure if it is ok ?? don't have this kind of board
+    adcVoltageMultiplier = 2.0f * 3.5f; // maybe also 3.4 or 3.45 .. TODO test
     pinMode(PinADCVoltage, INPUT);
     break;
   /*
