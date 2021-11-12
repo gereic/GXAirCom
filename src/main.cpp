@@ -893,8 +893,15 @@ void drawBatt(int16_t x, int16_t y,uint8_t value){
     display.setCursor(x-15,y+9);
     display.print(status.vBatt/1000);
     display.print(".");
+    if(status.vBatt%1000/10<10){
+      display.print("0");
+    }
     display.print((status.vBatt%1000)/10);
     display.print("V");
+
+    display.setCursor(x-5,y+18);
+    display.print(String(status.varioTemp,0));
+    display.print("C");
 
     static uint8_t DrawValue = 0;
     if (value == 255){
@@ -1977,7 +1984,8 @@ void setup() {
     i2cOLED.begin(PinOledSDA, PinOledSCL);
     // voltage-divier 100kOhm and 100kOhm
     // vIn = (R1+R2)/R2 * VOut
-    adcVoltageMultiplier = 2.0f * 3.76f; // not sure if it is ok ?? don't have this kind of board
+//    adcVoltageMultiplier = 2.0f * 3.76f; // not sure if it is ok ?? don't have this kind of board
+    adcVoltageMultiplier = 2.0f * 3.5f; // not sure if it is ok ?? don't have this kind of board
     pinMode(PinADCVoltage, INPUT);
     break;
   /*
@@ -2971,6 +2979,7 @@ float readBattvoltage(){
   adc_reading /= NO_OF_SAMPLES;
 
   vBatt = (adcVoltageMultiplier * float(adc_reading) / 1023.0f) + setting.BattVoltOffs;
+  //Serial.println(adc_reading);
   //log_i("adc=%d, vBatt=%.3f",adc_reading,vBatt);
   return vBatt;
 }
@@ -2997,7 +3006,7 @@ void printBattVoltage(uint32_t tAct){
     //log_i("Batt %dV; %d%%",status.vBatt,status.BattPerc);
 
       if (status.vBatt >= battFull){
-        log_i("Battery Full: %d.%dV Temp:%sC",status.vBatt/1000,status.vBatt%1000,String(status.varioTemp,1));
+        log_i("Battery Full: %d mV Temp:%s C",status.vBatt,String(status.varioTemp,1));
           
           // if (!status.bMuting){
           //   ledcWriteTone(channel,2000);
