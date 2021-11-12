@@ -888,6 +888,14 @@ void drawflying(int16_t x, int16_t y, bool flying){
 
 
 void drawBatt(int16_t x, int16_t y,uint8_t value){
+
+    display.setTextSize(1);
+    display.setCursor(x-15,y+9);
+    display.print(status.vBatt/1000);
+    display.print(".");
+    display.print((status.vBatt%1000)/10);
+    display.print("V");
+
     static uint8_t DrawValue = 0;
     if (value == 255){
         DrawValue = (DrawValue + 1) %5; 
@@ -1507,7 +1515,7 @@ void printSettings(){
   log_i("Board-Type=%d",setting.boardType);
   log_i("Display-Type=%d",setting.displayType);
   log_i("Display-Rotation=%d",setting.displayRotation);
-  //log_i("AXP192=%d",uint8_t(status.bHasAXP192));
+  log_i("AXP192=%d",uint8_t(status.bHasAXP192));
   if (setting.band == 0){
     log_i("BAND=868mhz");
   }else{
@@ -2987,6 +2995,15 @@ void printBattVoltage(uint32_t tAct){
     status.BattPerc = scale(status.vBatt,battEmpty,battFull,0,100);
     //log_i("Batt =%d%%",status.BattPerc);
     //log_i("Batt %dV; %d%%",status.vBatt,status.BattPerc);
+
+      if (status.vBatt >= battFull){
+        log_i("Battery Full: %d.%dV Temp:%sC",status.vBatt/1000,status.vBatt%1000,String(status.varioTemp,1));
+          
+          // if (!status.bMuting){
+          //   ledcWriteTone(channel,2000);
+          //   delay(500);
+          // }
+      }
   }
 }
 
@@ -3986,7 +4003,6 @@ void taskStandard(void *pvParameters){
 
   //Reset the device so that the changes could take plaace
   //MicroNMEA::sendSentence(NMeaSerial, "$PSTMSRR");
-
 
   delay(1000);
   //clear serial buffer
