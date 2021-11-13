@@ -926,7 +926,26 @@ void sendPage(uint8_t pageNr){
         gmtime_r(&now, &timeinfo);
         strftime(strftime_buf, sizeof(strftime_buf), "%F %T", &timeinfo);   
         //log_i("actual time %s",strftime_buf);
-        doc["time"] = strftime_buf;
+        if (status.GPS_Time){
+          char gpstime[128];
+          char hh[4]; 
+          char mm[4];
+          char ss[4];
+          String(status.GPS_Time).substring(0,2).toCharArray(hh,4,0);
+          String(status.GPS_Time).substring(2,4).toCharArray(mm,4,0);
+          String(status.GPS_Time).substring(4,6).toCharArray(ss,4,0);
+          strcpy(gpstime,status.GPS_Date);
+          strcat(gpstime," - ");
+          strcat(gpstime,hh);
+          strcat(gpstime,":");
+          strcat(gpstime,mm);
+          strcat(gpstime,":");
+          strcat(gpstime,ss);
+
+          doc["time"] = gpstime;
+        }else{
+          doc["time"] = strftime_buf;
+        }
 
         doc["freeHeap"] = xPortGetFreeHeapSize();
         doc["fHeapMin"] = xPortGetMinimumEverFreeHeapSize();
