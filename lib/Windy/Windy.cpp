@@ -58,7 +58,7 @@ bool  Windy::sendData(String ID,String APIKEY,wData *data){ //send Data to WU wi
     strcat(msg,msg2);
   }  
   //log_i("T1=%f h=%f p1=%f dp=%f",temp,humidity,baro,dewpoint);
-  log_i("%s len=%d",msg,strlen(msg));
+  //log_i("%s len=%d",msg,strlen(msg));
   if (client == NULL){    
     client = new WiFiClient();
   }

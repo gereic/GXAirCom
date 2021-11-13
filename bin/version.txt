@@ -328,3 +328,6 @@ added battery-life-power-option (going to deep-sleep if battery-capacity is belo
 added rotation for E-Ink
 added batter-percent to info-page
 added support for TTGO T-Call (still in process)
+
+v4.13.0
+changed button for Volume-control on TTGo T3 to PIN 2

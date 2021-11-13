@@ -316,9 +316,9 @@ private:
   bool newName = false;
   weatherData lastWeatherData;
   bool newWData = false;
-  void getTrackingInfo(String line,Frame *frm);
-  void getGroundTrackingInfo(uint8_t *buffer,uint16_t length);  
-  void getWeatherinfo(uint8_t *buffer,uint16_t length);  
+  int8_t getTrackingInfo(Frame *frm);
+  int8_t getGroundTrackingInfo(uint8_t *buffer,uint16_t length);  
+  int8_t getWeatherinfo(uint8_t *buffer,uint16_t length);  
   float getSpeedFromByte(uint8_t speed);
   void printAircraftType(aircraft_t type);
   String CreateFNFMSG(Frame *frm);

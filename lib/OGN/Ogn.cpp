@@ -206,7 +206,7 @@ void Ogn::sendNameData(String devId,String name,float snr){
     xSemaphoreTake( *xMutex, portMAX_DELAY );
     client->print(buff);                
     xSemaphoreGive( *xMutex );
-    log_i("%s",buff);
+    //log_i("%s",buff);
 
 }
 
@@ -266,7 +266,7 @@ void Ogn::sendWeatherData(weatherData *wData){
     xSemaphoreTake( *xMutex, portMAX_DELAY );
     client->print(send.c_str());                
     xSemaphoreGive( *xMutex );
-    log_i("%s",send.c_str());
+    //log_i("%s",send.c_str());
 
 }
 
@@ -348,7 +348,7 @@ void Ogn::sendReceiverStatus(String sTime){
     client->print(sStatus);
     xSemaphoreGive( *xMutex );
     if (initOk < 10) initOk = 10; //now we can send, because we have sent GPS-Position
-    log_i("%s",sStatus.c_str());
+    //log_i("%s",sStatus.c_str());
 }
 
 void Ogn::sendReceiverBeacon(String sTime){
@@ -376,7 +376,7 @@ void Ogn::sendReceiverBeacon(String sTime){
     client->print(buff); 
     xSemaphoreGive( *xMutex );
     if (initOk < 5) initOk = 5; //now we can send, because we have sent GPS-Position
-    log_i("%s",buff);
+    //log_i("%s",buff);
 }
 
 String Ogn::getActTimeString(time_t timestamp){

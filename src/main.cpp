@@ -30,6 +30,8 @@
 #include "gxUpdater.h"
 #include <AceButton.h>
 #include "../lib/FANETLORA/Legacy/Legacy.h"
+#include <ArduinoJson.h>
+
 //#include <esp_task_wdt.h>
 
 
@@ -732,6 +734,7 @@ void handleButton(uint32_t tAct){
 
 
 void sendFlarmData(uint32_t tAct){
+  if (WebUpdateRunning) return;
   static uint32_t tSend = millis();
   static uint32_t tSendStatus = millis();
   FlarmtrackingData myFlarmData;
@@ -1815,6 +1818,7 @@ void setup() {
         esp_bt_controller_deinit();
         esp_bt_mem_release(ESP_BT_MODE_BTDM);
         adc_power_off();
+        //adc_power_release();
         esp_deep_sleep_start();
       }
     }
@@ -1951,6 +1955,8 @@ void setup() {
     }    
 
     PinBuzzer = 25;
+
+    sButton[1].PinButton = 2;
 
     i2cOLED.begin(PinOledSDA, PinOledSCL);
     // voltage-divier 100kOhm and 100kOhm
@@ -2174,6 +2180,7 @@ void setup() {
         esp_bt_controller_deinit();
         esp_bt_mem_release(ESP_BT_MODE_BTDM);
         adc_power_off();
+        //adc_power_release();
         esp_deep_sleep_start();
       }
     }
@@ -2585,7 +2592,7 @@ void taskWeather(void *pvParameters){
             }
             wuData.rain1h = wData.rain1h ;
             wuData.raindaily = wData.rain1d;
-            log_i("wuData:wDir=%f;wSpeed=%f,gust=%f,temp=%f,h=%f,p=%f",wuData.winddir,wuData.windspeed,wuData.windgust,wuData.temp,wuData.humidity,wuData.pressure);
+            //log_i("wuData:wDir=%f;wSpeed=%f,gust=%f,temp=%f,h=%f,p=%f",wuData.winddir,wuData.windspeed,wuData.windgust,wuData.temp,wuData.humidity,wuData.pressure);
             wu.sendData(setting.WUUpload.ID,setting.WUUpload.KEY,&wuData);
           }
           if (setting.WindyUpload.enable){
@@ -2620,6 +2627,22 @@ void taskWeather(void *pvParameters){
       }
       
       if (timeOver(tAct,tSendData,setting.wd.FanetUploadInterval)){
+        //print weather-data to serial
+        if (timeStatus() == timeSet){
+          StaticJsonDocument<500> doc;                      //Memory pool
+          char buff[20];
+          char msg_buf[500];
+          sprintf (buff,"%04d-%02d-%02d %02d:%02d:%02d",year(),month(),day(),hour(),minute(),second());
+          doc["DT"] = buff;
+          doc["wDir"] = String(avg[0].Winddir,2);
+          doc["wSpeed"] = String(avg[0].WindSpeed,2);
+          doc["wGust"] = String(avg[0].WindGust,2);
+          doc["temp"] = String(avg[0].temp,2);
+          doc["hum"] = String(avg[0].Humidity,2);
+          doc["press"] = String(avg[0].Pressure,2);
+          serializeJson(doc, msg_buf);
+          Serial.print("WD=");Serial.println(msg_buf);
+        }
         if (setting.wd.sendFanet){
           
           fanetWeatherData.lat = setting.gs.lat;
@@ -2709,7 +2732,6 @@ void taskBaro(void *pvParameters){
   uint32_t tStart;
   uint32_t tCycle;
   uint32_t tLog = millis();
-  uint32_t tReset = millis();
   uint8_t u8Volume = setting.vario.volume;
   static bool bInitCalib = true;
   log_i("starting baro-task ");  
@@ -2757,16 +2779,6 @@ void taskBaro(void *pvParameters){
           tMax = 0;
         }
       }
-      /*
-      if ((tStart - tLog) >= 1000){
-        tLog = tStart;
-        log_i("max cycle=%dms;max=%dms",tCycle,tMax);
-      }
-      if ((tStart - tReset) >= 5000){
-        tReset = tStart;
-        tMax = 0;
-      }
-      */
       if (command.CalibGyro == 1){
         baro.calibGyro();
         command.CalibGyro = 2;
@@ -3701,7 +3713,7 @@ void readGPS(){
         }
         i++;
       }
-      if (setting.outputGPS) sendData2Client(cstr,sNmeaIn.length()); //sendData2Client(sNmeaIn);
+      if ((setting.outputGPS) && (!WebUpdateRunning)) sendData2Client(cstr,sNmeaIn.length()); //sendData2Client(sNmeaIn);
       delete cstr; //delete allocated String
       sNmeaIn = "";
     }else{
@@ -3721,7 +3733,7 @@ void readGPS(){
         lineBuffer[recBufferIndex] = '\n';
         recBufferIndex++;
         lineBuffer[recBufferIndex] = 0; //zero-termination
-        if (setting.outputGPS) sendData2Client(lineBuffer,recBufferIndex);
+        if ((setting.outputGPS) && (!WebUpdateRunning)) sendData2Client(lineBuffer,recBufferIndex);
         recBufferIndex = 0;
         tGpsOk = millis();
         if (!status.bHasGPS){
@@ -3783,6 +3795,7 @@ void Fanet2FlarmData(FanetLora::trackingData *FanetData,FlarmtrackingData *Flarm
 }
 
 void sendLXPW(uint32_t tAct){
+  if (WebUpdateRunning) return;
   // $LXWP0,logger_stored, airspeed, airaltitude,
   //   v1[0],v1[1],v1[2],v1[3],v1[4],v1[5], hdg, windspeed*CS<CR><LF>
   //
@@ -3839,8 +3852,9 @@ void sendLXPW(uint32_t tAct){
 }
 
 void sendLK8EX(uint32_t tAct){
+  if (WebUpdateRunning) return;
   static uint32_t tOld = millis();
-  if ((tAct - tOld) >= 250){
+  if ((tAct - tOld) >= 100){
     //String s = "$LK8EX1,101300,99999,99999,99,999,";
     char sOut[MAXSTRING];
     int pos = 0;
@@ -4323,7 +4337,9 @@ void taskStandard(void *pvParameters){
     }else{
       fanet.onGround = true; //ground-tracking
     }
-    fanet.run();
+    if (!WebUpdateRunning){
+      fanet.run();
+    }    
     //status.fanetRx = fanet.rxCount;
     //status.fanetTx = fanet.txCount;
     fanet.getRxTxCount(&status.fanetRx,&status.fanetTx,&status.legRx,&status.legTx);
@@ -4603,7 +4619,9 @@ void powerOff(){
   eTaskState tBaro = eDeleted;
   eTaskState tEInk = eDeleted;
   eTaskState tStandard = eDeleted;
+  #ifdef GSM_MODULE
   eTaskState tGSM = eDeleted;
+  #endif
   eTaskState tWeather = eDeleted;
   while(1){
     //wait until all tasks are stopped
@@ -4695,6 +4713,7 @@ void powerOff(){
   esp_bt_controller_deinit();
   esp_bt_mem_release(ESP_BT_MODE_BTDM);
   adc_power_off();
+  //adc_power_release();
   esp_deep_sleep_start();
 
 }
@@ -4882,7 +4901,7 @@ void readSMS(){
 
 void taskBackGround(void *pvParameters){
   static uint32_t tWifiCheck = millis();
-  static uint32_t warning_time=0;
+  //static uint32_t warning_time=0;
   static uint8_t ntpOk = 0;
   static uint32_t tGetTime = millis();
   uint32_t tBattEmpty = millis();
@@ -4920,10 +4939,14 @@ void taskBackGround(void *pvParameters){
     #ifdef GSMODULE    
     if (setting.Mode == MODE_GROUND_STATION){
       if (status.bTimeOk == true){
-        if (day() != actDay){
+        struct tm now;
+        getLocalTime(&now,0);
+        if ((now.tm_mday != actDay) && (now.tm_hour > 0)){
           //restart every new day --> to get new NTP-Time
-          log_i("day changed %d->%d",actDay,day());
+          //every day at 01:00am
+          log_i("day changed %d->%d hour:%d",actDay,now.tm_mday,now.tm_hour);
           if (actDay != 0){
+            printLocalTime();
             log_i("new day --> restart ESP");
             delay(500);
             esp_restart();

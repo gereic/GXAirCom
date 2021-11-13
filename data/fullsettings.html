@@ -80,6 +80,13 @@ function setVis(){
   document.getElementById("visSigmaP").style.display='none';  
   document.getElementById("visSigmaA").style.display='none';  
   document.getElementById("VisFuelSensor").style.display='none'; //set FuelSensor invisible
+  if (document.getElementById("useMPU").checked){
+    document.getElementById("KfP").innerHTML='Kalman filter pressure-value (default 0.3)';
+    document.getElementById("KfA").innerHTML='Kalman filter accelerator-value (default 0.3)';
+  }else{
+    document.getElementById("KfP").innerHTML='Kalman filter pressure-value (default 0.1)';
+    document.getElementById("KfA").innerHTML='Kalman filter accelerator-value (default 0.6)';
+  }
   if (document.getElementById("setView").value > 0){ //we are advanced user
     document.getElementById("visSigmaP").style.display='';  
     document.getElementById("visSigmaA").style.display='';  
@@ -1112,14 +1119,14 @@ window.addEventListener("load", init, false);
           </tr>
           <tr id="VisMPUSetting">
             <th>use accelerometer</th>
-            <td><input type="checkbox" id="useMPU"></td>
+            <td><input type="checkbox" id="useMPU" onchange="setVis()" ></td>
           <tr>
           <tr id="visSigmaP">
-            <th>Kalman filter pressure-value (default 0.1)</th>
+            <th id="KfP">Kalman filter pressure-value (default 0.1)</th>
             <td><input type="number" id="sigmaP" step=".01"></td>
           </tr>
           <tr id="visSigmaA">
-            <th>Kalman filter accelerator-value (default 0.6)</th>
+            <th id="KfA">Kalman filter accelerator-value (default 0.6)</th>
             <td><input type="number" id="sigmaA" step=".01"></td>
           </tr>
       </table>

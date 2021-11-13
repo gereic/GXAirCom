@@ -254,11 +254,11 @@ void FanetMac::frameReceived(int length)
 
 	/* build frame from stream */
 	Frame *frm;
-  if (_actMode != MODE_LORA){
-		char Buffer[500];
+  if (_actMode != MODE_LORA){			
+		char Buffer[500];	
 		int len = 0;
 		#if RX_DEBUG > 0
-      time_t tUnix;
+			time_t tUnix;
       char strftime_buf[64];
       struct tm timeinfo;
       time(&tUnix);
@@ -300,6 +300,37 @@ void FanetMac::frameReceived(int length)
   	uint16_t crc16 =  getLegacyCkSum(rx_frame,24);
     uint16_t crc16_2 = (uint16_t(rx_frame[24]) << 8) + uint16_t(rx_frame[25]);
     if (crc16 != crc16_2){
+			/*
+			time_t tUnix;
+      char strftime_buf[64];
+      struct tm timeinfo;
+      time(&tUnix);
+			len += sprintf(Buffer+len,"T=%d;",tUnix);
+			//log_i("l=%d,%s",len,Buffer);
+      localtime_r(&tUnix, &timeinfo);
+      strftime(strftime_buf, sizeof(strftime_buf), "%F %T", &timeinfo);   
+			len += sprintf(Buffer+len,"%s;",strftime_buf);
+			//log_i("l=%d,%s",len,Buffer);
+			if (_actMode == MODE_FSK_8684){
+				len += sprintf(Buffer+len,"F=868.4;");
+			}else{
+				len += sprintf(Buffer+len,"F=868.2;");
+			}
+			len += sprintf(Buffer+len,"Rx=%d;rssi=%d;", num_received, rssi);
+
+			for(int i=0; i<num_received; i++)
+			{
+				len += sprintf(Buffer+len,"%02X", rx_frame[i]);
+				if (i >= 26) break;
+				//if(i<num_received-1)
+				//	len += sprintf(Buffer+len,",");
+			}
+			len += sprintf(Buffer+len,"\n");
+			Serial.print(Buffer);
+			*/
+			//fmac.sendUdpData((uint8_t *)Buffer,len);
+			//log_i("%s",Buffer);
+			//log_i("l=%d;%s",len,Buffer);
       log_e("%d Legacy: wrong Checksum %04X!=%04X",millis(),crc16,crc16_2);
       delete frm;
       return;
@@ -477,9 +508,11 @@ bool FanetMac::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset, 
 }
 
 void FanetMac::switchMode(uint8_t mode,bool bStartReceive){
-  uint32_t tBegin = micros();
+  #if RX_DEBUG > 1
+	uint32_t tBegin = micros();
+	#endif
 	if (mode == MODE_LORA){
-		radio.switchLORA();
+		radio.switchLORA(868.2);
 	}else if (mode == MODE_FSK_8682){
 		radio.switchFSK(868.2);
 	}else if (mode == MODE_FSK_8684){
@@ -487,7 +520,7 @@ void FanetMac::switchMode(uint8_t mode,bool bStartReceive){
 	}
 	if (bStartReceive) radio.startReceive();	
 	_actMode = mode;
-	#if RX_DEBUG > 0
+	#if RX_DEBUG > 1
 	char Buffer[500];
 	int len = 0;
 	len += sprintf(Buffer+len,"%d switch to mode ",millis());
@@ -498,9 +531,9 @@ void FanetMac::switchMode(uint8_t mode,bool bStartReceive){
 	}else if (mode == MODE_FSK_8684){
 		len += sprintf(Buffer+len,"FSK868.4 ");
 	}
-	len += sprintf(Buffer+len,"in %dus pps=%d\n",micros()-tBegin,millis() - _ppsMillis);
+	len += sprintf(Buffer+len,"in %dus pps=%d\n",int(micros()-tBegin),int(millis() - _ppsMillis));
 	//log_i("%d switch to mode %d in %dus pps=%d",millis(),mode,micros()-tBegin,_ppsMillis);
-	//Serial.print(Buffer);
+	Serial.print(Buffer);
 	#endif
 }
 
