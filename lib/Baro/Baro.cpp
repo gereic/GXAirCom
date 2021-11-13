@@ -503,6 +503,8 @@ uint8_t Baro::begin(TwoWire *pi2c){
   uint8_t ret = 0;
   pI2c = pi2c;
   sensorType = SENSORTYPE_NONE; //init to no sensor connected
+  logData.vAcc = 0.0;
+  logData.vOffset = 0.0;
   if (initBME280()){
     ret = 1; //BME280;
   }else if (initMS5611()){
@@ -537,7 +539,14 @@ void Baro::setKalmanSettings(float sigmaP,float sigmaA){
 }
 
 void Baro::calcClimbing(void){
-  
+  /*
+  if ((logData.loopTime <= 50000) || (logData.newData == 0x80)){
+
+  }else{
+    //log_w("looptime to high %d",logData.loopTime);
+    return;
+  }
+  */
   if (logData.newData == 0x80){
     //init alt-array
     //double test = logData.altitude;
@@ -558,7 +567,7 @@ void Baro::calcClimbing(void){
     }
     */
     //Serial.println("KalmanInit");
-  }else{
+  }else{    
     if (bUseAcc){
       Kalmanvert.update( logData.altitude,
                         logData.acc,
@@ -768,6 +777,24 @@ float Baro::getMpuTemp(void){
   return (float(mpu.getTemperature()) / 340) + 36.53;
 }
 
+uint32_t Baro::get2of3(uint32_t *press, uint32_t newPress){
+  press[2] = press[1];
+  press[1] = press[0];
+  press[0] = newPress;
+  int32_t diff[3];
+  diff[0] = abs((int32_t)press[0] - (int32_t)press[2]);
+  diff[1] = abs((int32_t)press[1] - (int32_t)press[0]);
+  diff[2] = abs((int32_t)press[2] - (int32_t)press[1]);
+  if ((diff[0] <= diff[1])  && (diff[0] <= diff[2])){
+    return press[0];
+  }else if ((diff[1] <= diff[2])  && (diff[1] <= diff[0])){
+    return press[0];
+  }else if ((diff[2] <= diff[1])  && (diff[2] <= diff[0])){
+    return press[1];
+  }
+  return press[0];
+}
+
 void Baro::runMS5611(uint32_t tAct){
   static uint32_t tOld;
   static float press = 0.0f;
@@ -779,9 +806,15 @@ void Baro::runMS5611(uint32_t tAct){
   static uint8_t mpuCount = 0;
   ms5611.run();
   if (ms5611.convFinished()){
-    press += ms5611.readPressure(true);
+    uint32_t actPress = ms5611.readPressure(true);
+    logData.pressmeasure = actPress;
+    #ifdef newBaro
+    logData.pressureFiltered = get2of3(&arPress[0],actPress);
+    #endif
+    press += actPress;
     //temp += ms5611.readTemperature(true);
     //log_i("rawTemp=%d,Temp=%.02f",ms5611.getRawTemperature(),ms5611.readTemperature(true));
+    logData.mx++;
     baroCount++;
   }
   bool bReady = mpuDrdy();
@@ -790,23 +823,19 @@ void Baro::runMS5611(uint32_t tAct){
     temp += getMpuTemp();
 		mpuCount++;
   }
-  /*
-  if ((tAct - tTemp) >= 1000){
-    int16_t t1 = mpu.getTemperature();
-    log_i("%d,%.2f",t1,(float(t1)/340.0)+36.53);
-    tTemp = tAct;
-  }
-  */
-
+  #ifdef newBaro
+  if (mpuCount > 0){
+    press = logData.pressureFiltered;
+  #else
   if ((baroCount > 0) && (mpuCount > 0)){
-    
     press = press / float(baroCount);
+  #endif
     //temp = temp / float(baroCount);
     acc = acc / float(mpuCount);
     temp = temp / float(mpuCount);
     logData.acc = acc;
     logData.baroCount = baroCount;
-    logData.mpuCount = mpuCount;
+    logData.mpuCount = mpuCount;    
     if (countReadings < 10){
       countReadings++;
     }else{
@@ -815,12 +844,14 @@ void Baro::runMS5611(uint32_t tAct){
         countReadings++;
       }
       // To calculate heading in degrees. 0 degree indicates North
-      //mag.getHeading(&logData.mx, &logData.my, &logData.mz);
+      /*
+      mag.getHeading(&logData.mx, &logData.my, &logData.mz);
       logData.heading = atan2(logData.my, logData.mx);
       if(logData.heading < 0){
         logData.heading += 2 * M_PI;
       }      
       logData.heading  = logData.heading * 180/M_PI;
+      */
 
       logData.temp = temp;
       logData.pressure = press;
@@ -830,7 +861,18 @@ void Baro::runMS5611(uint32_t tAct){
       logData.baroPos = ms5611.getAltitude(logData.pressure);
       logData.loopTime = micros() - tOld;
       tOld = micros();
+      logData.vAcc += (acc * ((float)logData.loopTime / 1000000.0));// + logData.vOffset;
       calcClimbing();
+      #ifdef newBaro
+      if ((logData.vAcc < 0) && (logData.vOffset < 0)){
+        logData.vOffset = 0;
+      }
+      if ((logData.vAcc > 0) && (logData.vOffset > 0)){
+        logData.vOffset = 0;
+      }
+      logData.vOffset += (logData.velo - logData.vAcc) * ((float)logData.loopTime/1000000.0) * 0.01;
+      #endif
+      
       if (logData.newData == 0x80){
         logData.newData = 0;
         bNewValues = false;

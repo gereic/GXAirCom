@@ -206,7 +206,7 @@ void Ogn::sendNameData(String devId,String name,float snr){
     xSemaphoreTake( *xMutex, portMAX_DELAY );
     client->print(buff);                
     xSemaphoreGive( *xMutex );
-    log_i("%s",buff);
+    //log_i("%s",buff);
 
 }
 
@@ -266,7 +266,7 @@ void Ogn::sendWeatherData(weatherData *wData){
     xSemaphoreTake( *xMutex, portMAX_DELAY );
     client->print(send.c_str());                
     xSemaphoreGive( *xMutex );
-    log_i("%s",send.c_str());
+    //log_i("%s",send.c_str());
 
 }
 
@@ -348,7 +348,7 @@ void Ogn::sendReceiverStatus(String sTime){
     client->print(sStatus);
     xSemaphoreGive( *xMutex );
     if (initOk < 10) initOk = 10; //now we can send, because we have sent GPS-Position
-    log_i("%s",sStatus.c_str());
+    //log_i("%s",sStatus.c_str());
 }
 
 void Ogn::sendReceiverBeacon(String sTime){
@@ -372,11 +372,11 @@ void Ogn::sendReceiverBeacon(String sTime){
 
     //sprintf (buff,"%s>APRS,TCPIP*,qAC,%s:/%sh%02d%02d.%02d%cI%03d%02d.%02d%c&%03d/%03d/A=%06d\r\n"
     //            ,_user.c_str(),_servername.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,(_lat < 0)?'S':'N',lonDeg,lonMin/1000,lonMin/10 %100,(_lon < 0)?'W':'E',int(_heading),int(_speed * 0.53996),int(_alt * 3.28084));
-    //log_i("%s",buff);
     xSemaphoreTake( *xMutex, portMAX_DELAY );
     client->print(buff); 
     xSemaphoreGive( *xMutex );
     if (initOk < 5) initOk = 5; //now we can send, because we have sent GPS-Position
+    //log_i("%s",buff);
 }
 
 String Ogn::getActTimeString(time_t timestamp){

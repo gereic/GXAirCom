@@ -173,6 +173,7 @@ void Weather::runBME280(uint32_t tAct){
 	float pressure = 0;
 	float humidity = 0;
 	float rawPressure = 0;
+  bool bReadErr = true;
   if ((tAct - tOld) >= WEATHER_REFRESH){
     int i = 0;
     for (i = 0;i < 5;i++){
@@ -181,15 +182,13 @@ void Weather::runBME280(uint32_t tAct){
         rawPressure = (float)bme.getPressure() / 100.;
         humidity = (float)(bme.getHumidity()/ 100.); // in %
         pressure = calcPressure(rawPressure,temp,_height); // in mbar
+        bReadErr = false; //we got the values !!        
         break; //ready with reading
       }
-      delay(100);
+      delay(500);
       log_e("error reading bme280 %d",i);
     }
     if (hasTempSensor){
-      //if (sensors.getAddress(tempSensorAdr, 0)){
-      //  log_i("sensor found");      
-      //}
       float actTemp = -127.0;
       for (int i = 0;i < 5;i++){
         if (sensors.isConnected(tempSensorAdr)){
@@ -198,30 +197,20 @@ void Weather::runBME280(uint32_t tAct){
           break;
         }
       }
-      //log_i("%d temp of sensor %.1f",tAct,actTemp);      
       if (actTemp > -100.0){
         //temp-conversion finished --> take measurement
-        dTemp = actTemp;
+        dTemp = actTemp + _tempOffset;
       }
       
     }else{
-      dTemp = temp;
+      if (!bReadErr){
+        dTemp = temp + _tempOffset;
+      }      
     }
-    dTemp += _tempOffset;
-    dHumidity = humidity;
-    dPressure = pressure;
-    //log_i("T1=%f T2=%f h=%f p1=%f p2=%f",dTemp,temp,dHumidity,rawPressure,dPressure);
-    /*
-    if (!bFirst){
-      dTempOld = dTemp;
-      dHumidityOld = dHumidity;
-      dPressureOld = dPressure;
-      bFirst = true;
+    if (!bReadErr){
+      dHumidity = humidity;
+      dPressure = pressure;
     }
-    dTempOld = calcExpAvgf(dTempOld,dTemp,avgFactor);
-    dHumidityOld = calcExpAvgf(dHumidityOld,dHumidity,avgFactor);
-    dPressureOld = calcExpAvgf(dPressureOld,dPressure,avgFactor);
-    */
     checkAneometer();
     checkRainSensor();
     copyValues();

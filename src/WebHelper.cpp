@@ -196,6 +196,7 @@ void onWebSocketEvent(uint8_t client_num,
           webSocket.sendTXT(client_num, msg_buf);
 
           doc.clear();
+          doc["getGpsPos"] = command.getGpsPos;
           doc["gslat"] = setting.gs.lat;
           doc["gslon"] = setting.gs.lon;
           doc["gsalt"] = setting.gs.alt;
@@ -341,7 +342,9 @@ void onWebSocketEvent(uint8_t client_num,
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
 
-        }
+        }        
+      }else if (root.containsKey("getGpsPos")){
+        command.getGpsPos = doc["getGpsPos"].as<uint8_t>(); //get GPS Position
       }else if (root.containsKey("configGPS")){
         command.ConfigGPS = doc["configGPS"].as<uint8_t>(); //setup GPS
       }else if (root.containsKey("calibGyro")){
@@ -1212,6 +1215,11 @@ void sendPage(uint8_t pageNr){
         mCommand.ConfigGPS = command.ConfigGPS;
         doc["configGPS"] = mCommand.ConfigGPS;
       }    
+      if (mCommand.getGpsPos != command.getGpsPos){
+        bSend = true;
+        mCommand.getGpsPos = command.getGpsPos;
+        doc["getGpsPos"] = mCommand.getGpsPos;
+      }      
       if (mCommand.CalibGyro != command.CalibGyro){
         bSend = true;
         mCommand.CalibGyro = command.CalibGyro;
