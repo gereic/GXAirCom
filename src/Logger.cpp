@@ -269,7 +269,7 @@ void Logger::doStopLogger(void){
 
   //TODO create the algorithm to write security based on data
 
-  log_i("Closing igs file with security line G");
+  log_i("Closing igc file with security line G");
   appendFile(SD_MMC, igcPAth, row);
 
 }
