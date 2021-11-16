@@ -661,9 +661,10 @@ static void handle_update_progress_cb(AsyncWebServerRequest *request, String fil
     //Serial.println(filename);
     //Serial.println("Update");
     //log_i("stopping standard-task");
-    //vTaskDelete(xHandleStandard); //delete standard-task
+    //vTaskDelete(xHandleStandard); //delete standard-task    
     WebUpdateRunning = true;
     delay(500); //wait 1 second until tasks are stopped
+    Serial.println("webupdate starting");      
     //Update.runAsync(true);
     if (filename.startsWith("spiffs")){
       if (!Update.begin(0x30000,U_SPIFFS)) {

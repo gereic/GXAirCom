@@ -263,7 +263,12 @@ float LoRaClass::getRSSI(){
 
 int16_t LoRaClass::sx1276setOpMode(uint8_t mode){
   int16_t ret = 0;
-  ret = pGxModule->SPIsetRegValue(0x01, mode, 2, 0, 10); //RegOpMode --> set op-mode
+  if (mode == SX1276_MODE_RX_CONTINUOUS){
+    ret = pGxModule->SPIsetRegValue(0x01, mode, 2, 0, 0); //set register, but don't wait for set is successfull
+  }else{
+    ret = pGxModule->SPIsetRegValue(0x01, mode, 2, 0, 10); //RegOpMode --> set op-mode
+  }
+  
   /*
   for (int i = 0; i < 3; i++){
     ret = pGxModule->SPIsetRegValue(0x01, mode, 2, 0, 200); //RegOpMode --> set op-mode
@@ -316,6 +321,7 @@ int16_t LoRaClass::sx1276setRxBandwidth(float rxBw){
       }
     }
   }
+  return 0;
 }
 
 int16_t LoRaClass::switchFSK(float frequency){

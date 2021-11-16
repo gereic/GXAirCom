@@ -2772,6 +2772,7 @@ void taskBaro(void *pvParameters){
     //xLastWakeTime = xTaskGetTickCount();
     while (1){      
       tStart = millis();
+      /*
       if ((tStart - tLog) >= 1000){
         tLog = tStart;
         if (tMax >= 100){
@@ -2779,6 +2780,7 @@ void taskBaro(void *pvParameters){
           tMax = 0;
         }
       }
+      */
       if (command.CalibGyro == 1){
         baro.calibGyro();
         command.CalibGyro = 2;
