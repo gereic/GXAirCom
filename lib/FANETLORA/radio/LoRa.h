@@ -9,7 +9,7 @@
 #include "GxModule.h"
 
 #define USE_GXMODULE
-#define USE_GXMODULESX1262
+//#define USE_GXMODULESX1262
 
 // SEND FRAME RETURN VALUES
 #define	TX_OK						0
