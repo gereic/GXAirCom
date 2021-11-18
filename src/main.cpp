@@ -68,6 +68,12 @@
 #include <Screen.h>
 #endif
 
+#ifdef LOGGER
+#include <Logger.h>
+#include "driver/rtc_io.h"
+#endif
+
+
 #ifdef GSMODULE
 
 #include <Dusk2Dawn.h> //for sunset and sunrise-functions
@@ -286,6 +292,7 @@ TaskHandle_t xHandleBackground = NULL;
 TaskHandle_t xHandleBluetooth = NULL;
 TaskHandle_t xHandleMemory = NULL;
 TaskHandle_t xHandleEInk = NULL;
+TaskHandle_t xHandleLogger = NULL;
 TaskHandle_t xHandleWeather = NULL;
 
 SemaphoreHandle_t xOutputMutex;
@@ -310,6 +317,9 @@ void taskBaro(void *pvParameters);
 #endif
 #ifdef EINK
 void taskEInk(void *pvParameters);
+#endif
+#ifdef LOGGER
+void taskLogger(void *pvParameters);
 #endif
 #ifdef GSM_MODULE
 void taskGsm(void *pvParameters);
@@ -589,6 +599,8 @@ void oledPowerOn(){
   //set display to full contrast
   display.ssd1306_command(SSD1306_SETCONTRAST);
   display.ssd1306_command(0xFF);
+  //added the possibility to invert BW .. whould be nice to put it in the settings TODO
+  display.invertDisplay(DISPLAY_INVERT);
   status.displayStat = DISPLAY_STAT_ON;
 }
 
@@ -882,6 +894,21 @@ void drawflying(int16_t x, int16_t y, bool flying){
 
 
 void drawBatt(int16_t x, int16_t y,uint8_t value){
+
+    display.setTextSize(1);
+    display.setCursor(x-15,y+9);
+    display.print(status.vBatt/1000);
+    display.print(".");
+    if(status.vBatt%1000/10<10){
+      display.print("0");
+    }
+    display.print((status.vBatt%1000)/10);
+    display.print("V");
+
+    display.setCursor(x-5,y+18);
+    display.print(String(status.varioTemp,0));
+    display.print("C");
+
     static uint8_t DrawValue = 0;
     if (value == 255){
         DrawValue = (DrawValue + 1) %5; 
@@ -1501,7 +1528,7 @@ void printSettings(){
   log_i("Board-Type=%d",setting.boardType);
   log_i("Display-Type=%d",setting.displayType);
   log_i("Display-Rotation=%d",setting.displayRotation);
-  //log_i("AXP192=%d",uint8_t(status.bHasAXP192));
+  log_i("AXP192=%d",uint8_t(status.bHasAXP192));
   if (setting.band == 0){
     log_i("BAND=868mhz");
   }else{
@@ -1944,9 +1971,11 @@ void setup() {
     PinOledSDA = 21;
     PinOledSCL = 22;
 
-    PinBaroSDA = 13;
-    PinBaroSCL = 14;
-
+    // moving SCL SDA to different GPIO to avoid conflicts with mounted SD card on Lilygo T3 v2.1.1.6
+    PinBaroSDA = 3; //13 3;
+    PinBaroSCL = 4; //14 23;
+    // set gpio 4 as INPUT
+    pinMode(PinBaroSCL, INPUT_PULLUP);
     PinADCVoltage = 35;
 
     if (setting.bHasFuelSensor){
@@ -1956,12 +1985,14 @@ void setup() {
 
     PinBuzzer = 25;
 
-    sButton[1].PinButton = 2;
+    // Lilygo T3 v2.1.1.6 extra button on 0
+    sButton[1].PinButton = 0;
 
     i2cOLED.begin(PinOledSDA, PinOledSCL);
     // voltage-divier 100kOhm and 100kOhm
     // vIn = (R1+R2)/R2 * VOut
-    adcVoltageMultiplier = 2.0f * 3.76f; // not sure if it is ok ?? don't have this kind of board
+//    adcVoltageMultiplier = 2.0f * 3.76f; // not sure if it is ok ?? don't have this kind of board
+    adcVoltageMultiplier = 2.0f * 3.5f; // maybe also 3.4 or 3.45 .. TODO test
     pinMode(PinADCVoltage, INPUT);
     break;
   /*
@@ -2202,8 +2233,14 @@ xOutputMutex = xSemaphoreCreateMutex();
 
   //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
 #ifdef AIRMODULE
-  
+
   if (setting.Mode == MODE_AIR_MODULE){
+
+    //adding logger task
+    #ifdef LOGGER
+      xTaskCreatePinnedToCore(taskLogger, "taskLogger", 6500, NULL, 4, &xHandleLogger, ARDUINO_RUNNING_CORE1); //background Logger
+    #endif  
+
     xTaskCreatePinnedToCore(taskBaro, "taskBaro", 6500, NULL, 9, &xHandleBaro, ARDUINO_RUNNING_CORE1); //high priority task
   }
 #endif  
@@ -2982,6 +3019,7 @@ float readBattvoltage(){
   adc_reading /= NO_OF_SAMPLES;
 
   vBatt = (adcVoltageMultiplier * float(adc_reading) / 1023.0f) + setting.BattVoltOffs;
+  //Serial.println(adc_reading);
   //log_i("adc=%d, vBatt=%.3f",adc_reading,vBatt);
   return vBatt;
 }
@@ -3006,6 +3044,15 @@ void printBattVoltage(uint32_t tAct){
     status.BattPerc = scale(status.vBatt,battEmpty,battFull,0,100);
     //log_i("Batt =%d%%",status.BattPerc);
     //log_i("Batt %dV; %d%%",status.vBatt,status.BattPerc);
+
+      if (status.vBatt >= battFull){
+        log_i("Battery Full: %d mV Temp:%s C",status.vBatt,String(status.varioTemp,1));
+          
+          // if (!status.bMuting){
+          //   ledcWriteTone(channel,2000);
+          //   delay(500);
+          // }
+      }
   }
 }
 
@@ -3986,10 +4033,11 @@ void taskStandard(void *pvParameters){
   if (setting.boardType != BOARD_TTGO_TSIM_7000){
     if (status.bHasAXP192){
       PinGPSRX = 34;
-      PinGPSTX = 12;
+      PinGPSTX = 39;//12;
     }else{
-      PinGPSRX = 12;
-      PinGPSTX = 15;
+      // moving gpio for GPS back to 34 to avoid conflicts with SD pins on LilyGo T3 v2.1.1.6
+      PinGPSRX = 34;//12;
+      PinGPSTX = 39;//15;
     }
   }
   if (PinGPSRX >= 0){
@@ -4006,7 +4054,6 @@ void taskStandard(void *pvParameters){
 
   //Reset the device so that the changes could take plaace
   //MicroNMEA::sendSentence(NMeaSerial, "$PSTMSRR");
-
 
   delay(1000);
   //clear serial buffer
@@ -4127,7 +4174,7 @@ void taskStandard(void *pvParameters){
     }
     if (status.tMaxLoop < status.tLoop) status.tMaxLoop = status.tLoop;
     #ifdef AIRMODULE    
-    if (command.ConfigGPS == 1){      
+    if (command.ConfigGPS == 1){    
       if (setupUbloxConfig()){
         command.ConfigGPS = 2; //setting ok
         delay(2000);
@@ -4463,6 +4510,47 @@ void taskStandard(void *pvParameters){
           }else{
             status.GPS_speed = nmea.getSpeed()*1.852/1000.; //speed in cm/s --> we need km/h
             status.GPS_course = nmea.getCourse()/1000.;
+
+          // create a global variable for logger igc file name based on GPS datetime
+            //set today date
+            static char fullDate[36];
+            static char fullTime[8];
+            strcpy(fullDate,"");
+            strcpy(fullTime,"");
+            // if got a correct date i.e. with year
+            if (nmea.getYear()>0){
+              char day[2];
+              itoa(nmea.getDay(), day, 10);
+              if (nmea.getDay()<10) strcat(fullDate,"0");
+              strcat(fullDate, day);
+
+              char month[2];
+              itoa(nmea.getMonth(), month, 10);
+              if (nmea.getMonth()<10) strcat(fullDate,"0");
+              strcat(fullDate, month);
+
+              char year[2];
+              itoa(nmea.getYear() - 2000, year, 10);
+              strcat(fullDate, year);
+
+              char hour[2];
+              itoa(nmea.getHour(), hour, 10);
+              if(nmea.getHour()<10) strcat(fullTime,"0");
+              strcat(fullTime, hour);
+
+              char minute[2];
+              itoa(nmea.getMinute(), minute, 10);
+              if(nmea.getMinute()<10) strcat(fullTime,"0");
+              strcat(fullTime, minute);
+
+              char seconds[2];
+              itoa(nmea.getSecond(), seconds, 10);
+              if(nmea.getSecond()<10) strcat(fullTime,"0");
+              strcat(fullTime, seconds);
+
+              status.GPS_Date = fullDate;
+              status.GPS_Time = fullTime;
+            }
           }
           long geoidalt = 0;
           nmea.getGeoIdAltitude(geoidalt);
@@ -4625,14 +4713,16 @@ void powerOff(){
   eTaskState tGSM = eDeleted;
   #endif
   eTaskState tWeather = eDeleted;
+  eTaskState tLogger = eDeleted;
   while(1){
     //wait until all tasks are stopped
+    if (xHandleLogger != NULL) tLogger = eTaskGetState(xHandleLogger);
     if (xHandleBaro != NULL) tBaro = eTaskGetState(xHandleBaro);
     if (xHandleEInk != NULL) tEInk = eTaskGetState(xHandleEInk);
     if (xHandleStandard != NULL) tStandard = eTaskGetState(xHandleStandard);
     if (xHandleWeather != NULL) tWeather = eTaskGetState(xHandleWeather);    
-    if ((tBaro == eDeleted) && (tEInk == eDeleted) && (tWeather == eDeleted) && (tStandard == eDeleted)) break; //now all tasks are stopped    
-    log_i("baro=%d,eink=%d,standard=%d,weather=%d",tBaro,tEInk,tStandard,tWeather);
+    if ((tLogger == eDeleted) && (tBaro == eDeleted) && (tEInk == eDeleted) && (tWeather == eDeleted) && (tStandard == eDeleted)) break; //now all tasks are stopped    
+    log_i("logger=%d,baro=%d,eink=%d,standard=%d,weather=%d",tLogger,tBaro,tEInk,tStandard,tWeather);
     delay(1000);
   }
   #ifdef GSM_MODULE
@@ -4719,6 +4809,36 @@ void powerOff(){
   esp_deep_sleep_start();
 
 }
+
+#ifdef LOGGER
+// logger task to manage new and update of igc track log
+void taskLogger(void * pvPArameters){
+
+  Logger logger;
+
+  pinMode(2, INPUT_PULLUP);
+  pinMode(15, INPUT_PULLUP);
+  pinMode(4, OUTPUT);
+  digitalWrite(4,LOW);
+  if (!SD_MMC.begin()){
+    pinMode(2, INPUT_PULLUP);
+    pinMode(4, OUTPUT);
+    digitalWrite(4,LOW);
+    SD_MMC.begin("/sdcard", true);
+  }
+
+  logger.begin();
+  delay(10);
+  while(1){
+    logger.run();
+    delay(900);
+    if ((WebUpdateRunning) || (bPowerOff)) break;
+  }
+  if (bPowerOff) logger.end();
+  log_i("stop task");
+  vTaskDelete(xHandleLogger);
+}
+#endif
 
 #ifdef EINK
 void taskEInk(void *pvParameters){
