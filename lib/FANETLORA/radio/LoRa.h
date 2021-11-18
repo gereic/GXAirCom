@@ -9,6 +9,7 @@
 #include "GxModule.h"
 
 #define USE_GXMODULE
+#define USE_GXMODULESX1262
 
 // SEND FRAME RETURN VALUES
 #define	TX_OK						0
@@ -20,6 +21,10 @@
 #define RADIO_NULL 0
 #define RADIO_SX1262 1
 #define RADIO_SX1276 2
+
+//SX126X_CMD_SET_STANDBY
+#define SX126X_STANDBY_RC                             0x00        //  7     0     standby mode: 13 MHz RC oscillator
+#define SX126X_STANDBY_XOSC                           0x01        //  7     0                   32 MHz crystal oscillator
 
 #define FSK_PACKET_LENGTH 26
 
@@ -66,7 +71,9 @@ private:
   int16_t sx1276setRxBandwidth(float rxBw);
   Module *pModule = NULL;
   GxModule *pGxModule = NULL;
+  #ifndef USE_GXMODULESX1262
 	SX1262 *pSx1262Radio = NULL;
+  #endif
   #ifndef USE_GXMODULE
 	SX1276 *pSx1276Radio = NULL;
   #endif
@@ -90,6 +97,16 @@ private:
   uint8_t rxCount = 0;
   bool bCalibrated = false;
   uint8_t prevIrqFlags;
+  int16_t sx1262_standby(uint8_t mode = SX126X_STANDBY_RC);
+  uint32_t sx1262GetPacketStatus();
+  int16_t sx1262CalibrateImage();
+  int16_t writeRegister(uint16_t addr, uint8_t* data, uint8_t numBytes);
+  int16_t readRegister(uint16_t addr, uint8_t* data, uint8_t numBytes);
+  int16_t SPIwriteCommand(uint8_t cmd, uint8_t* data, uint8_t numBytes, bool waitForBusy = true);
+  int16_t SPIwriteCommand(uint8_t* cmd, uint8_t cmdLen, uint8_t* data, uint8_t numBytes, bool waitForBusy = true);
+  int16_t SPIreadCommand(uint8_t cmd, uint8_t* data, uint8_t numBytes, bool waitForBusy = true);
+  int16_t SPIreadCommand(uint8_t* cmd, uint8_t cmdLen, uint8_t* data, uint8_t numBytes, bool waitForBusy = true);
+  int16_t SPItransfer(uint8_t* cmd, uint8_t cmdLen, bool write, uint8_t* dataOut, uint8_t* dataIn, uint8_t numBytes, bool waitForBusy, uint32_t timeout = 5000);
 
 
 };
