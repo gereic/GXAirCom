@@ -13,6 +13,7 @@ volatile bool enableInterrupt = true;
 
 void IRAM_ATTR setFlag(void)
 {
+    //log_i("i");
     // check if the interrupt is enabled
     if (!enableInterrupt) {
         return;
@@ -40,7 +41,7 @@ int16_t LoRaClass::sx1262CalibrateImage(){
     data[0] = SX126X_CAL_IMG_430_MHZ_1;
     data[1] = SX126X_CAL_IMG_430_MHZ_2;
   }
-  return(SPIwriteCommand(SX126X_CMD_CALIBRATE_IMAGE, data, 2));
+  return(SPIwriteCommand(0x98, data, 2));
 }
 
 void LoRaClass::run(){
@@ -100,7 +101,7 @@ LoRaClass::LoRaClass(){
   #ifndef USE_GXMODULE
   pSx1276Radio = NULL;
   #endif
-  #ifndef USE_GXMODULESX1262
+  #ifndef USE_GXMODULE
   pSx1262Radio = NULL;
   #endif
 }
@@ -116,12 +117,14 @@ void LoRaClass::setPins(SPIClass *spi,uint8_t cs, uint8_t irq, uint8_t rst, uint
   _rst = rst;
   _gpio = gpio;
   _actMode = UNKNOWN;
+  #ifndef USE_GXMODULE
   pModule = new Module(cs, irq, rst, gpio,*_spi,_spiSettings);
+  #endif
   pGxModule = new GxModule(cs, irq, rst, gpio,*_spi,_spiSettings);
   #ifndef USE_GXMODULE
   pSx1276Radio = NULL;
   #endif
-  #ifndef USE_GXMODULESX1262
+  #ifndef USE_GXMODULE
   pSx1262Radio = NULL;
   #endif
 }
@@ -131,7 +134,7 @@ int16_t LoRaClass::sx1262_standby(uint8_t mode){
   pGxModule->setRfSwitchState(LOW, LOW);
 
   uint8_t data[] = {mode};
-  return(SPIwriteCommand(SX126X_CMD_SET_STANDBY, data, 1));
+  return(SPIwriteCommand(0x80, data, 1));
 
 }
 
@@ -162,14 +165,14 @@ int16_t LoRaClass::SPItransfer(uint8_t* cmd, uint8_t cmdLen, bool write, uint8_t
   #endif
 
   // pull NSS low
-  Module::digitalWrite(pGxModule->getCs(), LOW);
+  GxModule::digitalWrite(pGxModule->getCs(), LOW);
 
   // ensure BUSY is low (state machine ready)
-  uint32_t start = Module::millis();
-  while(Module::digitalRead(pGxModule->getGpio())) {
-    Module::yield();
-    if(Module::millis() - start >= timeout) {
-      Module::digitalWrite(pGxModule->getCs(), HIGH);
+  uint32_t start = GxModule::millis();
+  while(GxModule::digitalRead(pGxModule->getGpio())) {
+    GxModule::yield();
+    if(GxModule::millis() - start >= timeout) {
+      GxModule::digitalWrite(pGxModule->getCs(), HIGH);
       return(ERR_SPI_CMD_TIMEOUT);
     }
   }
@@ -229,15 +232,15 @@ int16_t LoRaClass::SPItransfer(uint8_t* cmd, uint8_t cmdLen, bool write, uint8_t
 
   // stop transfer
   spi->endTransaction();
-  Module::digitalWrite(pGxModule->getCs(), HIGH);
+  GxModule::digitalWrite(pGxModule->getCs(), HIGH);
 
   // wait for BUSY to go high and then low
   if(waitForBusy) {
-    Module::delayMicroseconds(1);
-    start = Module::millis();
-    while(Module::digitalRead(pGxModule->getGpio())) {
-      Module::yield();
-      if(Module::millis() - start >= timeout) {
+    GxModule::delayMicroseconds(1);
+    start = GxModule::millis();
+    while(GxModule::digitalRead(pGxModule->getGpio())) {
+      GxModule::yield();
+      if(GxModule::millis() - start >= timeout) {
         status = SX126X_STATUS_CMD_TIMEOUT;
         break;
       }
@@ -285,6 +288,21 @@ int16_t LoRaClass::SPItransfer(uint8_t* cmd, uint8_t cmdLen, bool write, uint8_t
   #else
   #endif
 
+  if (status){
+    char sOut[MAXSTRING];
+    int pos = 0;
+    pos += snprintf(&sOut[pos],MAXSTRING-pos,"error ");
+    if (write){
+      pos += snprintf(&sOut[pos],MAXSTRING-pos,"writing ");
+    }else{
+      pos += snprintf(&sOut[pos],MAXSTRING-pos,"reading ");
+    }
+    pos += snprintf(&sOut[pos],MAXSTRING-pos,"state=%d cmd=0X",status);
+    for(uint8_t n = 0; n < cmdLen; n++) {
+      pos += snprintf(&sOut[pos],MAXSTRING-pos,"%02X",cmd[n]);      
+    }
+    log_e("%s",sOut);
+  }
   // parse status
   switch(status) {
     case SX126X_STATUS_CMD_TIMEOUT:
@@ -310,6 +328,14 @@ int16_t LoRaClass::readRegister(uint16_t addr, uint8_t* data, uint8_t numBytes) 
   return(LoRaClass::SPItransfer(cmd, 3, false, NULL, data, numBytes, true));
 }
 
+void LoRaClass::sx1262CheckAndClearErrors(){
+  int16_t err = sx1262GetDeviceErrors();
+  if(err) {
+    log_e("device-error %d",err);
+    sx1262ClearDeviceErrors();
+  }
+
+}
 
 int16_t LoRaClass::begin(float freq, float bw, uint8_t sf, uint8_t cr, uint8_t syncWord, int8_t power,uint8_t radioChip){
 	receivedFlag = false;
@@ -331,7 +357,7 @@ int16_t LoRaClass::begin(float freq, float bw, uint8_t sf, uint8_t cr, uint8_t s
   switch (radioType){
     case RADIO_SX1262:
       {
-      #ifdef USE_GXMODULESX1262
+      #ifdef USE_GXMODULE
       pGxModule->init(RADIOLIB_USE_SPI); //we use SPI
       GxModule::pinMode(pGxModule->getIrq(), INPUT); //set IRQ as input
       GxModule::pinMode(pGxModule->getGpio(), INPUT); //set GPIO as input
@@ -340,14 +366,16 @@ int16_t LoRaClass::begin(float freq, float bw, uint8_t sf, uint8_t cr, uint8_t s
       GxModule::digitalWrite(pGxModule->getRst(), LOW);
       GxModule::delay(1);
       GxModule::digitalWrite(pGxModule->getRst(), HIGH);
+      //GxModule::delay(20); //wait 10ms until module is up
       // set mode to standby - SX126x often refuses first few commands after reset
-      uint32_t start = Module::millis();
+      uint32_t start = GxModule::millis();
+      uint8_t data[10];
       while(true) {
         // try to set mode to standby
         int16_t state = sx1262_standby();
         if(state == ERR_NONE) {
           // standby command successful
-          return(ERR_NONE);
+          break;
         }
 
         // standby command failed, check timeout and try again
@@ -359,33 +387,132 @@ int16_t LoRaClass::begin(float freq, float bw, uint8_t sf, uint8_t cr, uint8_t s
         // wait a bit to not spam the module
         GxModule::delay(10);
       }
-      uint8_t data[4];
-      data[0] = SX126X_DIO3_OUTPUT_1_6;
+      sx1262_standby(); //set Modele to Standby
+      
+      sx1262SetBufferBaseAddress(); //Set Buffer-Address to 0
+      
+      //set Modem to Lora
+      data[0] = 0x01;
+      state = SPIwriteCommand(0x8A, data, 1); 
+      
+      //SetRxTxFallbackMode to The radio goes into STDBY_RC mode after Tx or Rx
+      data[0] = 0x20;
+      state = SPIwriteCommand(0x93, data, 1);
+      
+      // set CAD parameters
+      data[0] = 0x03;
+      data[1] = 0x14;
+      data[2] = 0x0A;
+      data[3] = 0x00;
+      data[4] = 0x00;
+      data[5] = 0x00;
+      data[6] = 0x00;
+      state = SPIwriteCommand(0x88, data, 7);
+      
+      sx1262ClearIrqStatus(); //clear IRQ-Status
+      
+      sx1262SetDioIrqParams(0x00,0x00);//clear IRQ-Params
+
+      //calibrate all Blocks
+      data[0] = 0x7F;
+      state = SPIwriteCommand(0x89, data, 1);
+      sx1262_standby();
+      // check SX126X_XOSC_START_ERR flag and clear it
+      sx1262CheckAndClearErrors();
+
+      //SetDIO3AsTcxoCtrl
+      data[0] = 0x00; //DIO3 outputs 1.6 V to supply the TCXO
       // calculate delay
       uint32_t delayValue = (float)5000 / 15.625;
       data[1] = (uint8_t)((delayValue >> 16) & 0xFF);
       data[2] = (uint8_t)((delayValue >> 8) & 0xFF);
       data[3] = (uint8_t)(delayValue & 0xFF);      
-      state = SPIwriteCommand(SX126X_CMD_SET_DIO3_AS_TCXO_CTRL, data, 4);
-      
-      //set DIO2 as rf-switch
-      data[0] = SX126X_DIO2_AS_RF_SWITCH;
-      state = SPIwriteCommand(SX126X_CMD_SET_DIO2_AS_RF_SWITCH_CTRL, data, 1);
+      state = SPIwriteCommand(0x97, data, 4);
+      //modulation-params
+      data[0] = _sf; //<spreadingFact:SF=7>
+      data[1] = 0x05; //<bw:5=250kHz>
+      data[2] = _cr - 4; //<cr=4/8>
+      data[3] = 0x00; //<lowDrOpt=off>
+      SPIwriteCommand(0x8B, data, 4);
+      //Sync Word
+      data[0] = 0xF4;
+      data[1] = 0x14;
+      writeRegister(0x0740, data, 2);
+      // read current clamping configuration
+      uint8_t invertIq = 0;
+      readRegister(0x0736, &invertIq, 1);
+      // update with the new value
+      invertIq |= 0x04;
+      //invertIq = 0x09;
+      writeRegister(0x0736, &invertIq, 1);  
+
+      //packet-params
+      data[0] = 0x00; // 12-symbol Präambel, expliziter header
+      data[1] = 0x0C;
+      data[2] = 0x00;
+      data[3] = 0xFF; // Payload length - nachher setzen!
+      data[4] = 0x01; // CRC on, Standard InvertIQ, 3x unused
+      data[5] = 0x00; 
+      data[6] = 0x00; 
+      data[7] = 0x00;
+      data[8] = 0x00; 
+      SPIwriteCommand(0x8C, data, 9);
+
+      sx1262CheckAndClearErrors();
 
       // calculate raw value for current
       uint8_t rawLimit = (uint8_t)(60.0 / 2.5);
-
       // update register
-      writeRegister(SX126X_REG_OCP_CONFIGURATION, &rawLimit, 1);
-      //set regulator to DC_DC
-      data[0] = SX126X_REGULATOR_DC_DC;
-      SPIwriteCommand(SX126X_CMD_SET_REGULATOR_MODE, data, 1);
+      writeRegister(0x08E7, &rawLimit, 1);
 
-      if (state == ERR_NONE){
-        state = sx1262CalibrateImage(); //calibrate image for the frequency
-      }      
+      //set DIO2 as rf-switch
+      data[0] = 0x01;
+      state = SPIwriteCommand(0x9D, data, 1);
+
+
+      //set regulator to DC_DC
+      data[0] = 0x01;
+      SPIwriteCommand(0x96, data, 1);
+
+      sx1262CalibrateImage(); //calibrate image for the frequency
+      delay(4); //wait for calibration ready !!  Dauert 3.5ms, p.75
+
+      sx1262SetFrequency(_freq);
+
+      // SetPaConfig, p.76
+      data[0] = 0x04; // +22 dBm
+      data[1] = 0x07;
+      data[2] = 0x00;
+      data[3] = 0x01;
+      SPIwriteCommand(0x95, data, 4);  
+
+      //set output-power and ramp-time
+      data[0] = power;
+      data[1] = 0x04;
+      SPIwriteCommand(0x8E, data, 2);
+
+
       GxModule::attachInterrupt(digitalPinToInterrupt(pGxModule->getIrq()), setFlag, RISING);
-      return state;
+      sx1262CheckAndClearErrors();
+
+      /*
+      uint8_t rxGain = 0x96; //Rx Boosted gain
+      SPIwriteCommand(0x08AC, &rxGain, 1);
+      delay(10);
+      */
+
+      // read current clamping configuration
+      uint8_t clampConfig = 0;
+      readRegister(0x08D8, &clampConfig, 1);
+      // update with the new value
+      clampConfig |= 0x1E;
+      writeRegister(0x08D8, &clampConfig, 1);  
+
+      sx1262CheckAndClearErrors();
+
+      sx1262_standby(); //switch to stand-by STDBY_XOSC
+
+      return 0;
       #else
       pSx1262Radio = new SX1262(pModule);
       state = pSx1262Radio->begin(_freq,_bw,_sf,_cr,_syncWord,_power,_preambleLength);
@@ -443,17 +570,41 @@ int16_t LoRaClass::begin(float freq, float bw, uint8_t sf, uint8_t cr, uint8_t s
   return 0;
 }
 
+int16_t LoRaClass::sx1262ClearIrqStatus(){
+  uint8_t data[] = { 0x03,0xFF };
+  return (SPIwriteCommand(0x02, data, 2));
+}
+
+int16_t LoRaClass::sx1262ReadData(uint8_t* buffer, size_t len){
+  int16_t ret = 0;
+  sx1262_standby(0x01);
+
+  uint8_t data[] = { 0x00, 0x00 };
+  SPIreadCommand(0x12, data, 2);
+  uint16_t irq = ((uint16_t)(data[0]) << 8) | data[1];
+  if((irq & SX126X_IRQ_CRC_ERR) || (irq & SX126X_IRQ_HEADER_ERR)) {
+    ret = -1;
+  }
+
+  uint8_t cmd[] = { SX126X_CMD_READ_BUFFER, SX126X_CMD_NOP };
+  SPIreadCommand(cmd, 2, buffer, len);          
+  sx1262ClearIrqStatus();
+  return ret;
+}
+
 int16_t LoRaClass::readData(uint8_t* data, size_t len){
   int16_t ret = 0;
   switch (radioType){
     case RADIO_SX1262:
-      #ifdef USE_GXMODULESX1262
-        return 0;
-      #else
       if (_fskMode){
         if (len == 26){
           uint8_t rx_frame[len*2];
-          int16_t ret = pSx1262Radio->readData(rx_frame,len*2);
+          int16_t ret = 0;
+          #ifdef USE_GXMODULE
+          ret = sx1262ReadData(rx_frame,len*2);
+          #else
+          ret = pSx1262Radio->readData(rx_frame,len*2);
+          #endif
           uint8_t val1, val2;
           for (int i = 0;i < len * 2; i++){
             val1 = ManchesterDecode[rx_frame[i]];
@@ -467,9 +618,12 @@ int16_t LoRaClass::readData(uint8_t* data, size_t len){
           return ERR_UNKNOWN;
         }
       }else{
+        #ifdef USE_GXMODULE
+          return sx1262ReadData(data,len);;
+        #else
         return pSx1262Radio->readData(data,len);
+        #endif
       }
-      #endif
     case RADIO_SX1276:
 
       if (_fskMode){
@@ -506,8 +660,17 @@ int16_t LoRaClass::readData(uint8_t* data, size_t len){
 
 uint32_t LoRaClass::sx1262GetPacketStatus() {
   uint8_t data[3] = {0, 0, 0};
-  SPIreadCommand(SX126X_CMD_GET_PACKET_STATUS, data, 3);
-  return((((uint32_t)data[0]) << 16) | (((uint32_t)data[1]) << 8) | (uint32_t)data[2]);
+  SPIreadCommand(0x14, data, 3);
+  uint32_t retData = (((uint32_t)data[0]) << 16) | (((uint32_t)data[1]) << 8) | (uint32_t)data[2];
+  //log_i("Packetstatus = 0X%06X",retData);
+  return(retData);
+}
+
+int16_t LoRaClass::sx1262GetStats(){
+  uint8_t data[6] = {0, 0, 0, 0, 0, 0};
+  SPIreadCommand(0x10, data, 6);
+  log_i("Packetstatus = 0X%02X 0X%02X 0X%02X 0X%02X 0X%02X 0X%02X",data[0],data[1],data[2],data[3],data[4],data[5]);
+  return(0);
 }
 
 
@@ -515,7 +678,7 @@ float LoRaClass::getRSSI(){
   switch (radioType){
     case RADIO_SX1262:
       {
-      #ifdef USE_GXMODULESX1262
+      #ifdef USE_GXMODULE
       // get last packet RSSI from packet status
       uint32_t packetStatus = sx1262GetPacketStatus();
       uint8_t rssiPkt = packetStatus & 0xFF;
@@ -572,12 +735,6 @@ int16_t LoRaClass::sx1276setOpMode(uint8_t mode){
 
 float LoRaClass::getSNR(){
   switch (radioType){
-    case RADIO_SX1262:
-      #ifdef USE_GXMODULESX1262
-      return 0.0;
-      #else
-      return pSx1262Radio->getSNR();
-      #endif
     case RADIO_SX1276:
       #ifdef USE_GXMODULE
         if (_fskMode) return 0.0;
@@ -593,8 +750,8 @@ float LoRaClass::getSNR(){
 }
 
 void LoRaClass::printReg(uint8_t reg){
-	uint8_t regVal = pModule->SPIreadRegister(reg);
-	Serial.printf("%02X:%02X\n",reg,regVal);
+	uint8_t regVal = pGxModule->SPIreadRegister(reg);
+  Serial.printf("%02X:%02X\n",reg,regVal);
 }
 
 int16_t LoRaClass::sx1276setRxBandwidth(float rxBw){
@@ -605,11 +762,11 @@ int16_t LoRaClass::sx1276setRxBandwidth(float rxBw){
       float point = (SX127X_CRYSTAL_FREQ * 1000000.0)/(((4 * m) + 16) * ((uint32_t)1 << (e + 2)));
       if(abs(rxBw - ((point / 1000.0) + 0.05)) <= 0.5) {
         // set Rx bandwidth during AFC
-        state = pGxModule->SPIsetRegValue(SX127X_REG_AFC_BW, (m << 3) | e, 4, 0);
+        state = pGxModule->SPIsetRegValue(0x13, (m << 3) | e, 4, 0);
         RADIOLIB_ASSERT(state);
 
         // set Rx bandwidth
-        state = pGxModule->SPIsetRegValue(SX127X_REG_RX_BW, (m << 3) | e, 4, 0);
+        state = pGxModule->SPIsetRegValue(0x12, (m << 3) | e, 4, 0);
         return(state);
       }
     }
@@ -617,15 +774,119 @@ int16_t LoRaClass::sx1276setRxBandwidth(float rxBw){
   return 0;
 }
 
+int16_t LoRaClass::sx1262SetFrequency(float freq){
+  uint32_t frf = (_freq * (uint32_t(1) << 25)) / 32.0;
+  uint8_t data[4];
+  data[0] = (uint8_t)((frf >> 24) & 0xFF);
+  data[1] = (uint8_t)((frf >> 16) & 0xFF);
+  data[2] = (uint8_t)((frf >> 8) & 0xFF);
+  data[3] = (uint8_t)(frf & 0xFF);
+  return SPIwriteCommand(0x86, data, 4);
+}
+
 int16_t LoRaClass::switchFSK(float frequency){
   //uint32_t tBegin = micros();
   _freq = frequency;
   int16_t ret = 0;
   uint8_t syncWord[] = {0x99, 0xA5, 0xA9, 0x55, 0x66, 0x65, 0x96};	
+  //log_i("switchFSK frequ=%.2f",_freq);
   switch (radioType){
     case RADIO_SX1262:
-      #ifdef USE_GXMODULESX1262
+      {
+      #ifdef USE_GXMODULE
+      uint8_t data[10];
+      sx1262_standby(0x01); //switch to stand-by STDBY_XOSC
 
+      sx1262SetBufferBaseAddress();
+
+      data[0] = 0x00;
+      SPIwriteCommand(0x8A, data, 1); //set Modem to GFSK
+
+      // set CAD parameters
+      data[0] = 0x03;
+      data[1] = 0x14;
+      data[2] = 0x0A;
+      data[3] = 0x00;
+      data[4] = 0x00;
+      data[5] = 0x00;
+      data[6] = 0x00;
+      SPIwriteCommand(0x88, data, 7);
+
+      sx1262ClearIrqStatus();
+
+      sx1262SetDioIrqParams(0x00,0x00);//clear IRQ-Params
+
+      // calculate raw value for current
+      uint8_t rawLimit = (uint8_t)(60.0 / 2.5);
+      // update register
+      writeRegister(0x08E7, &rawLimit, 1);
+
+      //set regulator to DC_DC
+      data[0] = 0x01;
+      SPIwriteCommand(0x96, data, 1);
+
+      //set DIO2 as IRQ
+      //data[0] = 0x00;
+      //SPIwriteCommand(0x9D, data, 1);
+      
+      //modulation-params
+      // br = 32 * 32000000 / 100000 = 10240 = 0x002800
+      data[0] = 0x00;
+      data[1] = 0x28;
+      data[2] = 0x00;
+      // 0x09=BT0.5, 0x0b=bw117kHz,
+      data[3] = 0x09;
+      data[4] = 0x0B; //bw=117khz
+      //data[4] = 0x1A; //bw=156.2khz
+      // fdev = (50 kHz * 2**25) / 32000000 = 52428 = 0xcccc
+      data[5] = 0x00;
+      data[6] = 0xCC;
+      data[7] = 0xCC;
+      SPIwriteCommand(0x8B, data, 8);
+
+      //packet-params
+      // preamble len 24, detector 0x05 16 bits
+      data[0] = 0x00;
+      //data[1] = 0x08;
+      data[2] = 0x04;
+      data[1] = 24;
+      //data[2] = 0x05;
+      // sync word len (56 bits), addr comp off, fixed len
+      data[3] = 56;
+      data[4] = 0x00;
+      data[5] = 0x00;
+      // payload len = 52 bytes (2 * (24+2)), includes CRC 
+      data[6] = 52; 
+      // no integrated CRC check (not possible due to manchester encoding)
+      data[7] = 0x01;
+      data[8] = 0x00; 
+      SPIwriteCommand(0x8C, data, 9);
+
+
+      
+      sx1262SetBufferBaseAddress();
+
+
+
+      //setFrequency
+      sx1262SetFrequency(_freq);
+
+      //Sync Word GFSK
+      data[0] = 0x99;
+      data[1] = 0xA5;
+      data[2] = 0xA9;
+      data[3] = 0x55;
+      data[4] = 0x66;
+      data[5] = 0x65;
+      data[6] = 0x96;
+      writeRegister(0x06C0, syncWord, 7);
+
+      //data[0] = 0x00; //DIO2 as IRQ
+      //SPIwriteCommand(0x9D, data, 1);
+
+      // clear IRQ
+      //sx1262ClearIrqStatus();
+      ret = 0;
       #else
       ret = pSx1262Radio->switchFSK(_br,50.0,156.2,8,0.0,false);
       //log_i("switchFSK %d",ret);
@@ -641,6 +902,7 @@ int16_t LoRaClass::switchFSK(float frequency){
       ret = pSx1262Radio->setDataShaping(RADIOLIB_SHAPING_0_5); //set gaussian filter to 0.5)
       #endif
       break;
+      }
     case RADIO_SX1276:
       #ifdef USE_GXMODULE
       sx1276setOpMode(SX1276_MODE_SLEEP); //RegOpMode --> set Module to sleep
@@ -962,7 +1224,7 @@ bool LoRaClass::isReceiving(){
       return false;
       break;
     case RADIO_SX1276:
-      uint8_t reg = pModule->SPIgetRegValue(SX127X_REG_IRQ_FLAGS_1);
+      uint8_t reg = pGxModule->SPIgetRegValue(0x3E);
       log_i("regIRQ=%d",reg);
       return false;
       break;
@@ -970,14 +1232,84 @@ bool LoRaClass::isReceiving(){
   return false;
 }
 
+uint16_t LoRaClass::sx1262GetDeviceErrors() {
+  uint8_t data[2] = {0, 0};
+  SPIreadCommand(0x17, data, 2);
+  uint16_t opError = (((uint16_t)data[0] & 0xFF) << 8) & ((uint16_t)data[1]);
+  return(opError);
+}
+
+int16_t LoRaClass::sx1262ClearDeviceErrors() {
+  uint8_t data[2] = {0x00, 0x00};
+  return(SPIwriteCommand(0x08, data, 2));
+}
+
+int16_t LoRaClass::sx1262SetDioIrqParams(uint16_t irqMask, uint16_t dio1Mask, uint16_t dio2Mask, uint16_t dio3Mask) {
+  uint8_t data[8] = {(uint8_t)((irqMask >> 8) & 0xFF), (uint8_t)(irqMask & 0xFF),
+                     (uint8_t)((dio1Mask >> 8) & 0xFF), (uint8_t)(dio1Mask & 0xFF),
+                     (uint8_t)((dio2Mask >> 8) & 0xFF), (uint8_t)(dio2Mask & 0xFF),
+                     (uint8_t)((dio3Mask >> 8) & 0xFF), (uint8_t)(dio3Mask & 0xFF)};
+  return(SPIwriteCommand(0x08, data, 8));
+}
+
 int16_t LoRaClass::switchLORA(float frequency){
   _freq = frequency;
   int16_t ret = -1;
+  //log_i("switchLora frequ=%.2f",_freq);
   switch (radioType){
     case RADIO_SX1262:
       {
-      #ifdef USE_GXMODULESX1262
-        int16_t state = sx1262_standby(SX126X_STANDBY_XOSC); //switch to stand-by
+      #ifdef USE_GXMODULE
+      int16_t state = 0;
+      uint8_t data[10];
+
+      state = sx1262_standby(0x01); //switch to stand-by STDBY_XOSC
+      data[0] = 0x01;
+      state = SPIwriteCommand(0x8A, data, 1); //set Modem to Lora
+
+      sx1262SetBufferBaseAddress();
+
+
+      //log_i("set Modem to LORA=%d",state);
+
+      //sx1262SetDioIrqParams(0x00,0x00); //clear IRQ-Params
+
+      //setFrequency
+      sx1262SetFrequency(_freq);
+      
+      // set modem
+      
+      //modulation-params
+      data[0] = _sf; //<spreadingFact:SF=7>
+      data[1] = 0x05; //<bw:5=250kHz>
+      data[2] = _cr - 4; //<cr=4/8>
+      data[3] = 0x00; //<lowDrOpt=off>
+      SPIwriteCommand(0x8B, data, 4);
+
+      //packet-params
+      data[0] = 0x00; // 12-symbol Präambel, expliziter header
+      data[1] = 0x0C;
+      data[2] = 0x00;
+      data[3] = 0xFF; // Payload length - nachher setzen!
+      data[4] = 0x01; // CRC on, Standard InvertIQ, 3x unused
+      data[5] = 0x00; 
+      data[6] = 0x00; 
+      data[7] = 0x00;
+      data[8] = 0x00; 
+      SPIwriteCommand(0x8C, data, 9);
+
+      //set IRQ to RX-Done
+      sx1262SetDioIrqParams(SX126X_IRQ_RX_DONE | SX126X_IRQ_TIMEOUT | SX126X_IRQ_CRC_ERR | SX126X_IRQ_HEADER_ERR, SX126X_IRQ_RX_DONE);
+
+      //Sync Word
+      data[0] = 0xF4;
+      data[1] = 0x14;
+      writeRegister(0x0740, data, 2);
+
+      // clear IRQ
+      sx1262ClearIrqStatus();
+
+      ret = 0;
       #else      
       ret = pSx1262Radio->switchLoRa(_bw,_sf,_cr,_syncWord,8,0.0,false);
       //log_i("switchLoRa %d",ret);
@@ -1122,7 +1454,10 @@ float LoRaClass::get_airlimit(void)
 	return sx_airtime / 1800.0f;
 }
 
-
+int16_t LoRaClass::sx1262SetBufferBaseAddress(uint8_t txBaseAddress, uint8_t rxBaseAddress) {
+  uint8_t data[2] = {txBaseAddress, rxBaseAddress};
+  return(SPIwriteCommand(0x8F, data, 2));
+}
 
 int16_t LoRaClass::startReceive(){
   #if LORA_RX_DEBUG > 0
@@ -1132,14 +1467,36 @@ int16_t LoRaClass::startReceive(){
   int16_t iRet = 0;
   //delay(5);
   prevIrqFlags = 0;
+  //log_i("start receive");
   switch (radioType){
     case RADIO_SX1262:
-      #ifdef USE_GXMODULESX1262
+      {
+      #ifdef USE_GXMODULE
+
+      //set IRQ to RX-Done
+      sx1262SetDioIrqParams(SX126X_IRQ_RX_DONE | SX126X_IRQ_TIMEOUT | SX126X_IRQ_CRC_ERR | SX126X_IRQ_HEADER_ERR, SX126X_IRQ_RX_DONE);
+
+      sx1262SetBufferBaseAddress();
+
+      sx1262ClearIrqStatus(); //clear irq-status
+
+      // set RF switch (if present)
+      pGxModule->setRfSwitchState(HIGH, LOW);
+
+      //start RX
+      //uint8_t data[] = { 0xFF,0xFF,0xFF };
+      uint8_t data[3];
+      data[0] = 0xFF;
+      data[1] = 0xFF;
+      data[2] = 0xFF;
+      SPIwriteCommand(0x82, data, 3);
+      //sx1262GetStatus();
 
       #else
       iRet = pSx1262Radio->startReceive();
       #endif
       break;
+      }
     case RADIO_SX1276:
       #ifdef USE_GXMODULE
         if (_fskMode){
@@ -1207,15 +1564,19 @@ size_t LoRaClass::getPacketLength(){
   if (_fskMode) return FSK_PACKET_LENGTH;
   switch (radioType){
     case RADIO_SX1262:
-      #ifdef USE_GXMODULESX1262
-
+      {
+      #ifdef USE_GXMODULE
+      uint8_t rxBufStatus[2] = {0, 0};
+      SPIreadCommand(0x13, rxBufStatus, 2);
+      tRet = (size_t)rxBufStatus[0];
       #else
       tRet = pSx1262Radio->getPacketLength();
+      #endif  
       if (_fskMode){
         tRet /= 2; //cause of manchester-decoding we get always double of the Length
       }    
-      #endif  
       break;
+      }
     case RADIO_SX1276:
       #ifdef USE_GXMODULE
       if (_fskMode){
@@ -1239,8 +1600,14 @@ int16_t LoRaClass::setCodingRate(uint8_t cr){
     switch (radioType){
       case RADIO_SX1262:
         log_i("setCodingRate SX1262");
-        #ifdef USE_GXMODULESX1262
-
+        #ifdef USE_GXMODULE
+        //modulation-params
+        uint8_t data[4];
+        data[0] = _sf; //<spreadingFact:SF=7>
+        data[1] = 0x05; //<bw:5=250kHz>
+        data[2] = _cr - 4; //<cr=4/8>
+        data[3] = 0x00; //<lowDrOpt=off>
+        iRet = SPIwriteCommand(0x8B, data, 4);
         #else
         iRet = pSx1262Radio->setCodingRate(cr);
         #endif
@@ -1277,7 +1644,152 @@ int16_t LoRaClass::setCodingRate(uint8_t cr){
   return iRet;
 }
 
+uint32_t LoRaClass::sx1262GetTimeOnAir(size_t len) {
+  // everything is in microseconds to allow integer arithmetic
+  // some constants have .25, these are multiplied by 4, and have _x4 postfix to indicate that fact
+  if(!_fskMode) {
+    uint32_t symbolLength_us = ((uint32_t)(1000 * 10) << _sf) / (_bw * 10) ;
+    uint8_t sfCoeff1_x4 = 17; // (4.25 * 4)
+    uint8_t sfCoeff2 = 8;
+    if(_sf == 5 || _sf == 6) {
+      sfCoeff1_x4 = 25; // 6.25 * 4
+      sfCoeff2 = 0;
+    }
+    uint8_t sfDivisor = 4*_sf;
+    if(symbolLength_us >= 16000) {
+      sfDivisor = 4*(_sf - 2);
+    }
+    const int8_t bitsPerCrc = 16;
+    const int8_t N_symbol_header = 20; //explicit header
+
+    // numerator of equation in section 6.1.4 of SX1268 datasheet v1.1 (might not actually be bitcount, but it has len * 8)
+    //crc-on
+    int16_t bitCount = (int16_t) 8 * len + 1 * bitsPerCrc - 4 * _sf  + sfCoeff2 + N_symbol_header;
+    if(bitCount < 0) {
+      bitCount = 0;
+    }
+    // add (sfDivisor) - 1 to the numerator to give integer CEIL(...)
+    uint16_t nPreCodedSymbols = (bitCount + (sfDivisor - 1)) / (sfDivisor);
+
+    // preamble can be 65k, therefore nSymbol_x4 needs to be 32 bit
+    uint32_t nSymbol_x4 = (_preambleLength + 8) * 4 + sfCoeff1_x4 + nPreCodedSymbols * (_cr + 4) * 4;
+
+    return((symbolLength_us * nSymbol_x4) / 4);
+  } else {
+    //bitrate of FSK is 100kbps
+    // calculate raw bit rate value
+    uint32_t brRaw = (uint32_t)((32.0 * 1000000.0 * 32.0) / (_br * 1000.0));
+    return((len * 8 * brRaw) / (32.0 * 32));
+  }
+}
+
+uint8_t LoRaClass::sx1262GetStatus() {
+  uint8_t data = 0;
+  SPIreadCommand(0xC0, &data, 1);
+  log_i("Status = 0X%02X",data);
+  return(data);
+}
+
+
+int16_t LoRaClass::sx1262Transmit(uint8_t* buffer, size_t len, uint8_t addr){
+  int16_t state = 0;
+  uint8_t data[10];
+  uint32_t timeout = 0;
+
+  sx1262_standby(0x01);
+
+  // get currently active modem
+  if(_fskMode) {
+    // calculate timeout (500% of expected time-on-air)
+    timeout = sx1262GetTimeOnAir(len) * 5;
+  } else {
+    // calculate timeout (150% of expected time-on-air)
+    timeout = (sx1262GetTimeOnAir(len) * 3) / 2;
+  }
+  //log_i("timeout=%d",timeout);
+  sx1262SetDioIrqParams(SX126X_IRQ_TX_DONE | SX126X_IRQ_TIMEOUT, SX126X_IRQ_TX_DONE);
+  sx1262SetBufferBaseAddress(); //clear Buffer-Base-address
+  // write packet to buffer
+  uint8_t cmd[] = { 0x0E, 0x00 };
+  SPIwriteCommand(cmd, 2, buffer, len);  
+
+  // Modulation Quality with 500 kHz LoRa® Bandwidth
+  uint8_t value = 0;
+  readRegister(0x0889, &value, 1);
+  // set Bit 2
+  value |= 0x04;
+  writeRegister(0x0889, &value, 1);  
+
+
+  //packet-params
+  if(!_fskMode) {
+    data[0] = 0x00; // 12-symbol Präambel, expliziter header
+    data[1] = 0x0C;
+    data[2] = 0x00;
+    data[3] = len; // Payload length - nachher setzen!
+    data[4] = 0x01; // CRC on, Standard InvertIQ, 3x unused
+    data[5] = 0x00; 
+    data[6] = 0x00; 
+    data[7] = 0x00;
+    data[8] = 0x00; 
+    SPIwriteCommand(0x8C, data, 9);
+  }
+
+  sx1262ClearIrqStatus();
+
+
+  // SetPaConfig, p.76
+  data[0] = 0x04; // +22 dBm
+  data[1] = 0x07;
+  data[2] = 0x00;
+  data[3] = 0x01;
+  SPIwriteCommand(0x95, data, 4);  
+
+  //SetTxParams, p.84
+  data[0] = 0x16; // +22 dBm, 200us ramp
+  data[1] = 0x04;
+  SPIwriteCommand(0x8E, data, 2);  
+
+
+
+  // set RF switch (if present)
+  pGxModule->setRfSwitchState(LOW, HIGH);
+
+  // start transmission
+  data[0] = 0x00;
+  data[1] = 0x00;
+  data[2] = 0x00;
+  SPIwriteCommand(0x83, data, 3);  
+
+  // wait for BUSY to go low (= PA ramp up done)
+  while(GxModule::digitalRead(pGxModule->getGpio())) {
+    GxModule::yield();
+  }
+
+  // wait for packet transmission or timeout
+  uint32_t start = GxModule::micros();
+  while(!GxModule::digitalRead(pGxModule->getIrq())) {
+    GxModule::yield();
+    if(GxModule::micros() - start > timeout) {
+      sx1262ClearIrqStatus();
+      sx1262_standby(0x01);
+      return(ERR_TX_TIMEOUT);
+    }
+  }
+  uint32_t elapsed = GxModule::micros() - start;
+
+  // clear interrupt flags
+  state = sx1262ClearIrqStatus();
+  RADIOLIB_ASSERT(state);
+
+  // set mode to standby to disable transmitter
+  state = sx1262_standby(0x01);
+
+  return(state);
+}
+
 int16_t LoRaClass::transmit(uint8_t* data, size_t len){
+  //log_i("transmit l=%d",len);
   int16_t ret = 0;
   enableInterrupt = false;
   receivedFlag = false;
@@ -1294,8 +1806,16 @@ int16_t LoRaClass::transmit(uint8_t* data, size_t len){
   } 	
   switch (radioType){
     case RADIO_SX1262:
-      #ifdef USE_GXMODULESX1262
-
+      #ifdef USE_GXMODULE
+      if (_fskMode){
+        if (len == 26){
+          return sx1262Transmit(tx_frame,FSK_PACKET_LENGTH*2);
+        }else{
+          return -1;
+        }        
+      }else{
+        return sx1262Transmit(data,len);
+      }    
       #else
       if (_fskMode){
         if (len == 26){
@@ -1412,12 +1932,18 @@ void LoRaClass::end(){
   //set radio to sleep-mode
   switch (radioType){
     case RADIO_SX1262:
-      #ifdef USE_GXMODULESX1262
-
+      {
+      #ifdef USE_GXMODULE
+      // set RF switch (if present)
+      pGxModule->setRfSwitchState(LOW, LOW);
+      uint8_t sleepMode = SX126X_SLEEP_START_COLD | SX126X_SLEEP_RTC_OFF;
+      int16_t state = SPIwriteCommand(SX126X_CMD_SET_SLEEP, &sleepMode, 1, false);      
+      GxModule::delay(1);
       #else
       pSx1262Radio->sleep();
       #endif
       break;
+      }
     case RADIO_SX1276:
       #ifdef USE_GXMODULE
       sx1276setOpMode(SX1276_MODE_SLEEP);//RegOpMode --> set Module to sleep

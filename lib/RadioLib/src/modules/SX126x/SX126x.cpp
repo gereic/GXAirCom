@@ -305,6 +305,7 @@ int16_t SX126x::transmit(uint8_t* data, size_t len, uint8_t addr) {
   } else {
     return(ERR_UNKNOWN);
   }
+  log_i("timeout=%d",timeout);
 
   RADIOLIB_DEBUG_PRINT(F("Timeout in "));
   RADIOLIB_DEBUG_PRINT(timeout);
@@ -1825,7 +1826,21 @@ int16_t SX126x::SPItransfer(uint8_t* cmd, uint8_t cmdLen, bool write, uint8_t* d
       Module::delay(1);
     #endif
   #endif
-
+  if (status){
+    char sOut[MAXSTRING];
+    int pos = 0;
+    pos += snprintf(&sOut[pos],MAXSTRING-pos,"error ");
+    if (write){
+      pos += snprintf(&sOut[pos],MAXSTRING-pos,"writing ");
+    }else{
+      pos += snprintf(&sOut[pos],MAXSTRING-pos,"reading ");
+    }
+    pos += snprintf(&sOut[pos],MAXSTRING-pos,"state=%d cmd=0X",status);
+    for(uint8_t n = 0; n < cmdLen; n++) {
+      pos += snprintf(&sOut[pos],MAXSTRING-pos,"%02X",cmd[n]);      
+    }
+    log_e("%s",sOut);
+  }
   // parse status
   switch(status) {
     case SX126X_STATUS_CMD_TIMEOUT:

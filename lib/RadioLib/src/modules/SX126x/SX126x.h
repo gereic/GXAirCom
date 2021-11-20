@@ -9,6 +9,8 @@
 
 #include "../../protocols/PhysicalLayer/PhysicalLayer.h"
 
+#define MAXSTRING 500
+
 // SX126X physical layer properties
 #define SX126X_FREQUENCY_STEP_SIZE                    0.9536743164
 #define SX126X_MAX_PACKET_LENGTH                      255

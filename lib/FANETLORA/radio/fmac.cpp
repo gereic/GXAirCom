@@ -289,6 +289,9 @@ void FanetMac::frameReceived(int length)
 			//log_i("l=%d;%s",len,Buffer);
 		#endif
     if (length != 26){ //FSK-Frame is fixed 26Bytes long
+			#if RX_DEBUG > 0
+			log_e("rx size 26!=%d",length);
+			#endif
 			return;
 		}
 		frm = new Frame();
@@ -346,10 +349,11 @@ void FanetMac::frameReceived(int length)
 		uint32_t tNow = now();	
 		uint32_t tOffset = 0;	
 		bool bOk = false;
+		int8_t ret = 0;
 		for(int i = 0;i < 5; i++){
 			memcpy(&newPacket[0],&rx_frame[0],26);
 			decrypt_legacy(newPacket,tNow + tOffset);
-			int8_t ret = legacy_decode(newPacket,&myAircraft,&air);
+			ret = legacy_decode(newPacket,&myAircraft,&air);
 			//if (legacy_decode(newPacket,&myAircraft,&air) == 0){
 			if (ret == 0){				
 				//float dist = distance(myAircraft.latitude,myAircraft.longitude,air.latitude,air.longitude, 'K');      
@@ -400,6 +404,9 @@ void FanetMac::frameReceived(int length)
 			rxLegCount++;
 		}else{
 			//log_e("error decoding legacy");
+			#if RX_DEBUG > 0
+			log_e("error decoding legacy %d",ret);
+			#endif
 			delete frm;
 			return;
 		}
@@ -653,7 +660,7 @@ void FanetMac::stateWrapper()
 			}
 		}
 	}
-	if (fmac._actMode == MODE_LORA){  	
+	if ((fmac._actMode == MODE_LORA) && (fmac._RfMode.bits.FntTx)){  	
     fmac.handleTx();
   }
 	fmac.handleTxLegacy();	
