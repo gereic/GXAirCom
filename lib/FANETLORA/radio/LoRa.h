@@ -2,8 +2,6 @@
 #ifndef LORA_H
 #define LORA_H
 
-#define USE_GXMODULE
-
 //#define RADIOLIB_DEBUG
 //#define RADIOLIB_VERBOSE
 
@@ -11,7 +9,6 @@
 #include <Arduino.h>
 #include <SPI.h>
 
-#if defined(USE_GXMODULE)
 // SX126X SPI commands
 // operational modes commands
 #define SX126X_CMD_NOP                                0x00
@@ -95,10 +92,6 @@
 #define SX127X_FLAG_PREAMBLE_DETECT                   0b00000010  //  1     1     valid preamble was detected
 #define SX127X_FLAG_SYNC_ADDRESS_MATCH                0b00000001  //  0     0     sync address matched
 
-#else
-#include <RadioLib.h>
-#include <Module.h>
-#endif
 #include "GxModule.h"
 
 #ifndef MAXSTRING
@@ -132,7 +125,7 @@ class LoRaClass {
 public:
   //LoRaClass(SPIClass *_spi,uint8_t cs, uint8_t irq, uint8_t rst, uint8_t gpio);
   LoRaClass();
-  void setPins(SPIClass *spi,uint8_t cs, uint8_t irq, uint8_t rst, uint8_t gpio = RADIOLIB_NC);
+  void setPins(SPIClass *spi,uint8_t cs, uint8_t irq, uint8_t rst, uint8_t gpio = GXMODULE_NC);
   int16_t begin(float freq = 434.0, float bw = 125.0, uint8_t sf = 9, uint8_t cr = 7, uint8_t syncWord = 0x12, int8_t power = 10,uint8_t radioChip = RADIO_SX1276);
   int16_t readData(uint8_t* data, size_t len);
   float getRSSI();
@@ -165,11 +158,6 @@ private:
   int16_t sx1276setOpMode(uint8_t mode);
   int16_t sx1276setRxBandwidth(float rxBw);
   GxModule *pGxModule = NULL;
-  #ifndef USE_GXMODULE
-  Module *pModule = NULL;
-	SX1276 *pSx1276Radio = NULL;
-	SX1262 *pSx1262Radio = NULL;
-  #endif
   SPIClass *_spi = NULL;
   uint8_t radioType = RADIO_NULL;
   uint8_t _power = 10;

@@ -4,11 +4,11 @@ GxModule::GxModule(uint8_t cs, uint8_t irq, uint8_t rst):
   _cs(cs),
   _irq(irq),
   _rst(rst),
-  _rx(RADIOLIB_NC),
-  _tx(RADIOLIB_NC),
+  _rx(GXMODULE_NC),
+  _tx(GXMODULE_NC),
   _spiSettings(SPISettings(2000000, MSBFIRST, SPI_MODE0))
 {
-  _spi = &RADIOLIB_DEFAULT_SPI;
+  _spi = &SPI;
   _initInterface = true;
 }  
 
@@ -17,10 +17,10 @@ GxModule::GxModule(uint8_t cs, uint8_t irq, uint8_t rst, uint8_t gpio):
   _irq(irq),
   _rst(rst),
   _rx(gpio),
-  _tx(RADIOLIB_NC),
+  _tx(GXMODULE_NC),
   _spiSettings(SPISettings(2000000, MSBFIRST, SPI_MODE0))
 {
-  _spi = &RADIOLIB_DEFAULT_SPI;
+  _spi = &SPI;
   _initInterface = true;
 }
 
@@ -28,8 +28,8 @@ GxModule::GxModule(uint8_t cs, uint8_t irq, uint8_t rst, SPIClass& spi, SPISetti
   _cs(cs),
   _irq(irq),
   _rst(rst),
-  _rx(RADIOLIB_NC),
-  _tx(RADIOLIB_NC),
+  _rx(GXMODULE_NC),
+  _tx(GXMODULE_NC),
   _spiSettings(spiSettings)
 {
   _spi = &spi;
@@ -41,7 +41,7 @@ GxModule::GxModule(uint8_t cs, uint8_t irq, uint8_t rst, uint8_t gpio, SPIClass&
   _irq(irq),
   _rst(rst),
   _rx(gpio),
-  _tx(RADIOLIB_NC),
+  _tx(GXMODULE_NC),
   _spiSettings(spiSettings)
 {
   _spi = &spi;
@@ -81,7 +81,7 @@ void GxModule::term(uint8_t interface) {
     return;
   }
 
-  if((interface == RADIOLIB_USE_SPI) && (_spi != nullptr)) {
+  if((interface == 0x00) && (_spi != nullptr)) {
     _spi->end();
   }
 
@@ -212,26 +212,26 @@ void GxModule::SPItransfer(uint8_t cmd, uint8_t reg, uint8_t* dataOut, uint8_t* 
   _spi->endTransaction();
 }
 
-void GxModule::pinMode(uint8_t pin, RADIOLIB_PIN_MODE mode) {
-  if(pin != RADIOLIB_NC) {
+void GxModule::pinMode(uint8_t pin, uint8_t mode) {
+  if(pin != GXMODULE_NC) {
     ::pinMode(pin, mode);
   }
 }
 
-void GxModule::digitalWrite(uint8_t pin, RADIOLIB_PIN_STATUS value) {
-  if(pin != RADIOLIB_NC) {
+void GxModule::digitalWrite(uint8_t pin, uint8_t value) {
+  if(pin != GXMODULE_NC) {
     ::digitalWrite(pin, value);
   }
 }
 
-RADIOLIB_PIN_STATUS GxModule::digitalRead(uint8_t pin) {
-  if(pin != RADIOLIB_NC) {
+uint8_t GxModule::digitalRead(uint8_t pin) {
+  if(pin != GXMODULE_NC) {
     return(::digitalRead(pin));
   }
   return(LOW);
 }
 
-void GxModule::attachInterrupt(uint8_t interruptNum, void (*userFunc)(void), RADIOLIB_INTERRUPT_STATUS mode) {
+void GxModule::attachInterrupt(uint8_t interruptNum, void (*userFunc)(void), uint8_t mode) {
   ::attachInterrupt(interruptNum, userFunc, mode);
 }
 
@@ -267,7 +267,7 @@ void GxModule::setRfSwitchPins(uint8_t rxEn, uint8_t txEn) {
   GxModule::pinMode(txEn, OUTPUT);
 }
 
-void GxModule::setRfSwitchState(RADIOLIB_PIN_STATUS rxPinState, RADIOLIB_PIN_STATUS txPinState) {
+void GxModule::setRfSwitchState(uint8_t rxPinState, uint8_t txPinState) {
   // check RF switch control is enabled
   if(!_useRfSwitch) {
     return;

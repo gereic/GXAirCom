@@ -3,9 +3,10 @@
 
 #define GXMODULE_NC                                 (0xFF)
 
-#include "TypeDef.h"
+//#include "TypeDef.h"
 
 #include <SPI.h>
+#include <Arduino.h>
 
 
 #define SX1276_MODE_SLEEP   0b00000000
@@ -34,6 +35,24 @@
   #define GX_MODULE_VERBOSE_PRINTLN(...) {}
 #endif
 
+#define GXMODULE_ASSERT(STATEVAR) { if((STATEVAR) != ERR_NONE) { return(STATEVAR); } }
+
+/*!
+  \brief Internal only.
+*/
+#define ERR_NONE                                      0
+#define ERR_UNKNOWN                                   -1
+#define ERR_CHIP_NOT_FOUND                            -2
+#define ERR_MEMORY_ALLOCATION_FAILED                  -3
+#define ERR_PACKET_TOO_LONG                           -4
+#define ERR_TX_TIMEOUT                                -5
+#define ERR_RX_TIMEOUT                                -6
+#define ERR_CRC_MISMATCH                              -7
+#define ERR_INVALID_BIT_RANGE                         -11
+#define ERR_SPI_WRITE_FAILED                          -16
+#define ERR_SPI_CMD_TIMEOUT                           -705
+#define ERR_SPI_CMD_INVALID                           -706
+#define ERR_SPI_CMD_FAILED                            -707
 
 
 /*!
@@ -54,7 +73,7 @@ class GxModule {
 
       \param rst Arduino pin to be used as hardware reset for the module.
     */
-    GxModule(RADIOLIB_PIN_TYPE cs, RADIOLIB_PIN_TYPE irq, RADIOLIB_PIN_TYPE rst);
+    GxModule(uint8_t cs, uint8_t irq, uint8_t rst);
 
     /*!
       \brief Extended SPI-based module constructor. Will use the default SPI interface automatically initialize it.
@@ -67,7 +86,7 @@ class GxModule {
 
       \param gpio Arduino pin to be used as additional interrupt/GPIO.
     */
-    GxModule(RADIOLIB_PIN_TYPE cs, RADIOLIB_PIN_TYPE irq, RADIOLIB_PIN_TYPE rst, RADIOLIB_PIN_TYPE gpio);
+    GxModule(uint8_t cs, uint8_t irq, uint8_t rst, uint8_t gpio);
 
     /*!
       \brief SPI-based module constructor.
@@ -82,7 +101,7 @@ class GxModule {
 
       \param spiSettings SPI interface settings.
     */
-    GxModule(RADIOLIB_PIN_TYPE cs, RADIOLIB_PIN_TYPE irq, RADIOLIB_PIN_TYPE rst, SPIClass& spi, SPISettings spiSettings);
+    GxModule(uint8_t cs, uint8_t irq, uint8_t rst, SPIClass& spi, SPISettings spiSettings);
 
     /*!
       \brief Extended SPI-based module constructor.
@@ -99,7 +118,7 @@ class GxModule {
 
       \param spiSettings SPI interface settings.
     */
-    GxModule(RADIOLIB_PIN_TYPE cs, RADIOLIB_PIN_TYPE irq, RADIOLIB_PIN_TYPE rst, RADIOLIB_PIN_TYPE gpio, SPIClass& spi, SPISettings spiSettings);
+    GxModule(uint8_t cs, uint8_t irq, uint8_t rst, uint8_t gpio, SPIClass& spi, SPISettings spiSettings);
 
 
     /*!
@@ -239,42 +258,42 @@ class GxModule {
 
       \returns Pin number of SPI chip select configured in the constructor.
     */
-    RADIOLIB_PIN_TYPE getCs() const { return(_cs); }
+    uint8_t getCs() const { return(_cs); }
 
     /*!
       \brief Access method to get the pin number of interrupt/GPIO.
 
       \returns Pin number of interrupt/GPIO configured in the constructor.
     */
-    RADIOLIB_PIN_TYPE getIrq() const { return(_irq); }
+    uint8_t getIrq() const { return(_irq); }
 
     /*!
       \brief Access method to get the pin number of hardware reset pin.
 
       \returns Pin number of hardware reset pin configured in the constructor.
     */
-    RADIOLIB_PIN_TYPE getRst() const { return(_rst); }
+    uint8_t getRst() const { return(_rst); }
 
     /*!
       \brief Access method to get the pin number of second interrupt/GPIO.
 
       \returns Pin number of second interrupt/GPIO configured in the constructor.
     */
-    RADIOLIB_PIN_TYPE getGpio() const { return(_rx); }
+    uint8_t getGpio() const { return(_rx); }
 
     /*!
       \brief Access method to get the pin number of UART Rx.
 
       \returns Pin number of UART Rx configured in the constructor.
     */
-    RADIOLIB_PIN_TYPE getRx() const { return(_rx); }
+    uint8_t getRx() const { return(_rx); }
 
     /*!
       \brief Access method to get the pin number of UART Rx.
 
       \returns Pin number of UART Rx configured in the constructor.
     */
-    RADIOLIB_PIN_TYPE getTx() const { return(_tx); }
+    uint8_t getTx() const { return(_tx); }
 
     /*!
       \brief Access method to get the SPI interface.
@@ -298,7 +317,7 @@ class GxModule {
 
       \param txEn TX enable pin.
     */
-    void setRfSwitchPins(RADIOLIB_PIN_TYPE rxEn, RADIOLIB_PIN_TYPE txEn);
+    void setRfSwitchPins(uint8_t rxEn, uint8_t txEn);
 
     /*!
       \brief Set RF switch state.
@@ -307,36 +326,36 @@ class GxModule {
 
       \param txPinState  Pin state to set on Rx enable pin (usually high to receive).
     */
-    void setRfSwitchState(RADIOLIB_PIN_STATUS rxPinState, RADIOLIB_PIN_STATUS txPinState);
+    void setRfSwitchState(uint8_t rxPinState, uint8_t txPinState);
 
     // Arduino core overrides
 
     /*!
-      \brief Arduino core pinMode override that checks RADIOLIB_NC as alias for unused pin.
+      \brief Arduino core pinMode override that checks GXMODULE_NC as alias for unused pin.
 
       \param pin Pin to change the mode of.
 
       \param mode Which mode to set.
     */
-    static void pinMode(RADIOLIB_PIN_TYPE pin, RADIOLIB_PIN_MODE mode);
+    static void pinMode(uint8_t pin, uint8_t mode);
 
     /*!
-      \brief Arduino core digitalWrite override that checks RADIOLIB_NC as alias for unused pin.
+      \brief Arduino core digitalWrite override that checks GXMODULE_NC as alias for unused pin.
 
       \param pin Pin to write to.
 
       \param value Whether to set the pin high or low.
     */
-    static void digitalWrite(RADIOLIB_PIN_TYPE pin, RADIOLIB_PIN_STATUS value);
+    static void digitalWrite(uint8_t pin, uint8_t value);
 
     /*!
-      \brief Arduino core digitalWrite override that checks RADIOLIB_NC as alias for unused pin.
+      \brief Arduino core digitalWrite override that checks GXMODULE_NC as alias for unused pin.
 
       \param pin Pin to read from.
 
       \returns Pin value.
     */
-    static RADIOLIB_PIN_STATUS digitalRead(RADIOLIB_PIN_TYPE pin);
+    static uint8_t digitalRead(uint8_t pin);
 
     /*!
       \brief Arduino core attachInterrupt override.
@@ -347,14 +366,14 @@ class GxModule {
 
       \param mode Pin hcange direction.
     */
-    static void attachInterrupt(RADIOLIB_PIN_TYPE interruptNum, void (*userFunc)(void), RADIOLIB_INTERRUPT_STATUS mode);
+    static void attachInterrupt(uint8_t interruptNum, void (*userFunc)(void), uint8_t mode);
 
     /*!
       \brief Arduino core detachInterrupt override.
 
       \param interruptNum Interrupt number.
     */
-    static void detachInterrupt(RADIOLIB_PIN_TYPE interruptNum);
+    static void detachInterrupt(uint8_t interruptNum);
 
     /*!
       \brief Arduino core yield override.
@@ -388,11 +407,11 @@ class GxModule {
 #ifndef RADIOLIB_GODMODE
   private:
 #endif
-    RADIOLIB_PIN_TYPE _cs = GXMODULE_NC;
-    RADIOLIB_PIN_TYPE _irq = GXMODULE_NC;
-    RADIOLIB_PIN_TYPE _rst = GXMODULE_NC;
-    RADIOLIB_PIN_TYPE _rx = GXMODULE_NC;
-    RADIOLIB_PIN_TYPE _tx = GXMODULE_NC;
+    uint8_t _cs = GXMODULE_NC;
+    uint8_t _irq = GXMODULE_NC;
+    uint8_t _rst = GXMODULE_NC;
+    uint8_t _rx = GXMODULE_NC;
+    uint8_t _tx = GXMODULE_NC;
 
     SPISettings _spiSettings = SPISettings(2000000, MSBFIRST, SPI_MODE0);
 
