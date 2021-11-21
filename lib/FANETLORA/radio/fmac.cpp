@@ -257,11 +257,11 @@ void FanetMac::frameReceived(int length)
   if (_actMode != MODE_LORA){			
 		char Buffer[500];	
 		int len = 0;
+		time_t tUnix;
+		time(&tUnix);
 		#if RX_DEBUG > 0
-			time_t tUnix;
       char strftime_buf[64];
-      struct tm timeinfo;
-      time(&tUnix);
+      struct tm timeinfo;      
 			len += sprintf(Buffer+len,"T=%d;",tUnix);
 			//log_i("l=%d,%s",len,Buffer);
       localtime_r(&tUnix, &timeinfo);
@@ -346,13 +346,13 @@ void FanetMac::frameReceived(int length)
     myAircraft.timestamp = now();
     //myAircraft.latitude =    
 		uint8_t newPacket[26];
-		uint32_t tNow = now();	
+		//uint32_t tNow = now();	
 		uint32_t tOffset = 0;	
 		bool bOk = false;
 		int8_t ret = 0;
 		for(int i = 0;i < 5; i++){
 			memcpy(&newPacket[0],&rx_frame[0],26);
-			decrypt_legacy(newPacket,tNow + tOffset);
+			decrypt_legacy(newPacket,tUnix + tOffset);
 			ret = legacy_decode(newPacket,&myAircraft,&air);
 			//if (legacy_decode(newPacket,&myAircraft,&air) == 0){
 			if (ret == 0){				
@@ -399,7 +399,7 @@ void FanetMac::frameReceived(int length)
 			}			
 			frm->AddressType = air.addr_type;
 			frm->legacyAircraftType = air.aircraft_type;
-			frm->timeStamp = tNow + tOffset;
+			frm->timeStamp = tUnix + tOffset;
 			
 			rxLegCount++;
 		}else{

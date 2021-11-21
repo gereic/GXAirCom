@@ -902,10 +902,6 @@ int16_t LoRaClass::switchFSK(float frequency){
       printReg(0x70);
       */
 
-      //calib image
-      //pModule->SPIsetRegValue(SX127X_REG_IMAGE_CAL, 0x40);
-      //while ( pModule->SPIgetRegValue(SX127X_REG_IMAGE_CAL) & 0x20 );      
-
       break;
   }
   enableInterrupt = false;
