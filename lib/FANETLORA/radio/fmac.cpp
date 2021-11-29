@@ -294,10 +294,14 @@ void FanetMac::frameReceived(int length)
 			#endif
 			return;
 		}
-		frm = new Frame();
-
-    //invertba(rx_frame,26); //invert complete Frame
-
+    // The magic number is a 1-byte unencrypted value at the 4th byte.
+    uint8_t magic = rx_frame[3];
+    if (magic != 0x10 && magic != 0x20) {
+			#if RX_DEBUG > 0
+      log_e("%d Legacy: wrong message %d!=0x10!=0x20",millis(),magic);
+			#endif
+      return;			
+    }
 
     //check if Checksum is OK
   	uint16_t crc16 =  getLegacyCkSum(rx_frame,24);
@@ -335,7 +339,6 @@ void FanetMac::frameReceived(int length)
 			//log_i("%s",Buffer);
 			//log_i("l=%d;%s",len,Buffer);
       log_e("%d Legacy: wrong Checksum %04X!=%04X",millis(),crc16,crc16_2);
-      delete frm;
       return;
     }
     ufo_t air={0};
@@ -386,6 +389,7 @@ void FanetMac::frameReceived(int length)
 			}
 		}
 		if (bOk){
+			frm = new Frame();
 			frm->src.manufacturer = uint8_t(air.addr >> 16);
 			frm->src.id = uint16_t(air.addr & 0x0000FFFF);
 			frm->dest = MacAddr();
@@ -407,7 +411,6 @@ void FanetMac::frameReceived(int length)
 			#if RX_DEBUG > 0
 			log_e("error decoding legacy %d",ret);
 			#endif
-			delete frm;
 			return;
 		}
   }else{
@@ -449,7 +452,7 @@ void FanetMac::end()
 }
 
 
-bool FanetMac::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset, int dio0,Fapp &app,long frequency,uint8_t level,uint8_t radioChip)
+bool FanetMac::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int8_t reset, int8_t dio0,int8_t gpio,Fapp &app,long frequency,uint8_t level,uint8_t radioChip)
 {
 	myApp = &app;
 	setup_frequency=frequency;
@@ -463,7 +466,7 @@ bool FanetMac::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset, 
 
 	/* configure phy radio */
 	//SPI LoRa pins
-	//log_i("sck=%d,miso=%d,mosi=%d,ss=%d,reset=%d,dio0=%d",sck,miso,mosi,ss,reset,dio0);
+	log_i("sck=%d,miso=%d,mosi=%d,ss=%d,reset=%d,dio0=%d,gpio=%d",sck,miso,mosi,ss,reset,dio0,gpio);
 	SPI.begin(sck, miso, mosi, ss);
 	
 	//setup LoRa transceiver module
@@ -477,7 +480,7 @@ bool FanetMac::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset, 
 	//radio.setPins(&SPI,ss,33,reset,32);
 	
 	if (radioChip == RADIO_SX1262){
-		radio.setPins(&SPI,ss,dio0,reset,32);
+		radio.setPins(&SPI,ss,dio0,reset,gpio);
 	}else{
 		radio.setPins(&SPI,ss,dio0,reset);
 	}

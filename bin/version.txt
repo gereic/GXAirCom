@@ -331,3 +331,7 @@ added support for TTGO T-Call (still in process)
 
 v4.13.0
 changed button for Volume-control on TTGo T3 to PIN 2
+New Code for SX1276 and SX1262 --> improved time to switch between Modes
+E-Ink for T-Beam SX1262 is now supported (but only in Air-Mode). (some Pins need to be changed)
+Updated E-Ink-Lib for supporting Waveshare 2.9 V2-Modules
+

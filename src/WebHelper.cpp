@@ -9,6 +9,7 @@ char msg_buf[500];
 uint8_t clientPages[MAXCLIENTS];
 
 String DevelopMenue = "<table style=\"width:100&#37;\"><tr><td style=\"width:100&#37;\"><button onClick=\"location.href='/developmenue.html'\">developer menue</button></td></tr></table><p></p><p></p>";
+String IGCMenue = "<table style=\"width:100&#37;\"><tr><td style=\"width:100&#37;\"><button onClick=\"location.href='/igclogs.html'\">Track Logs IGC</button></td></tr></table><p></p><p></p>";
 
 Logger logger;
 /***********************************************************
@@ -593,6 +594,12 @@ String processor(const String& var){
     }else{
       return "";
     }
+  }else if (var == "IGCMENUE"){
+    #ifdef LOGGER
+      return IGCMenue;
+    #else
+      return "";
+    #endif    
   }else if (var == "NEIGHBOURS"){
     sRet = "";
     //sRet += "<option value=\"08AF88\">mytest 08AF88</option>\r\n";

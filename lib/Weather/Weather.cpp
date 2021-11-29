@@ -176,8 +176,10 @@ void Weather::runBME280(uint32_t tAct){
   bool bReadErr = true;
   if ((tAct - tOld) >= WEATHER_REFRESH){
     int i = 0;
+    uint8_t bmeRet = 0;
     for (i = 0;i < 5;i++){
-      if (bme.readADCValues() == 0){
+      bmeRet = bme.readADCValues();
+      if (bmeRet == 0){
         temp = (float)bme.getTemp() / 100.; // in °C
         rawPressure = (float)bme.getPressure() / 100.;
         humidity = (float)(bme.getHumidity()/ 100.); // in %
@@ -186,7 +188,10 @@ void Weather::runBME280(uint32_t tAct){
         break; //ready with reading
       }
       delay(500);
-      log_e("error reading bme280 %d",i);
+      //log_e("error reading bme280 %d",i);
+    }
+    if (bReadErr){
+      log_e("error reading bme280 ret=%d",bmeRet);
     }
     if (hasTempSensor){
       float actTemp = -127.0;

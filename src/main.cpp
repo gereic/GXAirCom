@@ -229,6 +229,7 @@ int8_t PinADCVoltage = -1;
 //LORA-Module
 int8_t PinLoraRst = -1;
 int8_t PinLoraDI0 = -1;
+int8_t PinLoraGPIO = -1;
 int8_t PinLora_SS = -1;
 int8_t PinLora_MISO = -1;
 int8_t PinLora_MOSI = -1;
@@ -398,6 +399,7 @@ void readFuelSensor(uint32_t tAct){
   static uint32_t tRead = millis();
   static uint32_t tSend = millis();
   static bool bFirst = false;
+  if (PinFuelSensor < 0) return;
   if (timeOver(tAct,tRead,100)){ //every 100ms
     tRead = tAct;
     // multisample ADC
@@ -1873,6 +1875,9 @@ void setup() {
   {
   case BOARD_T_BEAM: 
     log_i("Board=T_BEAM");
+    PinGPSRX = 34;
+    PinGPSTX = 12;
+
     PinLoraRst = 23;
     PinLoraDI0 = 26;
     PinLora_SS = 18;
@@ -1917,8 +1922,18 @@ void setup() {
     break;
   case BOARD_T_BEAM_SX1262: 
     log_i("Board=T_BEAM SX1262");
+    PinGPSRX = 34;
+    PinGPSTX = 12;
+    
     PinLoraRst = 23;
-    PinLoraDI0 = 33;
+    if ((setting.displayType == EINK2_9) || (setting.displayType == EINK2_9_V2)){
+      PinLoraGPIO = 36;
+      PinLoraDI0 = 39;
+    }else{
+      PinLoraGPIO = 32;
+      PinLoraDI0 = 33;
+      PinUserLed = 4;
+    }
     PinLora_SS = 18;
     PinLora_MISO = 19;
     PinLora_MOSI = 27;
@@ -1931,8 +1946,6 @@ void setup() {
     PinBaroSDA = 13;
     PinBaroSCL = 14;
 
-    
-    PinUserLed = 4;
 
     //V3.0.0 changed from PIN 0 to PIN 25
     PinBuzzer = 25;
@@ -1960,6 +1973,11 @@ void setup() {
     break;
   case BOARD_T_BEAM_V07:
     log_i("Board=T_BEAM_V07/TTGO_T3_V1_6");
+    //PinGPSRX = 34;
+    //PinGPSTX = 39;
+    PinGPSRX = 12; //T-Beam V07
+    PinGPSTX = 15;
+
     PinLoraRst = 23;
     PinLoraDI0 = 26;
     PinLora_SS = 18;
@@ -2025,6 +2043,9 @@ void setup() {
   */
   case BOARD_HELTEC_LORA:
     log_i("Board=HELTEC_LORA");
+    PinGPSRX = 34;
+    PinGPSTX = 39;
+
     PinLoraRst = 14;
     PinLoraDI0 = 26;
     PinLora_SS = 18;
@@ -3045,14 +3066,16 @@ void printBattVoltage(uint32_t tAct){
     //log_i("Batt =%d%%",status.BattPerc);
     //log_i("Batt %dV; %d%%",status.vBatt,status.BattPerc);
 
-      if (status.vBatt >= battFull){
-        log_i("Battery Full: %d mV Temp:%s C",status.vBatt,String(status.varioTemp,1));
-          
-          // if (!status.bMuting){
-          //   ledcWriteTone(channel,2000);
-          //   delay(500);
-          // }
-      }
+    /*
+    if (status.vBatt >= battFull){
+      log_i("Battery Full: %d mV Temp:%s C",status.vBatt,String(status.varioTemp,1));
+        
+        // if (!status.bMuting){
+        //   ledcWriteTone(channel,2000);
+        //   delay(500);
+        // }
+    }
+    */
   }
 }
 
@@ -4028,37 +4051,31 @@ void taskStandard(void *pvParameters){
   MyFanetData.rssi = 0;
 
   #ifdef AIRMODULE
+  /*
   PinGPSRX = -1;
   PinGPSTX = -1;
-  if (setting.boardType != BOARD_TTGO_TSIM_7000){
+  if (setting.boardType == BOARD_T_BEAM_SX1262){
+    PinGPSRX = 34;
+    PinGPSTX = 12;
+  }else if (setting.boardType != BOARD_TTGO_TSIM_7000){
     if (status.bHasAXP192){
       PinGPSRX = 34;
-      PinGPSTX = 39;//12;
+      PinGPSTX = 39;
     }else{
       // moving gpio for GPS back to 34 to avoid conflicts with SD pins on LilyGo T3 v2.1.1.6
       PinGPSRX = 34;//12;
       PinGPSTX = 39;//15;
     }
   }
+  */
   if (PinGPSRX >= 0){
     NMeaSerial.begin(GPSBAUDRATE,SERIAL_8N1,PinGPSRX,PinGPSTX,false);
     log_i("GPS Baud=9600,8N1,RX=%d,TX=%d",PinGPSRX,PinGPSTX);
+    //clear serial buffer
+    while (NMeaSerial.available())
+      NMeaSerial.read();
   }
   
-  //setupUbloxConfig();
-
-  // Change the echoing messages to the ones recognized by the MicroNMEA library
-  //MicroNMEA::sendSentence(NMeaSerial, "$PSTMSETPAR,1201,0x00000042");
-  //MicroNMEA::sendSentence(NMeaSerial, "$PSTMSETPAR,1201,0x00000041"); //enable only $GPGGA and $GPRMC
-  //MicroNMEA::sendSentence(NMeaSerial, "$PSTMSAVEPAR");
-
-  //Reset the device so that the changes could take plaace
-  //MicroNMEA::sendSentence(NMeaSerial, "$PSTMSRR");
-
-  delay(1000);
-  //clear serial buffer
-  while (NMeaSerial.available())
-    NMeaSerial.read();
   if (status.bHasAXP192){  
     //only on new boards we have an pps-pin
     pinMode(PPSPIN, INPUT);
@@ -4088,7 +4105,7 @@ void taskStandard(void *pvParameters){
   fanet.setRFMode(setting.RFMode);
   uint8_t radioChip = RADIO_SX1276;
   if (setting.boardType == BOARD_T_BEAM_SX1262) radioChip = RADIO_SX1262;
-  fanet.begin(PinLora_SCK, PinLora_MISO, PinLora_MOSI, PinLora_SS,PinLoraRst, PinLoraDI0,frequency,setting.LoraPower,radioChip);
+  fanet.begin(PinLora_SCK, PinLora_MISO, PinLora_MOSI, PinLora_SS,PinLoraRst, PinLoraDI0,PinLoraGPIO,frequency,setting.LoraPower,radioChip);
   fanet.setPilotname(setting.PilotName);
   fanet.setAircraftType(setting.AircraftType);
   fanet.autoSendName = true;

@@ -357,28 +357,22 @@ int16_t LoRaClass::begin(float freq, float bw, uint8_t sf, uint8_t cr, uint8_t s
           // standby command successful
           break;
         }
-
         // standby command failed, check timeout and try again
         if(GxModule::millis() - start >= 3000) {
           // timed out, possibly incorrect wiring
           return(state);
         }
-
         // wait a bit to not spam the module
         GxModule::delay(10);
       }
       sx1262_standby(); //set Modele to Standby
-      
       sx1262SetBufferBaseAddress(); //Set Buffer-Address to 0
-      
       //set Modem to Lora
       data[0] = 0x01;
       state = SPIwriteCommand(0x8A, data, 1); 
-      
       //SetRxTxFallbackMode to The radio goes into STDBY_RC mode after Tx or Rx
       data[0] = 0x20;
       state = SPIwriteCommand(0x93, data, 1);
-      
       // set CAD parameters
       data[0] = 0x03;
       data[1] = 0x14;
@@ -388,18 +382,14 @@ int16_t LoRaClass::begin(float freq, float bw, uint8_t sf, uint8_t cr, uint8_t s
       data[5] = 0x00;
       data[6] = 0x00;
       state = SPIwriteCommand(0x88, data, 7);
-      
       sx1262ClearIrqStatus(); //clear IRQ-Status
-      
       sx1262SetDioIrqParams(0x00,0x00);//clear IRQ-Params
-
       //calibrate all Blocks
       data[0] = 0x7F;
       state = SPIwriteCommand(0x89, data, 1);
       sx1262_standby();
       // check SX126X_XOSC_START_ERR flag and clear it
       sx1262CheckAndClearErrors();
-
       //SetDIO3AsTcxoCtrl
       data[0] = 0x00; //DIO3 outputs 1.6 V to supply the TCXO
       // calculate delay
@@ -425,7 +415,6 @@ int16_t LoRaClass::begin(float freq, float bw, uint8_t sf, uint8_t cr, uint8_t s
       invertIq |= 0x04;
       //invertIq = 0x09;
       writeRegister(0x0736, &invertIq, 1);  
-
       //packet-params
       data[0] = 0x00; // 12-symbol Präambel, expliziter header
       data[1] = 0x0C;
@@ -437,61 +426,40 @@ int16_t LoRaClass::begin(float freq, float bw, uint8_t sf, uint8_t cr, uint8_t s
       data[7] = 0x00;
       data[8] = 0x00; 
       SPIwriteCommand(0x8C, data, 9);
-
       sx1262CheckAndClearErrors();
-
       // calculate raw value for current
       uint8_t rawLimit = (uint8_t)(60.0 / 2.5);
       // update register
       writeRegister(0x08E7, &rawLimit, 1);
-
       //set DIO2 as rf-switch
       data[0] = 0x01;
       state = SPIwriteCommand(0x9D, data, 1);
-
-
       //set regulator to DC_DC
       data[0] = 0x01;
       SPIwriteCommand(0x96, data, 1);
-
       sx1262CalibrateImage(); //calibrate image for the frequency
       delay(4); //wait for calibration ready !!  Dauert 3.5ms, p.75
-
       sx1262SetFrequency(_freq);
-
       // SetPaConfig, p.76
       data[0] = 0x04; // +22 dBm
       data[1] = 0x07;
       data[2] = 0x00;
       data[3] = 0x01;
       SPIwriteCommand(0x95, data, 4);  
-
       //set output-power and ramp-time
       data[0] = power;
       data[1] = 0x04;
       SPIwriteCommand(0x8E, data, 2);
-
-
       GxModule::attachInterrupt(digitalPinToInterrupt(pGxModule->getIrq()), setFlag, RISING);
       sx1262CheckAndClearErrors();
-
-      /*
-      uint8_t rxGain = 0x96; //Rx Boosted gain
-      SPIwriteCommand(0x08AC, &rxGain, 1);
-      delay(10);
-      */
-
       // read current clamping configuration
       uint8_t clampConfig = 0;
       readRegister(0x08D8, &clampConfig, 1);
       // update with the new value
       clampConfig |= 0x1E;
       writeRegister(0x08D8, &clampConfig, 1);  
-
       sx1262CheckAndClearErrors();
-
       sx1262_standby(); //switch to stand-by STDBY_XOSC
-
       return 0;
       break;
       }      
@@ -713,12 +681,9 @@ int16_t LoRaClass::switchFSK(float frequency){
       {
       uint8_t data[10];
       sx1262_standby(0x01); //switch to stand-by STDBY_XOSC
-
       sx1262SetBufferBaseAddress();
-
       data[0] = 0x00;
       SPIwriteCommand(0x8A, data, 1); //set Modem to GFSK
-
       // set CAD parameters
       data[0] = 0x03;
       data[1] = 0x14;
@@ -728,24 +693,15 @@ int16_t LoRaClass::switchFSK(float frequency){
       data[5] = 0x00;
       data[6] = 0x00;
       SPIwriteCommand(0x88, data, 7);
-
       sx1262ClearIrqStatus();
-
       sx1262SetDioIrqParams(0x00,0x00);//clear IRQ-Params
-
       // calculate raw value for current
       uint8_t rawLimit = (uint8_t)(60.0 / 2.5);
       // update register
       writeRegister(0x08E7, &rawLimit, 1);
-
       //set regulator to DC_DC
       data[0] = 0x01;
       SPIwriteCommand(0x96, data, 1);
-
-      //set DIO2 as IRQ
-      //data[0] = 0x00;
-      //SPIwriteCommand(0x9D, data, 1);
-      
       //modulation-params
       // br = 32 * 32000000 / 100000 = 10240 = 0x002800
       data[0] = 0x00;
@@ -760,7 +716,6 @@ int16_t LoRaClass::switchFSK(float frequency){
       data[6] = 0xCC;
       data[7] = 0xCC;
       SPIwriteCommand(0x8B, data, 8);
-
       //packet-params
       // preamble len 24, detector 0x05 16 bits
       data[0] = 0x00;
@@ -778,16 +733,9 @@ int16_t LoRaClass::switchFSK(float frequency){
       data[7] = 0x01;
       data[8] = 0x00; 
       SPIwriteCommand(0x8C, data, 9);
-
-
-      
       sx1262SetBufferBaseAddress();
-
-
-
       //setFrequency
       sx1262SetFrequency(_freq);
-
       //Sync Word GFSK
       data[0] = 0x99;
       data[1] = 0xA5;
@@ -797,12 +745,6 @@ int16_t LoRaClass::switchFSK(float frequency){
       data[5] = 0x65;
       data[6] = 0x96;
       writeRegister(0x06C0, syncWord, 7);
-
-      //data[0] = 0x00; //DIO2 as IRQ
-      //SPIwriteCommand(0x9D, data, 1);
-
-      // clear IRQ
-      //sx1262ClearIrqStatus();
       ret = 0;
       break;
       }
