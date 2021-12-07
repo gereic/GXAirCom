@@ -126,16 +126,18 @@ SDA 21
 SCL 22 
 
 ******** BARO *********
-SDA 13
-SCL 14 
+SDA 3
+SCL 4 
 
 ******** GPS *********
 TXD 34 
-RXD 12
+RXD --
 
 ******** BUZZER *******
-BUZZER 0
+BUZZER 25
 
+******** EXTRA BUTTON (Volume) *******
+GND >> BUTTON >> GPIO 0
 
 ************* Pins for TTGO-TSIM7000G ***************
 ******* LORA ********
@@ -269,7 +271,7 @@ SCL 14
 
 #define DISPLAY_STAT_OFF 0
 #define DISPLAY_STAT_ON 1
-
+#define DISPLAY_INVERT 0
 #define GS_POWER_ALWAYS_ON 0
 #define GS_POWER_SAFE 1
 #define GS_POWER_BATT_LIFE 2
@@ -433,6 +435,7 @@ struct commandData{
   uint8_t ConfigGPS; //command to configure GPS
   uint8_t CalibAcc;  //command calibrate acc
   uint8_t CalibGyro; //command calibrate Gyro
+  uint8_t getGpsPos; //command to get GPS-Position
 };
 
 struct gsmStatus{
@@ -455,6 +458,8 @@ struct statusData{
   float GPS_speed;
   float GPS_course;
   float GPS_geoidAlt;
+  char * GPS_Date;
+  char * GPS_Time;
   float pressure = NAN;
   float varioAlt;
   float varioTemp = NAN;

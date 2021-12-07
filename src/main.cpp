@@ -30,6 +30,8 @@
 #include "gxUpdater.h"
 #include <AceButton.h>
 #include "../lib/FANETLORA/Legacy/Legacy.h"
+#include <ArduinoJson.h>
+
 //#include <esp_task_wdt.h>
 
 
@@ -65,6 +67,12 @@
 #ifdef EINK
 #include <Screen.h>
 #endif
+
+#ifdef LOGGER
+#include <Logger.h>
+#include "driver/rtc_io.h"
+#endif
+
 
 #ifdef GSMODULE
 
@@ -221,6 +229,7 @@ int8_t PinADCVoltage = -1;
 //LORA-Module
 int8_t PinLoraRst = -1;
 int8_t PinLoraDI0 = -1;
+int8_t PinLoraGPIO = -1;
 int8_t PinLora_SS = -1;
 int8_t PinLora_MISO = -1;
 int8_t PinLora_MOSI = -1;
@@ -284,6 +293,7 @@ TaskHandle_t xHandleBackground = NULL;
 TaskHandle_t xHandleBluetooth = NULL;
 TaskHandle_t xHandleMemory = NULL;
 TaskHandle_t xHandleEInk = NULL;
+TaskHandle_t xHandleLogger = NULL;
 TaskHandle_t xHandleWeather = NULL;
 
 SemaphoreHandle_t xOutputMutex;
@@ -309,11 +319,17 @@ void taskBaro(void *pvParameters);
 #ifdef EINK
 void taskEInk(void *pvParameters);
 #endif
+#ifdef LOGGER
+void taskLogger(void *pvParameters);
+#endif
 #ifdef GSM_MODULE
 void taskGsm(void *pvParameters);
 void PowerOffModem();
 //void readSMS();
 //void sendStatus();
+#endif
+#ifdef TINY_GSM_MODEM_SIM7000
+void setupSim7000Gps();
 #endif
 #ifdef OLED
 void startOLED();
@@ -383,6 +399,7 @@ void readFuelSensor(uint32_t tAct){
   static uint32_t tRead = millis();
   static uint32_t tSend = millis();
   static bool bFirst = false;
+  if (PinFuelSensor < 0) return;
   if (timeOver(tAct,tRead,100)){ //every 100ms
     tRead = tAct;
     // multisample ADC
@@ -584,6 +601,8 @@ void oledPowerOn(){
   //set display to full contrast
   display.ssd1306_command(SSD1306_SETCONTRAST);
   display.ssd1306_command(0xFF);
+  //added the possibility to invert BW .. whould be nice to put it in the settings TODO
+  display.invertDisplay(DISPLAY_INVERT);
   status.displayStat = DISPLAY_STAT_ON;
 }
 
@@ -729,6 +748,7 @@ void handleButton(uint32_t tAct){
 
 
 void sendFlarmData(uint32_t tAct){
+  if (WebUpdateRunning) return;
   static uint32_t tSend = millis();
   static uint32_t tSendStatus = millis();
   FlarmtrackingData myFlarmData;
@@ -876,6 +896,21 @@ void drawflying(int16_t x, int16_t y, bool flying){
 
 
 void drawBatt(int16_t x, int16_t y,uint8_t value){
+
+    display.setTextSize(1);
+    display.setCursor(x-15,y+9);
+    display.print(status.vBatt/1000);
+    display.print(".");
+    if(status.vBatt%1000/10<10){
+      display.print("0");
+    }
+    display.print((status.vBatt%1000)/10);
+    display.print("V");
+
+    display.setCursor(x-5,y+18);
+    display.print(String(status.varioTemp,0));
+    display.print("C");
+
     static uint8_t DrawValue = 0;
     if (value == 255){
         DrawValue = (DrawValue + 1) %5; 
@@ -1495,7 +1530,7 @@ void printSettings(){
   log_i("Board-Type=%d",setting.boardType);
   log_i("Display-Type=%d",setting.displayType);
   log_i("Display-Rotation=%d",setting.displayRotation);
-  //log_i("AXP192=%d",uint8_t(status.bHasAXP192));
+  log_i("AXP192=%d",uint8_t(status.bHasAXP192));
   if (setting.band == 0){
     log_i("BAND=868mhz");
   }else{
@@ -1812,6 +1847,7 @@ void setup() {
         esp_bt_controller_deinit();
         esp_bt_mem_release(ESP_BT_MODE_BTDM);
         adc_power_off();
+        //adc_power_release();
         esp_deep_sleep_start();
       }
     }
@@ -1839,6 +1875,9 @@ void setup() {
   {
   case BOARD_T_BEAM: 
     log_i("Board=T_BEAM");
+    PinGPSRX = 34;
+    PinGPSTX = 12;
+
     PinLoraRst = 23;
     PinLoraDI0 = 26;
     PinLora_SS = 18;
@@ -1883,8 +1922,18 @@ void setup() {
     break;
   case BOARD_T_BEAM_SX1262: 
     log_i("Board=T_BEAM SX1262");
+    PinGPSRX = 34;
+    PinGPSTX = 12;
+    
     PinLoraRst = 23;
-    PinLoraDI0 = 33;
+    if ((setting.displayType == EINK2_9) || (setting.displayType == EINK2_9_V2)){
+      PinLoraGPIO = 36;
+      PinLoraDI0 = 39;
+    }else{
+      PinLoraGPIO = 32;
+      PinLoraDI0 = 33;
+      PinUserLed = 4;
+    }
     PinLora_SS = 18;
     PinLora_MISO = 19;
     PinLora_MOSI = 27;
@@ -1897,8 +1946,6 @@ void setup() {
     PinBaroSDA = 13;
     PinBaroSCL = 14;
 
-    
-    PinUserLed = 4;
 
     //V3.0.0 changed from PIN 0 to PIN 25
     PinBuzzer = 25;
@@ -1926,6 +1973,11 @@ void setup() {
     break;
   case BOARD_T_BEAM_V07:
     log_i("Board=T_BEAM_V07/TTGO_T3_V1_6");
+    //PinGPSRX = 34;
+    //PinGPSTX = 39;
+    PinGPSRX = 12; //T-Beam V07
+    PinGPSTX = 15;
+
     PinLoraRst = 23;
     PinLoraDI0 = 26;
     PinLora_SS = 18;
@@ -1937,9 +1989,11 @@ void setup() {
     PinOledSDA = 21;
     PinOledSCL = 22;
 
-    PinBaroSDA = 13;
-    PinBaroSCL = 14;
-
+    // moving SCL SDA to different GPIO to avoid conflicts with mounted SD card on Lilygo T3 v2.1.1.6
+    PinBaroSDA = 3; //13 3;
+    PinBaroSCL = 4; //14 23;
+    // set gpio 4 as INPUT
+    pinMode(PinBaroSCL, INPUT_PULLUP);
     PinADCVoltage = 35;
 
     if (setting.bHasFuelSensor){
@@ -1949,10 +2003,14 @@ void setup() {
 
     PinBuzzer = 25;
 
+    // Lilygo T3 v2.1.1.6 extra button on 0
+    sButton[1].PinButton = 0;
+
     i2cOLED.begin(PinOledSDA, PinOledSCL);
     // voltage-divier 100kOhm and 100kOhm
     // vIn = (R1+R2)/R2 * VOut
-    adcVoltageMultiplier = 2.0f * 3.76f; // not sure if it is ok ?? don't have this kind of board
+//    adcVoltageMultiplier = 2.0f * 3.76f; // not sure if it is ok ?? don't have this kind of board
+    adcVoltageMultiplier = 2.0f * 3.5f; // maybe also 3.4 or 3.45 .. TODO test
     pinMode(PinADCVoltage, INPUT);
     break;
   /*
@@ -1985,6 +2043,9 @@ void setup() {
   */
   case BOARD_HELTEC_LORA:
     log_i("Board=HELTEC_LORA");
+    PinGPSRX = 34;
+    PinGPSTX = 39;
+
     PinLoraRst = 14;
     PinLoraDI0 = 26;
     PinLora_SS = 18;
@@ -2171,6 +2232,7 @@ void setup() {
         esp_bt_controller_deinit();
         esp_bt_mem_release(ESP_BT_MODE_BTDM);
         adc_power_off();
+        //adc_power_release();
         esp_deep_sleep_start();
       }
     }
@@ -2192,8 +2254,14 @@ xOutputMutex = xSemaphoreCreateMutex();
 
   //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
 #ifdef AIRMODULE
-  
+
   if (setting.Mode == MODE_AIR_MODULE){
+
+    //adding logger task
+    #ifdef LOGGER
+      xTaskCreatePinnedToCore(taskLogger, "taskLogger", 6500, NULL, 4, &xHandleLogger, ARDUINO_RUNNING_CORE1); //background Logger
+    #endif  
+
     xTaskCreatePinnedToCore(taskBaro, "taskBaro", 6500, NULL, 9, &xHandleBaro, ARDUINO_RUNNING_CORE1); //high priority task
   }
 #endif  
@@ -2272,6 +2340,7 @@ bool factoryResetModem(){
 
 bool initModem(){
   //reset modem
+  command.getGpsPos = 0;
   if (PinGsmRst >= 0){
     log_i("reset modem");
     digitalWrite(PinGsmRst,HIGH);
@@ -2286,9 +2355,8 @@ bool initModem(){
   log_i("restarting modem...");  
   if (!modem.restart()) return false;
   #ifdef TINY_GSM_MODEM_SIM7000
-    modem.disableGPS();
-    log_i("set NetworkMode to %d",setting.gsm.NetworkMode);
-   modem.setNetworkMode(setting.gsm.NetworkMode); //set mode
+  log_i("set NetworkMode to %d",setting.gsm.NetworkMode);
+  modem.setNetworkMode(setting.gsm.NetworkMode); //set mode
   #endif
   modem.sleepEnable(false); //set sleepmode off
   modem.sendAT(GF("+CMGF=1"));
@@ -2331,6 +2399,25 @@ void PowerOffModem(){
 
 }
 
+#ifdef TINY_GSM_MODEM_SIM7000
+void setupSim7000Gps(){
+  xSemaphoreTake( xGsmMutex, portMAX_DELAY );
+  modem.sendAT("+SGPIO=0,4,1,1");
+  modem.waitResponse(10000L);
+  modem.enableGPS(); //enable GPS
+  xSemaphoreGive( xGsmMutex );
+  command.getGpsPos = 2; //setup GPS finished --> waiting for GPS-Position
+  //modem.disableGPS(); //disable GPS
+  //modem.sendAT(GF("+CGNSCFG=1")); //Turn on GNSS NMEA data out put to USB’s NMEA port
+  //modem.sendAT(GF("+CGNSCFG=2")); //Turn on GNSS NMEA data out put to UART3 port
+  //modem.waitResponse();
+  // CMD:AT+SGPIO=0,4,1,1
+  // Only in version 20200415 is there a function to control GPS power
+  //modem.sendAT(GF("+CGNSMOD=1,1,1,1")); //GNSS Work Mode Set
+  //modem.waitResponse();  
+}
+#endif
+
 void taskGsm(void *pvParameters){  
   if (PinGsmPower >= 0){
     pinMode(PinGsmPower, OUTPUT);
@@ -2350,17 +2437,54 @@ void taskGsm(void *pvParameters){
   static uint32_t tCheckSms = millis() - GSM_CHECK_TIME_SMS;
   // Set preferred message format to text mode
 
+  xSemaphoreTake( xGsmMutex, portMAX_DELAY );
   factoryResetModem();
   initModem();
+  xSemaphoreGive( xGsmMutex );
   if (setting.wifi.connect != MODE_WIFI_DISABLED){
     log_i("stop task");
-    PowerOffModem();    
+    xSemaphoreTake( xGsmMutex, portMAX_DELAY );
+    PowerOffModem();  
+    xSemaphoreGive( xGsmMutex );  
     vTaskDelete(xHandleGsm); //delete weather-task
     return;
   }
-  
+  xSemaphoreTake( xGsmMutex, portMAX_DELAY );
+  status.modemstatus = MODEM_CONNECTING;
+  connectModem(); //connect modem to network  
+  if (modem.isNetworkConnected()){  
+    connectGPRS();
+  }
+  xSemaphoreGive( xGsmMutex );
+  tCheckConn = millis() - GSM_CHECK_TIME_CON + 1000;
   while(1){
     tAct = millis();
+    
+    #ifdef TINY_GSM_MODEM_SIM7000
+    if (command.getGpsPos == 1){
+      setupSim7000Gps();
+    }else if (command.getGpsPos == 2){
+      float lat,  lon, speed, alt, accuracy;
+      int vsat, usat;
+      xSemaphoreTake( xGsmMutex, portMAX_DELAY );
+      if (modem.getGPS(&lat, &lon, &speed, &alt, &vsat, &usat, &accuracy)) {
+        log_i("GPS-Position: lat:%.6f lon:%.6f alt:%.2f vsat:%d usat:%d accuracy:%.2f",lat,lon,alt,vsat,usat,accuracy);
+        if (usat >= 6){ //only if we have more then 6 satellites in view
+          setting.gs.lat = lat;
+          setting.gs.lon = lon;
+          setting.gs.alt = alt;
+          command.getGpsPos = 3;
+        }        
+      }
+      xSemaphoreGive( xGsmMutex );
+    }else if (command.getGpsPos == 3){
+      write_configFile(&setting); //write config-File
+      ESP.restart();
+    }
+    #endif
+    //String gps_raw = modem.getGPSraw();
+    //log_i("GPS-Position:%s",gps_raw.c_str());
+    //xSemaphoreGive( xGsmMutex );
     if (timeOver(tAct,tCheckConn,GSM_CHECK_TIME_CON)){
       tCheckConn = tAct;
       //log_i("%d Check GSM-Connection",tCheckConn);
@@ -2393,37 +2517,6 @@ void taskGsm(void *pvParameters){
       }          
       xSemaphoreGive( xGsmMutex );
     }
-    /*
-    if (command.resetModem == 1){
-      xSemaphoreTake( xGsmMutex, portMAX_DELAY );
-      log_i("disconnect gprs");
-      modem.gprsDisconnect();
-      status.modemstatus = MODEM_DISCONNECTED;
-      log_i("start factory reset of modem");
-      modem.sendAT(GF("&F"));  // Factory settings
-      modem.waitResponse();
-      modem.testAT();
-      modem.sendAT(GF("&W"));  // Factory settings
-      if (modem.waitResponse() == 1){
-        log_i("factory reset ok");
-        command.resetModem = 2;
-        status.modemstatus = MODEM_CONNECTING;
-        initModem(); //init modem
-        connectModem(); //connect modem to network
-      }else{
-        log_e("error factory-reset of modem");
-        command.resetModem = 255;
-      }
-      xSemaphoreGive( xGsmMutex );
-    }
-    */
-    /*
-    if (timeOver(tAct,tCheckSms,GSM_CHECK_TIME_SMS)){
-      tCheckSms = tAct;
-      readSMS();
-    }
-    */
-    //if ((WebUpdateRunning) || (bGsmOff)) break;
     if (bGsmOff) break; //we need GSM for webupdate
     //delay(1);
     delay(1000);
@@ -2557,7 +2650,7 @@ void taskWeather(void *pvParameters){
             }
             wuData.rain1h = wData.rain1h ;
             wuData.raindaily = wData.rain1d;
-            log_i("wuData:wDir=%f;wSpeed=%f,gust=%f,temp=%f,h=%f,p=%f",wuData.winddir,wuData.windspeed,wuData.windgust,wuData.temp,wuData.humidity,wuData.pressure);
+            //log_i("wuData:wDir=%f;wSpeed=%f,gust=%f,temp=%f,h=%f,p=%f",wuData.winddir,wuData.windspeed,wuData.windgust,wuData.temp,wuData.humidity,wuData.pressure);
             wu.sendData(setting.WUUpload.ID,setting.WUUpload.KEY,&wuData);
           }
           if (setting.WindyUpload.enable){
@@ -2592,6 +2685,22 @@ void taskWeather(void *pvParameters){
       }
       
       if (timeOver(tAct,tSendData,setting.wd.FanetUploadInterval)){
+        //print weather-data to serial
+        if (timeStatus() == timeSet){
+          StaticJsonDocument<500> doc;                      //Memory pool
+          char buff[20];
+          char msg_buf[500];
+          sprintf (buff,"%04d-%02d-%02d %02d:%02d:%02d",year(),month(),day(),hour(),minute(),second());
+          doc["DT"] = buff;
+          doc["wDir"] = String(avg[0].Winddir,2);
+          doc["wSpeed"] = String(avg[0].WindSpeed,2);
+          doc["wGust"] = String(avg[0].WindGust,2);
+          doc["temp"] = String(avg[0].temp,2);
+          doc["hum"] = String(avg[0].Humidity,2);
+          doc["press"] = String(avg[0].Pressure,2);
+          serializeJson(doc, msg_buf);
+          Serial.print("WD=");Serial.println(msg_buf);
+        }
         if (setting.wd.sendFanet){
           
           fanetWeatherData.lat = setting.gs.lat;
@@ -2681,7 +2790,6 @@ void taskBaro(void *pvParameters){
   uint32_t tStart;
   uint32_t tCycle;
   uint32_t tLog = millis();
-  uint32_t tReset = millis();
   uint8_t u8Volume = setting.vario.volume;
   static bool bInitCalib = true;
   log_i("starting baro-task ");  
@@ -2722,21 +2830,13 @@ void taskBaro(void *pvParameters){
     //xLastWakeTime = xTaskGetTickCount();
     while (1){      
       tStart = millis();
+      /*
       if ((tStart - tLog) >= 1000){
         tLog = tStart;
         if (tMax >= 100){
           log_w("baro max=%dms",tMax);
           tMax = 0;
         }
-      }
-      /*
-      if ((tStart - tLog) >= 1000){
-        tLog = tStart;
-        log_i("max cycle=%dms;max=%dms",tCycle,tMax);
-      }
-      if ((tStart - tReset) >= 5000){
-        tReset = tStart;
-        tMax = 0;
       }
       */
       if (command.CalibGyro == 1){
@@ -2940,6 +3040,7 @@ float readBattvoltage(){
   adc_reading /= NO_OF_SAMPLES;
 
   vBatt = (adcVoltageMultiplier * float(adc_reading) / 1023.0f) + setting.BattVoltOffs;
+  //Serial.println(adc_reading);
   //log_i("adc=%d, vBatt=%.3f",adc_reading,vBatt);
   return vBatt;
 }
@@ -2964,6 +3065,17 @@ void printBattVoltage(uint32_t tAct){
     status.BattPerc = scale(status.vBatt,battEmpty,battFull,0,100);
     //log_i("Batt =%d%%",status.BattPerc);
     //log_i("Batt %dV; %d%%",status.vBatt,status.BattPerc);
+
+    /*
+    if (status.vBatt >= battFull){
+      log_i("Battery Full: %d mV Temp:%s C",status.vBatt,String(status.varioTemp,1));
+        
+        // if (!status.bMuting){
+        //   ledcWriteTone(channel,2000);
+        //   delay(500);
+        // }
+    }
+    */
   }
 }
 
@@ -3673,7 +3785,7 @@ void readGPS(){
         }
         i++;
       }
-      if (setting.outputGPS) sendData2Client(cstr,sNmeaIn.length()); //sendData2Client(sNmeaIn);
+      if ((setting.outputGPS) && (!WebUpdateRunning)) sendData2Client(cstr,sNmeaIn.length()); //sendData2Client(sNmeaIn);
       delete cstr; //delete allocated String
       sNmeaIn = "";
     }else{
@@ -3693,7 +3805,7 @@ void readGPS(){
         lineBuffer[recBufferIndex] = '\n';
         recBufferIndex++;
         lineBuffer[recBufferIndex] = 0; //zero-termination
-        if (setting.outputGPS) sendData2Client(lineBuffer,recBufferIndex);
+        if ((setting.outputGPS) && (!WebUpdateRunning)) sendData2Client(lineBuffer,recBufferIndex);
         recBufferIndex = 0;
         tGpsOk = millis();
         if (!status.bHasGPS){
@@ -3755,6 +3867,7 @@ void Fanet2FlarmData(FanetLora::trackingData *FanetData,FlarmtrackingData *Flarm
 }
 
 void sendLXPW(uint32_t tAct){
+  if (WebUpdateRunning) return;
   // $LXWP0,logger_stored, airspeed, airaltitude,
   //   v1[0],v1[1],v1[2],v1[3],v1[4],v1[5], hdg, windspeed*CS<CR><LF>
   //
@@ -3811,8 +3924,9 @@ void sendLXPW(uint32_t tAct){
 }
 
 void sendLK8EX(uint32_t tAct){
+  if (WebUpdateRunning) return;
   static uint32_t tOld = millis();
-  if ((tAct - tOld) >= 250){
+  if ((tAct - tOld) >= 100){
     //String s = "$LK8EX1,101300,99999,99999,99,999,";
     char sOut[MAXSTRING];
     int pos = 0;
@@ -3937,37 +4051,31 @@ void taskStandard(void *pvParameters){
   MyFanetData.rssi = 0;
 
   #ifdef AIRMODULE
+  /*
   PinGPSRX = -1;
   PinGPSTX = -1;
-  if (setting.boardType != BOARD_TTGO_TSIM_7000){
+  if (setting.boardType == BOARD_T_BEAM_SX1262){
+    PinGPSRX = 34;
+    PinGPSTX = 12;
+  }else if (setting.boardType != BOARD_TTGO_TSIM_7000){
     if (status.bHasAXP192){
       PinGPSRX = 34;
-      PinGPSTX = 12;
+      PinGPSTX = 39;
     }else{
-      PinGPSRX = 12;
-      PinGPSTX = 15;
+      // moving gpio for GPS back to 34 to avoid conflicts with SD pins on LilyGo T3 v2.1.1.6
+      PinGPSRX = 34;//12;
+      PinGPSTX = 39;//15;
     }
   }
+  */
   if (PinGPSRX >= 0){
     NMeaSerial.begin(GPSBAUDRATE,SERIAL_8N1,PinGPSRX,PinGPSTX,false);
     log_i("GPS Baud=9600,8N1,RX=%d,TX=%d",PinGPSRX,PinGPSTX);
+    //clear serial buffer
+    while (NMeaSerial.available())
+      NMeaSerial.read();
   }
   
-  //setupUbloxConfig();
-
-  // Change the echoing messages to the ones recognized by the MicroNMEA library
-  //MicroNMEA::sendSentence(NMeaSerial, "$PSTMSETPAR,1201,0x00000042");
-  //MicroNMEA::sendSentence(NMeaSerial, "$PSTMSETPAR,1201,0x00000041"); //enable only $GPGGA and $GPRMC
-  //MicroNMEA::sendSentence(NMeaSerial, "$PSTMSAVEPAR");
-
-  //Reset the device so that the changes could take plaace
-  //MicroNMEA::sendSentence(NMeaSerial, "$PSTMSRR");
-
-
-  delay(1000);
-  //clear serial buffer
-  while (NMeaSerial.available())
-    NMeaSerial.read();
   if (status.bHasAXP192){  
     //only on new boards we have an pps-pin
     pinMode(PPSPIN, INPUT);
@@ -3997,7 +4105,7 @@ void taskStandard(void *pvParameters){
   fanet.setRFMode(setting.RFMode);
   uint8_t radioChip = RADIO_SX1276;
   if (setting.boardType == BOARD_T_BEAM_SX1262) radioChip = RADIO_SX1262;
-  fanet.begin(PinLora_SCK, PinLora_MISO, PinLora_MOSI, PinLora_SS,PinLoraRst, PinLoraDI0,frequency,setting.LoraPower,radioChip);
+  fanet.begin(PinLora_SCK, PinLora_MISO, PinLora_MOSI, PinLora_SS,PinLoraRst, PinLoraDI0,PinLoraGPIO,frequency,setting.LoraPower,radioChip);
   fanet.setPilotname(setting.PilotName);
   fanet.setAircraftType(setting.AircraftType);
   fanet.autoSendName = true;
@@ -4083,7 +4191,7 @@ void taskStandard(void *pvParameters){
     }
     if (status.tMaxLoop < status.tLoop) status.tMaxLoop = status.tLoop;
     #ifdef AIRMODULE    
-    if (command.ConfigGPS == 1){      
+    if (command.ConfigGPS == 1){    
       if (setupUbloxConfig()){
         command.ConfigGPS = 2; //setting ok
         delay(2000);
@@ -4295,7 +4403,9 @@ void taskStandard(void *pvParameters){
     }else{
       fanet.onGround = true; //ground-tracking
     }
-    fanet.run();
+    if (!WebUpdateRunning){
+      fanet.run();
+    }    
     //status.fanetRx = fanet.rxCount;
     //status.fanetTx = fanet.txCount;
     fanet.getRxTxCount(&status.fanetRx,&status.fanetTx,&status.legRx,&status.legTx);
@@ -4417,6 +4527,47 @@ void taskStandard(void *pvParameters){
           }else{
             status.GPS_speed = nmea.getSpeed()*1.852/1000.; //speed in cm/s --> we need km/h
             status.GPS_course = nmea.getCourse()/1000.;
+
+          // create a global variable for logger igc file name based on GPS datetime
+            //set today date
+            static char fullDate[36];
+            static char fullTime[8];
+            strcpy(fullDate,"");
+            strcpy(fullTime,"");
+            // if got a correct date i.e. with year
+            if (nmea.getYear()>0){
+              char day[2];
+              itoa(nmea.getDay(), day, 10);
+              if (nmea.getDay()<10) strcat(fullDate,"0");
+              strcat(fullDate, day);
+
+              char month[2];
+              itoa(nmea.getMonth(), month, 10);
+              if (nmea.getMonth()<10) strcat(fullDate,"0");
+              strcat(fullDate, month);
+
+              char year[2];
+              itoa(nmea.getYear() - 2000, year, 10);
+              strcat(fullDate, year);
+
+              char hour[2];
+              itoa(nmea.getHour(), hour, 10);
+              if(nmea.getHour()<10) strcat(fullTime,"0");
+              strcat(fullTime, hour);
+
+              char minute[2];
+              itoa(nmea.getMinute(), minute, 10);
+              if(nmea.getMinute()<10) strcat(fullTime,"0");
+              strcat(fullTime, minute);
+
+              char seconds[2];
+              itoa(nmea.getSecond(), seconds, 10);
+              if(nmea.getSecond()<10) strcat(fullTime,"0");
+              strcat(fullTime, seconds);
+
+              status.GPS_Date = fullDate;
+              status.GPS_Time = fullTime;
+            }
           }
           long geoidalt = 0;
           nmea.getGeoIdAltitude(geoidalt);
@@ -4575,16 +4726,20 @@ void powerOff(){
   eTaskState tBaro = eDeleted;
   eTaskState tEInk = eDeleted;
   eTaskState tStandard = eDeleted;
+  #ifdef GSM_MODULE
   eTaskState tGSM = eDeleted;
+  #endif
   eTaskState tWeather = eDeleted;
+  eTaskState tLogger = eDeleted;
   while(1){
     //wait until all tasks are stopped
+    if (xHandleLogger != NULL) tLogger = eTaskGetState(xHandleLogger);
     if (xHandleBaro != NULL) tBaro = eTaskGetState(xHandleBaro);
     if (xHandleEInk != NULL) tEInk = eTaskGetState(xHandleEInk);
     if (xHandleStandard != NULL) tStandard = eTaskGetState(xHandleStandard);
     if (xHandleWeather != NULL) tWeather = eTaskGetState(xHandleWeather);    
-    if ((tBaro == eDeleted) && (tEInk == eDeleted) && (tWeather == eDeleted) && (tStandard == eDeleted)) break; //now all tasks are stopped    
-    log_i("baro=%d,eink=%d,standard=%d,weather=%d",tBaro,tEInk,tStandard,tWeather);
+    if ((tLogger == eDeleted) && (tBaro == eDeleted) && (tEInk == eDeleted) && (tWeather == eDeleted) && (tStandard == eDeleted)) break; //now all tasks are stopped    
+    log_i("logger=%d,baro=%d,eink=%d,standard=%d,weather=%d",tLogger,tBaro,tEInk,tStandard,tWeather);
     delay(1000);
   }
   #ifdef GSM_MODULE
@@ -4667,9 +4822,40 @@ void powerOff(){
   esp_bt_controller_deinit();
   esp_bt_mem_release(ESP_BT_MODE_BTDM);
   adc_power_off();
+  //adc_power_release();
   esp_deep_sleep_start();
 
 }
+
+#ifdef LOGGER
+// logger task to manage new and update of igc track log
+void taskLogger(void * pvPArameters){
+
+  Logger logger;
+
+  pinMode(2, INPUT_PULLUP);
+  pinMode(15, INPUT_PULLUP);
+  pinMode(4, OUTPUT);
+  digitalWrite(4,LOW);
+  if (!SD_MMC.begin()){
+    pinMode(2, INPUT_PULLUP);
+    pinMode(4, OUTPUT);
+    digitalWrite(4,LOW);
+    SD_MMC.begin("/sdcard", true);
+  }
+
+  logger.begin();
+  delay(10);
+  while(1){
+    logger.run();
+    delay(900);
+    if ((WebUpdateRunning) || (bPowerOff)) break;
+  }
+  if (bPowerOff) logger.end();
+  log_i("stop task");
+  vTaskDelete(xHandleLogger);
+}
+#endif
 
 #ifdef EINK
 void taskEInk(void *pvParameters){
@@ -4854,7 +5040,7 @@ void readSMS(){
 
 void taskBackGround(void *pvParameters){
   static uint32_t tWifiCheck = millis();
-  static uint32_t warning_time=0;
+  //static uint32_t warning_time=0;
   static uint8_t ntpOk = 0;
   static uint32_t tGetTime = millis();
   uint32_t tBattEmpty = millis();
@@ -4892,10 +5078,14 @@ void taskBackGround(void *pvParameters){
     #ifdef GSMODULE    
     if (setting.Mode == MODE_GROUND_STATION){
       if (status.bTimeOk == true){
-        if (day() != actDay){
+        struct tm now;
+        getLocalTime(&now,0);
+        if ((now.tm_mday != actDay) && (now.tm_hour > 0)){
           //restart every new day --> to get new NTP-Time
-          log_i("day changed %d->%d",actDay,day());
+          //every day at 01:00am
+          log_i("day changed %d->%d hour:%d",actDay,now.tm_mday,now.tm_hour);
           if (actDay != 0){
+            printLocalTime();
             log_i("new day --> restart ESP");
             delay(500);
             esp_restart();

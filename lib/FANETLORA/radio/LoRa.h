@@ -2,10 +2,103 @@
 #ifndef LORA_H
 #define LORA_H
 
+//#define RADIOLIB_DEBUG
+//#define RADIOLIB_VERBOSE
+
+
 #include <Arduino.h>
 #include <SPI.h>
-#include <RadioLib.h>
-#include <Module.h>
+
+// SX126X SPI commands
+// operational modes commands
+#define SX126X_CMD_NOP                                0x00
+#define SX126X_CMD_SET_SLEEP                          0x84
+#define SX126X_CMD_SET_STANDBY                        0x80
+#define SX126X_CMD_SET_FS                             0xC1
+#define SX126X_CMD_SET_TX                             0x83
+#define SX126X_CMD_SET_RX                             0x82
+#define SX126X_CMD_STOP_TIMER_ON_PREAMBLE             0x9F
+#define SX126X_CMD_SET_RX_DUTY_CYCLE                  0x94
+#define SX126X_CMD_SET_CAD                            0xC5
+#define SX126X_CMD_SET_TX_CONTINUOUS_WAVE             0xD1
+#define SX126X_CMD_SET_TX_INFINITE_PREAMBLE           0xD2
+#define SX126X_CMD_SET_REGULATOR_MODE                 0x96
+#define SX126X_CMD_CALIBRATE                          0x89
+#define SX126X_CMD_CALIBRATE_IMAGE                    0x98
+#define SX126X_CMD_SET_PA_CONFIG                      0x95
+#define SX126X_CMD_SET_RX_TX_FALLBACK_MODE            0x93
+
+// register and buffer access commands
+#define SX126X_CMD_WRITE_REGISTER                     0x0D
+#define SX126X_CMD_READ_REGISTER                      0x1D
+#define SX126X_CMD_WRITE_BUFFER                       0x0E
+#define SX126X_CMD_READ_BUFFER                        0x1E
+
+
+// SX126X SPI command variables
+//SX126X_CMD_SET_SLEEP                                                MSB   LSB   DESCRIPTION
+#define SX126X_SLEEP_START_COLD                       0b00000000  //  2     2     sleep mode: cold start, configuration is lost (default)
+#define SX126X_SLEEP_START_WARM                       0b00000100  //  2     2                 warm start, configuration is retained
+#define SX126X_SLEEP_RTC_OFF                          0b00000000  //  0     0     wake on RTC timeout: disabled
+#define SX126X_SLEEP_RTC_ON                           0b00000001  //  0     0                          enabled
+
+
+//SX126X_CMD_SET_DIO_IRQ_PARAMS
+#define SX126X_IRQ_TIMEOUT                          0b1000000000  //  9     9     Rx or Tx timeout
+#define SX126X_IRQ_CAD_DETECTED                     0b0100000000  //  8     8     channel activity detected
+#define SX126X_IRQ_CAD_DONE                         0b0010000000  //  7     7     channel activity detection finished
+#define SX126X_IRQ_CRC_ERR                          0b0001000000  //  6     6     wrong CRC received
+#define SX126X_IRQ_HEADER_ERR                       0b0000100000  //  5     5     LoRa header CRC error
+#define SX126X_IRQ_HEADER_VALID                     0b0000010000  //  4     4     valid LoRa header received
+#define SX126X_IRQ_SYNC_WORD_VALID                  0b0000001000  //  3     3     valid sync word detected
+#define SX126X_IRQ_PREAMBLE_DETECTED                0b0000000100  //  2     2     preamble detected
+#define SX126X_IRQ_RX_DONE                          0b0000000010  //  1     1     packet received
+#define SX126X_IRQ_TX_DONE                          0b0000000001  //  0     0     packet transmission completed
+#define SX126X_IRQ_ALL                              0b1111111111  //  9     0     all interrupts
+#define SX126X_IRQ_NONE                             0b0000000000  //  9     0     no interrupts
+
+//SX126X_CMD_CALIBRATE_IMAGE
+#define SX126X_CAL_IMG_430_MHZ_1                      0x6B
+#define SX126X_CAL_IMG_430_MHZ_2                      0x6F
+#define SX126X_CAL_IMG_470_MHZ_1                      0x75
+#define SX126X_CAL_IMG_470_MHZ_2                      0x81
+#define SX126X_CAL_IMG_779_MHZ_1                      0xC1
+#define SX126X_CAL_IMG_779_MHZ_2                      0xC5
+#define SX126X_CAL_IMG_863_MHZ_1                      0xD7
+#define SX126X_CAL_IMG_863_MHZ_2                      0xDB
+#define SX126X_CAL_IMG_902_MHZ_1                      0xE1
+#define SX126X_CAL_IMG_902_MHZ_2                      0xE9
+
+//SX126X_CMD_GET_STATUS
+#define SX126X_STATUS_MODE_STDBY_RC                   0b00100000  //  6     4     current chip mode: STDBY_RC
+#define SX126X_STATUS_MODE_STDBY_XOSC                 0b00110000  //  6     4                        STDBY_XOSC
+#define SX126X_STATUS_MODE_FS                         0b01000000  //  6     4                        FS
+#define SX126X_STATUS_MODE_RX                         0b01010000  //  6     4                        RX
+#define SX126X_STATUS_MODE_TX                         0b01100000  //  6     4                        TX
+#define SX126X_STATUS_DATA_AVAILABLE                  0b00000100  //  3     1     command status: packet received and data can be retrieved
+#define SX126X_STATUS_CMD_TIMEOUT                     0b00000110  //  3     1                     SPI command timed out
+#define SX126X_STATUS_CMD_INVALID                     0b00001000  //  3     1                     invalid SPI command
+#define SX126X_STATUS_CMD_FAILED                      0b00001010  //  3     1                     SPI command failed to execute
+#define SX126X_STATUS_TX_DONE                         0b00001100  //  3     1                     packet transmission done
+#define SX126X_STATUS_SPI_FAILED                      0b11111111  //  7     0     SPI transaction failed
+
+// SX127X_REG_IRQ_FLAGS_1
+#define SX127X_FLAG_MODE_READY                        0b10000000  //  7     7     requested mode is ready
+#define SX127X_FLAG_RX_READY                          0b01000000  //  6     6     reception ready (after RSSI, AGC, AFC)
+#define SX127X_FLAG_TX_READY                          0b00100000  //  5     5     transmission ready (after PA ramp-up)
+#define SX127X_FLAG_PLL_LOCK                          0b00010000  //  4     4     PLL locked
+#define SX127X_FLAG_RSSI                              0b00001000  //  3     3     RSSI value exceeds RSSI threshold
+#define SX127X_FLAG_TIMEOUT                           0b00000100  //  2     2     timeout occurred
+#define SX127X_FLAG_PREAMBLE_DETECT                   0b00000010  //  1     1     valid preamble was detected
+#define SX127X_FLAG_SYNC_ADDRESS_MATCH                0b00000001  //  0     0     sync address matched
+
+#include "GxModule.h"
+
+#ifndef MAXSTRING
+#define MAXSTRING 500
+#endif
+
+
 
 // SEND FRAME RETURN VALUES
 #define	TX_OK						0
@@ -18,21 +111,24 @@
 #define RADIO_SX1262 1
 #define RADIO_SX1276 2
 
+//SX126X_CMD_SET_STANDBY
+#define SX126X_STANDBY_RC                             0x00        //  7     0     standby mode: 13 MHz RC oscillator
+#define SX126X_STANDBY_XOSC                           0x01        //  7     0                   32 MHz crystal oscillator
+
 #define FSK_PACKET_LENGTH 26
 
 #define FSK_FREQUENCY 868.2
 
-#define RX_DEBUG 0
+#define LORA_RX_DEBUG 0
 
 class LoRaClass {
 public:
   //LoRaClass(SPIClass *_spi,uint8_t cs, uint8_t irq, uint8_t rst, uint8_t gpio);
   LoRaClass();
-  void setPins(SPIClass *_spi,uint8_t cs, uint8_t irq, uint8_t rst, uint8_t gpio = RADIOLIB_NC);
-  int16_t begin(float freq = 434.0, float bw = 125.0, uint8_t sf = 9, uint8_t cr = 7, uint8_t syncWord = SX126X_SYNC_WORD_PRIVATE, int8_t power = 10,uint8_t radioChip = RADIO_SX1276);
+  void setPins(SPIClass *spi,uint8_t cs, uint8_t irq, uint8_t rst, uint8_t gpio = GXMODULE_NC);
+  int16_t begin(float freq = 434.0, float bw = 125.0, uint8_t sf = 9, uint8_t cr = 7, uint8_t syncWord = 0x12, int8_t power = 10,uint8_t radioChip = RADIO_SX1276);
   int16_t readData(uint8_t* data, size_t len);
   float getRSSI();
-  float getSNR();
   int16_t startReceive();
   size_t getPacketLength();
   bool isReceiving();
@@ -40,34 +136,72 @@ public:
   int16_t transmit(uint8_t* data, size_t len);
   bool isRxMessage();
   int16_t switchFSK(float frequency);
-  int16_t switchLORA();
+  int16_t switchLORA(float frequency);
   float get_airlimit(void);
-  int16_t setFrequency(float frequency);
+  
+  //int16_t setFrequency(float frequency);
   uint8_t gain = 0; //0 --> auto-gain, 1--> highest gain; 6 --> lowest gain
   void run(); //has to be called cyclic
   void end();
 
 private:
-	float expectedAirTime_ms(int pktLen);
+  enum tActMode : uint8_t
+  {
+    UNKNOWN = 0,
+    LORA = 1,
+    FSK = 2,
+  };
+  float expectedAirTime_ms(int pktLen);
   void printReg(uint8_t reg);
   float rssiValue = 0.0;
   void invertba(byte* ba, int len);
-  Module *pModule = NULL;
-	SX1262 *pSx1262Radio = NULL;
-	SX1276 *pSx1276Radio = NULL;
+  int16_t sx1276setOpMode(uint8_t mode);
+  int16_t sx1276setRxBandwidth(float rxBw);
+  GxModule *pGxModule = NULL;
+  SPIClass *_spi = NULL;
   uint8_t radioType = RADIO_NULL;
   uint8_t _power = 10;
   float _freq = 868.2;
   float _bw;
+  uint8_t _cs;
+  uint8_t _irq;
+  uint8_t _rst;
+  uint8_t _gpio;
   uint8_t _sf;
   uint8_t _cr;
+  float _br = 100.0;
   uint8_t _syncWord;
   uint16_t _preambleLength = 8;
   bool _fskMode;
+  tActMode _actMode;
 	float sx_airtime = 0.0f;
   uint8_t rxCount = 0;
   bool bCalibrated = false;
   uint8_t prevIrqFlags;
+  int16_t sx1262_standby(uint8_t mode = 0x00);
+  uint32_t sx1262GetPacketStatus();
+  int16_t sx1262CalibrateImage();
+  void sx1262CheckAndClearErrors();
+  uint16_t sx1262GetDeviceErrors();
+  int16_t sx1262ClearDeviceErrors();
+  int16_t sx1262ClearIrqStatus();
+  int16_t sx1262ClearIrqFlags();
+  int16_t sx1262Transmit(uint8_t* data, size_t len, uint8_t addr = 0);
+  uint32_t sx1262GetTimeOnAir(size_t len);
+  int16_t sx1262SetFrequency(float freq);
+  uint8_t sx1262GetStatus();
+  int16_t sx1262GetStats();
+  float getSNR();
+  int16_t sx1262SetDioIrqParams(uint16_t irqMask, uint16_t dio1Mask, uint16_t dio2Mask = SX126X_IRQ_NONE, uint16_t dio3Mask = SX126X_IRQ_NONE);
+  int16_t sx1262SetBufferBaseAddress(uint8_t txBaseAddress = 0x00, uint8_t rxBaseAddress = 0x00);
+  int16_t sx1262ReadData(uint8_t* buffer, size_t len);
+  int16_t writeRegister(uint16_t addr, uint8_t* data, uint8_t numBytes);
+  int16_t readRegister(uint16_t addr, uint8_t* data, uint8_t numBytes);
+  int16_t SPIwriteCommand(uint8_t cmd, uint8_t* data, uint8_t numBytes, bool waitForBusy = true);
+  int16_t SPIwriteCommand(uint8_t* cmd, uint8_t cmdLen, uint8_t* data, uint8_t numBytes, bool waitForBusy = true);
+  int16_t SPIreadCommand(uint8_t cmd, uint8_t* data, uint8_t numBytes, bool waitForBusy = true);
+  int16_t SPIreadCommand(uint8_t* cmd, uint8_t cmdLen, uint8_t* data, uint8_t numBytes, bool waitForBusy = true);
+  int16_t SPItransfer(uint8_t* cmd, uint8_t cmdLen, bool write, uint8_t* dataOut, uint8_t* dataIn, uint8_t numBytes, bool waitForBusy, uint32_t timeout = 5000);
 
 
 };

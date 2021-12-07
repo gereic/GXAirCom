@@ -237,7 +237,7 @@ public:
   } weatherData;
 
   FanetLora(); //constructor
-  bool begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset, int dio0,long frequency,uint8_t outputPower,uint8_t radio);
+  bool begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int8_t reset, int8_t dio0, int8_t gpio,long frequency,uint8_t outputPower,uint8_t radio);
   void end(void);
   String getMyDevId(void);
   String getDevId(uint32_t devId);
@@ -316,9 +316,9 @@ private:
   bool newName = false;
   weatherData lastWeatherData;
   bool newWData = false;
-  void getTrackingInfo(String line,Frame *frm);
-  void getGroundTrackingInfo(uint8_t *buffer,uint16_t length);  
-  void getWeatherinfo(uint8_t *buffer,uint16_t length);  
+  int8_t getTrackingInfo(Frame *frm);
+  int8_t getGroundTrackingInfo(uint8_t *buffer,uint16_t length);  
+  int8_t getWeatherinfo(uint8_t *buffer,uint16_t length);  
   float getSpeedFromByte(uint8_t speed);
   void printAircraftType(aircraft_t type);
   String CreateFNFMSG(Frame *frm);

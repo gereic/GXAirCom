@@ -9,7 +9,9 @@ char msg_buf[500];
 uint8_t clientPages[MAXCLIENTS];
 
 String DevelopMenue = "<table style=\"width:100&#37;\"><tr><td style=\"width:100&#37;\"><button onClick=\"location.href='/developmenue.html'\">developer menue</button></td></tr></table><p></p><p></p>";
+String IGCMenue = "<table style=\"width:100&#37;\"><tr><td style=\"width:100&#37;\"><button onClick=\"location.href='/igclogs.html'\">Track Logs IGC</button></td></tr></table><p></p><p></p>";
 
+Logger logger;
 /***********************************************************
  * Functions
  */
@@ -195,6 +197,7 @@ void onWebSocketEvent(uint8_t client_num,
           webSocket.sendTXT(client_num, msg_buf);
 
           doc.clear();
+          doc["getGpsPos"] = command.getGpsPos;
           doc["gslat"] = setting.gs.lat;
           doc["gslon"] = setting.gs.lon;
           doc["gsalt"] = setting.gs.alt;
@@ -340,7 +343,9 @@ void onWebSocketEvent(uint8_t client_num,
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
 
-        }
+        }        
+      }else if (root.containsKey("getGpsPos")){
+        command.getGpsPos = doc["getGpsPos"].as<uint8_t>(); //get GPS Position
       }else if (root.containsKey("configGPS")){
         command.ConfigGPS = doc["configGPS"].as<uint8_t>(); //setup GPS
       }else if (root.containsKey("calibGyro")){
@@ -509,6 +514,45 @@ void onWebSocketEvent(uint8_t client_num,
   }
 }
 
+void SD_file_delete(AsyncWebServerRequest *request){
+  int paramsNr = request->params();
+  for(int i=0;i<paramsNr;i++){
+
+    AsyncWebParameter* p = request->getParam(i);
+ 
+     Serial.print("Param name: ");
+     Serial.println(p->name());
+ 
+     Serial.print("Param value: ");
+     Serial.println(p->value());
+
+    char igcf[40];
+    p->value().toCharArray(igcf,40);
+    logger.deleteFile(SD_MMC, igcf);
+ 
+  }
+}
+
+void SD_file_download(AsyncWebServerRequest *request){
+
+  int paramsNr = request->params();
+  for(int i=0;i<paramsNr;i++){
+
+    AsyncWebParameter* p = request->getParam(i);
+ 
+     Serial.print("Param name: ");
+     Serial.println(p->name());
+ 
+     Serial.print("Param value: ");
+     Serial.println(p->value());
+ 
+    File download = SD_MMC.open(p->value());
+    if (download) {
+      request->send(SD_MMC, p->value(), "text/text", true);
+    } 
+  }
+}
+
 String processor(const String& var){
   String sRet = "";
   //log_i("%s",var.c_str());
@@ -522,12 +566,40 @@ String processor(const String& var){
     return VERSION;
   }else if (var == "BUILD"){
     return String(compile_date);
+  }else if (var == "IGCFILELIST"){
+    // TODO list all igc files and create link to download
+    logger.listFiles(SD_MMC,"/");
+    sRet = "";
+    char* d = strtok(logger.igclist, ";");
+    sRet += "<table><thead><tr><th>Download</th><th>Delete</th></tr></thead><tbody>";
+    while (d != NULL ) {
+        //Serial.println (d);
+        if((!String(d).startsWith("/._") )){//&& !String(d).startsWith("/test"))){
+          sRet += "<tr><td><button class='button bsil'>";
+          sRet += "<a href='/download?igc="+String(d)+"' download>";
+          sRet += "<span style='color:black'>"+String(d)+"</span></a>";
+          sRet += "</button></td>";
+          sRet += "<td><button title='Delete' class='button bred'>";
+          sRet += "<a href='/deleteigc?igc="+String(d)+"' target='_blank'>";
+          sRet += " X </a></button></td>";
+          sRet += "</tr>";
+        }
+        d = strtok(NULL, ";");
+    }
+    sRet += "</tbody></table>";
+    return sRet;
   }else if (var == "DEVELOPER"){
     if (setting.Mode == MODE_DEVELOPER){
       return DevelopMenue;
     }else{
       return "";
     }
+  }else if (var == "IGCMENUE"){
+    #ifdef LOGGER
+      return IGCMenue;
+    #else
+      return "";
+    #endif    
   }else if (var == "NEIGHBOURS"){
     sRet = "";
     //sRet += "<option value=\"08AF88\">mytest 08AF88</option>\r\n";
@@ -658,9 +730,10 @@ static void handle_update_progress_cb(AsyncWebServerRequest *request, String fil
     //Serial.println(filename);
     //Serial.println("Update");
     //log_i("stopping standard-task");
-    //vTaskDelete(xHandleStandard); //delete standard-task
+    //vTaskDelete(xHandleStandard); //delete standard-task    
     WebUpdateRunning = true;
     delay(500); //wait 1 second until tasks are stopped
+    Serial.println("webupdate starting");      
     //Update.runAsync(true);
     if (filename.startsWith("spiffs")){
       if (!Update.begin(0x30000,U_SPIFFS)) {
@@ -727,6 +800,18 @@ void Web_setup(void){
   server.on("/neighbours.html", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, request->url(), "text/html",false,processor);
   });
+  // new igc track logger page
+  server.on("/igclogs.html", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(SPIFFS, "/igclogs.html", "text/html",false,processor);
+  });
+  server.on("/download", HTTP_GET, [](AsyncWebServerRequest *request){
+    SD_file_download(request);
+  });
+  server.on("/deleteigc", HTTP_GET, [](AsyncWebServerRequest *request){
+    SD_file_delete(request);
+    request->redirect("/igclogs.html");    
+  });
+
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, "/index.html", "text/html",false,processor);
   });
@@ -852,7 +937,26 @@ void sendPage(uint8_t pageNr){
         gmtime_r(&now, &timeinfo);
         strftime(strftime_buf, sizeof(strftime_buf), "%F %T", &timeinfo);   
         //log_i("actual time %s",strftime_buf);
-        doc["time"] = strftime_buf;
+        if (status.GPS_Time){
+          char gpstime[128];
+          char hh[4]; 
+          char mm[4];
+          char ss[4];
+          String(status.GPS_Time).substring(0,2).toCharArray(hh,4,0);
+          String(status.GPS_Time).substring(2,4).toCharArray(mm,4,0);
+          String(status.GPS_Time).substring(4,6).toCharArray(ss,4,0);
+          strcpy(gpstime,status.GPS_Date);
+          strcat(gpstime," - ");
+          strcat(gpstime,hh);
+          strcat(gpstime,":");
+          strcat(gpstime,mm);
+          strcat(gpstime,":");
+          strcat(gpstime,ss);
+
+          doc["time"] = gpstime;
+        }else{
+          doc["time"] = strftime_buf;
+        }
 
         doc["freeHeap"] = xPortGetFreeHeapSize();
         doc["fHeapMin"] = xPortGetMinimumEverFreeHeapSize();
@@ -1119,6 +1223,11 @@ void sendPage(uint8_t pageNr){
         mCommand.ConfigGPS = command.ConfigGPS;
         doc["configGPS"] = mCommand.ConfigGPS;
       }    
+      if (mCommand.getGpsPos != command.getGpsPos){
+        bSend = true;
+        mCommand.getGpsPos = command.getGpsPos;
+        doc["getGpsPos"] = mCommand.getGpsPos;
+      }      
       if (mCommand.CalibGyro != command.CalibGyro){
         bSend = true;
         mCommand.CalibGyro = command.CalibGyro;

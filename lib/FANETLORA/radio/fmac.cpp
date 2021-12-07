@@ -254,14 +254,14 @@ void FanetMac::frameReceived(int length)
 
 	/* build frame from stream */
 	Frame *frm;
-  if (_actMode != MODE_LORA){
-		char Buffer[500];
+  if (_actMode != MODE_LORA){			
+		char Buffer[500];	
 		int len = 0;
+		time_t tUnix;
+		time(&tUnix);
 		#if RX_DEBUG > 0
-      time_t tUnix;
       char strftime_buf[64];
-      struct tm timeinfo;
-      time(&tUnix);
+      struct tm timeinfo;      
 			len += sprintf(Buffer+len,"T=%d;",tUnix);
 			//log_i("l=%d,%s",len,Buffer);
       localtime_r(&tUnix, &timeinfo);
@@ -289,19 +289,56 @@ void FanetMac::frameReceived(int length)
 			//log_i("l=%d;%s",len,Buffer);
 		#endif
     if (length != 26){ //FSK-Frame is fixed 26Bytes long
+			#if RX_DEBUG > 0
+			log_e("rx size 26!=%d",length);
+			#endif
 			return;
 		}
-		frm = new Frame();
-
-    //invertba(rx_frame,26); //invert complete Frame
-
+    // The magic number is a 1-byte unencrypted value at the 4th byte.
+    uint8_t magic = rx_frame[3];
+    if (magic != 0x10 && magic != 0x20) {
+			#if RX_DEBUG > 0
+      log_e("%d Legacy: wrong message %d!=0x10!=0x20",millis(),magic);
+			#endif
+      return;			
+    }
 
     //check if Checksum is OK
   	uint16_t crc16 =  getLegacyCkSum(rx_frame,24);
     uint16_t crc16_2 = (uint16_t(rx_frame[24]) << 8) + uint16_t(rx_frame[25]);
     if (crc16 != crc16_2){
+			/*
+			time_t tUnix;
+      char strftime_buf[64];
+      struct tm timeinfo;
+      time(&tUnix);
+			len += sprintf(Buffer+len,"T=%d;",tUnix);
+			//log_i("l=%d,%s",len,Buffer);
+      localtime_r(&tUnix, &timeinfo);
+      strftime(strftime_buf, sizeof(strftime_buf), "%F %T", &timeinfo);   
+			len += sprintf(Buffer+len,"%s;",strftime_buf);
+			//log_i("l=%d,%s",len,Buffer);
+			if (_actMode == MODE_FSK_8684){
+				len += sprintf(Buffer+len,"F=868.4;");
+			}else{
+				len += sprintf(Buffer+len,"F=868.2;");
+			}
+			len += sprintf(Buffer+len,"Rx=%d;rssi=%d;", num_received, rssi);
+
+			for(int i=0; i<num_received; i++)
+			{
+				len += sprintf(Buffer+len,"%02X", rx_frame[i]);
+				if (i >= 26) break;
+				//if(i<num_received-1)
+				//	len += sprintf(Buffer+len,",");
+			}
+			len += sprintf(Buffer+len,"\n");
+			Serial.print(Buffer);
+			*/
+			//fmac.sendUdpData((uint8_t *)Buffer,len);
+			//log_i("%s",Buffer);
+			//log_i("l=%d;%s",len,Buffer);
       log_e("%d Legacy: wrong Checksum %04X!=%04X",millis(),crc16,crc16_2);
-      delete frm;
       return;
     }
     ufo_t air={0};
@@ -312,13 +349,14 @@ void FanetMac::frameReceived(int length)
     myAircraft.timestamp = now();
     //myAircraft.latitude =    
 		uint8_t newPacket[26];
-		uint32_t tNow = now();	
+		//uint32_t tNow = now();	
 		uint32_t tOffset = 0;	
 		bool bOk = false;
+		int8_t ret = 0;
 		for(int i = 0;i < 5; i++){
 			memcpy(&newPacket[0],&rx_frame[0],26);
-			decrypt_legacy(newPacket,tNow + tOffset);
-			int8_t ret = legacy_decode(newPacket,&myAircraft,&air);
+			decrypt_legacy(newPacket,tUnix + tOffset);
+			ret = legacy_decode(newPacket,&myAircraft,&air);
 			//if (legacy_decode(newPacket,&myAircraft,&air) == 0){
 			if (ret == 0){				
 				//float dist = distance(myAircraft.latitude,myAircraft.longitude,air.latitude,air.longitude, 'K');      
@@ -351,6 +389,7 @@ void FanetMac::frameReceived(int length)
 			}
 		}
 		if (bOk){
+			frm = new Frame();
 			frm->src.manufacturer = uint8_t(air.addr >> 16);
 			frm->src.id = uint16_t(air.addr & 0x0000FFFF);
 			frm->dest = MacAddr();
@@ -364,12 +403,14 @@ void FanetMac::frameReceived(int length)
 			}			
 			frm->AddressType = air.addr_type;
 			frm->legacyAircraftType = air.aircraft_type;
-			frm->timeStamp = tNow + tOffset;
+			frm->timeStamp = tUnix + tOffset;
 			
 			rxLegCount++;
 		}else{
 			//log_e("error decoding legacy");
-			delete frm;
+			#if RX_DEBUG > 0
+			log_e("error decoding legacy %d",ret);
+			#endif
 			return;
 		}
   }else{
@@ -411,7 +452,7 @@ void FanetMac::end()
 }
 
 
-bool FanetMac::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset, int dio0,Fapp &app,long frequency,uint8_t level,uint8_t radioChip)
+bool FanetMac::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int8_t reset, int8_t dio0,int8_t gpio,Fapp &app,long frequency,uint8_t level,uint8_t radioChip)
 {
 	myApp = &app;
 	setup_frequency=frequency;
@@ -425,7 +466,7 @@ bool FanetMac::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset, 
 
 	/* configure phy radio */
 	//SPI LoRa pins
-	//log_i("sck=%d,miso=%d,mosi=%d,ss=%d,reset=%d,dio0=%d",sck,miso,mosi,ss,reset,dio0);
+	log_i("sck=%d,miso=%d,mosi=%d,ss=%d,reset=%d,dio0=%d,gpio=%d",sck,miso,mosi,ss,reset,dio0,gpio);
 	SPI.begin(sck, miso, mosi, ss);
 	
 	//setup LoRa transceiver module
@@ -439,7 +480,7 @@ bool FanetMac::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset, 
 	//radio.setPins(&SPI,ss,33,reset,32);
 	
 	if (radioChip == RADIO_SX1262){
-		radio.setPins(&SPI,ss,dio0,reset,32);
+		radio.setPins(&SPI,ss,dio0,reset,gpio);
 	}else{
 		radio.setPins(&SPI,ss,dio0,reset);
 	}
@@ -477,9 +518,11 @@ bool FanetMac::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset, 
 }
 
 void FanetMac::switchMode(uint8_t mode,bool bStartReceive){
-  uint32_t tBegin = micros();
+  #if RX_DEBUG > 1
+	uint32_t tBegin = micros();
+	#endif
 	if (mode == MODE_LORA){
-		radio.switchLORA();
+		radio.switchLORA(868.2);
 	}else if (mode == MODE_FSK_8682){
 		radio.switchFSK(868.2);
 	}else if (mode == MODE_FSK_8684){
@@ -487,7 +530,7 @@ void FanetMac::switchMode(uint8_t mode,bool bStartReceive){
 	}
 	if (bStartReceive) radio.startReceive();	
 	_actMode = mode;
-	#if RX_DEBUG > 0
+	#if RX_DEBUG > 1
 	char Buffer[500];
 	int len = 0;
 	len += sprintf(Buffer+len,"%d switch to mode ",millis());
@@ -498,9 +541,9 @@ void FanetMac::switchMode(uint8_t mode,bool bStartReceive){
 	}else if (mode == MODE_FSK_8684){
 		len += sprintf(Buffer+len,"FSK868.4 ");
 	}
-	len += sprintf(Buffer+len,"in %dus pps=%d\n",micros()-tBegin,millis() - _ppsMillis);
+	len += sprintf(Buffer+len,"in %dus pps=%d\n",int(micros()-tBegin),int(millis() - _ppsMillis));
 	//log_i("%d switch to mode %d in %dus pps=%d",millis(),mode,micros()-tBegin,_ppsMillis);
-	//Serial.print(Buffer);
+	Serial.print(Buffer);
 	#endif
 }
 
@@ -620,7 +663,7 @@ void FanetMac::stateWrapper()
 			}
 		}
 	}
-	if (fmac._actMode == MODE_LORA){  	
+	if ((fmac._actMode == MODE_LORA) && (fmac._RfMode.bits.FntTx)){  	
     fmac.handleTx();
   }
 	fmac.handleTxLegacy();	

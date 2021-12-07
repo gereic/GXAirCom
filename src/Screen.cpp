@@ -18,7 +18,8 @@ bool Screen::begin(uint8_t type,int8_t cs,int8_t dc,int8_t rst,int8_t busy,int8_
   bInit = false;
   log_i("starting E-Ink type=%d;cs=%d,dc=%d,rst=%d,busy=%d,clk=%d,din=%d",type,cs,dc,rst,busy,clk,din);
   if (type == 1){
-    GxEPD2_BW<GxEPD2_290_T94, GxEPD2_290_T94::HEIGHT> *e_ink = new GxEPD2_BW<GxEPD2_290_T94, GxEPD2_290_T94::HEIGHT>(GxEPD2_290_T94(cs, dc, rst, busy));
+    //GxEPD2_BW<GxEPD2_290_T94, GxEPD2_290_T94::HEIGHT> *e_ink = new GxEPD2_BW<GxEPD2_290_T94, GxEPD2_290_T94::HEIGHT>(GxEPD2_290_T94(cs, dc, rst, busy));
+    GxEPD2_BW<GxEPD2_290_T94_V2, GxEPD2_290_T94_V2::HEIGHT> *e_ink = new GxEPD2_BW<GxEPD2_290_T94_V2, GxEPD2_290_T94_V2::HEIGHT>(GxEPD2_290_T94_V2(cs, dc, rst, busy));
     e_ink->epd2.init(clk, din, 0, true, false); // define or replace SW_SCK, SW_MOSI)
     e_ink->init(0);
     pEInk = e_ink;

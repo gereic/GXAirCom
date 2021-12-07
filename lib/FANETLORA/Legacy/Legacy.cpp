@@ -371,7 +371,10 @@ size_t encrypt_legacy(void *legacy_pkt, long timestamp)
 
 size_t decrypt_legacy(void *legacy_pkt, long timestamp)
 {
-	legacy_packet_t *pkt = (legacy_packet_t *) legacy_pkt;
+	#if RX_DEBUG > 0
+    log_i("decrypt legacy T=%d",timestamp);
+  #endif
+  legacy_packet_t *pkt = (legacy_packet_t *) legacy_pkt;
     uint32_t key[4];
     make_key(key, timestamp, (pkt->addr << 8) & 0xffffff);
 #if 0

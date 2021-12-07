@@ -33,10 +33,13 @@
 #include "epd3c/GxEPD2_154c.h"
 #include "epd3c/GxEPD2_154_Z90c.h"
 #include "epd3c/GxEPD2_213c.h"
+#include "epd3c/GxEPD2_213_Z19c.h"
 #include "epd3c/GxEPD2_290c.h"
+#include "epd3c/GxEPD2_290_Z13c.h"
 #include "epd3c/GxEPD2_290_C90c.h"
 #include "epd3c/GxEPD2_270c.h"
 #include "epd3c/GxEPD2_420c.h"
+#include "epd3c/GxEPD2_420c_Z21.h"
 #include "epd3c/GxEPD2_583c.h"
 #include "epd3c/GxEPD2_565c.h"
 #include "epd3c/GxEPD2_750c.h"
@@ -126,7 +129,7 @@ class GxEPD2_3C : public GxEPD2_GFX_BASE_CLASS
     // init method with additional parameters:
     // initial false for re-init after processor deep sleep wake up, if display power supply was kept
     // only relevant for b/w displays with fast partial update
-    // reset_duration = 20 is default; a value of 2 may help with "clever" reset circuit of newer boards from Waveshare 
+    // reset_duration = 20 is default; a value of 2 may help with "clever" reset circuit of newer boards from Waveshare
     // pulldown_rst_mode true for alternate RST handling to avoid feeding 5V through RST pin
     void init(uint32_t serial_diag_bitrate, bool initial, uint16_t reset_duration = 20, bool pulldown_rst_mode = false)
     {
@@ -173,6 +176,18 @@ class GxEPD2_3C : public GxEPD2_GFX_BASE_CLASS
       _rotate(x, y, w, h);
       epd2.writeImagePart(_black_buffer, _color_buffer, x, y, WIDTH, _page_height, x, y, w, h);
       epd2.refresh(x, y, w, h);
+    }
+
+    void displayWindowBW(uint16_t x, uint16_t y, uint16_t w, uint16_t h)
+    {
+      x = gx_uint16_min(x, width());
+      y = gx_uint16_min(y, height());
+      w = gx_uint16_min(w, width() - x);
+      h = gx_uint16_min(h, height() - y);
+      _rotate(x, y, w, h);
+      epd2.writeImagePartNew(_black_buffer, x, y, WIDTH, _page_height, x, y, w, h);
+      epd2.refresh_bw(x, y, w, h);
+      epd2.writeImagePartPrevious(_black_buffer, x, y, WIDTH, _page_height, x, y, w, h);
     }
 
     void setFullWindow()
@@ -270,6 +285,85 @@ class GxEPD2_3C : public GxEPD2_GFX_BASE_CLASS
             }
             else epd2.refresh(true); // partial update after second phase
           } else epd2.refresh(false); // full update after only phase
+          epd2.powerOff();
+          return false;
+        }
+        fillScreen(GxEPD_WHITE);
+        return true;
+      }
+    }
+
+    bool nextPageBW()
+    {
+      if (1 == _pages)
+      {
+        if (_using_partial_mode)
+        {
+          epd2.writeImageNew(_black_buffer, _pw_x, _pw_y, _pw_w, _pw_h);
+          epd2.refresh_bw(_pw_x, _pw_y, _pw_w, _pw_h);
+          epd2.writeImagePrevious(_black_buffer, _pw_x, _pw_y, _pw_w, _pw_h);
+        }
+        else // full update
+        {
+          epd2.writeImage(_black_buffer, 0, 0, WIDTH, HEIGHT);
+          epd2.refresh(false);
+          epd2.writeImagePrevious(_black_buffer, 0, 0, WIDTH, HEIGHT);
+          epd2.powerOff();
+        }
+        return false;
+      }
+      uint16_t page_ys = _current_page * _page_height;
+      if (_using_partial_mode)
+      {
+        //Serial.print("  nextPage("); Serial.print(_pw_x); Serial.print(", "); Serial.print(_pw_y); Serial.print(", ");
+        //Serial.print(_pw_w); Serial.print(", "); Serial.print(_pw_h); Serial.print(") P"); Serial.println(_current_page);
+        uint16_t page_ye = _current_page < (_pages - 1) ? page_ys + _page_height : HEIGHT;
+        uint16_t dest_ys = _pw_y + page_ys; // transposed
+        uint16_t dest_ye = gx_uint16_min(_pw_y + _pw_h, _pw_y + page_ye);
+        if (dest_ye > dest_ys)
+        {
+          //Serial.print("writeImage("); Serial.print(_pw_x); Serial.print(", "); Serial.print(dest_ys); Serial.print(", ");
+          //Serial.print(_pw_w); Serial.print(", "); Serial.print(dest_ye - dest_ys); Serial.println(")");
+          if (!_second_phase) epd2.writeImageNew(_black_buffer, _pw_x, dest_ys, _pw_w, dest_ye - dest_ys);
+          else epd2.writeImagePrevious(_black_buffer, _pw_x, dest_ys, _pw_w, dest_ye - dest_ys);
+        }
+        else
+        {
+          //Serial.print("writeImage("); Serial.print(_pw_x); Serial.print(", "); Serial.print(dest_ys); Serial.print(", ");
+          //Serial.print(_pw_w); Serial.print(", "); Serial.print(dest_ye - dest_ys); Serial.print(") skipped ");
+          //Serial.print(dest_ys); Serial.print(".."); Serial.println(dest_ye);
+        }
+        _current_page++;
+        if (_current_page == _pages)
+        {
+          _current_page = 0;
+          if (!_second_phase)
+          {
+            epd2.refresh_bw(_pw_x, _pw_y, _pw_w, _pw_h);
+            _second_phase = true;
+            fillScreen(GxEPD_WHITE);
+            return true;
+          }
+          return false;
+        }
+        fillScreen(GxEPD_WHITE);
+        return true;
+      }
+      else // full update
+      {
+        if (!_second_phase) epd2.writeImage(_black_buffer, 0, page_ys, WIDTH, gx_uint16_min(_page_height, HEIGHT - page_ys));
+        else epd2.writeImagePrevious(_black_buffer, 0, page_ys, WIDTH, gx_uint16_min(_page_height, HEIGHT - page_ys));
+        _current_page++;
+        if (_current_page == _pages)
+        {
+          _current_page = 0;
+          if (!_second_phase)
+          {
+            epd2.refresh(false); // full update after first phase
+            _second_phase = true;
+            fillScreen(GxEPD_WHITE);
+            return true;
+          }
           epd2.powerOff();
           return false;
         }
@@ -398,7 +492,7 @@ class GxEPD2_3C : public GxEPD2_GFX_BASE_CLASS
       epd2.drawImage(bitmap, x, y, w, h, invert, mirror_y, pgm);
     }
     void drawImagePart(const uint8_t bitmap[], int16_t x_part, int16_t y_part, int16_t w_bitmap, int16_t h_bitmap,
-                        int16_t x, int16_t y, int16_t w, int16_t h, bool invert = false, bool mirror_y = false, bool pgm = false)
+                       int16_t x, int16_t y, int16_t w, int16_t h, bool invert = false, bool mirror_y = false, bool pgm = false)
     {
       epd2.drawImagePart(bitmap, x_part, y_part, w_bitmap, h_bitmap, x, y, w, h, invert, mirror_y, pgm);
     }
@@ -411,12 +505,12 @@ class GxEPD2_3C : public GxEPD2_GFX_BASE_CLASS
       epd2.drawImage(black, color, x, y, w, h, false, false, false);
     }
     void drawImagePart(const uint8_t* black, const uint8_t* color, int16_t x_part, int16_t y_part, int16_t w_bitmap, int16_t h_bitmap,
-                        int16_t x, int16_t y, int16_t w, int16_t h, bool invert, bool mirror_y, bool pgm)
+                       int16_t x, int16_t y, int16_t w, int16_t h, bool invert, bool mirror_y, bool pgm)
     {
       epd2.drawImagePart(black, color, x_part, y_part, w_bitmap, h_bitmap, x, y, w, h, invert, mirror_y, pgm);
     }
     void drawImagePart(const uint8_t* black, const uint8_t* color, int16_t x_part, int16_t y_part, int16_t w_bitmap, int16_t h_bitmap,
-                        int16_t x, int16_t y, int16_t w, int16_t h)
+                       int16_t x, int16_t y, int16_t w, int16_t h)
     {
       epd2.drawImagePart(black, color, x_part, y_part, w_bitmap, h_bitmap, x, y, w, h, false, false, false);
     }

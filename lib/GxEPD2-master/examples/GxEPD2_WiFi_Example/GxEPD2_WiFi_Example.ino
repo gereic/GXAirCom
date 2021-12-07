@@ -15,27 +15,9 @@
 
 // Supporting Arduino Forum Topics:
 // Waveshare e-paper displays with SPI: http://forum.arduino.cc/index.php?topic=487007.0
-// Good Display ePaper for Arduino : https://forum.arduino.cc/index.php?topic=436411.0
+// Good Display ePaper for Arduino: https://forum.arduino.cc/index.php?topic=436411.0
 
-// mapping suggestion from Waveshare SPI e-Paper to Wemos D1 mini
-// BUSY -> D2, RST -> D4, DC -> D3, CS -> D8, CLK -> D5, DIN -> D7, GND -> GND, 3.3V -> 3.3V
-
-// mapping suggestion from Waveshare SPI e-Paper to generic ESP8266
-// BUSY -> GPIO4, RST -> GPIO2, DC -> GPIO0, CS -> GPIO15, CLK -> GPIO14, DIN -> GPIO13, GND -> GND, 3.3V -> 3.3V
-
-// mapping of Waveshare e-Paper ESP8266 Driver Board
-// BUSY -> GPIO16, RST -> GPIO5, DC -> GPIO4, CS -> GPIO15, CLK -> GPIO14, DIN -> GPIO13, GND -> GND, 3.3V -> 3.3V
-
-// mapping suggestion for ESP32, e.g. LOLIN32, see .../variants/.../pins_arduino.h for your board
-// NOTE: there are variants with different pins for SPI ! CHECK SPI PINS OF YOUR BOARD
-// BUSY -> 4, RST -> 16, DC -> 17, CS -> SS(5), CLK -> SCK(18), DIN -> MOSI(23), GND -> GND, 3.3V -> 3.3V
-
-// new mapping suggestion for STM32F1, e.g. STM32F103C8T6 "BluePill"
-// BUSY -> A1, RST -> A2, DC -> A3, CS-> A4, CLK -> A5, DIN -> A7
-
-// mapping suggestion for AVR, UNO, NANO etc.
-// BUSY -> 7, RST -> 9, DC -> 8, CS-> 10, CLK -> 13, DIN -> 11
-//
+// see GxEPD2_wiring_examples.h for wiring suggestions and examples
 
 // base class GxEPD2_GFX can be used to pass references or pointers to the display instance as parameter, uses ~1.2k more code
 // enable or disable GxEPD2_GFX base class
@@ -48,121 +30,121 @@
 
 #include <GxEPD2_BW.h>
 #include <GxEPD2_3C.h>
+#include <GxEPD2_7C.h>
+
+// select the display class (only one), matching the kind of display panel
+#define GxEPD2_DISPLAY_CLASS GxEPD2_BW
+//#define GxEPD2_DISPLAY_CLASS GxEPD2_3C
+//#define GxEPD2_DISPLAY_CLASS GxEPD2_7C
+
+/// select the display driver class (only one) for your  panel
+//#define GxEPD2_DRIVER_CLASS GxEPD2_154     // GDEP015OC1  200x200, no longer available
+//#define GxEPD2_DRIVER_CLASS GxEPD2_154_D67 // GDEH0154D67 200x200
+//#define GxEPD2_DRIVER_CLASS GxEPD2_154_T8  // GDEW0154T8  152x152
+//#define GxEPD2_DRIVER_CLASS GxEPD2_154_M09 // GDEW0154M09 200x200
+//#define GxEPD2_DRIVER_CLASS GxEPD2_154_M10 // GDEW0154M10 152x152
+//#define GxEPD2_DRIVER_CLASS GxEPD2_213     // GDE0213B1   128x250, phased out
+//#define GxEPD2_DRIVER_CLASS GxEPD2_213_B72 // GDEH0213B72 128x250
+//#define GxEPD2_DRIVER_CLASS GxEPD2_213_B73 // GDEH0213B73 128x250
+//#define GxEPD2_DRIVER_CLASS GxEPD2_213_flex // GDEW0213I5F 104x212
+//#define GxEPD2_DRIVER_CLASS GxEPD2_213_M21 // GDEW0213M21 104x212
+//#define GxEPD2_DRIVER_CLASS GxEPD2_213_T5D // GDEW0213T5D 104x212
+//#define GxEPD2_DRIVER_CLASS GxEPD2_290     // GDEH029A1   128x296
+//#define GxEPD2_DRIVER_CLASS GxEPD2_290_T5  // GDEW029T5   128x296
+//#define GxEPD2_DRIVER_CLASS GxEPD2_290_T5D // GDEW029T5D  128x296
+//#define GxEPD2_DRIVER_CLASS GxEPD2_290_T94 // GDEM029T94  128x296
+//#define GxEPD2_DRIVER_CLASS GxEPD2_290_M06 // GDEW029M06  128x296
+//#define GxEPD2_DRIVER_CLASS GxEPD2_260     // GDEW026T0   152x296
+//#define GxEPD2_DRIVER_CLASS GxEPD2_260_M01 // GDEW026M01  152x296
+//#define GxEPD2_DRIVER_CLASS GxEPD2_270     // GDEW027W3   176x264
+//#define GxEPD2_DRIVER_CLASS GxEPD2_371     // GDEW0371W7  240x416
+//#define GxEPD2_DRIVER_CLASS GxEPD2_420     // GDEW042T2   400x300
+//#define GxEPD2_DRIVER_CLASS GxEPD2_420_M01 // GDEW042M01  400x300
+//#define GxEPD2_DRIVER_CLASS GxEPD2_583     // GDEW0583T7  600x448
+//#define GxEPD2_DRIVER_CLASS GxEPD2_583_T8  // GDEW0583T8  648x480
+//#define GxEPD2_DRIVER_CLASS GxEPD2_750     // GDEW075T8   640x384
+//#define GxEPD2_DRIVER_CLASS GxEPD2_750_T7  // GDEW075T7   800x480
+//#define GxEPD2_DRIVER_CLASS GxEPD2_1160_T91 // GDEH116T91 960x640, SSD1677
+// 3-color e-papers
+//#define GxEPD2_DRIVER_CLASS GxEPD2_154c     // GDEW0154Z04 200x200, no longer available
+//#define GxEPD2_DRIVER_CLASS GxEPD2_154_Z90c // GDEH0154Z90 200x200
+//#define GxEPD2_DRIVER_CLASS GxEPD2_213c     // GDEW0213Z16 104x212
+//#define GxEPD2_DRIVER_CLASS GxEPD2_213_Z19c // GDEW0213Z19 104x212
+//#define GxEPD2_DRIVER_CLASS GxEPD2_290c     // GDEW029Z10  128x296
+//#define GxEPD2_DRIVER_CLASS GxEPD2_290_Z13c // GDEH029Z13  128x296
+//#define GxEPD2_DRIVER_CLASS GxEPD2_290_C90c // GDEM029C90  128x296
+//#define GxEPD2_DRIVER_CLASS GxEPD2_270c     // GDEW027C44  176x264
+//#define GxEPD2_DRIVER_CLASS GxEPD2_420c     // GDEW042Z15  400x300
+//#define GxEPD2_DRIVER_CLASS GxEPD2_583c     // GDEW0583Z21 600x448
+//#define GxEPD2_DRIVER_CLASS GxEPD2_750c     // GDEW075Z09  600x384
+//#define GxEPD2_DRIVER_CLASS GxEPD2_750c_Z08 // GDEW075Z08  800x480
+//#define GxEPD2_DRIVER_CLASS GxEPD2_750c_Z90 // GDEH075Z90  880x528
+//#define GxEPD2_DRIVER_CLASS GxEPD2_1248     // GDEW1248T3  1303x984
+// 7-color e-paper
+//#define GxEPD2_DRIVER_CLASS GxEPD2_565c // Waveshare 5.65" 7-color (3C graphics)
+// grey levels parallel IF e-papers on Waveshare e-Paper IT8951 Driver HAT
+//#define GxEPD2_DRIVER_CLASS GxEPD2_it60           // ED060SCT 800x600
+//#define GxEPD2_DRIVER_CLASS GxEPD2_it60_1448x1072 // ED060KC1 1448x1072
+
+// SS is usually used for CS. define here for easy change
+#ifndef EPD_CS
+#define EPD_CS SS
+#endif
+
+// somehow there should be an easier way to do this
+#define GxEPD2_BW_IS_GxEPD2_BW true
+#define GxEPD2_3C_IS_GxEPD2_3C true
+#define GxEPD2_7C_IS_GxEPD2_7C true
+#define GxEPD2_1248_IS_GxEPD2_1248 true
+#define IS_GxEPD(c, x) (c##x)
+#define IS_GxEPD2_BW(x) IS_GxEPD(GxEPD2_BW_IS_, x)
+#define IS_GxEPD2_3C(x) IS_GxEPD(GxEPD2_3C_IS_, x)
+#define IS_GxEPD2_7C(x) IS_GxEPD(GxEPD2_7C_IS_, x)
+#define IS_GxEPD2_1248(x) IS_GxEPD(GxEPD2_1248_IS_, x)
 
 #if defined (ESP8266)
-// select one and adapt to your mapping, can use full buffer size (full HEIGHT)
-//GxEPD2_BW<GxEPD2_154, GxEPD2_154::HEIGHT> display(GxEPD2_154(/*CS=D8*/ SS, /*DC=D3*/ 0, /*RST=D4*/ 2, /*BUSY=D2*/ 4)); // GDEP015OC1 no longer available
-//GxEPD2_BW<GxEPD2_154_D67, GxEPD2_154_D67::HEIGHT> display(GxEPD2_154_D67(/*CS=D8*/ SS, /*DC=D3*/ 0, /*RST=D4*/ 2, /*BUSY=D2*/ 4)); // GDEH0154D67
-//GxEPD2_BW<GxEPD2_154_T8, GxEPD2_154_T8::HEIGHT> display(GxEPD2_154_T8(/*CS=D8*/ SS, /*DC=D3*/ 0, /*RST=D4*/ 2, /*BUSY=D2*/ 4)); // GDEW0154T8 152x152
-//GxEPD2_BW<GxEPD2_154_M09, GxEPD2_154_M09::HEIGHT> display(GxEPD2_154_M09(/*CS=D8*/ SS, /*DC=D3*/ 0, /*RST=D4*/ 2, /*BUSY=D2*/ 4)); // GDEW0154M09 200x200
-//GxEPD2_BW<GxEPD2_154_M10, GxEPD2_154_M10::HEIGHT> display(GxEPD2_154_M10(/*CS=D8*/ SS, /*DC=D3*/ 0, /*RST=D4*/ 2, /*BUSY=D2*/ 4)); // GDEW0154M10 152x152
-//GxEPD2_BW<GxEPD2_213, GxEPD2_213::HEIGHT> display(GxEPD2_213(/*CS=D8*/ SS, /*DC=D3*/ 0, /*RST=D4*/ 2, /*BUSY=D2*/ 4)); // GDE0213B1, phased out
-//GxEPD2_BW<GxEPD2_213_B72, GxEPD2_213_B72::HEIGHT> display(GxEPD2_213_B72(/*CS=D8*/ SS, /*DC=D3*/ 0, /*RST=D4*/ 2, /*BUSY=D2*/ 4)); // GDEH0213B72
-//GxEPD2_BW<GxEPD2_213_B73, GxEPD2_213_B73::HEIGHT> display(GxEPD2_213_B73(/*CS=D8*/ SS, /*DC=D3*/ 0, /*RST=D4*/ 2, /*BUSY=D2*/ 4)); // GDEH0213B73
-//GxEPD2_BW<GxEPD2_213_flex, GxEPD2_213_flex::HEIGHT> display(GxEPD2_213_flex(/*CS=D8*/ SS, /*DC=D3*/ 0, /*RST=D4*/ 2, /*BUSY=D2*/ 4)); // GDEW0213I5F
-//GxEPD2_BW<GxEPD2_290, GxEPD2_290::HEIGHT> display(GxEPD2_290(/*CS=D8*/ SS, /*DC=D3*/ 0, /*RST=D4*/ 2, /*BUSY=D2*/ 4));
-//GxEPD2_BW<GxEPD2_290_T5, GxEPD2_290_T5::HEIGHT> display(GxEPD2_290_T5(/*CS=D8*/ SS, /*DC=D3*/ 0, /*RST=D4*/ 2, /*BUSY=D2*/ 4)); // GDEW029T5
-//GxEPD2_BW<GxEPD2_260, GxEPD2_260::HEIGHT> display(GxEPD2_260(/*CS=D8*/ SS, /*DC=D3*/ 0, /*RST=D4*/ 2, /*BUSY=D2*/ 4));
-//GxEPD2_BW<GxEPD2_270, GxEPD2_270::HEIGHT> display(GxEPD2_270(/*CS=D8*/ SS, /*DC=D3*/ 0, /*RST=D4*/ 2, /*BUSY=D2*/ 4));
-//GxEPD2_BW<GxEPD2_371, GxEPD2_371::HEIGHT> display(GxEPD2_371(/*CS=D8*/ SS, /*DC=D3*/ 0, /*RST=D4*/ 2, /*BUSY=D2*/ 4));
-//GxEPD2_BW<GxEPD2_420, GxEPD2_420::HEIGHT> display(GxEPD2_420(/*CS=D8*/ SS, /*DC=D3*/ 0, /*RST=D4*/ 2, /*BUSY=D2*/ 4));
-// can use only half buffer size
-//GxEPD2_BW < GxEPD2_583, GxEPD2_583::HEIGHT / 2 > display(GxEPD2_583(/*CS=D8*/ SS, /*DC=D3*/ 0, /*RST=D4*/ 2, /*BUSY=D2*/ 4));
-//GxEPD2_BW < GxEPD2_583_T8, GxEPD2_583_T8::HEIGHT / 2 > display(GxEPD2_583_T8(/*CS=D8*/ SS, /*DC=D3*/ 0, /*RST=D4*/ 2, /*BUSY=D2*/ 4));
-//GxEPD2_BW < GxEPD2_750, GxEPD2_750::HEIGHT / 2 > display(GxEPD2_750(/*CS=D8*/ SS, /*DC=D3*/ 0, /*RST=D4*/ 2, /*BUSY=D2*/ 4));
-//GxEPD2_BW < GxEPD2_750_T7, GxEPD2_750_T7::HEIGHT / 2 > display(GxEPD2_750_T7(/*CS=D8*/ SS, /*DC=D3*/ 0, /*RST=D4*/ 2, /*BUSY=D2*/ 4)); // GDEW075T7 800x480
-// 3-color e-papers
-//GxEPD2_3C<GxEPD2_154c, GxEPD2_154c::HEIGHT> display(GxEPD2_154c(/*CS=D8*/ SS, /*DC=D3*/ 0, /*RST=D4*/ 2, /*BUSY=D2*/ 4));
-//GxEPD2_3C<GxEPD2_213c, GxEPD2_213c::HEIGHT> display(GxEPD2_213c(/*CS=D8*/ SS, /*DC=D3*/ 0, /*RST=D4*/ 2, /*BUSY=D2*/ 4));
-//GxEPD2_3C<GxEPD2_290c, GxEPD2_290c::HEIGHT> display(GxEPD2_290c(/*CS=D8*/ SS, /*DC=D3*/ 0, /*RST=D4*/ 2, /*BUSY=D2*/ 4));
-//GxEPD2_3C<GxEPD2_270c, GxEPD2_270c::HEIGHT> display(GxEPD2_270c(/*CS=D8*/ SS, /*DC=D3*/ 0, /*RST=D4*/ 2, /*BUSY=D2*/ 4));
-// can use only half buffer size
-//GxEPD2_3C<GxEPD2_420c, GxEPD2_420c::HEIGHT / 2> display(GxEPD2_420c(/*CS=D8*/ SS, /*DC=D3*/ 0, /*RST=D4*/ 2, /*BUSY=D2*/ 4));
-// can use only quarter buffer size
-//GxEPD2_3C < GxEPD2_583c, GxEPD2_583c::HEIGHT / 4 > display(GxEPD2_583c(/*CS=D8*/ SS, /*DC=D3*/ 0, /*RST=D4*/ 2, /*BUSY=D2*/ 4));
-//GxEPD2_3C<GxEPD2_750c, GxEPD2_750c::HEIGHT / 4> display(GxEPD2_750c(/*CS=D8*/ SS, /*DC=D3*/ 0, /*RST=D4*/ 2, /*BUSY=D2*/ 4));
-//GxEPD2_3C < GxEPD2_750c_Z08, GxEPD2_750c_Z08::HEIGHT / 4 > display(GxEPD2_750c_Z08(/*CS=D8*/ SS, /*DC=D3*/ 0, /*RST=D4*/ 2, /*BUSY=D2*/ 4)); // GDEW075Z08 800x480
-// grey levels parallel IF e-papers on Waveshare e-Paper IT8951 Driver HAT
-// HRDY -> 4, RST -> 2, CS -> SS(15), SCK -> SCK(14), MOSI -> MOSI(D7(13)), MISO -> MISO(D6(12)), GND -> GND, 5V -> 5V
-// note: 5V supply needs to be exact and strong; 5V pin of USB powered Wemos D1 mini doesn't work!
-//GxEPD2_BW<GxEPD2_it60, GxEPD2_it60::HEIGHT / 8> display(GxEPD2_it60(/*CS=5*/ SS, /*DC=*/ 0, /*RST=*/ 2, /*BUSY=*/ 4));
-
-// ***** for mapping of Waveshare e-Paper ESP8266 Driver Board *****
-// select one , can use full buffer size (full HEIGHT)
-//GxEPD2_BW<GxEPD2_154, GxEPD2_154::HEIGHT> display(GxEPD2_154(/*CS=15*/ SS, /*DC=4*/ 4, /*RST=5*/ 5, /*BUSY=16*/ 16)); // GDEP015OC1 no longer available
-//GxEPD2_BW<GxEPD2_154_D67, GxEPD2_154_D67::HEIGHT> display(GxEPD2_154_D67(/*CS=15*/ SS, /*DC=4*/ 4, /*RST=5*/ 5, /*BUSY=16*/ 16)); // GDEH0154D67
-//GxEPD2_BW<GxEPD2_154_T8, GxEPD2_154_T8::HEIGHT> display(GxEPD2_154_T8(/*CS=15*/ SS, /*DC=4*/ 4, /*RST=5*/ 5, /*BUSY=16*/ 16)); // GDEW0154T8 152x152
-//GxEPD2_BW<GxEPD2_154_M09, GxEPD2_154_M09::HEIGHT> display(GxEPD2_154_M09(/*CS=15*/ SS, /*DC=4*/ 4, /*RST=5*/ 5, /*BUSY=16*/ 16)); // GDEW0154M09 200x200
-//GxEPD2_BW<GxEPD2_154_M10, GxEPD2_154_M10::HEIGHT> display(GxEPD2_154_M10(/*CS=15*/ SS, /*DC=4*/ 4, /*RST=5*/ 5, /*BUSY=16*/ 16)); // GDEW0154M10 152x152
-//GxEPD2_BW<GxEPD2_213, GxEPD2_213::HEIGHT> display(GxEPD2_213(/*CS=15*/ SS, /*DC=4*/ 4, /*RST=5*/ 5, /*BUSY=16*/ 16)); // GDE0213B1, phased out
-//GxEPD2_BW<GxEPD2_213_B72, GxEPD2_213_B72::HEIGHT> display(GxEPD2_213_B72(/*CS=15*/ SS, /*DC=4*/ 4, /*RST=5*/ 5, /*BUSY=16*/ 16)); // GDEH0213B72
-//GxEPD2_BW<GxEPD2_213_B73, GxEPD2_213_B73::HEIGHT> display(GxEPD2_213_B73(/*CS=15*/ SS, /*DC=4*/ 4, /*RST=5*/ 5, /*BUSY=16*/ 16)); // GDEH0213B73
-//GxEPD2_BW<GxEPD2_213_flex, GxEPD2_213_flex::HEIGHT> display(GxEPD2_213_flex(/*CS=15*/ SS, /*DC=4*/ 4, /*RST=5*/ 5, /*BUSY=16*/ 16)); // GDEW0213I5F
-//GxEPD2_BW<GxEPD2_290, GxEPD2_290::HEIGHT> display(GxEPD2_290(/*CS=15*/ SS, /*DC=4*/ 4, /*RST=5*/ 5, /*BUSY=16*/ 16));
-//GxEPD2_BW<GxEPD2_290_T5, GxEPD2_290_T5::HEIGHT> display(GxEPD2_290_T5(/*CS=15*/ SS, /*DC=4*/ 4, /*RST=5*/ 5, /*BUSY=16*/ 16)); // GDEW029T5
-//GxEPD2_BW<GxEPD2_260, GxEPD2_260::HEIGHT> display(GxEPD2_260(/*CS=15*/ SS, /*DC=4*/ 4, /*RST=5*/ 5, /*BUSY=16*/ 16));
-//GxEPD2_BW<GxEPD2_270, GxEPD2_270::HEIGHT> display(GxEPD2_270(/*CS=15*/ SS, /*DC=4*/ 4, /*RST=5*/ 5, /*BUSY=16*/ 16));
-//GxEPD2_BW<GxEPD2_371, GxEPD2_371::HEIGHT> display(GxEPD2_371(/*CS=15*/ SS, /*DC=4*/ 4, /*RST=5*/ 5, /*BUSY=16*/ 16));
-//GxEPD2_BW<GxEPD2_420, GxEPD2_420::HEIGHT> display(GxEPD2_420(/*CS=15*/ SS, /*DC=4*/ 4, /*RST=5*/ 5, /*BUSY=16*/ 16));
-// can use only half buffer size
-//GxEPD2_BW < GxEPD2_583, GxEPD2_583::HEIGHT / 2 > display(GxEPD2_583(/*CS=15*/ SS, /*DC=4*/ 4, /*RST=5*/ 5, /*BUSY=16*/ 16));
-//GxEPD2_BW < GxEPD2_583_T8, GxEPD2_583_T8::HEIGHT / 2 > display(GxEPD2_583_T8(/*CS=15*/ SS, /*DC=4*/ 4, /*RST=5*/ 5, /*BUSY=16*/ 16));
-//GxEPD2_BW < GxEPD2_750, GxEPD2_750::HEIGHT / 2 > display(GxEPD2_750(/*CS=15*/ SS, /*DC=4*/ 4, /*RST=5*/ 5, /*BUSY=16*/ 16));
-//GxEPD2_BW < GxEPD2_750_T7, GxEPD2_750_T7::HEIGHT / 2 > display(GxEPD2_750_T7(/*CS=15*/ SS, /*DC=4*/ 4, /*RST=5*/ 5, /*BUSY=16*/ 16)); // GDEW075T7 800x480
-// 3-color e-papers
-//GxEPD2_3C<GxEPD2_154c, GxEPD2_154c::HEIGHT> display(GxEPD2_154c(/*CS=15*/ SS, /*DC=4*/ 4, /*RST=5*/ 5, /*BUSY=16*/ 16));
-//GxEPD2_3C<GxEPD2_213c, GxEPD2_213c::HEIGHT> display(GxEPD2_213c(/*CS=15*/ SS, /*DC=4*/ 4, /*RST=5*/ 5, /*BUSY=16*/ 16));
-//GxEPD2_3C<GxEPD2_290c, GxEPD2_290c::HEIGHT> display(GxEPD2_290c(/*CS=15*/ SS, /*DC=4*/ 4, /*RST=5*/ 5, /*BUSY=16*/ 16));
-//GxEPD2_3C<GxEPD2_270c, GxEPD2_270c::HEIGHT> display(GxEPD2_270c(/*CS=15*/ SS, /*DC=4*/ 4, /*RST=5*/ 5, /*BUSY=16*/ 16));
-// can use only half buffer size
-//GxEPD2_3C<GxEPD2_420c, GxEPD2_420c::HEIGHT / 2> display(GxEPD2_420c(/*CS=15*/ SS, /*DC=4*/ 4, /*RST=5*/ 5, /*BUSY=16*/ 16));
-// can use only quarter buffer size
-//GxEPD2_3C<GxEPD2_583c, GxEPD2_583c::HEIGHT / 4> display(GxEPD2_583c(/*CS=15*/ SS, /*DC=4*/ 4, /*RST=5*/ 5, /*BUSY=16*/ 16));
-//GxEPD2_3C<GxEPD2_750c, GxEPD2_750c::HEIGHT / 4> display(GxEPD2_750c(/*CS=15*/ SS, /*DC=4*/ 4, /*RST=5*/ 5, /*BUSY=16*/ 16));
-//GxEPD2_3C<GxEPD2_750c_Z08, GxEPD2_750c_Z08::HEIGHT / 4> display(GxEPD2_750c_Z08(/*CS=15*/ SS, /*DC=4*/ 4, /*RST=5*/ 5, /*BUSY=16*/ 16)); // GDEW075Z08 800x480
+#define MAX_DISPLAY_BUFFER_SIZE (81920ul-34000ul-34000ul) // ~34000 base use, WiFiClientSecure seems to need about 34k more to work
+#if IS_GxEPD2_BW(GxEPD2_DISPLAY_CLASS)
+#define MAX_HEIGHT(EPD) (EPD::HEIGHT <= MAX_DISPLAY_BUFFER_SIZE / (EPD::WIDTH / 8) ? EPD::HEIGHT : MAX_DISPLAY_BUFFER_SIZE / (EPD::WIDTH / 8))
+#elif IS_GxEPD2_3C(GxEPD2_DISPLAY_CLASS)
+#define MAX_HEIGHT(EPD) (EPD::HEIGHT <= (MAX_DISPLAY_BUFFER_SIZE / 2) / (EPD::WIDTH / 8) ? EPD::HEIGHT : (MAX_DISPLAY_BUFFER_SIZE / 2) / (EPD::WIDTH / 8))
+#elif IS_GxEPD2_7C(GxEPD2_DISPLAY_CLASS)
+#define MAX_HEIGHT(EPD) (EPD::HEIGHT <= (MAX_DISPLAY_BUFFER_SIZE) / (EPD::WIDTH / 2) ? EPD::HEIGHT : (MAX_DISPLAY_BUFFER_SIZE) / (EPD::WIDTH / 2))
+#endif
+// adapt the constructor parameters to your wiring
+GxEPD2_DISPLAY_CLASS<GxEPD2_DRIVER_CLASS, MAX_HEIGHT(GxEPD2_DRIVER_CLASS)> display(GxEPD2_DRIVER_CLASS(/*CS=D8*/ EPD_CS, /*DC=D3*/ 0, /*RST=D4*/ 2, /*BUSY=D2*/ 4));
+// mapping of Waveshare e-Paper ESP8266 Driver Board, new version
+//GxEPD2_DISPLAY_CLASS<GxEPD2_DRIVER_CLASS, MAX_HEIGHT(GxEPD2_DRIVER_CLASS)> display(GxEPD2_DRIVER_CLASS(/*CS=15*/ EPD_CS, /*DC=4*/ 4, /*RST=2*/ 2, /*BUSY=5*/ 5));
+// mapping of Waveshare e-Paper ESP8266 Driver Board, old version
+//GxEPD2_DISPLAY_CLASS<GxEPD2_DRIVER_CLASS, MAX_HEIGHT(GxEPD2_DRIVER_CLASS)> display(GxEPD2_DRIVER_CLASS(/*CS=15*/ EPD_CS, /*DC=4*/ 4, /*RST=5*/ 5, /*BUSY=16*/ 16));
 #endif
 
 #if defined(ESP32)
-// select one and adapt to your mapping, can use full buffer size (full HEIGHT)
-//GxEPD2_BW<GxEPD2_154, GxEPD2_154::HEIGHT> display(GxEPD2_154(/*CS=5*/ SS, /*DC=*/ 17, /*RST=*/ 16, /*BUSY=*/ 4)); // GDEP015OC1 no longer available
-//GxEPD2_BW<GxEPD2_154_D67, GxEPD2_154_D67::HEIGHT> display(GxEPD2_154_D67(/*CS=5*/ SS, /*DC=*/ 17, /*RST=*/ 16, /*BUSY=*/ 4)); // GDEH0154D67
-//GxEPD2_BW<GxEPD2_154_T8, GxEPD2_154_T8::HEIGHT> display(GxEPD2_154_T8(/*CS=5*/ SS, /*DC=*/ 17, /*RST=*/ 16, /*BUSY=*/ 4)); // GDEW0154T8 152x152
-//GxEPD2_BW<GxEPD2_154_M09, GxEPD2_154_M09::HEIGHT> display(GxEPD2_154_M09(/*CS=5*/ SS, /*DC=*/ 17, /*RST=*/ 16, /*BUSY=*/ 4)); // GDEW0154M09 200x200
-//GxEPD2_BW<GxEPD2_154_M10, GxEPD2_154_M10::HEIGHT> display(GxEPD2_154_M10(/*CS=5*/ SS, /*DC=*/ 17, /*RST=*/ 16, /*BUSY=*/ 4)); // GDEW0154M10 152x152
-//GxEPD2_BW<GxEPD2_213, GxEPD2_213::HEIGHT> display(GxEPD2_213(/*CS=5*/ SS, /*DC=*/ 17, /*RST=*/ 16, /*BUSY=*/ 4)); // GDE0213B1, phased out
-//GxEPD2_BW<GxEPD2_213_B72, GxEPD2_213_B72::HEIGHT> display(GxEPD2_213_B72(/*CS=5*/ SS, /*DC=*/ 17, /*RST=*/ 16, /*BUSY=*/ 4)); // GDEH0213B72
-//GxEPD2_BW<GxEPD2_213_B73, GxEPD2_213_B73::HEIGHT> display(GxEPD2_213_B73(/*CS=5*/ SS, /*DC=*/ 17, /*RST=*/ 16, /*BUSY=*/ 4)); // GDEH0213B73
-//GxEPD2_BW<GxEPD2_213_flex, GxEPD2_213_flex::HEIGHT> display(GxEPD2_213_flex(/*CS=5*/ SS, /*DC=*/ 17, /*RST=*/ 16, /*BUSY=*/ 4)); // GDEW0213I5F
-//GxEPD2_BW<GxEPD2_290, GxEPD2_290::HEIGHT> display(GxEPD2_290(/*CS=5*/ SS, /*DC=*/ 17, /*RST=*/ 16, /*BUSY=*/ 4));
-//GxEPD2_BW<GxEPD2_290_T5, GxEPD2_290_T5::HEIGHT> display(GxEPD2_290_T5(/*CS=5*/ SS, /*DC=*/ 17, /*RST=*/ 16, /*BUSY=*/ 4)); // GDEW029T5
-//GxEPD2_BW<GxEPD2_260, GxEPD2_260::HEIGHT> display(GxEPD2_260(/*CS=5*/ SS, /*DC=*/ 17, /*RST=*/ 16, /*BUSY=*/ 4));
-//GxEPD2_BW<GxEPD2_270, GxEPD2_270::HEIGHT> display(GxEPD2_270(/*CS=5*/ SS, /*DC=*/ 17, /*RST=*/ 16, /*BUSY=*/ 4));
-//GxEPD2_BW<GxEPD2_371, GxEPD2_371::HEIGHT> display(GxEPD2_371(/*CS=5*/ SS, /*DC=*/ 17, /*RST=*/ 16, /*BUSY=*/ 4));
-//GxEPD2_BW<GxEPD2_420, GxEPD2_420::HEIGHT> display(GxEPD2_420(/*CS=5*/ SS, /*DC=*/ 17, /*RST=*/ 16, /*BUSY=*/ 4));
-//GxEPD2_BW<GxEPD2_583, GxEPD2_583::HEIGHT> display(GxEPD2_583(/*CS=5*/ SS, /*DC=*/ 17, /*RST=*/ 16, /*BUSY=*/ 4));
-//GxEPD2_BW<GxEPD2_583_T8, GxEPD2_583_T8::HEIGHT> display(GxEPD2_583_T8(/*CS=5*/ SS, /*DC=*/ 17, /*RST=*/ 16, /*BUSY=*/ 4));
-//GxEPD2_BW<GxEPD2_750, GxEPD2_750::HEIGHT> display(GxEPD2_750(/*CS=5*/ SS, /*DC=*/ 17, /*RST=*/ 16, /*BUSY=*/ 4));
-//GxEPD2_BW<GxEPD2_750_T7, GxEPD2_750_T7::HEIGHT> display(GxEPD2_750_T7(/*CS=5*/ SS, /*DC=*/ 17, /*RST=*/ 16, /*BUSY=*/ 4)); // GDEW075T7 800x480
-// 3-color e-papers
-//GxEPD2_3C<GxEPD2_154c, GxEPD2_154c::HEIGHT> display(GxEPD2_154c(/*CS=5*/ SS, /*DC=*/ 17, /*RST=*/ 16, /*BUSY=*/ 4));
-//GxEPD2_3C<GxEPD2_213c, GxEPD2_213c::HEIGHT> display(GxEPD2_213c(/*CS=5*/ SS, /*DC=*/ 17, /*RST=*/ 16, /*BUSY=*/ 4));
-//GxEPD2_3C<GxEPD2_290c, GxEPD2_290c::HEIGHT> display(GxEPD2_290c(/*CS=5*/ SS, /*DC=*/ 17, /*RST=*/ 16, /*BUSY=*/ 4));
-//GxEPD2_3C<GxEPD2_270c, GxEPD2_270c::HEIGHT> display(GxEPD2_270c(/*CS=5*/ SS, /*DC=*/ 17, /*RST=*/ 16, /*BUSY=*/ 4));
-//GxEPD2_3C<GxEPD2_420c, GxEPD2_420c::HEIGHT> display(GxEPD2_420c(/*CS=5*/ SS, /*DC=*/ 17, /*RST=*/ 16, /*BUSY=*/ 4));
-//GxEPD2_3C<GxEPD2_583c, GxEPD2_583c::HEIGHT> display(GxEPD2_583c(/*CS=5*/ SS, /*DC=*/ 17, /*RST=*/ 16, /*BUSY=*/ 4));
-//GxEPD2_3C<GxEPD2_750c, GxEPD2_750c::HEIGHT> display(GxEPD2_750c(/*CS=5*/ SS, /*DC=*/ 17, /*RST=*/ 16, /*BUSY=*/ 4));
-//GxEPD2_3C<GxEPD2_750c_Z08, GxEPD2_750c_Z08::HEIGHT> display(GxEPD2_750c_Z08(/*CS=5*/ SS, /*DC=*/ 17, /*RST=*/ 16, /*BUSY=*/ 4)); // GDEW075Z08 800x480
-
-// grey levels parallel IF e-papers on Waveshare e-Paper IT8951 Driver HAT
-// HRDY -> 4, RST -> 16, CS -> SS(5), SCK -> SCK(18), MOSI -> MOSI(23), MISO -> MISO(19), GND -> GND, 5V -> 5V
-// note: 5V supply needs to be exact and strong; 5V over diode from USB (e.g. Wemos D1 mini) doesn't work!
-//GxEPD2_BW<GxEPD2_it60, GxEPD2_it60::HEIGHT> display(GxEPD2_it60(/*CS=5*/ SS, /*DC=*/ 17, /*RST=*/ 16, /*BUSY=*/ 4));
-
+#define MAX_DISPLAY_BUFFER_SIZE 65536ul // e.g.
+#if IS_GxEPD2_BW(GxEPD2_DISPLAY_CLASS)
+#define MAX_HEIGHT(EPD) (EPD::HEIGHT <= MAX_DISPLAY_BUFFER_SIZE / (EPD::WIDTH / 8) ? EPD::HEIGHT : MAX_DISPLAY_BUFFER_SIZE / (EPD::WIDTH / 8))
+#elif IS_GxEPD2_3C(GxEPD2_DISPLAY_CLASS)
+#define MAX_HEIGHT(EPD) (EPD::HEIGHT <= (MAX_DISPLAY_BUFFER_SIZE / 2) / (EPD::WIDTH / 8) ? EPD::HEIGHT : (MAX_DISPLAY_BUFFER_SIZE / 2) / (EPD::WIDTH / 8))
+#elif IS_GxEPD2_7C(GxEPD2_DISPLAY_CLASS)
+#define MAX_HEIGHT(EPD) (EPD::HEIGHT <= (MAX_DISPLAY_BUFFER_SIZE) / (EPD::WIDTH / 2) ? EPD::HEIGHT : (MAX_DISPLAY_BUFFER_SIZE) / (EPD::WIDTH / 2))
+#endif
+// adapt the constructor parameters to your wiring
+#if !IS_GxEPD2_1248(GxEPD2_DRIVER_CLASS)
+#if defined(ARDUINO_LOLIN_D32_PRO)
+GxEPD2_DISPLAY_CLASS<GxEPD2_DRIVER_CLASS, MAX_HEIGHT(GxEPD2_DRIVER_CLASS)> display(GxEPD2_DRIVER_CLASS(/*CS=5*/ EPD_CS, /*DC=*/ 0, /*RST=*/ 2, /*BUSY=*/ 15));
+#elif defined(ARDUINO_ESP32_DEV) // e.g. TTGO T8 ESP32-WROVER
+GxEPD2_DISPLAY_CLASS<GxEPD2_DRIVER_CLASS, MAX_HEIGHT(GxEPD2_DRIVER_CLASS)> display(GxEPD2_DRIVER_CLASS(/*CS=5*/ EPD_CS, /*DC=*/ 2, /*RST=*/ 0, /*BUSY=*/ 4));
+#else
+GxEPD2_DISPLAY_CLASS<GxEPD2_DRIVER_CLASS, MAX_HEIGHT(GxEPD2_DRIVER_CLASS)> display(GxEPD2_DRIVER_CLASS(/*CS=5*/ EPD_CS, /*DC=*/ 17, /*RST=*/ 16, /*BUSY=*/ 4));
+#endif
+#else // GxEPD2_1248
 // Waveshare 12.48 b/w SPI display board and frame or Good Display 12.48 b/w panel GDEW1248T3
 // general constructor for use with all parameters, e.g. for Waveshare ESP32 driver board mounted on connection board
-//GxEPD2_BW < GxEPD2_1248, GxEPD2_1248::HEIGHT / 4 >
-//display(GxEPD2_1248(/*sck=*/ 13, /*miso=*/ 12, /*mosi=*/ 14, /*cs_m1=*/ 23, /*cs_s1=*/ 22, /*cs_m2=*/ 16, /*cs_s2=*/ 19,
-//                             /*dc1=*/ 25, /*dc2=*/ 17, /*rst1=*/ 33, /*rst2=*/ 5, /*busy_m1=*/ 32, /*busy_s1=*/ 26, /*busy_m2=*/ 18, /*busy_s2=*/ 4));
+GxEPD2_BW < GxEPD2_1248, GxEPD2_1248::HEIGHT / 4 > display(GxEPD2_1248(/*sck=*/ 13, /*miso=*/ 12, /*mosi=*/ 14,
+    /*cs_m1=*/ 23, /*cs_s1=*/ 22, /*cs_m2=*/ 16, /*cs_s2=*/ 19,
+    /*dc1=*/ 25, /*dc2=*/ 17, /*rst1=*/ 33, /*rst2=*/ 5,
+    /*busy_m1=*/ 32, /*busy_s1=*/ 26, /*busy_m2=*/ 18, /*busy_s2=*/ 4));
+#endif
 #endif
 
 #if defined (ESP8266)
@@ -177,24 +159,51 @@ const char* ssid     = "........";
 const char* password = "........";
 const int httpPort  = 80;
 const int httpsPort = 443;
-const char* fp_api_github_com = "35 85 74 EF 67 35 A7 CE 40 69 50 F3 C0 F6 80 CF 80 3B 2E 19";
-const char* fp_github_com     = "ca 06 f5 6b 25 8b 7a 0d 4f 2b 05 47 09 39 47 86 51 15 19 84";
-#if USE_BearSSL
-const char fp_rawcontent[20]  = {0xcc, 0xaa, 0x48, 0x48, 0x66, 0x46, 0x0e, 0x91, 0x53, 0x2c, 0x9c, 0x7c, 0x23, 0x2a, 0xb1, 0x74, 0x4d, 0x29, 0x9d, 0x33};
-#else
-const char* fp_rawcontent     = "cc aa 48 48 66 46 0e 91 53 2c 9c 7c 23 2a b1 74 4d 29 9d 33";
-#endif
+const char* fp_api_github_com = "df b2 29 c6 a6 38 1a 59 9d c9 ad 92 2d 26 f5 3c 83 8f a5 87"; // as of 25.11.2020
+const char* fp_github_com     = "5f 3f 7a c2 56 9f 50 a4 66 76 47 c6 a1 8c a0 07 aa ed bb 8e"; // as of 25.11.2020
+const char* fp_rawcontent     = "70 94 de dd e6 c4 69 48 3a 92 70 a1 48 56 78 2d 18 64 e0 b7"; // as of 25.11.2020
+
+// how to find the certificate was not easy. finally I found it using Mozilla Firefox.
+// opened one of the bitmaps, e.g. https://raw.githubusercontent.com/ZinggJM/GxEPD2/master/extras/bitmaps/logo200x200.bmp
+// clicked the lock symbol, Connection secure clicked >, show connection details, clicked More Information, clicked View Certificate, clicked Download PEM (chain),
+// selected Open with Notepad. Copied the middle certificate and editted to the following format:
+// the number of characters per line is of no importance, but the 3 \n are needed
+const char* certificate_rawcontent =
+  "-----BEGIN CERTIFICATE-----\n"
+  "MIIEsTCCA5mgAwIBAgIQBOHnpNxc8vNtwCtCuF0VnzANBgkqhkiG9w0BAQsFADBsMQswCQYDVQQGEwJVUzEVMBMGA1UEChMMRGln"
+  "aUNlcnQgSW5jMRkwFwYDVQQLExB3d3cuZGlnaWNlcnQuY29tMSswKQYDVQQDEyJEaWdpQ2VydCBIaWdoIEFzc3VyYW5jZSBFViBS"
+  "b290IENBMB4XDTEzMTAyMjEyMDAwMFoXDTI4MTAyMjEyMDAwMFowcDELMAkGA1UEBhMCVVMxFTATBgNVBAoTDERpZ2lDZXJ0IElu"
+  "YzEZMBcGA1UECxMQd3d3LmRpZ2ljZXJ0LmNvbTEvMC0GA1UEAxMmRGlnaUNlcnQgU0hBMiBIaWdoIEFzc3VyYW5jZSBTZXJ2ZXIg"
+  "Q0EwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQC24C/CJAbIbQRf1+8KZAayfSImZRauQkCbztyfn3YHPsMwVYcZuU+U"
+  "DlqUH1VWtMICKq/QmO4LQNfE0DtyyBSe75CxEamu0si4QzrZCwvV1ZX1QK/IHe1NnF9Xt4ZQaJn1itrSxwUfqJfJ3KSxgoQtxq2l"
+  "nMcZgqaFD15EWCo3j/018QsIJzJa9buLnqS9UdAn4t07QjOjBSjEuyjMmqwrIw14xnvmXnG3Sj4I+4G3FhahnSMSTeXXkgisdaSc"
+  "us0Xsh5ENWV/UyU50RwKmmMbGZJ0aAo3wsJSSMs5WqK24V3B3aAguCGikyZvFEohQcftbZvySC/zA/WiaJJTL17jAgMBAAGjggFJ"
+  "MIIBRTASBgNVHRMBAf8ECDAGAQH/AgEAMA4GA1UdDwEB/wQEAwIBhjAdBgNVHSUEFjAUBggrBgEFBQcDAQYIKwYBBQUHAwIwNAYI"
+  "KwYBBQUHAQEEKDAmMCQGCCsGAQUFBzABhhhodHRwOi8vb2NzcC5kaWdpY2VydC5jb20wSwYDVR0fBEQwQjBAoD6gPIY6aHR0cDov"
+  "L2NybDQuZGlnaWNlcnQuY29tL0RpZ2lDZXJ0SGlnaEFzc3VyYW5jZUVWUm9vdENBLmNybDA9BgNVHSAENjA0MDIGBFUdIAAwKjAo"
+  "BggrBgEFBQcCARYcaHR0cHM6Ly93d3cuZGlnaWNlcnQuY29tL0NQUzAdBgNVHQ4EFgQUUWj/kK8CB3U8zNllZGKiErhZcjswHwYD"
+  "VR0jBBgwFoAUsT7DaQP4v0cB1JgmGggC72NkK8MwDQYJKoZIhvcNAQELBQADggEBABiKlYkD5m3fXPwdaOpKj4PWUS+Na0QWnqxj"
+  "9dJubISZi6qBcYRb7TROsLd5kinMLYBq8I4g4Xmk/gNHE+r1hspZcX30BJZr01lYPf7TMSVcGDiEo+afgv2MW5gxTs14nhr9hctJ"
+  "qvIni5ly/D6q1UEL2tU2ob8cbkdJf17ZSHwD2f2LSaCYJkJA69aSEaRkCldUxPUd1gJea6zuxICaEnL6VpPX/78whQYwvwt/Tv9X"
+  "BZ0k7YXDK/umdaisLRbvfXknsuvCnQsH6qqF0wGjIChBWUMo0oHjqvbsezt3tkBigAVBRQHvFwY+3sAzm2fTYS5yh+Rp/BIAV0AecPUeybQ=\n"
+  "-----END CERTIFICATE-----\n";
+
+
 const char* host_rawcontent   = "raw.githubusercontent.com";
 const char* path_rawcontent   = "/ZinggJM/GxEPD2/master/extras/bitmaps/";
 const char* path_prenticedavid   = "/prenticedavid/MCUFRIEND_kbv/master/extras/bitmaps/";
+const char* path_waveshare_c  = "/waveshare/e-Paper/master/RaspberryPi_JetsonNano/c/pic/";
+const char* path_waveshare_py = "/waveshare/e-Paper/master/RaspberryPi_JetsonNano/python/pic/";
 
 // note that BMP bitmaps are drawn at physical position in physical orientation of the screen
 void showBitmapFrom_HTTP(const char* host, const char* path, const char* filename, int16_t x, int16_t y, bool with_color = true);
-void showBitmapFrom_HTTPS(const char* host, const char* path, const char* filename, const char* fingerprint, int16_t x, int16_t y, bool with_color = true);
+void showBitmapFrom_HTTPS(const char* host, const char* path, const char* filename, const char* fingerprint, int16_t x, int16_t y, bool with_color = true,
+                          const char* certificate = certificate_rawcontent);
 
 // draws BMP bitmap according to set orientation
 void showBitmapFrom_HTTP_Buffered(const char* host, const char* path, const char* filename, int16_t x, int16_t y, bool with_color = true);
-void showBitmapFrom_HTTPS_Buffered(const char* host, const char* path, const char* filename, const char* fingerprint, int16_t x, int16_t y, bool with_color = true);
+void showBitmapFrom_HTTPS_Buffered(const char* host, const char* path, const char* filename, const char* fingerprint, int16_t x, int16_t y, bool with_color = true,
+                                   const char* certificate = certificate_rawcontent);
 
 void setup()
 {
@@ -203,6 +212,12 @@ void setup()
   Serial.println("GxEPD2_WiFi_Example");
 
   display.init(115200);
+
+#ifdef REMAP_SPI_FOR_WAVESHARE_ESP32_DRIVER_BOARD
+  SPI.end(); // release standard SPI pins, e.g. SCK(18), MISO(19), MOSI(23), SS(5)
+  //SPI: void begin(int8_t sck=-1, int8_t miso=-1, int8_t mosi=-1, int8_t ss=-1);
+  SPI.begin(13, 12, 14, 15); // map and init SPI pins SCK(13), MISO(12), MOSI(14), SS(15)
+#endif
 
 #ifdef RE_INIT_NEEDED
   WiFi.persistent(true);
@@ -243,10 +258,11 @@ void setup()
   // Print the IP address
   Serial.println(WiFi.localIP());
 
-  if ((display.epd2.panel == GxEPD2::GDEW0154Z04) || false)
+  if ((display.epd2.panel == GxEPD2::GDEW0154Z04) || (display.epd2.panel == GxEPD2::ACeP565) || false)
   {
     drawBitmapsBuffered_200x200();
     drawBitmapsBuffered_other();
+    drawBitmapsBuffered_7C();
   }
   else
   {
@@ -292,6 +308,8 @@ void drawBitmaps_other()
 {
   int16_t w2 = display.width() / 2;
   int16_t h2 = display.height() / 2;
+  showBitmapFrom_HTTP("www.packescape.com", "/img/assets/", "IniciMenusTV2.bmp", w2 - 200, h2 - 150, false);
+  delay(2000);
   showBitmapFrom_HTTP("www.squix.org", "/blog/wunderground/", "chanceflurries.bmp", w2 - 50, h2 - 50, false);
   delay(2000);
   showBitmapFrom_HTTPS(host_rawcontent, path_prenticedavid, "betty_1.bmp", fp_rawcontent, w2 - 100, h2 - 160);
@@ -302,7 +320,7 @@ void drawBitmaps_other()
   delay(2000);
   showBitmapFrom_HTTPS(host_rawcontent, path_prenticedavid, "miniwoof.bmp", fp_rawcontent, w2 - 60, h2 - 80);
   delay(2000);
-  showBitmapFrom_HTTPS(host_rawcontent, path_prenticedavid, "test.bmp", fp_rawcontent, w2 - 100, h2 - 100);
+  showBitmapFrom_HTTPS(host_rawcontent, path_prenticedavid, "test.bmp", fp_rawcontent, w2 - 120, h2 - 160);
   delay(2000);
   showBitmapFrom_HTTPS(host_rawcontent, path_prenticedavid, "tiger.bmp", fp_rawcontent, w2 - 160, h2 - 120);
   delay(2000);
@@ -382,7 +400,7 @@ void drawBitmapsBuffered_other()
   delay(2000);
   showBitmapFrom_HTTPS_Buffered(host_rawcontent, path_prenticedavid, "miniwoof.bmp", fp_rawcontent, w2 - 60, h2 - 80);
   delay(2000);
-  showBitmapFrom_HTTPS_Buffered(host_rawcontent, path_prenticedavid, "test.bmp", fp_rawcontent, w2 - 100, h2 - 100);
+  showBitmapFrom_HTTPS_Buffered(host_rawcontent, path_prenticedavid, "test.bmp", fp_rawcontent, w2 - 120, h2 - 160);
   delay(2000);
   showBitmapFrom_HTTPS_Buffered(host_rawcontent, path_prenticedavid, "tiger.bmp", fp_rawcontent, w2 - 160, h2 - 120);
   delay(2000);
@@ -398,6 +416,25 @@ void drawBitmapsBuffered_other()
   delay(2000);
 }
 
+void drawBitmapsBuffered_7C()
+{
+  if (display.epd2.panel == GxEPD2::ACeP565)
+  {
+    showBitmapFrom_HTTPS_Buffered(host_rawcontent, path_waveshare_c, "5in65f.bmp", fp_rawcontent, 0, 0);
+    delay(2000);
+    showBitmapFrom_HTTPS_Buffered(host_rawcontent, path_waveshare_c, "5in65f2.bmp", fp_rawcontent, 0, 0);
+    delay(2000);
+    showBitmapFrom_HTTPS_Buffered(host_rawcontent, path_waveshare_c, "5in65f3.bmp", fp_rawcontent, 0, 0);
+    delay(2000);
+    showBitmapFrom_HTTPS_Buffered(host_rawcontent, path_waveshare_c, "5in65f4.bmp", fp_rawcontent, 0, 0);
+    delay(2000);
+    showBitmapFrom_HTTPS_Buffered(host_rawcontent, path_waveshare_py, "5in65f4.bmp", fp_rawcontent, 0, 0);
+    delay(2000);
+    showBitmapFrom_HTTPS_Buffered(host_rawcontent, path_waveshare_py, "N-Color1.bmp", fp_rawcontent, 0, 0);
+    delay(2000);
+  }
+}
+
 void drawBitmapsBuffered_test()
 {
   int16_t w2 = display.width() / 2;
@@ -408,7 +445,7 @@ void drawBitmapsBuffered_test()
 
 static const uint16_t input_buffer_pixels = 800; // may affect performance
 
-static const uint16_t max_row_width = 800; // for up to 7.5" display 800x480
+static const uint16_t max_row_width = 1448; // for up to 6" display 1448x1072
 static const uint16_t max_palette_pixels = 256; // for depth <= 8
 
 uint8_t input_buffer[3 * input_buffer_pixels]; // up to depth 24
@@ -416,6 +453,7 @@ uint8_t output_row_mono_buffer[max_row_width / 8]; // buffer for at least one ro
 uint8_t output_row_color_buffer[max_row_width / 8]; // buffer for at least one row of color bits
 uint8_t mono_palette_buffer[max_palette_pixels / 8]; // palette buffer for depth <= 8 b/w
 uint8_t color_palette_buffer[max_palette_pixels / 8]; // palette buffer for depth <= 8 c/w
+uint16_t rgb_palette_buffer[max_palette_pixels]; // palette buffer for depth <= 8 for buffered graphics, needed for 7-color display
 
 void showBitmapFrom_HTTP(const char* host, const char* path, const char* filename, int16_t x, int16_t y, bool with_color)
 {
@@ -544,11 +582,11 @@ void showBitmapFrom_HTTP(const char* host, const char* path, const char* filenam
             if (in_idx >= in_bytes) // ok, exact match for 24bit also (size IS multiple of 3)
             {
               uint32_t get = in_remain > sizeof(input_buffer) ? sizeof(input_buffer) : in_remain;
-              uint32_t got = read(client, input_buffer, get);
+              uint32_t got = read8n(client, input_buffer, get);
               while ((got < get) && connection_ok)
               {
                 //Serial.print("got "); Serial.print(got); Serial.print(" < "); Serial.print(get); Serial.print(" @ "); Serial.println(bytes_read);
-                uint32_t gotmore = read(client, input_buffer + got, get - got);
+                uint32_t gotmore = read8n(client, input_buffer + got, get - got);
                 got += gotmore;
                 connection_ok = gotmore > 0;
               }
@@ -638,6 +676,7 @@ void showBitmapFrom_HTTP(const char* host, const char* path, const char* filenam
       Serial.print("bytes read "); Serial.println(bytes_read);
     }
   }
+  client.stop();
   if (!valid)
   {
     Serial.println("bitmap format not handled.");
@@ -650,6 +689,7 @@ void drawBitmapFrom_HTTP_ToBuffer(const char* host, const char* path, const char
   bool connection_ok = false;
   bool valid = false; // valid format to be handled
   bool flip = true; // bitmap is stored bottom-to-top
+  bool has_multicolors = display.epd2.panel == GxEPD2::ACeP565;
   uint32_t startTime = millis();
   if ((x >= display.width()) || (y >= display.height())) return;
   display.fillScreen(GxEPD_WHITE);
@@ -747,9 +787,9 @@ void drawBitmapFrom_HTTP_ToBuffer(const char* host, const char* path, const char
             color_palette_buffer[pn / 8] |= colored << pn % 8;
             //Serial.print("0x00"); Serial.print(red, HEX); Serial.print(green, HEX); Serial.print(blue, HEX);
             //Serial.print(" : "); Serial.print(whitish); Serial.print(", "); Serial.println(colored);
+            rgb_palette_buffer[pn] = ((red & 0xF8) << 8) | ((green & 0xFC) << 3) | ((blue & 0xF8) >> 3);
           }
         }
-        display.writeScreenBuffer();
         uint32_t rowPosition = flip ? imageOffset + (height - h) * rowSize : imageOffset;
         //Serial.print("skip "); Serial.println(rowPosition - bytes_read);
         bytes_read += skip(client, rowPosition - bytes_read);
@@ -771,11 +811,11 @@ void drawBitmapFrom_HTTP_ToBuffer(const char* host, const char* path, const char
             if (in_idx >= in_bytes) // ok, exact match for 24bit also (size IS multiple of 3)
             {
               uint32_t get = in_remain > sizeof(input_buffer) ? sizeof(input_buffer) : in_remain;
-              uint32_t got = read(client, input_buffer, get);
+              uint32_t got = read8n(client, input_buffer, get);
               while ((got < get) && connection_ok)
               {
                 //Serial.print("got "); Serial.print(got); Serial.print(" < "); Serial.print(get); Serial.print(" @ "); Serial.println(bytes_read);
-                uint32_t gotmore = read(client, input_buffer + got, get - got);
+                uint32_t gotmore = read8n(client, input_buffer + got, get - got);
                 got += gotmore;
                 connection_ok = gotmore > 0;
               }
@@ -796,6 +836,7 @@ void drawBitmapFrom_HTTP_ToBuffer(const char* host, const char* path, const char
                 red = input_buffer[in_idx++];
                 whitish = with_color ? ((red > 0x80) && (green > 0x80) && (blue > 0x80)) : ((red + green + blue) > 3 * 0x80); // whitish
                 colored = (red > 0xF0) || ((green > 0xF0) && (blue > 0xF0)); // reddish or yellowish?
+                color = ((red & 0xF8) << 8) | ((green & 0xFC) << 3) | ((blue & 0xF8) >> 3);
                 break;
               case 16:
                 {
@@ -806,12 +847,14 @@ void drawBitmapFrom_HTTP_ToBuffer(const char* host, const char* path, const char
                     blue  = (lsb & 0x1F) << 3;
                     green = ((msb & 0x03) << 6) | ((lsb & 0xE0) >> 2);
                     red   = (msb & 0x7C) << 1;
+                    color = ((red & 0xF8) << 8) | ((green & 0xFC) << 3) | ((blue & 0xF8) >> 3);
                   }
                   else // 565
                   {
                     blue  = (lsb & 0x1F) << 3;
                     green = ((msb & 0x07) << 5) | ((lsb & 0xE0) >> 3);
                     red   = (msb & 0xF8);
+                    color = (msb << 8) | lsb;
                   }
                   whitish = with_color ? ((red > 0x80) && (green > 0x80) && (blue > 0x80)) : ((red + green + blue) > 3 * 0x80); // whitish
                   colored = (red > 0xF0) || ((green > 0xF0) && (blue > 0xF0)); // reddish or yellowish?
@@ -831,10 +874,15 @@ void drawBitmapFrom_HTTP_ToBuffer(const char* host, const char* path, const char
                   colored = color_palette_buffer[pn / 8] & (0x1 << pn % 8);
                   in_byte <<= depth;
                   in_bits -= depth;
+                  color = rgb_palette_buffer[pn];
                 }
                 break;
             }
-            if (whitish)
+            if (with_color && has_multicolors)
+            {
+              // keep color
+            }
+            else if (whitish)
             {
               color = GxEPD_WHITE;
             }
@@ -855,6 +903,7 @@ void drawBitmapFrom_HTTP_ToBuffer(const char* host, const char* path, const char
     }
   }
   Serial.print("loaded in "); Serial.print(millis() - startTime); Serial.println(" ms");
+  client.stop();
   if (!valid)
   {
     Serial.println("bitmap format not handled.");
@@ -873,7 +922,7 @@ void showBitmapFrom_HTTP_Buffered(const char* host, const char* path, const char
   while (display.nextPage());
 }
 
-void showBitmapFrom_HTTPS(const char* host, const char* path, const char* filename, const char* fingerprint, int16_t x, int16_t y, bool with_color)
+void showBitmapFrom_HTTPS(const char* host, const char* path, const char* filename, const char* fingerprint, int16_t x, int16_t y, bool with_color, const char* certificate)
 {
   // Use WiFiClientSecure class to create TLS connection
 #if USE_BearSSL
@@ -888,28 +937,17 @@ void showBitmapFrom_HTTPS(const char* host, const char* path, const char* filena
   if ((x >= display.epd2.WIDTH) || (y >= display.epd2.HEIGHT)) return;
   Serial.println(); Serial.print("downloading file \""); Serial.print(filename);  Serial.println("\"");
   Serial.print("connecting to "); Serial.println(host);
-#if USE_BearSSL
-  if (fingerprint) client.setFingerprint((uint8_t*)fingerprint);
+#if defined (ESP8266)
+  client.setBufferSizes(4096, 4096); // doesn't help
+  if (fingerprint) client.setFingerprint(fingerprint);
+#elif defined (ESP32)
+  if (certificate) client.setCACert(certificate);
 #endif
   if (!client.connect(host, httpsPort))
   {
     Serial.println("connection failed");
     return;
   }
-#if defined (ESP8266) && !USE_BearSSL
-  if (fingerprint)
-  {
-    if (client.verify(fingerprint, host))
-    {
-      Serial.println("certificate matches");
-    }
-    else
-    {
-      Serial.println("certificate doesn't match");
-      return;
-    }
-  }
-#endif
   Serial.print("requesting URL: ");
   Serial.println(String("https://") + host + path + filename);
   client.print(String("GET ") + path + filename + " HTTP/1.1\r\n" +
@@ -1022,12 +1060,12 @@ void showBitmapFrom_HTTPS(const char* host, const char* path, const char* filena
             if (in_idx >= in_bytes) // ok, exact match for 24bit also (size IS multiple of 3)
             {
               uint32_t get = in_remain > sizeof(input_buffer) ? sizeof(input_buffer) : in_remain;
-              uint32_t got = read(client, input_buffer, get);
+              uint32_t got = read8n(client, input_buffer, get);
               while ((got < get) && connection_ok)
               {
                 //Serial.print("got "); Serial.print(got); Serial.print(" < "); Serial.print(get); Serial.print(" @ "); Serial.println(bytes_read);
                 //if ((get - got) > client.available()) delay(200); // does improve? yes, if >= 200
-                uint32_t gotmore = read(client, input_buffer + got, get - got);
+                uint32_t gotmore = read8n(client, input_buffer + got, get - got);
                 got += gotmore;
                 connection_ok = gotmore > 0;
               }
@@ -1115,13 +1153,14 @@ void showBitmapFrom_HTTPS(const char* host, const char* path, const char* filena
       }
     }
   }
+  client.stop();
   if (!valid)
   {
     Serial.println("bitmap format not handled.");
   }
 }
 
-void drawBitmapFrom_HTTPS_ToBuffer(const char* host, const char* path, const char* filename, const char* fingerprint, int16_t x, int16_t y, bool with_color)
+void drawBitmapFrom_HTTPS_ToBuffer(const char* host, const char* path, const char* filename, const char* fingerprint, int16_t x, int16_t y, bool with_color, const char* certificate)
 {
   // Use WiFiClientSecure class to create TLS connection
 #if USE_BearSSL
@@ -1132,32 +1171,22 @@ void drawBitmapFrom_HTTPS_ToBuffer(const char* host, const char* path, const cha
   bool connection_ok = false;
   bool valid = false; // valid format to be handled
   bool flip = true; // bitmap is stored bottom-to-top
+  bool has_multicolors = display.epd2.panel == GxEPD2::ACeP565;
   uint32_t startTime = millis();
   if ((x >= display.width()) || (y >= display.height())) return;
   display.fillScreen(GxEPD_WHITE);
   Serial.print("connecting to "); Serial.println(host);
-#if USE_BearSSL
-  if (fingerprint) client.setFingerprint((uint8_t*)fingerprint);
+#if defined (ESP8266)
+  client.setBufferSizes(4096, 4096); // doesn't help
+  if (fingerprint) client.setFingerprint(fingerprint);
+#elif defined (ESP32)
+  if (certificate) client.setCACert(certificate);
 #endif
   if (!client.connect(host, httpsPort))
   {
     Serial.println("connection failed");
     return;
   }
-#if defined (ESP8266) && !USE_BearSSL
-  if (fingerprint)
-  {
-    if (client.verify(fingerprint, host))
-    {
-      Serial.println("certificate matches");
-    }
-    else
-    {
-      Serial.println("certificate doesn't match");
-      return;
-    }
-  }
-#endif
   Serial.print("requesting URL: ");
   Serial.println(String("https://") + host + path + filename);
   client.print(String("GET ") + path + filename + " HTTP/1.1\r\n" +
@@ -1246,9 +1275,9 @@ void drawBitmapFrom_HTTPS_ToBuffer(const char* host, const char* path, const cha
             color_palette_buffer[pn / 8] |= colored << pn % 8;
             //Serial.print("0x00"); Serial.print(red, HEX); Serial.print(green, HEX); Serial.print(blue, HEX);
             //Serial.print(" : "); Serial.print(whitish); Serial.print(", "); Serial.println(colored);
+            rgb_palette_buffer[pn] = ((red & 0xF8) << 8) | ((green & 0xFC) << 3) | ((blue & 0xF8) >> 3);
           }
         }
-        display.writeScreenBuffer();
         uint32_t rowPosition = flip ? imageOffset + (height - h) * rowSize : imageOffset;
         //Serial.print("skip "); Serial.println(rowPosition - bytes_read);
         bytes_read += skip(client, rowPosition - bytes_read);
@@ -1270,11 +1299,11 @@ void drawBitmapFrom_HTTPS_ToBuffer(const char* host, const char* path, const cha
             if (in_idx >= in_bytes) // ok, exact match for 24bit also (size IS multiple of 3)
             {
               uint32_t get = in_remain > sizeof(input_buffer) ? sizeof(input_buffer) : in_remain;
-              uint32_t got = read(client, input_buffer, get);
+              uint32_t got = read8n(client, input_buffer, get);
               while ((got < get) && connection_ok)
               {
                 //Serial.print("got "); Serial.print(got); Serial.print(" < "); Serial.print(get); Serial.print(" @ "); Serial.println(bytes_read);
-                uint32_t gotmore = read(client, input_buffer + got, get - got);
+                uint32_t gotmore = read8n(client, input_buffer + got, get - got);
                 got += gotmore;
                 connection_ok = gotmore > 0;
               }
@@ -1295,6 +1324,7 @@ void drawBitmapFrom_HTTPS_ToBuffer(const char* host, const char* path, const cha
                 red = input_buffer[in_idx++];
                 whitish = with_color ? ((red > 0x80) && (green > 0x80) && (blue > 0x80)) : ((red + green + blue) > 3 * 0x80); // whitish
                 colored = (red > 0xF0) || ((green > 0xF0) && (blue > 0xF0)); // reddish or yellowish?
+                color = ((red & 0xF8) << 8) | ((green & 0xFC) << 3) | ((blue & 0xF8) >> 3);
                 break;
               case 16:
                 {
@@ -1305,12 +1335,14 @@ void drawBitmapFrom_HTTPS_ToBuffer(const char* host, const char* path, const cha
                     blue  = (lsb & 0x1F) << 3;
                     green = ((msb & 0x03) << 6) | ((lsb & 0xE0) >> 2);
                     red   = (msb & 0x7C) << 1;
+                    color = ((red & 0xF8) << 8) | ((green & 0xFC) << 3) | ((blue & 0xF8) >> 3);
                   }
                   else // 565
                   {
                     blue  = (lsb & 0x1F) << 3;
                     green = ((msb & 0x07) << 5) | ((lsb & 0xE0) >> 3);
                     red   = (msb & 0xF8);
+                    color = (msb << 8) | lsb;
                   }
                   whitish = with_color ? ((red > 0x80) && (green > 0x80) && (blue > 0x80)) : ((red + green + blue) > 3 * 0x80); // whitish
                   colored = (red > 0xF0) || ((green > 0xF0) && (blue > 0xF0)); // reddish or yellowish?
@@ -1330,10 +1362,15 @@ void drawBitmapFrom_HTTPS_ToBuffer(const char* host, const char* path, const cha
                   colored = color_palette_buffer[pn / 8] & (0x1 << pn % 8);
                   in_byte <<= depth;
                   in_bits -= depth;
+                  color = rgb_palette_buffer[pn];
                 }
                 break;
             }
-            if (whitish)
+            if (with_color && has_multicolors)
+            {
+              // keep color
+            }
+            else if (whitish)
             {
               color = GxEPD_WHITE;
             }
@@ -1354,20 +1391,21 @@ void drawBitmapFrom_HTTPS_ToBuffer(const char* host, const char* path, const cha
     }
   }
   Serial.print("loaded in "); Serial.print(millis() - startTime); Serial.println(" ms");
+  client.stop();
   if (!valid)
   {
     Serial.println("bitmap format not handled.");
   }
 }
 
-void showBitmapFrom_HTTPS_Buffered(const char* host, const char* path, const char* filename, const char* fingerprint, int16_t x, int16_t y, bool with_color)
+void showBitmapFrom_HTTPS_Buffered(const char* host, const char* path, const char* filename, const char* fingerprint, int16_t x, int16_t y, bool with_color, const char* certificate)
 {
   Serial.println(); Serial.print("downloading file \""); Serial.print(filename);  Serial.println("\"");
   display.setFullWindow();
   display.firstPage();
   do
   {
-    drawBitmapFrom_HTTPS_ToBuffer(host, path, filename, fingerprint, x, y, with_color);
+    drawBitmapFrom_HTTPS_ToBuffer(host, path, filename, fingerprint, x, y, with_color, certificate);
   }
   while (display.nextPage());
 }
@@ -1411,7 +1449,7 @@ uint32_t skip(BearSSL::WiFiClientSecure& client, int32_t bytes)
   return bytes - remain;
 }
 
-uint32_t read(BearSSL::WiFiClientSecure& client, uint8_t* buffer, int32_t bytes)
+uint32_t read8n(BearSSL::WiFiClientSecure& client, uint8_t* buffer, int32_t bytes)
 {
   int32_t remain = bytes;
   uint32_t start = millis();
@@ -1448,7 +1486,7 @@ uint32_t skip(WiFiClient& client, int32_t bytes)
   return bytes - remain;
 }
 
-uint32_t read(WiFiClient& client, uint8_t* buffer, int32_t bytes)
+uint32_t read8n(WiFiClient& client, uint8_t* buffer, int32_t bytes)
 {
   int32_t remain = bytes;
   uint32_t start = millis();
