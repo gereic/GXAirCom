@@ -80,6 +80,7 @@ function setVis(){
   document.getElementById("visSigmaP").style.display='none';  
   document.getElementById("visSigmaA").style.display='none';  
   document.getElementById("VisFuelSensor").style.display='none'; //set FuelSensor invisible
+  document.getElementById("VisMqtt").style.display='none';  //disable Mqtt settings
   if (document.getElementById("useMPU").checked){
     document.getElementById("KfP").innerHTML='Kalman filter pressure-value (default 0.3)';
     document.getElementById("KfA").innerHTML='Kalman filter accelerator-value (default 0.3)';
@@ -100,8 +101,9 @@ function setVis(){
     document.getElementById("visGzOffset").style.display='';
     document.getElementById("visAccTemp1").style.display='';
     document.getElementById("visAccTemp2").style.display='';
-  }
+  }    
   if (document.getElementById("mode").value == 1){ //mode ground-station
+    document.getElementById("VisMqtt").style.display='';  //enable Mqtt settings
     if (bHasBME == 0){      
       document.getElementById("tWu").innerHTML='Broadcast weather-underground data to FANET';
       document.getElementById("tWu2").innerHTML='enable sending wu-data to FANET';
@@ -225,6 +227,33 @@ function setRfMode(mode){
     e.checked = false;
   }
 }
+
+function getMQTTMode(){
+  var Ret = 0;
+  if (document.getElementById("MqttEn").checked) Ret += 1;
+  if (document.getElementById("MqttWd").checked) Ret += 2;
+  return Ret;
+}
+
+function setMQTTMode(mode){
+  //document.getElementById("FntRx");
+  console.log("setMQTTMode-Mode=" + mode);
+  e = document.getElementById("MqttEn");
+  if (mode & 1){
+    e.checked = true;
+  }else{
+    e.checked = false;
+  }
+  e = document.getElementById("MqttWd");
+  if (mode & 2){
+    e.checked = true;
+  }else{
+    e.checked = false;
+  }
+}
+
+
+
 
 function getOGNMode(){
   var Ret = 0;
@@ -537,10 +566,19 @@ function sendValues(){
   doSend(JSON.stringify(obj));
 
   var obj = {  
+  MqttMode : getMQTTMode(),
+  MqttServer : document.getElementById("MqttServer").value,  
+  MqttPort : Number(document.getElementById("MqttPort").value),
+  MqttPw : document.getElementById("MqttPw").value,  
+  save : 1
+	};
+  doSend(JSON.stringify(obj));
+
+  var obj = {  
   GSMAPN : document.getElementById("GSMAPN").value,  
   GSMUSER : document.getElementById("GSMUSER").value,  
   GSMPWD : document.getElementById("GSMPWD").value,    
-  GSMMODE : document.getElementById("GSMMODE").value,    
+  GSMMODE : document.getElementById("GSMMODE").value,
   save : 2
 	};
   doSend(JSON.stringify(obj));
@@ -591,6 +629,9 @@ function onMessage(evt) {
         }else if (key == "ognlive"){
           setOGNMode(myObj[key]);
           continue;
+        }else if (key == "MqttMode"){
+          setMQTTMode(myObj[key]);
+          continue;          
         }else if (key == "calibAcc"){
           calibBtnState = myObj[key];
           setBtnCalib("btnCalibAcc",myObj[key]);
@@ -979,6 +1020,35 @@ window.addEventListener("load", init, false);
           <tr>
             <th>additional battery capacity for restart [&#037;]</th>
             <td><input type="number" id="restartBattPerc" min="10" max="100" step="1"></td>
+          </tr>
+        </tbody>      
+      </table>
+    </fieldset>
+    <p></p>
+    <p></p>
+    <fieldset id="VisMqtt">
+      <legend><b>MQTT settings</b></legend>
+      <table style="width:100&#37;">
+        <tbody>
+          <tr>
+            <th>enable</th>
+            <td><input type="checkbox" id="MqttEn"></td>
+          </tr>
+          <tr>
+            <th>send my weatherdata</th>
+            <td><input type="checkbox" id="MqttWd"></td>
+          </tr>
+          <tr>
+            <th>server</th>
+            <td><input type="text" id="MqttServer"></td>
+          </tr>
+          <tr>
+            <th>Port (default 1883)</th>
+            <td><input type="number" id="MqttPort"></td>
+          </tr>          
+          <tr>
+            <th>Password</th>
+            <td><input type="text" id="MqttPw"></td>
           </tr>
         </tbody>      
       </table>

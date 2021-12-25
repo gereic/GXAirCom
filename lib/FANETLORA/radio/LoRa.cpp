@@ -270,17 +270,17 @@ int16_t LoRaClass::SPItransfer(uint8_t* cmd, uint8_t cmdLen, bool write, uint8_t
   #endif
 
   if (status){
-    char sOut[MAXSTRING];
+    char sOut[LORAMAXSTRING];
     int pos = 0;
-    pos += snprintf(&sOut[pos],MAXSTRING-pos,"error ");
+    pos += snprintf(&sOut[pos],LORAMAXSTRING-pos,"error ");
     if (write){
-      pos += snprintf(&sOut[pos],MAXSTRING-pos,"writing ");
+      pos += snprintf(&sOut[pos],LORAMAXSTRING-pos,"writing ");
     }else{
-      pos += snprintf(&sOut[pos],MAXSTRING-pos,"reading ");
+      pos += snprintf(&sOut[pos],LORAMAXSTRING-pos,"reading ");
     }
-    pos += snprintf(&sOut[pos],MAXSTRING-pos,"state=%d cmd=0X",status);
+    pos += snprintf(&sOut[pos],LORAMAXSTRING-pos,"state=%d cmd=0X",status);
     for(uint8_t n = 0; n < cmdLen; n++) {
-      pos += snprintf(&sOut[pos],MAXSTRING-pos,"%02X",cmd[n]);      
+      pos += snprintf(&sOut[pos],LORAMAXSTRING-pos,"%02X",cmd[n]);      
     }
     log_e("%s",sOut);
   }
@@ -894,12 +894,11 @@ int16_t LoRaClass::switchLORA(float frequency){
   switch (radioType){
     case RADIO_SX1262:
       {
-      int16_t state = 0;
       uint8_t data[10];
 
-      state = sx1262_standby(0x01); //switch to stand-by STDBY_XOSC
+      sx1262_standby(0x01); //switch to stand-by STDBY_XOSC
       data[0] = 0x01;
-      state = SPIwriteCommand(0x8A, data, 1); //set Modem to Lora
+      SPIwriteCommand(0x8A, data, 1); //set Modem to Lora
 
       sx1262SetBufferBaseAddress();
 
@@ -1343,7 +1342,6 @@ int16_t LoRaClass::sx1262Transmit(uint8_t* buffer, size_t len, uint8_t addr){
       return(ERR_TX_TIMEOUT);
     }
   }
-  uint32_t elapsed = GxModule::micros() - start;
 
   // clear interrupt flags
   state = sx1262ClearIrqStatus();
@@ -1483,7 +1481,7 @@ void LoRaClass::end(){
       // set RF switch (if present)
       pGxModule->setRfSwitchState(LOW, LOW);
       uint8_t sleepMode = SX126X_SLEEP_START_COLD | SX126X_SLEEP_RTC_OFF;
-      int16_t state = SPIwriteCommand(SX126X_CMD_SET_SLEEP, &sleepMode, 1, false);      
+      SPIwriteCommand(SX126X_CMD_SET_SLEEP, &sleepMode, 1, false);      
       GxModule::delay(1);
       break;
       }

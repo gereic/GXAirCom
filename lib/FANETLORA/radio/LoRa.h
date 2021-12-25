@@ -94,9 +94,7 @@
 
 #include "GxModule.h"
 
-#ifndef MAXSTRING
-#define MAXSTRING 500
-#endif
+#define LORAMAXSTRING 500
 
 
 
