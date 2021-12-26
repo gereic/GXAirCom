@@ -294,14 +294,30 @@ void FanetMac::frameReceived(int length)
 			#endif
 			return;
 		}
-    // The magic number is a 1-byte unencrypted value at the 4th byte.
-    uint8_t magic = rx_frame[3];
-    if (magic != 0x10 && magic != 0x20) {
+    // The magic number is a 1-byte unencrypted value at the 4th byte. 
+		// high-nibble --> Address-Type
+		// ICAO = 1;
+		// FLARM = 2;
+		// ANONYMOUS = 3;
+		// low-nibble --> unknown (must be zero)
+
+		uint8_t magic = rx_frame[3] & 0x0F;
+		if (magic != 0x00){
+			//the unknown-Bits have to be zero !!
+			#if RX_DEBUG > 0
+      log_e("Legacy: unknown-Bits have to be zero %d",magic);
+			#endif
+      return;			
+		}
+		/*
+		magic = rx_frame[3] >> 8;
+    if (magic != 0x10 && magic != 0x20 && magic != 0x30) {
 			#if RX_DEBUG > 0
       log_e("%d Legacy: wrong message %d!=0x10!=0x20",millis(),magic);
 			#endif
       return;			
     }
+		*/
 
     //check if Checksum is OK
   	uint16_t crc16 =  getLegacyCkSum(rx_frame,24);
