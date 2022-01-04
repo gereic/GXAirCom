@@ -899,7 +899,7 @@ void drawflying(int16_t x, int16_t y, bool flying){
 
 
 void drawBatt(int16_t x, int16_t y,uint8_t value){
-
+    /*
     display.setTextSize(1);
     display.setCursor(x-15,y+9);
     display.print(status.vBatt/1000);
@@ -913,7 +913,7 @@ void drawBatt(int16_t x, int16_t y,uint8_t value){
     display.setCursor(x-5,y+18);
     display.print(String(status.varioTemp,0));
     display.print("C");
-
+    */
     static uint8_t DrawValue = 0;
     if (value == 255){
         DrawValue = (DrawValue + 1) %5; 
@@ -4556,7 +4556,16 @@ void taskStandard(void *pvParameters){
           status.GPS_Lon = nmea.getLongitude() / 1000000.;  
           status.GPS_alt = alt/1000.;
           status.GPS_geoidAlt = geoidalt/1000.;
-          setTime(nmea.getHour(), nmea.getMinute(), nmea.getSecond(), nmea.getDay(), nmea.getMonth(), nmea.getYear());
+          //setTime(nmea.getHour(), nmea.getMinute(), nmea.getSecond(), nmea.getDay(), nmea.getMonth(), nmea.getYear());
+          struct tm timeinfo;
+          timeinfo.tm_year = nmea.getYear() - 1900; //from 1900
+          timeinfo.tm_mon = nmea.getMonth() - 1; //month begin with 0
+          timeinfo.tm_mday = nmea.getDay();
+          timeinfo.tm_hour = nmea.getHour();
+          timeinfo.tm_min = nmea.getMinute(); 
+          timeinfo.tm_sec = nmea.getSecond();
+          setAllTime(timeinfo); //we have to set time to GPS-Time for decoding.
+
           MyFanetData.timestamp = now();
           if (oldAlt == 0) oldAlt = status.GPS_alt;        
           if (!status.vario.bHasVario) status.ClimbRate = (status.GPS_alt - oldAlt) / (float(status.tGPSCycle) / 1000.0);        
