@@ -550,6 +550,9 @@ int16_t LoRaClass::readData(uint8_t* data, size_t len){
         sx1276setOpMode(SX1276_MODE_STANDBY); //RegOpMode --> set Module to standby
         // read packet data
         pGxModule->SPIreadRegisterBurst(0x00, len, data);     //REG_FIFO      
+        if(pGxModule->SPIgetRegValue(SX127X_REG_IRQ_FLAGS, 5, 5) == SX127X_CLEAR_IRQ_FLAG_PAYLOAD_CRC_ERROR) {
+          ret = ERR_CRC_MISMATCH;
+        }
       }
       return ret;
   }
@@ -962,29 +965,29 @@ int16_t LoRaClass::switchLORA(float frequency){
       //pGxModule->SPIwriteRegister(0x06,0xD9); //RegFrMsb
       //pGxModule->SPIwriteRegister(0x07,0x0C); //RegFrMid
       //pGxModule->SPIwriteRegister(0x08,0xCD); //RegFrLsb
-      pGxModule->SPIwriteRegister(0x09,0xFC); //RegPaConfig
-      pGxModule->SPIwriteRegister(0x0A,0x49); //RegPaRamp
-      pGxModule->SPIwriteRegister(0x0B,0x2B); //RegOcp
-      pGxModule->SPIwriteRegister(0x0C,0x23); //RegLna
+      pGxModule->SPIwriteRegister(0x09,0xFC); //RegPaConfig PA_Boost on, max_power=15, Output Power 14dBm
+      pGxModule->SPIwriteRegister(0x0A,0x09); //RegPaRamp 40us
+      pGxModule->SPIwriteRegister(0x0B,0x2B); //RegOcp OCP enabled, max. 100mA
+      pGxModule->SPIwriteRegister(0x0C,0x23); //RegLna G1 (max gain), Boost on (150% LNA current)
       pGxModule->SPIwriteRegister(0x0D,0x01); //RegFifoAddrPtr
       pGxModule->SPIwriteRegister(0x0E,0x00); //RegFifoTxBaseAddr
       pGxModule->SPIwriteRegister(0x0F,0x00); //RegFifoRxBaseAddr
       pGxModule->SPIwriteRegister(0x11,0x00); //RegIrqFlags
-      pGxModule->SPIwriteRegister(0x1D,0x88); //RegModemConfig1
-      pGxModule->SPIwriteRegister(0x1E,0x74); //RegModemConfig2
+      pGxModule->SPIwriteRegister(0x1D,0x88); //RegModemConfig1 Explicit Header, CR 4/8, BW 250kHz
+      pGxModule->SPIwriteRegister(0x1E,0x74); //RegModemConfig2 CRC enabled, 128 chips / symbol
       pGxModule->SPIwriteRegister(0x1F,0x64); //RegSymbTimeoutLsb
       pGxModule->SPIwriteRegister(0x20,0x00); //RegPreambleMsb
       pGxModule->SPIwriteRegister(0x21,0x07); //RegPreambleLsb
       pGxModule->SPIwriteRegister(0x22,0x13); //RegPayloadLength
       pGxModule->SPIwriteRegister(0x23,0xFF); //RegMaxPayloadLength
       pGxModule->SPIwriteRegister(0x24,0x00); //RegHopPeriod
-      pGxModule->SPIwriteRegister(0x26,0x04); //RegModemConfig3
+      pGxModule->SPIwriteRegister(0x26,0x04); //RegModemConfig3 AGC on
       pGxModule->SPIwriteRegister(0x27,0x00); //Data rate offset value, used in conjunction with AFC
       pGxModule->SPIwriteRegister(0x31,0x43); //RegDetectOptimize
       pGxModule->SPIwriteRegister(0x33,0x27); //RegInvertIQ
       pGxModule->SPIwriteRegister(0x36,0x03); //RegHighBWOptimize1
-      pGxModule->SPIwriteRegister(0x37,0x0A); //RegDetectionThreshold
-      pGxModule->SPIwriteRegister(0x39,0xF1); //set sync-word
+      pGxModule->SPIwriteRegister(0x37,0x0A); //RegDetectionThreshold SF7
+      pGxModule->SPIwriteRegister(0x39,0xF1); //set sync-word Sync-Word F1
       pGxModule->SPIwriteRegister(0x3A,0x52); //RegHighBWOptimize1
       pGxModule->SPIwriteRegister(0x3B,0x1D); //RegInvertIQ2
       pGxModule->SPIwriteRegister(0x40,0x00); //RegDioMapping1

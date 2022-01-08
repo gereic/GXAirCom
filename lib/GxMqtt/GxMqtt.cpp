@@ -79,7 +79,7 @@ void GxMqtt::connect() {
   snprintf(willTopic,sizeof(willTopic),"GXAirCom/%s/online",setting.myDevId.c_str());
   snprintf(cmdTopic,sizeof(cmdTopic),"GXAirCom/%s/cmd",setting.myDevId.c_str());
   snprintf(stateTopic,sizeof(stateTopic),"GXAirCom/%s/state",setting.myDevId.c_str());
-  snprintf(myTopic,sizeof(myTopic),"GXAirCom/%s/",setting.myDevId.c_str());
+  snprintf(myTopic,sizeof(myTopic),"GXAirCom/%s",setting.myDevId.c_str());
   bool bRet;
   if (setting.mqtt.pw.length() == 0){
     //log_i("connect without user and password");

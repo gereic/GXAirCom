@@ -299,7 +299,7 @@ TaskHandle_t xHandleLogger = NULL;
 TaskHandle_t xHandleWeather = NULL;
 
 SemaphoreHandle_t xOutputMutex;
-String sOutputData;
+String sOutputData = "";
 char sMqttState[MAXSTRING];
 
 #ifdef GSM_MODULE
@@ -494,6 +494,20 @@ void checkLoraChip(){
   }
 }
 
+uint8_t checkI2C(){
+  uint8_t nDevices = 0;
+  for (int i = 1;i < 127; i++){
+    i2cOLED.beginTransmission(i);
+    uint8_t err = i2cOLED.endTransmission();
+    if (err == 0) {
+      nDevices++;
+      //log_i("I2C Device found at %02X",i);
+    }
+  }
+  log_i("I2C found %d Devices",nDevices);
+  return nDevices;
+}
+
 void checkBoardType(){
   #ifdef TINY_GSM_MODEM_SIM7000
     setting.displayType = NO_DISPLAY;
@@ -511,34 +525,31 @@ void checkBoardType(){
     delay(1000);
     esp_restart(); //we need to restart
   #endif
-  log_i("start checking if board is T-Beam");
+  log_i("start checking board-type");  
   PinOledSDA = 21;
   PinOledSCL = 22;
   i2cOLED.begin(PinOledSDA, PinOledSCL);
-  log_i("init i2c %d,%d OK",PinOledSDA,PinOledSCL);
-  i2cOLED.beginTransmission(AXP192_SLAVE_ADDRESS);
-  if (i2cOLED.endTransmission() == 0) {
-    //ok we have a T-Beam !! 
-    //check, if we have an OLED
-    setting.boardType = BOARD_T_BEAM;
-    log_i("AXP192 found");
-    checkLoraChip();
-    i2cOLED.beginTransmission(OLED_SLAVE_ADDRESS);
+  uint8_t i2cDevices = checkI2C();
+  if (i2cDevices < 10){
+    i2cOLED.beginTransmission(AXP192_SLAVE_ADDRESS);
     if (i2cOLED.endTransmission() == 0) {
-      //we have found also the OLED
-      setting.displayType = OLED0_96;
-      log_i("OLED found");
-      write_configFile(&setting);
-      delay(1000);
-      esp_restart(); //we need to restart
-    }else{
+      //ok we have a T-Beam !! 
+      //check, if we have an OLED
+      setting.boardType = BOARD_T_BEAM;
+      log_i("AXP192 found");
+      checkLoraChip();
       setting.displayType = NO_DISPLAY;
-      log_i("no OLED found");
+      i2cOLED.beginTransmission(OLED_SLAVE_ADDRESS);
+      if (i2cOLED.endTransmission() == 0) {
+        //we have found also the OLED
+        setting.displayType = OLED0_96;
+        log_i("OLED found");
+      }
+      log_i("Board is T-Beam V1.0 or V1.1");
       write_configFile(&setting);
       delay(1000);
       esp_restart(); //we need to restart
     }
-  }else{
     //no AXP192 --> maybe T-Beam V07 or T3 V1.6
     i2cOLED.beginTransmission(OLED_SLAVE_ADDRESS);
     if (i2cOLED.endTransmission() == 0) {
@@ -546,18 +557,18 @@ void checkBoardType(){
       setting.boardType = BOARD_T_BEAM_V07;
       setting.displayType = OLED0_96;
       log_i("OLED found");
+      log_i("Board is T-Beam v0.7");
       write_configFile(&setting);
       delay(1000);
       esp_restart(); //we need to restart
     }
   }
-
-  log_i("start checking if board is HELTEC/TTGO");
+  setting.displayType = NO_DISPLAY;
   PinOledSDA = 4;
   PinOledSCL = 15;
   PinOledRst = 16;
   i2cOLED.begin(PinOledSDA, PinOledSCL);
-  log_i("init i2c %d,%d OK",PinOledSDA,PinOledSCL);
+  i2cDevices = checkI2C();
   pinMode(PinOledRst, OUTPUT);
   digitalWrite(PinOledRst, LOW);
   delay(100);
@@ -566,13 +577,19 @@ void checkBoardType(){
   i2cOLED.beginTransmission(OLED_SLAVE_ADDRESS);
   if (i2cOLED.endTransmission() == 0) {
     //we have found also the OLED
-    setting.boardType = BOARD_HELTEC_LORA;
     setting.displayType = OLED0_96;
     log_i("OLED found");
+    setting.boardType = BOARD_HELTEC_LORA;
+    log_i("Board is Heltec/Lora");
     write_configFile(&setting);
     delay(1000);
     esp_restart(); //we need to restart
   }
+  log_i("Board is Heltec Wireless Stick Lite");
+  setting.boardType = BOARD_HELTEC_WIRELESS_STICK_LITE;
+  write_configFile(&setting);
+  delay(1000);
+  esp_restart(); //we need to restart
 
 }
 
@@ -1741,6 +1758,7 @@ void setup() {
   status.bHasGPS = false;
   fanet.setGPS(false);
   status.tRestart = 0;
+  sMqttState[0] = 0; //zero-Termination of String !!
 
   log_i("SDK-Version=%s",ESP.getSdkVersion());
   log_i("CPU-Speed=%dMhz",ESP.getCpuFreqMHz());
@@ -2049,9 +2067,12 @@ void setup() {
     PinGsmTx = 12;
     PinGsmRx = 21;
 
-    PinOledRst = 16;
-    PinOledSDA = 4;
-    PinOledSCL = 15;
+    if (setting.displayType == OLED0_96){
+      PinOledRst = 16;
+      PinOledSDA = 4;
+      PinOledSCL = 15;
+      i2cOLED.begin(PinOledSDA, PinOledSCL);
+    }
 
     PinBuzzer = 17;
 
@@ -2077,12 +2098,43 @@ void setup() {
     sButton[0].PinButton = 0; //pin for program-Led
     //PinButton[0] = 0; //pin for Program-Led
 
-    i2cOLED.begin(PinOledSDA, PinOledSCL);
     // voltage-divier 27kOhm and 100kOhm
     // vIn = (R1+R2)/R2 * VOut
     //1S LiPo
     adcVoltageMultiplier = (100000.0f + 27000.0f) / 100000.0f * 3.3;
     pinMode(PinADCVoltage, INPUT); //input-Voltage on GPIO34
+    break;
+  case BOARD_HELTEC_WIRELESS_STICK_LITE:
+    log_i("Board=Heltec Wireless Stick Lite");
+
+
+    PinLoraRst = 14;
+    PinLoraDI0 = 26;
+    PinLora_SS = 18;
+    PinLora_MISO = 19;
+    PinLora_MOSI = 27;
+    PinLora_SCK = 5;
+
+    PinBaroSDA = 32;
+    PinBaroSCL = 33;
+
+    //PinOneWire = 22;    
+
+    PinADCVoltage = 37;
+
+    PinWindDir = 36;
+    PinWindSpeed = 39;
+    PinRainGauge = 38;
+
+    sButton[0].PinButton = 0; //pin for program-button
+
+    // voltage-divier 27kOhm and 100kOhm
+    // vIn = (R1+R2)/R2 * VOut
+    //1S LiPo
+    pinMode(21, OUTPUT); //we have to set pin 21 to measure voltage of Battery
+    digitalWrite(21,LOW); //set output to Low, so we can measure the voltage
+    adcVoltageMultiplier = (100000.0f + 220000.0f) / 100000.0f * 3.3;
+    pinMode(PinADCVoltage, INPUT); //input-Voltage on GPIO37
     break;
   case BOARD_TTGO_TSIM_7000:
     log_i("Board=TTGO_TSIM_7000");
@@ -2271,7 +2323,7 @@ xOutputMutex = xSemaphoreCreateMutex();
 #ifdef GSMODULE  
   if (setting.Mode == MODE_GROUND_STATION){
     //start weather-task
-    xTaskCreatePinnedToCore(taskWeather, "taskWeather", 6500, NULL, 8, &xHandleWeather, ARDUINO_RUNNING_CORE1);
+    xTaskCreatePinnedToCore(taskWeather, "taskWeather", 13000, NULL, 8, &xHandleWeather, ARDUINO_RUNNING_CORE1);
   }
 #endif  
 #ifdef GSM_MODULE
@@ -2697,7 +2749,7 @@ void taskWeather(void *pvParameters){
           doc["hum"] = String(avg[0].Humidity,2);
           doc["press"] = String(avg[0].Pressure,2);
           serializeJson(doc, msg_buf);
-          Serial.print("WD=");Serial.println(pWd);
+          //Serial.print("WD=");Serial.println(pWd);
           wdCount++;
         }
         if (setting.wd.sendFanet){
@@ -2802,7 +2854,6 @@ void taskBaro(void *pvParameters){
     digitalWrite(PinBuzzer,LOW);
     ledcAttachPin(PinBuzzer, channel);
   }  
-  
   Wire.begin(PinBaroSDA,PinBaroSCL,400000);
   //TwoWire i2cBaro = TwoWire(0);
   //i2cBaro.begin(PinBaroSDA,PinBaroSCL,400000); //init i2cBaro for Baro

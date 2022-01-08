@@ -339,4 +339,4 @@ V4.14.0
 added support for MQTT for Ground-Station (change settings, ....)
 bugfix receiving legacy of GXAirCom-Devices (OGN-Devices) was blocked
 bugfix receiving legacy of GXAirCom-Devices time was not set by GPS
-
+bugfix receiving FANET (CRC was not checked)

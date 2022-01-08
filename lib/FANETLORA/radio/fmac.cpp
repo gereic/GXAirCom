@@ -1195,6 +1195,7 @@ uint16_t FanetMac::numTrackingNeighbors(void)
 MacAddr FanetMac::readAddr(void)
 {
 	uint64_t chipmacid = ESP.getEfuseMac();
+  log_i("ESP32ChipID=%04X%08X",(uint16_t)(chipmacid>>32),(uint32_t)chipmacid);//print chip-id
 	//Serial.printf("MAC:");Serial.println(uint64ToString(chipmacid)); // six octets
 	uint8_t myDevId[3];
 	myDevId[0] = ManuId;//Manufacturer GetroniX
