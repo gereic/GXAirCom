@@ -354,7 +354,9 @@ void FanetMac::frameReceived(int length)
 			//fmac.sendUdpData((uint8_t *)Buffer,len);
 			//log_i("%s",Buffer);
 			//log_i("l=%d;%s",len,Buffer);
-      log_e("%d Legacy: wrong Checksum %04X!=%04X",millis(),crc16,crc16_2);
+      #if RX_DEBUG > 0
+			log_e("%d Legacy: wrong Checksum %04X!=%04X",millis(),crc16,crc16_2);
+			#endif
       return;
     }
     ufo_t air={0};

@@ -19,7 +19,7 @@
 /* Debug */
 #define MAC_debug_mode				0
 //#define MAC_debug_mode				100
-#define RX_DEBUG 1
+#define RX_DEBUG 0
 #define TX_DEBUG 0
 
 
