@@ -53,6 +53,6 @@ private:
     bool _windsensor;
     bool _rainsensor;
     Client *client;
-    SemaphoreHandle_t *xMutex;    
+    SemaphoreHandle_t *xMutex;
 };
 #endif

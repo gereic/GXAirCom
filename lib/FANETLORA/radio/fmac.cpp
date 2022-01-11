@@ -294,14 +294,30 @@ void FanetMac::frameReceived(int length)
 			#endif
 			return;
 		}
-    // The magic number is a 1-byte unencrypted value at the 4th byte.
-    uint8_t magic = rx_frame[3];
-    if (magic != 0x10 && magic != 0x20) {
+    // The magic number is a 1-byte unencrypted value at the 4th byte. 
+		// high-nibble --> Address-Type
+		// ICAO = 1;
+		// FLARM = 2;
+		// ANONYMOUS = 3;
+		// low-nibble --> unknown (must be zero)
+
+		uint8_t magic = rx_frame[3] & 0x0F;
+		if (magic != 0x00){
+			//the unknown-Bits have to be zero !!
+			#if RX_DEBUG > 0
+      log_e("Legacy: unknown-Bits have to be zero %d",magic);
+			#endif
+      return;			
+		}
+		/*
+		magic = rx_frame[3] >> 8;
+    if (magic != 0x10 && magic != 0x20 && magic != 0x30) {
 			#if RX_DEBUG > 0
       log_e("%d Legacy: wrong message %d!=0x10!=0x20",millis(),magic);
 			#endif
       return;			
     }
+		*/
 
     //check if Checksum is OK
   	uint16_t crc16 =  getLegacyCkSum(rx_frame,24);
@@ -338,7 +354,9 @@ void FanetMac::frameReceived(int length)
 			//fmac.sendUdpData((uint8_t *)Buffer,len);
 			//log_i("%s",Buffer);
 			//log_i("l=%d;%s",len,Buffer);
-      log_e("%d Legacy: wrong Checksum %04X!=%04X",millis(),crc16,crc16_2);
+      #if RX_DEBUG > 0
+			log_e("%d Legacy: wrong Checksum %04X!=%04X",millis(),crc16,crc16_2);
+			#endif
       return;
     }
     ufo_t air={0};
@@ -1179,6 +1197,7 @@ uint16_t FanetMac::numTrackingNeighbors(void)
 MacAddr FanetMac::readAddr(void)
 {
 	uint64_t chipmacid = ESP.getEfuseMac();
+  log_i("ESP32ChipID=%04X%08X",(uint16_t)(chipmacid>>32),(uint32_t)chipmacid);//print chip-id
 	//Serial.printf("MAC:");Serial.println(uint64ToString(chipmacid)); // six octets
 	uint8_t myDevId[3];
 	myDevId[0] = ManuId;//Manufacturer GetroniX

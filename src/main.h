@@ -1,5 +1,5 @@
 #include <string.h>
-#include <FanetLora.h>
+//#include "../lib/FANETLORA/FanetLora.h"
 
 #ifndef __MAIN_H__
 #define __MAIN_H__
@@ -195,6 +195,7 @@ SCL 14
 #define BOARD_TTGO_TSIM_7000 4
 #define BOARD_T_BEAM_SX1262 5
 #define BOARD_TTGO_TCALL_800 6
+#define BOARD_HELTEC_WIRELESS_STICK_LITE 7
 #define BOARD_UNKNOWN 255
 
 #define BAND868 0
@@ -324,6 +325,25 @@ struct VarioSettings{
   float sigmaA;
 };
 
+	struct MqttModeBits
+	{
+			unsigned enable:1, sendWeather:1, b2:1, b3:1, b4:1, b5:1, b6:1, b7:1;
+	};
+
+  	union uMqttMode
+	{
+			MqttModeBits bits;
+			uint8_t mode;
+	};
+
+
+struct MqttSettings{
+  uMqttMode mode;
+  String server = "";
+  uint16_t port;
+  String pw = "";
+};
+
 struct VarioStatus{
   bool bHasVario;
   bool bHasMPU;
@@ -399,7 +419,7 @@ struct SettingsData{
   uint8_t awLiveTracking; //airwhere live-tracking
   WifiSettings wifi;
   String PilotName; //Pilotname
-  FanetLora::aircraft_t AircraftType; //Aircrafttype
+  uint8_t AircraftType; //Aircrafttype
   String UDPServerIP; //UDP-IP-Adress for sending Pakets
   uint16_t UDPSendPort; //Port of udp-server
   uint8_t outputMode; //output-mode
@@ -418,6 +438,7 @@ struct SettingsData{
   uint16_t fanetpin; //pin for fanet (4 signs)
   bool bHasExtPowerSw; //has external power-switch
   bool bHasFuelSensor; //has fuel-Sensor
+  MqttSettings mqtt;
 };
 
 struct weatherStatus{

@@ -289,7 +289,7 @@ void Ogn::sendGroundTrackingData(time_t timestamp,float lat,float lon,String dev
     xSemaphoreTake( *xMutex, portMAX_DELAY );
     client->print(buff);                
     xSemaphoreGive( *xMutex );
-    log_i("%s",buff);
+    //log_i("%s",buff);
 
 }
 
@@ -311,7 +311,7 @@ void Ogn::sendTrackingData(time_t timestamp,float lat,float lon,float alt,float 
     xSemaphoreTake( *xMutex, portMAX_DELAY );
     client->print(buff);                
     xSemaphoreGive( *xMutex );
-    log_i("%s",buff);
+    //log_i("%s",buff);
 }
 
 void Ogn::setStatusData(float pressure, float temp,float hum, float battVoltage,uint8_t battPercent){

@@ -22,11 +22,11 @@ bool  Windy::sendData(String ID,String APIKEY,wData *data){ //send Data to WU wi
       *xMutex = xSemaphoreCreateMutex();
   }
   //time(&now);
-  char msg[1024]; //make this big enough to hold the resulting string
+  char msg[2048]; //make this big enough to hold the resulting string
   char msg2[255]; //make this big enough to hold the resulting string
   float dewpoint = dewPointFast(data->temp,data->humidity);
   //sprintf(msg,"http://weatherstation.wunderground.com/weatherstation/updateweatherstation.php?ID=%s&PASSWORD=%s&dateutc=%04d-%02d-%02d+%02d%%3A%02d%%3A%02d",
-  sprintf(msg,"/pws/update/%s?stationId=%s&dateutc=%04d-%02d-%02d+%02d%%3A%02d%%3A%02d",
+  snprintf(msg,sizeof(msg),"/pws/update/%s?stationId=%s&dateutc=%04d-%02d-%02d+%02d%%3A%02d%%3A%02d",
           APIKEY.c_str(),
           ID.c_str(),          
           year(),
@@ -37,14 +37,14 @@ bool  Windy::sendData(String ID,String APIKEY,wData *data){ //send Data to WU wi
           second()
           );
   if (data->bWind){
-    sprintf(msg2,"&winddir=%.2f&windspeedmph=%.2f&windgustmph=%.2f",
+    snprintf(msg2,sizeof(msg2),"&winddir=%.2f&windspeedmph=%.2f&windgustmph=%.2f",
           data->winddir,
           kmh2mph(data->windspeed),
           kmh2mph(data->windgust)
           );
     strcat(msg,msg2);
   }
-  sprintf(msg2,"&humidity=%.2f&tempf=%.2f&baromin=%.2f&dewptf=%.2f",
+  snprintf(msg2,sizeof(msg2),"&humidity=%.2f&tempf=%.2f&baromin=%.2f&dewptf=%.2f",
           data->humidity,
           deg2f(data->temp),
           data->pressure * 0.029529983071445,
@@ -52,7 +52,7 @@ bool  Windy::sendData(String ID,String APIKEY,wData *data){ //send Data to WU wi
           );
   strcat(msg,msg2);
   if (data->bRain){
-    sprintf(msg2,"&rainin=%.2f",
+    snprintf(msg2,sizeof(msg2),"&rainin=%.2f",
             data->rain1h
             );
     strcat(msg,msg2);

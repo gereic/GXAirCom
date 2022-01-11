@@ -279,7 +279,14 @@ void onWebSocketEvent(uint8_t client_num,
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
           
-
+          doc.clear();
+          doc["MqttMode"] = (uint8_t)setting.mqtt.mode.mode ;
+          doc["MqttServer"] = setting.mqtt.server ;
+          doc["MqttPort"] = setting.mqtt.port;
+          doc["MqttPw"] = setting.mqtt.pw;
+          serializeJson(doc, msg_buf);
+          webSocket.sendTXT(client_num, msg_buf);
+          
         }else if (clientPages[client_num] == 11){ //settings general
           doc["board"] = setting.boardType;
           doc["band"] = setting.band;
@@ -452,6 +459,11 @@ void onWebSocketEvent(uint8_t client_num,
         if (root.containsKey("GSMMODE")) newSetting.gsm.NetworkMode = doc["GSMMODE"].as<uint8_t>();
         //fuel-sensor
         if (root.containsKey("fuelSensor")) newSetting.bHasFuelSensor = doc["fuelSensor"].as<uint8_t>();
+
+        if (root.containsKey("MqttMode")) newSetting.mqtt.mode.mode = doc["MqttMode"].as<uint8_t>();
+        if (root.containsKey("MqttServer")) newSetting.mqtt.server = doc["MqttServer"].as<String>();
+        if (root.containsKey("MqttPort")) newSetting.mqtt.port = doc["MqttPort"].as<uint16_t>();
+        if (root.containsKey("MqttPw")) newSetting.mqtt.pw = doc["MqttPw"].as<String>();
 
         setting = newSetting;
         log_i("write config-to file");

@@ -130,7 +130,7 @@ String urlencode(String str)
     char c;
     char code0;
     char code1;
-    char code2;
+    //char code2;
     for (int i =0; i < str.length(); i++){
       c=str.charAt(i);
       if (c == ' '){
@@ -147,7 +147,7 @@ String urlencode(String str)
         if (c > 9){
             code0=c - 10 + 'A';
         }
-        code2='\0';
+        //code2='\0';
         encodedString+='%';
         encodedString+=code0;
         encodedString+=code1;

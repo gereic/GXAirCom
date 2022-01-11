@@ -26,6 +26,7 @@ extern struct statusData status;
 #include "main.h"
 #include <icons.h>
 #include <string.h>
+#include "../lib/FANETLORA/FanetLora.h"
 
 /*
 #define EINK_BUSY     33

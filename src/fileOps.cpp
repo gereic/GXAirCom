@@ -23,7 +23,7 @@ void load_configFile(SettingsData* pSetting){
   pSetting->wifi.ssid = preferences.getString("WIFI_SSID","");
   pSetting->wifi.password = preferences.getString("WIFI_PW","");
   pSetting->wifi.tWifiStop = preferences.getUInt("Time_WIFI_Stop",180); //stop wifi after 3min.
-  pSetting->AircraftType = (FanetLora::aircraft_t)preferences.getUChar("AIRCRAFTTYPE",1);
+  pSetting->AircraftType = preferences.getUChar("AIRCRAFTTYPE",1);
   pSetting->UDPServerIP = preferences.getString("UDP_SERVER","192.168.4.2"); //UDP-IP-Adress to match connected device
   pSetting->UDPSendPort = preferences.getUInt("UDP_PORT",10110); //Port of udp-server
   pSetting->outputMode = preferences.getUChar("OutputMode",OUTPUT_BLE); //output-mode default ble
@@ -92,8 +92,15 @@ void load_configFile(SettingsData* pSetting){
   //fuel-sensor
   pSetting->bHasFuelSensor = preferences.getUChar("fuelSensor",0);
 
+  //mqtt
+  pSetting->mqtt.mode.mode = preferences.getUChar("MqttEn",0);
+  pSetting->mqtt.server = preferences.getString("MqttServer","");
+  pSetting->mqtt.port = preferences.getInt("MqttPort",1883);
+  pSetting->mqtt.pw = preferences.getString("MqttPw","");
+
   preferences.end(); 
 
+  //vario
   preferences.begin("fastvario", false);
   pSetting->vario.accel[0] = preferences.getInt("axOffset", 0);
   pSetting->vario.accel[1] = preferences.getInt("ayOffset", 0);
@@ -196,8 +203,15 @@ void write_configFile(SettingsData* pSetting){
   //fuel-sensor
   preferences.putUChar("fuelSensor",pSetting->bHasFuelSensor);
 
+  //mqtt
+  preferences.putUChar("MqttEn",pSetting->mqtt.mode.mode);
+  preferences.putString("MqttServer",pSetting->mqtt.server);
+  preferences.putInt("MqttPort",pSetting->mqtt.port);
+  preferences.putString("MqttPw",pSetting->mqtt.pw);
+
   preferences.end();
 
+  //vario
   preferences.begin("fastvario", false);
   if ((pSetting->vario.accel[0] != 0) || (pSetting->vario.accel[1] != 0) || (pSetting->vario.accel[2] != 0)){
     preferences.putInt("axOffset", pSetting->vario.accel[0]);

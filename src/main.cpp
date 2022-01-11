@@ -31,6 +31,7 @@
 #include <AceButton.h>
 #include "../lib/FANETLORA/Legacy/Legacy.h"
 #include <ArduinoJson.h>
+#include "../lib/GxMqtt/GxMqtt.h"
 
 //#include <esp_task_wdt.h>
 
@@ -62,6 +63,7 @@
   TinyGsmClient GsmOGNClient(modem,0); //client number 0 for OGN
   TinyGsmClient GsmWUClient(modem,1); //client number 1 for weather-underground
   TinyGsmClient GsmUpdaterClient(modem,2); //client number 2 for updater
+  TinyGsmClient GsmMqttClient(modem,3); //client number 3 for MQTT
 #endif
 
 #ifdef EINK
@@ -202,8 +204,6 @@ const char* airwhere_web_ip = "37.128.187.9";
  bool ble_mutex=false;
 
 
-static RTC_NOINIT_ATTR uint8_t startOption;
-static RTC_NOINIT_ATTR uint8_t detectOption;
 uint32_t psRamSize = 0;
 
 uint32_t fanetDstId = 0;
@@ -285,6 +285,8 @@ myButtons sButton[NUMBUTTONS];
 float adcVoltageMultiplier = 0.0;
 String sNmeaIn = "";
 
+char* pWd = NULL;
+uint8_t wdCount = 0;
 
 
 TaskHandle_t xHandleBaro = NULL;
@@ -297,7 +299,8 @@ TaskHandle_t xHandleLogger = NULL;
 TaskHandle_t xHandleWeather = NULL;
 
 SemaphoreHandle_t xOutputMutex;
-String sOutputData;
+String sOutputData = "";
+char sMqttState[MAXSTRING];
 
 #ifdef GSM_MODULE
 TaskHandle_t xHandleGsm = NULL;
@@ -345,7 +348,7 @@ void DrawAngleLine(int16_t x,int16_t y,int16_t length,float deg);
 void drawBatt(int16_t x, int16_t y,uint8_t value);
 void drawSignal(int16_t x, int16_t y,uint8_t strength);
 void drawflying(int16_t x, int16_t y, bool flying);
-void drawAircraftType(int16_t x, int16_t y, FanetLora::aircraft_t AircraftType);
+void drawAircraftType(int16_t x, int16_t y, uint8_t AircraftType);
 void drawSatCount(int16_t x, int16_t y,uint8_t value);
 void drawspeaker(int16_t x, int16_t y);
 void drawBluetoothstat(int16_t x, int16_t y);
@@ -491,6 +494,20 @@ void checkLoraChip(){
   }
 }
 
+uint8_t checkI2C(){
+  uint8_t nDevices = 0;
+  for (int i = 1;i < 127; i++){
+    i2cOLED.beginTransmission(i);
+    uint8_t err = i2cOLED.endTransmission();
+    if (err == 0) {
+      nDevices++;
+      //log_i("I2C Device found at %02X",i);
+    }
+  }
+  log_i("I2C found %d Devices",nDevices);
+  return nDevices;
+}
+
 void checkBoardType(){
   #ifdef TINY_GSM_MODEM_SIM7000
     setting.displayType = NO_DISPLAY;
@@ -508,34 +525,31 @@ void checkBoardType(){
     delay(1000);
     esp_restart(); //we need to restart
   #endif
-  log_i("start checking if board is T-Beam");
+  log_i("start checking board-type");  
   PinOledSDA = 21;
   PinOledSCL = 22;
   i2cOLED.begin(PinOledSDA, PinOledSCL);
-  log_i("init i2c %d,%d OK",PinOledSDA,PinOledSCL);
-  i2cOLED.beginTransmission(AXP192_SLAVE_ADDRESS);
-  if (i2cOLED.endTransmission() == 0) {
-    //ok we have a T-Beam !! 
-    //check, if we have an OLED
-    setting.boardType = BOARD_T_BEAM;
-    log_i("AXP192 found");
-    checkLoraChip();
-    i2cOLED.beginTransmission(OLED_SLAVE_ADDRESS);
+  uint8_t i2cDevices = checkI2C();
+  if (i2cDevices < 10){
+    i2cOLED.beginTransmission(AXP192_SLAVE_ADDRESS);
     if (i2cOLED.endTransmission() == 0) {
-      //we have found also the OLED
-      setting.displayType = OLED0_96;
-      log_i("OLED found");
-      write_configFile(&setting);
-      delay(1000);
-      esp_restart(); //we need to restart
-    }else{
+      //ok we have a T-Beam !! 
+      //check, if we have an OLED
+      setting.boardType = BOARD_T_BEAM;
+      log_i("AXP192 found");
+      checkLoraChip();
       setting.displayType = NO_DISPLAY;
-      log_i("no OLED found");
+      i2cOLED.beginTransmission(OLED_SLAVE_ADDRESS);
+      if (i2cOLED.endTransmission() == 0) {
+        //we have found also the OLED
+        setting.displayType = OLED0_96;
+        log_i("OLED found");
+      }
+      log_i("Board is T-Beam V1.0 or V1.1");
       write_configFile(&setting);
       delay(1000);
       esp_restart(); //we need to restart
     }
-  }else{
     //no AXP192 --> maybe T-Beam V07 or T3 V1.6
     i2cOLED.beginTransmission(OLED_SLAVE_ADDRESS);
     if (i2cOLED.endTransmission() == 0) {
@@ -543,18 +557,18 @@ void checkBoardType(){
       setting.boardType = BOARD_T_BEAM_V07;
       setting.displayType = OLED0_96;
       log_i("OLED found");
+      log_i("Board is T-Beam v0.7");
       write_configFile(&setting);
       delay(1000);
       esp_restart(); //we need to restart
     }
   }
-
-  log_i("start checking if board is HELTEC/TTGO");
+  setting.displayType = NO_DISPLAY;
   PinOledSDA = 4;
   PinOledSCL = 15;
   PinOledRst = 16;
   i2cOLED.begin(PinOledSDA, PinOledSCL);
-  log_i("init i2c %d,%d OK",PinOledSDA,PinOledSCL);
+  i2cDevices = checkI2C();
   pinMode(PinOledRst, OUTPUT);
   digitalWrite(PinOledRst, LOW);
   delay(100);
@@ -563,13 +577,19 @@ void checkBoardType(){
   i2cOLED.beginTransmission(OLED_SLAVE_ADDRESS);
   if (i2cOLED.endTransmission() == 0) {
     //we have found also the OLED
-    setting.boardType = BOARD_HELTEC_LORA;
     setting.displayType = OLED0_96;
     log_i("OLED found");
+    setting.boardType = BOARD_HELTEC_LORA;
+    log_i("Board is Heltec/Lora");
     write_configFile(&setting);
     delay(1000);
     esp_restart(); //we need to restart
   }
+  log_i("Board is Heltec Wireless Stick Lite");
+  setting.boardType = BOARD_HELTEC_WIRELESS_STICK_LITE;
+  write_configFile(&setting);
+  delay(1000);
+  esp_restart(); //we need to restart
 
 }
 
@@ -848,7 +868,7 @@ void checkFlyingState(uint32_t tAct){
 
 
 #ifdef OLED
-void drawAircraftType(int16_t x, int16_t y, FanetLora::aircraft_t AircraftType){
+void drawAircraftType(int16_t x, int16_t y, uint8_t AircraftType){
   switch (AircraftType)
   {
   case FanetLora::paraglider :
@@ -896,7 +916,7 @@ void drawflying(int16_t x, int16_t y, bool flying){
 
 
 void drawBatt(int16_t x, int16_t y,uint8_t value){
-
+    /*
     display.setTextSize(1);
     display.setCursor(x-15,y+9);
     display.print(status.vBatt/1000);
@@ -910,7 +930,7 @@ void drawBatt(int16_t x, int16_t y,uint8_t value){
     display.setCursor(x-5,y+18);
     display.print(String(status.varioTemp,0));
     display.print("C");
-
+    */
     static uint8_t DrawValue = 0;
     if (value == 255){
         DrawValue = (DrawValue + 1) %5; 
@@ -1496,31 +1516,19 @@ void startOLED(){
   }
   */
   oledPowerOn();
-  if (startOption == 0){
-    display.setTextColor(WHITE);
-    display.clearDisplay();
-    display.drawXBitmap(0,2,G_Logo_bits,G_Logo_width,G_Logo_height,WHITE);
-    display.display();
-    delay(1000);
-    display.drawXBitmap(30,2,X_Logo_bits,X_Logo_width,X_Logo_height,WHITE);
-    display.display();
-    delay(1000);
-    display.drawXBitmap(69,2,AirCom_Logo_bits,AirCom_Logo_width,AirCom_Logo_height,WHITE);
-    display.setTextSize(1);
-    display.setCursor(85,55);
-    display.print(VERSION);
-    display.display();
-  }else{
-    display.clearDisplay();
-    display.setTextColor(WHITE);
-    display.setTextSize(2);
-    display.setCursor(10,5);
-    display.print("Switch to");
-    display.setCursor(10,30);
-    display.print("Bluetooth");
-    display.display();
-
-  }
+  display.setTextColor(WHITE);
+  display.clearDisplay();
+  display.drawXBitmap(0,2,G_Logo_bits,G_Logo_width,G_Logo_height,WHITE);
+  display.display();
+  delay(1000);
+  display.drawXBitmap(30,2,X_Logo_bits,X_Logo_width,X_Logo_height,WHITE);
+  display.display();
+  delay(1000);
+  display.drawXBitmap(69,2,AirCom_Logo_bits,AirCom_Logo_width,AirCom_Logo_height,WHITE);
+  display.setTextSize(1);
+  display.setCursor(85,55);
+  display.print(VERSION);
+  display.display();
 }
 #endif
 
@@ -1553,7 +1561,7 @@ void printSettings(){
   log_i("WIFI connect=%d",setting.wifi.connect);
   log_i("WIFI SSID=%s",setting.wifi.ssid.c_str());
   log_i("WIFI PW=%s",setting.wifi.password.c_str());
-  log_i("Aircraft=%s",fanet.getAircraftType(setting.AircraftType).c_str());
+  log_i("Aircraft=%s",fanet.getAircraftType((FanetLora::aircraft_t)setting.AircraftType).c_str());
   log_i("Pilotname=%s",setting.PilotName.c_str());
   log_i("Wifi-down-time=%d",setting.wifi.tWifiStop);
   log_i("Output-Mode=%d",setting.outputMode);
@@ -1606,6 +1614,12 @@ void printSettings(){
   log_i("WIUlEnable=%d",setting.WindyUpload.enable);
   log_i("WIUlID=%s",setting.WindyUpload.ID.c_str());
   log_i("WIUlKEY=%s",setting.WindyUpload.KEY.c_str());
+
+  // mqttt
+  log_i("MqttMode=%d",setting.mqtt.mode.mode );
+  log_i("MqttServer=%s",setting.mqtt.server.c_str());
+  log_i("MqttPort=%d",setting.mqtt.port);
+  log_i("MqttPw=%s",setting.mqtt.pw.c_str());
 
   #ifdef GSM_MODULE
   //GSM
@@ -1744,6 +1758,7 @@ void setup() {
   status.bHasGPS = false;
   fanet.setGPS(false);
   status.tRestart = 0;
+  sMqttState[0] = 0; //zero-Termination of String !!
 
   log_i("SDK-Version=%s",ESP.getSdkVersion());
   log_i("CPU-Speed=%dMhz",ESP.getCpuFreqMHz());
@@ -1766,14 +1781,8 @@ void setup() {
 
   //esp_sleep_wakeup_cause_t reason = print_wakeup_reason(); //print reason for wakeup
   esp_sleep_wakeup_cause_t reason2 = print_wakeup_reason(); //print reason for wakeup
-  esp_reset_reason_t reason = esp_reset_reason();
-  if (reason != ESP_RST_SW) {
-    startOption = 0;
-    detectOption = 0;
-  }
-  log_i("startOption=%d",startOption);
-
-    // Make sure we can read the file system
+  //esp_reset_reason_t reason = esp_reset_reason();
+  // Make sure we can read the file system
   if( !SPIFFS.begin(true)){
     log_e("Error mounting SPIFFS");
     while(1);
@@ -1846,7 +1855,7 @@ void setup() {
         esp_bt_controller_disable();
         esp_bt_controller_deinit();
         esp_bt_mem_release(ESP_BT_MODE_BTDM);
-        adc_power_off();
+        //adc_power_off();
         //adc_power_release();
         esp_deep_sleep_start();
       }
@@ -2009,7 +2018,6 @@ void setup() {
     i2cOLED.begin(PinOledSDA, PinOledSCL);
     // voltage-divier 100kOhm and 100kOhm
     // vIn = (R1+R2)/R2 * VOut
-//    adcVoltageMultiplier = 2.0f * 3.76f; // not sure if it is ok ?? don't have this kind of board
     adcVoltageMultiplier = 2.0f * 3.5f; // maybe also 3.4 or 3.45 .. TODO test
     pinMode(PinADCVoltage, INPUT);
     break;
@@ -2043,8 +2051,11 @@ void setup() {
   */
   case BOARD_HELTEC_LORA:
     log_i("Board=HELTEC_LORA");
-    PinGPSRX = 34;
-    PinGPSTX = 39;
+    //PinGPSRX = 34;
+    //PinGPSTX = 39;
+    PinGPSRX = 12;
+    //PinGPSTX = 15; // no GPS-TX
+
 
     PinLoraRst = 14;
     PinLoraDI0 = 26;
@@ -2056,9 +2067,12 @@ void setup() {
     PinGsmTx = 12;
     PinGsmRx = 21;
 
-    PinOledRst = 16;
-    PinOledSDA = 4;
-    PinOledSCL = 15;
+    if (setting.displayType == OLED0_96){
+      PinOledRst = 16;
+      PinOledSDA = 4;
+      PinOledSCL = 15;
+      i2cOLED.begin(PinOledSDA, PinOledSCL);
+    }
 
     PinBuzzer = 17;
 
@@ -2084,12 +2098,43 @@ void setup() {
     sButton[0].PinButton = 0; //pin for program-Led
     //PinButton[0] = 0; //pin for Program-Led
 
-    i2cOLED.begin(PinOledSDA, PinOledSCL);
     // voltage-divier 27kOhm and 100kOhm
     // vIn = (R1+R2)/R2 * VOut
     //1S LiPo
     adcVoltageMultiplier = (100000.0f + 27000.0f) / 100000.0f * 3.3;
     pinMode(PinADCVoltage, INPUT); //input-Voltage on GPIO34
+    break;
+  case BOARD_HELTEC_WIRELESS_STICK_LITE:
+    log_i("Board=Heltec Wireless Stick Lite");
+
+
+    PinLoraRst = 14;
+    PinLoraDI0 = 26;
+    PinLora_SS = 18;
+    PinLora_MISO = 19;
+    PinLora_MOSI = 27;
+    PinLora_SCK = 5;
+
+    PinBaroSDA = 32;
+    PinBaroSCL = 33;
+
+    //PinOneWire = 22;    
+
+    PinADCVoltage = 37;
+
+    PinWindDir = 36;
+    PinWindSpeed = 39;
+    PinRainGauge = 38;
+
+    sButton[0].PinButton = 0; //pin for program-button
+
+    // voltage-divier 27kOhm and 100kOhm
+    // vIn = (R1+R2)/R2 * VOut
+    //1S LiPo
+    pinMode(21, OUTPUT); //we have to set pin 21 to measure voltage of Battery
+    digitalWrite(21,LOW); //set output to Low, so we can measure the voltage
+    adcVoltageMultiplier = (100000.0f + 220000.0f) / 100000.0f * 3.3;
+    pinMode(PinADCVoltage, INPUT); //input-Voltage on GPIO37
     break;
   case BOARD_TTGO_TSIM_7000:
     log_i("Board=TTGO_TSIM_7000");
@@ -2231,7 +2276,7 @@ void setup() {
         esp_bt_controller_disable();
         esp_bt_controller_deinit();
         esp_bt_mem_release(ESP_BT_MODE_BTDM);
-        adc_power_off();
+        //adc_power_off();
         //adc_power_release();
         esp_deep_sleep_start();
       }
@@ -2278,7 +2323,7 @@ xOutputMutex = xSemaphoreCreateMutex();
 #ifdef GSMODULE  
   if (setting.Mode == MODE_GROUND_STATION){
     //start weather-task
-    xTaskCreatePinnedToCore(taskWeather, "taskWeather", 6500, NULL, 8, &xHandleWeather, ARDUINO_RUNNING_CORE1);
+    xTaskCreatePinnedToCore(taskWeather, "taskWeather", 13000, NULL, 8, &xHandleWeather, ARDUINO_RUNNING_CORE1);
   }
 #endif  
 #ifdef GSM_MODULE
@@ -2434,7 +2479,7 @@ void taskGsm(void *pvParameters){
   //bool status;
   uint32_t tAct = millis();
   static uint32_t tCheckConn = millis() - GSM_CHECK_TIME_CON; //check every 60sec.
-  static uint32_t tCheckSms = millis() - GSM_CHECK_TIME_SMS;
+  //static uint32_t tCheckSms = millis() - GSM_CHECK_TIME_SMS;
   // Set preferred message format to text mode
 
   xSemaphoreTake( xGsmMutex, portMAX_DELAY );
@@ -2452,9 +2497,11 @@ void taskGsm(void *pvParameters){
   xSemaphoreTake( xGsmMutex, portMAX_DELAY );
   status.modemstatus = MODEM_CONNECTING;
   connectModem(); //connect modem to network  
+  /*
   if (modem.isNetworkConnected()){  
     connectGPRS();
   }
+  */
   xSemaphoreGive( xGsmMutex );
   tCheckConn = millis() - GSM_CHECK_TIME_CON + 1000;
   while(1){
@@ -2489,6 +2536,7 @@ void taskGsm(void *pvParameters){
       tCheckConn = tAct;
       //log_i("%d Check GSM-Connection",tCheckConn);
       xSemaphoreTake( xGsmMutex, portMAX_DELAY );
+      //log_i("%d Check GSM-Connection",tCheckConn);
       if (modem.isGprsConnected()){
         status.modemstatus = MODEM_CONNECTED;
         //xLastWakeTime = xTaskGetTickCount (); //get actual tick-count
@@ -2505,11 +2553,12 @@ void taskGsm(void *pvParameters){
           log_e("can't get Networksystemmode");
         }
         #endif
-        
       }else{
         status.modemstatus = MODEM_CONNECTING;
         if (modem.isNetworkConnected()){  
           connectGPRS();
+          status.myIP = modem.getLocalIP();
+          log_i("connected successfully IP:%s",status.myIP.c_str());
         }else{
           initModem(); //init modem
           connectModem(); //connect modem to network
@@ -2689,7 +2738,8 @@ void taskWeather(void *pvParameters){
         if (timeStatus() == timeSet){
           StaticJsonDocument<500> doc;                      //Memory pool
           char buff[20];
-          char msg_buf[500];
+          static char msg_buf[500];
+          pWd = &msg_buf[0];
           sprintf (buff,"%04d-%02d-%02d %02d:%02d:%02d",year(),month(),day(),hour(),minute(),second());
           doc["DT"] = buff;
           doc["wDir"] = String(avg[0].Winddir,2);
@@ -2699,7 +2749,8 @@ void taskWeather(void *pvParameters){
           doc["hum"] = String(avg[0].Humidity,2);
           doc["press"] = String(avg[0].Pressure,2);
           serializeJson(doc, msg_buf);
-          Serial.print("WD=");Serial.println(msg_buf);
+          //Serial.print("WD=");Serial.println(pWd);
+          wdCount++;
         }
         if (setting.wd.sendFanet){
           
@@ -2789,7 +2840,6 @@ void taskBaro(void *pvParameters){
   uint32_t tMax = 0;
   uint32_t tStart;
   uint32_t tCycle;
-  uint32_t tLog = millis();
   uint8_t u8Volume = setting.vario.volume;
   static bool bInitCalib = true;
   log_i("starting baro-task ");  
@@ -2804,7 +2854,6 @@ void taskBaro(void *pvParameters){
     digitalWrite(PinBuzzer,LOW);
     ledcAttachPin(PinBuzzer, channel);
   }  
-  
   Wire.begin(PinBaroSDA,PinBaroSCL,400000);
   //TwoWire i2cBaro = TwoWire(0);
   //i2cBaro.begin(PinBaroSDA,PinBaroSCL,400000); //init i2cBaro for Baro
@@ -2830,15 +2879,6 @@ void taskBaro(void *pvParameters){
     //xLastWakeTime = xTaskGetTickCount();
     while (1){      
       tStart = millis();
-      /*
-      if ((tStart - tLog) >= 1000){
-        tLog = tStart;
-        if (tMax >= 100){
-          log_w("baro max=%dms",tMax);
-          tMax = 0;
-        }
-      }
-      */
       if (command.CalibGyro == 1){
         baro.calibGyro();
         command.CalibGyro = 2;
@@ -2948,15 +2988,6 @@ void taskBluetooth(void *pvParameters) {
     delay(100); //wait until we have the devid
   }
   if ((setting.outputMode == OUTPUT_BLE) || (setting.outputMode == OUTPUT_BLUETOOTH)){
-    /*
-    if ((psRamSize > 0) || (startOption == 1)){
-      //startBluetooth(); //start bluetooth
-    }else{
-      log_i("stop task");
-      vTaskDelete(xHandleBluetooth);
-      return;    
-    }
-    */
   }else{
     //stop bluetooth-controller --> save some memory
     esp_bt_controller_disable();
@@ -3585,8 +3616,8 @@ void checkSystemCmd(char *ch_str){
     uint8_t u8 = atoi(sRet.c_str());
     u8 = constrain(u8,0,7);
     if (u8 != (uint8_t)setting.AircraftType){
-      setting.AircraftType = FanetLora::aircraft_t(u8);
-      fanet.setAircraftType(setting.AircraftType);
+      setting.AircraftType = u8;
+      fanet.setAircraftType(FanetLora::aircraft_t(setting.AircraftType));
       write_AircraftType();
     }
     add2OutputString("#SYC OK\r\n");
@@ -4107,7 +4138,7 @@ void taskStandard(void *pvParameters){
   if (setting.boardType == BOARD_T_BEAM_SX1262) radioChip = RADIO_SX1262;
   fanet.begin(PinLora_SCK, PinLora_MISO, PinLora_MOSI, PinLora_SS,PinLoraRst, PinLoraDI0,PinLoraGPIO,frequency,setting.LoraPower,radioChip);
   fanet.setPilotname(setting.PilotName);
-  fanet.setAircraftType(setting.AircraftType);
+  fanet.setAircraftType(FanetLora::aircraft_t(setting.AircraftType));
   fanet.autoSendName = true;
   if (setting.Mode == MODE_GROUND_STATION){
     fanet.autobroadcast = false;
@@ -4259,6 +4290,7 @@ void taskStandard(void *pvParameters){
       String s;
       xSemaphoreTake( xOutputMutex, portMAX_DELAY );
       s = sOutputData;
+      snprintf(sMqttState,sizeof(sMqttState),sOutputData.c_str());
       sOutputData = "";
       xSemaphoreGive(xOutputMutex);
       //log_i("sending 2 client %s",s.c_str());
@@ -4575,7 +4607,16 @@ void taskStandard(void *pvParameters){
           status.GPS_Lon = nmea.getLongitude() / 1000000.;  
           status.GPS_alt = alt/1000.;
           status.GPS_geoidAlt = geoidalt/1000.;
-          setTime(nmea.getHour(), nmea.getMinute(), nmea.getSecond(), nmea.getDay(), nmea.getMonth(), nmea.getYear());
+          //setTime(nmea.getHour(), nmea.getMinute(), nmea.getSecond(), nmea.getDay(), nmea.getMonth(), nmea.getYear());
+          struct tm timeinfo;
+          timeinfo.tm_year = nmea.getYear() - 1900; //from 1900
+          timeinfo.tm_mon = nmea.getMonth() - 1; //month begin with 0
+          timeinfo.tm_mday = nmea.getDay();
+          timeinfo.tm_hour = nmea.getHour();
+          timeinfo.tm_min = nmea.getMinute(); 
+          timeinfo.tm_sec = nmea.getSecond();
+          setAllTime(timeinfo); //we have to set time to GPS-Time for decoding.
+
           MyFanetData.timestamp = now();
           if (oldAlt == 0) oldAlt = status.GPS_alt;        
           if (!status.vario.bHasVario) status.ClimbRate = (status.GPS_alt - oldAlt) / (float(status.tGPSCycle) / 1000.0);        
@@ -4821,7 +4862,7 @@ void powerOff(){
   esp_bt_controller_disable();
   esp_bt_controller_deinit();
   esp_bt_mem_release(ESP_BT_MODE_BTDM);
-  adc_power_off();
+  //adc_power_off();
   //adc_power_release();
   esp_deep_sleep_start();
 
@@ -4864,12 +4905,6 @@ void taskEInk(void *pvParameters){
     vTaskDelete(xHandleEInk);
     return;
   }
-  /*
-  while(1){
-    if (setting.myDevId.length() > 0) break; //now we are ready
-    delay(100);
-  }
-  */
   Screen screen;
   if (setting.displayType == EINK2_9_V2){
     screen.begin(1,PinEink_Cs,PinEink_Dc,PinEink_Rst,PinEink_Busy,PinEink_Clk,PinEink_Din); //display-type 1
@@ -5053,11 +5088,20 @@ void taskBackGround(void *pvParameters){
   Dusk2Dawn dusk2dawn(setting.gs.lat,setting.gs.lon, 0);
   uint8_t actDay = 0;
   #endif
-
-  if (startOption != 0){ //we start wifi
-    log_i("stop task");
-    vTaskDelete(xHandleBackground);
-    return;
+  GxMqtt *pMqtt = NULL;
+  static uint8_t myWdCount = 0;
+  if (setting.mqtt.mode.bits.enable){
+    pMqtt = new(GxMqtt);
+    #ifdef GSM_MODULE
+    if (setting.wifi.connect == MODE_WIFI_DISABLED){
+      pMqtt->begin(&xGsmMutex,&GsmMqttClient);
+    }else{
+      pMqtt->begin();
+    }
+    #else
+    pMqtt->begin();
+    #endif
+    
   }
 
   setupWifi();
@@ -5075,6 +5119,23 @@ void taskBackGround(void *pvParameters){
       Web_loop();
     }
     handleUpdate(tAct);
+    if (pMqtt){
+      pMqtt->run(status.bInternetConnected);
+      char cmd[100];
+      if (pMqtt->getLastCmd(cmd,100)){
+        checkReceivedLine(cmd);
+      }
+      if (sMqttState[0]){
+        xSemaphoreTake( xOutputMutex, portMAX_DELAY );
+        pMqtt->sendState(sMqttState);
+        sMqttState[0] = 0;
+        xSemaphoreGive(xOutputMutex);
+      }      
+      if ((myWdCount != wdCount) && (setting.mqtt.mode.bits.sendWeather)) {
+        pMqtt->sendTopic("WD",pWd);
+        myWdCount = wdCount;
+      }
+    } 
     #ifdef GSMODULE    
     if (setting.Mode == MODE_GROUND_STATION){
       if (status.bTimeOk == true){
@@ -5249,16 +5310,6 @@ void taskBackGround(void *pvParameters){
       log_i("******************WEBCONFIG Setting - WIFI STOPPING*************************");
       log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
       setWifi(false);
-      //delay(3000);
-      //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
-      /*
-      if ((setting.outputMode == OUTPUT_BLE) || (setting.outputMode == OUTPUT_BLUETOOTH)){
-        if (psRamSize == 0){
-          startOption = 1; //start without wifi, but with bluetooth enabled
-          ESP.restart(); //we restart without wifi
-        }
-      }
-      */
     }
     //yield();
     if (status.bPowerOff){

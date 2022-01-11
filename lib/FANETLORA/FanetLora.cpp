@@ -520,7 +520,7 @@ int8_t FanetLora::getWeatherinfo(uint8_t *buffer,uint16_t length){
   if (header & 64) expectedpacketLength += 1; //Temperature (+1byte
 
   if (expectedpacketLength != length){
-    log_e("length of Frame wrong %d!=%d",expectedpacketLength,length);
+    //log_e("length of Frame wrong %d!=%d",expectedpacketLength,length);
     return -1;
   }
 
@@ -599,7 +599,7 @@ int8_t FanetLora::getWeatherinfo(uint8_t *buffer,uint16_t length){
 
 int8_t FanetLora::getGroundTrackingInfo(uint8_t *buffer,uint16_t length){
     if (length != 7){
-      log_e("length of Frame wrong 7!=%d",length);
+      //log_e("length of Frame wrong 7!=%d",length);
       return -1;
     }
     uint8_t index = 0;
@@ -740,7 +740,7 @@ void FanetLora::handle_frame(Frame *frm){
       insertNameToWeather(devId,msg2); //insert name in weather-list
       insertNameToNeighbour(devId,msg2); //insert name in neighbour-list
     }else{
-      log_e("length of Frame type:%d to long %d",frm->type,frm->payload_length);
+      //log_e("length of Frame type:%d to long %d",frm->type,frm->payload_length);
       bFrameOk = false;
     }
   }else if (frm->type == 3){
@@ -755,7 +755,7 @@ void FanetLora::handle_frame(Frame *frm){
         lastMsgData.msg += (char)frm->payload[i];
       }
     }else{
-      log_e("length of Frame type:%d to long %d",frm->type,frm->payload_length);
+      //log_e("length of Frame type:%d to long %d",frm->type,frm->payload_length);
       bFrameOk = false;
     }
 
@@ -784,7 +784,7 @@ void FanetLora::handle_frame(Frame *frm){
     }
   }else{
     if (frm->payload_length > 66){
-      log_e("length of Frame type:%d to long %d",frm->type,frm->payload_length);
+      //log_e("length of Frame type:%d to long %d",frm->type,frm->payload_length);
       bFrameOk = false;
     }
   }
@@ -1044,7 +1044,7 @@ uint8_t FanetLora::getFlarmAircraftType(trackingData *tData){
 
 int8_t FanetLora::getTrackingInfo(Frame *frm){
     if ((frm->payload_length < 11) || (frm->payload_length > 13)){
-      log_e("length of Frame wrong %d",frm->payload_length);
+      //log_e("length of Frame wrong %d",frm->payload_length);
       return -1;
     }
     uint8_t index = 0;

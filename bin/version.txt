@@ -335,3 +335,8 @@ New Code for SX1276 and SX1262 --> improved time to switch between Modes
 E-Ink for T-Beam SX1262 is now supported (but only in Air-Mode). (some Pins need to be changed)
 Updated E-Ink-Lib for supporting Waveshare 2.9 V2-Modules
 
+V4.14.0
+added support for MQTT for Ground-Station (change settings, ....)
+bugfix receiving legacy of GXAirCom-Devices (OGN-Devices) was blocked
+bugfix receiving legacy of GXAirCom-Devices time was not set by GPS
+bugfix receiving FANET (CRC was not checked)
