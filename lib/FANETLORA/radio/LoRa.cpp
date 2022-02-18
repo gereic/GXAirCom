@@ -609,9 +609,9 @@ float LoRaClass::getRSSI(){
 int16_t LoRaClass::sx1276setOpMode(uint8_t mode){
   int16_t ret = 0;
   if (mode == SX1276_MODE_RX_CONTINUOUS){
-    ret = pGxModule->SPIsetRegValue(0x01, mode, 2, 0, 0); //set register, but don't wait for set is successfull
+    ret = pGxModule->SPIsetRegValue(0x01, mode, 2, 0, 200); //set Register wait max. 200ms
   }else{
-    ret = pGxModule->SPIsetRegValue(0x01, mode, 2, 0, 200); //RegOpMode --> set op-mode    
+    ret = pGxModule->SPIsetRegValue(0x01, mode, 2, 0, 10); //RegOpMode --> set op-mode wait max. 10ms
   }
   if (ret) log_e("sx1276 mode=%d error=%d",mode,ret);
   /*
@@ -1108,8 +1108,15 @@ int16_t LoRaClass::startReceive(){
           if (!bCalibrated){
             log_i("start calib image");
             //calib image
-            pGxModule->SPIwriteRegister(0x3B, 0x40); //REG_IMAGE_CAL
-            while ( pGxModule->SPIgetRegValue(0x3B) & 0x20 );      
+            uint32_t start = millis();
+            pGxModule->SPIwriteRegister(0x3B, 0x40); //REG_IMAGE_CAL            
+            while(pGxModule->SPIgetRegValue(0x3B) & 0x20) {
+              GxModule::yield();
+              if(millis() - start > 10) {
+                log_e("timeout calibrating image");
+                break;
+              }
+            }
             bCalibrated = true;
           }
           pGxModule->SPIsetRegValue(0x40, 0x00, 7, 6); //REG_DIO_MAPPING_1 --> DIO0_PACK_PAYLOAD_READY

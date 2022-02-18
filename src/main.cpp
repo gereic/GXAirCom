@@ -3823,7 +3823,7 @@ void readGPS(){
       sNmeaIn = ""; //we have a gps --> don't take data from external GPS
     }
   }
-  if (setting.Mode == MODE_AIR_MODULE){
+  if ((setting.Mode == MODE_AIR_MODULE) || ((abs(setting.gs.lat) <= 0.1) && (abs(setting.gs.lon) <= 0.1))) {
     //in Ground-Station-Mode you have to setup GPS-Position manually
     while(NMeaSerial.available()){
       if (recBufferIndex >= 255) recBufferIndex = 0; //Buffer overrun
@@ -4530,7 +4530,7 @@ void taskStandard(void *pvParameters){
     if (setting.outputModeVario == OVARIO_LK8EX1) sendLK8EX(tAct);
     if (setting.outputModeVario == OVARIO_LXPW) sendLXPW(tAct); //not output 
     #ifdef AIRMODULE
-    if (setting.Mode == MODE_AIR_MODULE){
+    if ((setting.Mode == MODE_AIR_MODULE) || ((abs(setting.gs.lat) <= 0.1) && (abs(setting.gs.lon) <= 0.1))){ //in GS-Mode we use the GPS, if in settings disabled
       if (!status.bHasAXP192){
         if ((tAct - tOldPPS) >= 1000){
           ppsMillis = millis();
@@ -4639,18 +4639,20 @@ void taskStandard(void *pvParameters){
             MyFanetData.heading = status.GPS_course;
           }
           MyFanetData.aircraftType = fanet.getAircraftType();        
-          if (setting.OGNLiveTracking.bits.liveTracking){
-            ogn.setGPS(status.GPS_Lat,status.GPS_Lon,status.GPS_alt,status.GPS_speed,MyFanetData.heading);
-            if (fanet.onGround){
-              ogn.sendGroundTrackingData(now(),status.GPS_Lat,status.GPS_Lon,fanet.getDevId(tFanetData.devId),fanet.state,MyFanetData.addressType,0.0);
-            }else{
-              ogn.sendTrackingData(now(),status.GPS_Lat,status.GPS_Lon,status.GPS_alt,status.GPS_speed,MyFanetData.heading,status.ClimbRate,fanet.getMyDevId() ,(Ogn::aircraft_t)fanet.getFlarmAircraftType(&MyFanetData),MyFanetData.addressType,fanet.doOnlineTracking,0.0);
-            }
-            
-          } 
+          if (setting.Mode == MODE_AIR_MODULE){
+            if (setting.OGNLiveTracking.bits.liveTracking){
+              ogn.setGPS(status.GPS_Lat,status.GPS_Lon,status.GPS_alt,status.GPS_speed,MyFanetData.heading);
+              if (fanet.onGround){
+                ogn.sendGroundTrackingData(now(),status.GPS_Lat,status.GPS_Lon,fanet.getDevId(tFanetData.devId),fanet.state,MyFanetData.addressType,0.0);
+              }else{
+                ogn.sendTrackingData(now(),status.GPS_Lat,status.GPS_Lon,status.GPS_alt,status.GPS_speed,MyFanetData.heading,status.ClimbRate,fanet.getMyDevId() ,(Ogn::aircraft_t)fanet.getFlarmAircraftType(&MyFanetData),MyFanetData.addressType,fanet.doOnlineTracking,0.0);
+              }
+              
+            } 
+            sendAWTrackingdata(&MyFanetData);
+            sendTraccarTrackingdata(&MyFanetData);
+          }
           fanet.setMyTrackingData(&MyFanetData,geoidalt/1000.,ppsMillis); //set Data on fanet
-          sendAWTrackingdata(&MyFanetData);
-          sendTraccarTrackingdata(&MyFanetData);
         }else{
           status.GPS_Fix = 0;
           status.GPS_speed = 0.0;
