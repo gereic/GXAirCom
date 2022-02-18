@@ -2886,21 +2886,17 @@ void taskBaro(void *pvParameters){
         esp_restart();
       }
       if (command.CalibAcc == 1){
-        status.calibAccStat = 1;
+        status.calibAccStat = 0;
         command.CalibAcc = 10;
         bInitCalib = true;
       }
       if (command.CalibAcc == 11){
-        if (baro.calibrate(bInitCalib,status.calibAccStat)){
-          bInitCalib = false;
-          if (status.calibAccStat == 6){
-            status.calibAccStat = 0;
-            command.CalibAcc = 2; //calibrating finished --> reboot
-            delay(2000);
-            esp_restart();
-          }else{
-            status.calibAccStat++;
-          }          
+        baro.calibrate(bInitCalib,&status.calibAccStat);
+        bInitCalib = false;
+        if (status.calibAccStat == 0x3F){ //all sides calibratet --> ready !!           
+          command.CalibAcc = 2; //calibrating finished --> reboot
+          delay(2000);
+          esp_restart();
         }
         command.CalibAcc = 10;
       }

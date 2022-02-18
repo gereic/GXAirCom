@@ -344,3 +344,4 @@ bugfix receiving FANET (CRC was not checked)
 V4.15.0
 Using GPS for Ground-Station (only active, when lat and lon in settings 0)
 Added GPS-Output for Ground-Station
+changed calibration-routine (added much better solution)

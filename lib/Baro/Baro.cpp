@@ -101,7 +101,7 @@ void Baro::meansensors() {
 	Serial.println(mean_gx);
 }
 
-bool Baro::calibrate(bool bInit,uint8_t step){
+bool Baro::calibrate(bool bInit,uint8_t* calibstate){
   int16_t ax, ay, az, gx, gy, gz;
   bool bRet = false;
   if (bInit){
@@ -127,32 +127,38 @@ bool Baro::calibrate(bool bInit,uint8_t step){
     delay(2);
   }
   meansensors();  
-  if ((abs(mean_ax) <= 5000) && (abs(mean_ay) <= 5000) && (mean_az > 10000) && (step == 1)){
+  if ((abs(mean_ax) <= 5000) && (abs(mean_ay) <= 5000) && (mean_az > 10000)){
+    *calibstate |= 1;
     bRet = true;
     azMax = mean_az;
     log_i("azMax=%d",azMax);
   }
-  if ((abs(mean_ax) <= 5000) && (abs(mean_ay) <= 5000) && (mean_az < -10000) && (step == 2)){
+  if ((abs(mean_ax) <= 5000) && (abs(mean_ay) <= 5000) && (mean_az < -10000)){
+    *calibstate |= 2;
     bRet = true;
     azMin = mean_az;
     log_i("azMin=%d",azMin);
   }
-  if ((abs(mean_ax) <= 5000) && (mean_ay > 10000) && (abs(mean_az) <= 5000) && (step == 3)){
+  if ((abs(mean_ax) <= 5000) && (mean_ay > 10000) && (abs(mean_az) <= 5000)){
+    *calibstate |= 4;
     bRet = true;
     ayMax = mean_ay;
     log_i("ayMax=%d",ayMax);
   }
-  if ((abs(mean_ax) <= 5000) && (mean_ay < -10000) && (abs(mean_az) <= 5000) && (step == 4)){
+  if ((abs(mean_ax) <= 5000) && (mean_ay < -10000) && (abs(mean_az) <= 5000)){
+    *calibstate |= 8;
     bRet = true;
     ayMin = mean_ay;
     log_i("ayMin=%d",ayMin);
   }
-  if ((mean_ax > 10000) && (abs(mean_ay) <= 5000) && (abs(mean_az) <= 5000) && (step == 5)){
+  if ((mean_ax > 10000) && (abs(mean_ay) <= 5000) && (abs(mean_az) <= 5000)){
+    *calibstate |= 16;
     bRet = true;
     axMax = mean_ax;
     log_i("axMax=%d",axMax);
   }
-  if ((mean_ax < -10000) && (abs(mean_ay) <= 5000) && (abs(mean_az) <= 5000) && (step == 6)){
+  if ((mean_ax < -10000) && (abs(mean_ay) <= 5000) && (abs(mean_az) <= 5000)){
+    *calibstate |= 32;
     bRet = true;
     axMin = mean_ax;
     log_i("axMin=%d",axMin);
