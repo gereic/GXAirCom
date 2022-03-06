@@ -5,6 +5,7 @@
 #define __MAIN_H__
 
 #define MAXSTRING 255
+#define MAXSIZEBLE 512
 
 /*
 ************* Pins for TTGO-TBeam V1.0 / V1.1 ***************
