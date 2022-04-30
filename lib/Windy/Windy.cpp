@@ -22,7 +22,7 @@ bool  Windy::sendData(String ID,String APIKEY,wData *data){ //send Data to WU wi
       *xMutex = xSemaphoreCreateMutex();
   }
   //time(&now);
-  char msg[2048]; //make this big enough to hold the resulting string
+  char msg[1024]; //make this big enough to hold the resulting string
   char msg2[255]; //make this big enough to hold the resulting string
   float dewpoint = dewPointFast(data->temp,data->humidity);
   //sprintf(msg,"http://weatherstation.wunderground.com/weatherstation/updateweatherstation.php?ID=%s&PASSWORD=%s&dateutc=%04d-%02d-%02d+%02d%%3A%02d%%3A%02d",
@@ -58,7 +58,10 @@ bool  Windy::sendData(String ID,String APIKEY,wData *data){ //send Data to WU wi
     strcat(msg,msg2);
   }  
   //log_i("T1=%f h=%f p1=%f dp=%f",temp,humidity,baro,dewpoint);
-  //log_i("%s len=%d",msg,strlen(msg));
+  if (strlen(msg) >= (sizeof(msg) - 10)){
+    log_e("len=%d,msg=%s ",strlen(msg),msg);
+  }
+  
   if (client == NULL){    
     client = new WiFiClient();
   }

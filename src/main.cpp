@@ -200,7 +200,9 @@ const char* airwhere_web_ip = "37.128.187.9";
 
 
  unsigned long ble_low_heap_timer=0;
- String ble_data="";
+ //String ble_data="";
+ char bleData[MAXSIZEBLE+1]; //
+ uint16_t bleSize = 0;
  bool ble_mutex=false;
 
 
@@ -1299,7 +1301,19 @@ void sendData2Client(char *buffer,int iLen){
   }
   if (setting.outputMode == OUTPUT_BLE){ //output over ble-connection
     if (xHandleBluetooth){
-      if ((ble_data.length() + iLen) <512){
+      if ((bleSize + iLen) < MAXSIZEBLE){
+        while(ble_mutex){
+          delay(1);
+        };
+        bleSize += snprintf(&bleData[bleSize],MAXSIZEBLE-bleSize,buffer);
+        //log_i("BLE-DATA=%s",bleData);
+      }else{
+        if (!ble_mutex){
+          bleSize = 0;
+        }
+      }
+      /*
+      if ((ble_data.length() + iLen) <MAXSIZEBLE){
         while(ble_mutex){
           delay(1);
         };
@@ -1309,8 +1323,11 @@ void sendData2Client(char *buffer,int iLen){
           ble_data="";
         }
       }
+      */
     }else{
-      ble_data = "";
+      bleSize = 0;
+      bleData[0] = 0;
+      //ble_data = "";
       ble_mutex = false;
     }
   }
@@ -1369,38 +1386,44 @@ void IRAM_ATTR ppsHandler(void){
 
 void WiFiEvent(WiFiEvent_t event){
   switch(event){
-    case SYSTEM_EVENT_STA_START:
-      log_i("SYSTEM_EVENT_STA_START");
+    case SYSTEM_EVENT_WIFI_READY:
+      log_i("WiFi ready");
       break;
+    case SYSTEM_EVENT_STA_START:
+      log_i("station start");
+      break;
+    case SYSTEM_EVENT_STA_STOP:
+      log_i("station stop");
+      break;
+    case SYSTEM_EVENT_STA_CONNECTED:
+      log_i("station connected to AP");
+      break;     
     case SYSTEM_EVENT_ETH_START:
-      log_i("SYSTEM_EVENT_ETH_START");
+      log_i("ethernet start");
       break;
     case SYSTEM_EVENT_AP_START:
-      log_d("AP started. IP: [%s]", WiFi.softAPIP().toString().c_str() );
+      log_i("soft-AP start. IP: [%s]", WiFi.softAPIP().toString().c_str() );
       break;
     case SYSTEM_EVENT_AP_STOP:
-      log_d("AP Stopped");
+      log_i("soft-AP stop");
       break;
     case SYSTEM_EVENT_AP_STADISCONNECTED:
-      //newStationConnected = true;
-      log_d("WiFi Client Disconnected");
+      log_i("a station disconnected from ESP32 soft-AP");
       break;
     case SYSTEM_EVENT_AP_STACONNECTED:
-      log_d("SYSTEM_EVENT_AP_STACONNECTED");
+      log_i("a station connected to ESP32 soft-AP");
       break;
     case SYSTEM_EVENT_STA_GOT_IP:
-      //log_i("SYSTEM_EVENT_STA_GOT_IP!!!!!!!!!!!!");
       status.myIP = WiFi.localIP().toString();
-      log_i("my IP=%s",status.myIP.c_str());
+      log_i("station got IP from connected AP IP:%s",status.myIP.c_str());
       status.wifiStat=2;
       break;
     case SYSTEM_EVENT_AP_STAIPASSIGNED:
-      //newStationConnected = true;
-      log_i("SYSTEM_EVENT_AP_STAIPASSIGNED!!!!!!!!!!!!");
+      log_i("soft-AP assign an IP to a connected station");
       break;
 
     default:
-      log_d("Unhandled WiFi Event: %d", event );
+      log_e("Unhandled WiFi Event: %d", event );
       break;
   }
 }
@@ -1416,6 +1439,9 @@ void setupWifi(){
   WiFi.mode(WIFI_OFF);  
   WiFi.persistent(false);
   WiFi.onEvent(WiFiEvent);
+  WiFiEventId_t eventID = WiFi.onEvent([](WiFiEvent_t event, WiFiEventInfo_t info){
+    log_e("WiFi lost connection. Reason: %d",info.disconnected.reason);
+  }, WiFiEvent_t::SYSTEM_EVENT_STA_DISCONNECTED);  
   //WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE); // call is only a workaround for bug in WiFi class
   WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE,INADDR_NONE,INADDR_NONE);
   //if (WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE,INADDR_NONE,INADDR_NONE) == false){
@@ -1759,6 +1785,8 @@ void setup() {
   fanet.setGPS(false);
   status.tRestart = 0;
   sMqttState[0] = 0; //zero-Termination of String !!
+  bleData[0] = 0; //clear ble-string
+  bleSize = 0;
 
   log_i("SDK-Version=%s",ESP.getSdkVersion());
   log_i("CPU-Speed=%dMhz",ESP.getCpuFreqMHz());
@@ -2886,21 +2914,17 @@ void taskBaro(void *pvParameters){
         esp_restart();
       }
       if (command.CalibAcc == 1){
-        status.calibAccStat = 1;
+        status.calibAccStat = 0;
         command.CalibAcc = 10;
         bInitCalib = true;
       }
       if (command.CalibAcc == 11){
-        if (baro.calibrate(bInitCalib,status.calibAccStat)){
-          bInitCalib = false;
-          if (status.calibAccStat == 6){
-            status.calibAccStat = 0;
-            command.CalibAcc = 2; //calibrating finished --> reboot
-            delay(2000);
-            esp_restart();
-          }else{
-            status.calibAccStat++;
-          }          
+        baro.calibrate(bInitCalib,&status.calibAccStat);
+        bInitCalib = false;
+        if (status.calibAccStat == 0x3F){ //all sides calibratet --> ready !!           
+          command.CalibAcc = 2; //calibrating finished --> reboot
+          delay(2000);
+          esp_restart();
         }
         command.CalibAcc = 10;
       }
@@ -2977,17 +3001,15 @@ void taskMemory(void *pvParameters) {
 }
 
 void taskBluetooth(void *pvParameters) {
-
-	// BLEServer *pServer;
+  // BLEServer *pServer;
   //Put a 10 second delay before Seral BT start to allow settings to work.
-  if ((setting.outputMode == OUTPUT_BLUETOOTH))
-    delay(10000);
-
+  if ((setting.outputMode == OUTPUT_BLUETOOTH)) delay(10000);
   //esp_coex_preference_set(ESP_COEX_PREFER_BT);
   while(host_name.length() == 0){
     delay(100); //wait until we have the devid
   }
   if ((setting.outputMode == OUTPUT_BLE) || (setting.outputMode == OUTPUT_BLUETOOTH)){
+
   }else{
     //stop bluetooth-controller --> save some memory
     esp_bt_controller_disable();
@@ -3004,35 +3026,47 @@ void taskBluetooth(void *pvParameters) {
     //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());    
     start_ble(host_name+"-LE");
     status.bluetoothStat = 1;
-	 while (1)
-	 {
-	   // only send if we have more than 31k free heap space.
-	   if (xPortGetFreeHeapSize()>BLE_LOW_HEAP)
-	   {
-		   ble_low_heap_timer = millis();
-		   if (ble_data.length()>0)
-           {
-			   ble_mutex=true;
-			   BLESendChunks(ble_data);
-			   ble_data="";
-			   ble_mutex=false;
-           }
-	   }
-	   else
-	   {
-		   log_d( " BLE congested - Waiting - Current free heap: %d, minimum ever free heap: %d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
-		   ble_mutex=true;
-		   log_d("CLEARING BLEOUT");
-		   ble_data="";
-		   ble_mutex=false;
-	   }
-     delay(10);
-     //vTaskDelay(100);
-	   if ((WebUpdateRunning) || (bPowerOff)){
+    while (1)
+    {
+	    // only send if we have more than 31k free heap space.
+	    if (xPortGetFreeHeapSize()>BLE_LOW_HEAP){
+		    BleRun(); //run ble-task
+        ble_low_heap_timer = millis();
+        if (bleSize > 0){
+          ble_mutex=true;
+          BLESendChunks(&bleData[0],bleSize);
+          bleSize = 0;
+          bleData[0] = 0;
+          ble_mutex=false;
+        }
+        /*
+        if (ble_data.length()>0)
+            {
+          ble_mutex=true;
+          BLESendChunks(ble_data);
+          ble_data="";
+          ble_mutex=false;
+            }
+        */
+      }
+	    else
+	    {
+		    log_d( " BLE congested - Waiting - Current free heap: %d, minimum ever free heap: %d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
+		    ble_mutex=true;
+		    log_d("CLEARING BLEOUT");
+		    //ble_data="";
+        bleSize = 0;
+        bleData[0] = 0;
+
+		    ble_mutex=false;
+	    }
+      delay(1);
+      //vTaskDelay(100);
+	    if ((WebUpdateRunning) || (bPowerOff)){
         stop_ble();
         break;
-     } 
-	 }
+      } 
+	  }
   }else if (setting.outputMode == OUTPUT_BLUETOOTH){
     status.bluetoothStat = 1; //client disconnected
     while (1)
@@ -3823,7 +3857,7 @@ void readGPS(){
       sNmeaIn = ""; //we have a gps --> don't take data from external GPS
     }
   }
-  if (setting.Mode == MODE_AIR_MODULE){
+  if ((setting.Mode == MODE_AIR_MODULE) || ((abs(setting.gs.lat) <= 0.1) && (abs(setting.gs.lon) <= 0.1))) {
     //in Ground-Station-Mode you have to setup GPS-Position manually
     while(NMeaSerial.available()){
       if (recBufferIndex >= 255) recBufferIndex = 0; //Buffer overrun
@@ -4530,7 +4564,7 @@ void taskStandard(void *pvParameters){
     if (setting.outputModeVario == OVARIO_LK8EX1) sendLK8EX(tAct);
     if (setting.outputModeVario == OVARIO_LXPW) sendLXPW(tAct); //not output 
     #ifdef AIRMODULE
-    if (setting.Mode == MODE_AIR_MODULE){
+    if ((setting.Mode == MODE_AIR_MODULE) || ((abs(setting.gs.lat) <= 0.1) && (abs(setting.gs.lon) <= 0.1))){ //in GS-Mode we use the GPS, if in settings disabled
       if (!status.bHasAXP192){
         if ((tAct - tOldPPS) >= 1000){
           ppsMillis = millis();
@@ -4639,18 +4673,20 @@ void taskStandard(void *pvParameters){
             MyFanetData.heading = status.GPS_course;
           }
           MyFanetData.aircraftType = fanet.getAircraftType();        
-          if (setting.OGNLiveTracking.bits.liveTracking){
-            ogn.setGPS(status.GPS_Lat,status.GPS_Lon,status.GPS_alt,status.GPS_speed,MyFanetData.heading);
-            if (fanet.onGround){
-              ogn.sendGroundTrackingData(now(),status.GPS_Lat,status.GPS_Lon,fanet.getDevId(tFanetData.devId),fanet.state,MyFanetData.addressType,0.0);
-            }else{
-              ogn.sendTrackingData(now(),status.GPS_Lat,status.GPS_Lon,status.GPS_alt,status.GPS_speed,MyFanetData.heading,status.ClimbRate,fanet.getMyDevId() ,(Ogn::aircraft_t)fanet.getFlarmAircraftType(&MyFanetData),MyFanetData.addressType,fanet.doOnlineTracking,0.0);
-            }
-            
-          } 
+          if (setting.Mode == MODE_AIR_MODULE){
+            if (setting.OGNLiveTracking.bits.liveTracking){
+              ogn.setGPS(status.GPS_Lat,status.GPS_Lon,status.GPS_alt,status.GPS_speed,MyFanetData.heading);
+              if (fanet.onGround){
+                ogn.sendGroundTrackingData(now(),status.GPS_Lat,status.GPS_Lon,fanet.getDevId(tFanetData.devId),fanet.state,MyFanetData.addressType,0.0);
+              }else{
+                ogn.sendTrackingData(now(),status.GPS_Lat,status.GPS_Lon,status.GPS_alt,status.GPS_speed,MyFanetData.heading,status.ClimbRate,fanet.getMyDevId() ,(Ogn::aircraft_t)fanet.getFlarmAircraftType(&MyFanetData),MyFanetData.addressType,fanet.doOnlineTracking,0.0);
+              }
+              
+            } 
+            sendAWTrackingdata(&MyFanetData);
+            sendTraccarTrackingdata(&MyFanetData);
+          }
           fanet.setMyTrackingData(&MyFanetData,geoidalt/1000.,ppsMillis); //set Data on fanet
-          sendAWTrackingdata(&MyFanetData);
-          sendTraccarTrackingdata(&MyFanetData);
         }else{
           status.GPS_Fix = 0;
           status.GPS_speed = 0.0;
@@ -5075,7 +5111,7 @@ void readSMS(){
 
 void taskBackGround(void *pvParameters){
   static uint32_t tWifiCheck = millis();
-  //static uint32_t warning_time=0;
+  static uint32_t warning_time=0;
   static uint8_t ntpOk = 0;
   static uint32_t tGetTime = millis();
   uint32_t tBattEmpty = millis();
@@ -5286,23 +5322,24 @@ void taskBackGround(void *pvParameters){
         WiFi.setHostname(host_name.c_str());
       }
     }
+    uint32_t actFreeHeap = xPortGetFreeHeapSize();
+    uint32_t minFreeHeap = xPortGetMinimumEverFreeHeapSize();
     /*
-    uint32_t freeHeap = xPortGetFreeHeapSize();
-    if (freeHeap<30000){
+    if (actFreeHeap<30000){
       if (millis()>warning_time)
       {
-        log_w( "*****LOOP current free heap: %d, minimum ever free heap: %d ******", freeHeap, xPortGetMinimumEverFreeHeapSize());
-        warning_time=millis()+1000;
+        log_w( "*****LOOP current free heap: %d, minimum ever free heap: %d ******", actFreeHeap, minFreeHeap);
+        warning_time=millis()+10000;
       }
     }
-    if (freeHeap<10000)
-    {
-      log_e( "*****LOOP current free heap: %d, minimum ever free heap: %d ******", freeHeap, xPortGetMinimumEverFreeHeapSize());
-      log_e("System Low on Memory - xPortGetMinimumEverFreeHeapSize < 2KB");
-      //log_e("ESP Restarting !");
-      //esp_restart();
-    }
     */
+    if (minFreeHeap<20000)
+    {
+      log_e( "*****LOOP current free heap: %d, minimum ever free heap: %d ******", actFreeHeap, minFreeHeap);
+      log_e("System Low on Memory - xPortGetMinimumEverFreeHeapSize < 20KB");
+      log_e("ESP Restarting !");
+      esp_restart();
+    }
 
     if (wifiCMD == 11) setWifi(true); //switch wifi on
     if (wifiCMD == 10) setWifi(false); //switch wifi off
