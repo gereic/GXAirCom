@@ -43,7 +43,7 @@ extern struct statusData status;
 // Manufacturer of the pressure sensor in the logger. Any text.
 #define IGC_ROW13 "HFPRSPRESSALTSENSOR:BOSH,BMP280,max10000m"
 // Manufacturer of the GPS receiver inside the logger. Do we really care? Any text will work
-#define IGC_ROW14 "HFGPSuBLOX Neo6"
+#define IGC_ROW14 "HFGPS:uBLOX Neo6"
 //extra complusory lines
 #define IGC_ROW15 "HFALG:GEO"
 #define IGC_ROW16 "HOSITSite:?"
