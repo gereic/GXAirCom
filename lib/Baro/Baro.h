@@ -85,7 +85,7 @@ public:
     bool calibGyro(void);
     bool calibAcc(void);
     bool calibration(void);
-    bool calibrate(bool bInit,uint8_t step);
+    bool calibrate(bool bInit,uint8_t* calibstate);
 
 protected:
 private:

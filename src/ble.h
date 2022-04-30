@@ -27,6 +27,8 @@ extern struct statusData status;
 extern void checkReceivedLine(char *ch_str);
 
 NimBLECharacteristic *pCharacteristic;
+NimBLEServer *pServer;
+uint16_t maxMtu = 0xFFFF;
 
 
 /*
@@ -88,10 +90,58 @@ class MyCallbacks : public NimBLECharacteristicCallbacks {
 
 };
 
+void BleRun(){
+	static uint32_t tCheckMTU = millis();
+	uint32_t tAct = millis();
+	if (timeOver(tAct,tCheckMTU,5000)){
+		//start checking min. MTU-Size
+		tCheckMTU = tAct;
+		size_t count = pServer->getConnectedCount();
+		uint16_t actMtu = maxMtu;
+		maxMtu = 0xFFFF;
+		for (int i = 0;i < count;i++){
+			uint16_t peerMTU = pServer->getPeerMTU(i) - 3;
+			if (peerMTU < maxMtu) maxMtu = peerMTU; //set minMTU to peerMTU
+		}
+		if ((actMtu != maxMtu) && (maxMtu < 0xFFFF)) log_i("new mtu-size=%d",maxMtu);
+	}
+}
+
+void BLESendChunks(char *buffer,int iLen)
+{
+	if ((status.bluetoothStat == 2) && (iLen > 0) && (maxMtu < 0xFFFF)){ //we have a connection
+		int startOffset = 0;
+		int iActLen = 0;
+		//log_i("offs=%d,l=%d,%s",startOffset,iLen,buffer);
+		for (int k = 0; k <= iLen;k++){					
+			iActLen = k-startOffset+1;
+			if (buffer[k+1] == 0){ //check next char is zero-termination
+				pCharacteristic->sNotify.assign(&buffer[startOffset],iActLen);
+				//log_i("sOffs=%d,l=%d,k=%d,%s",startOffset,iActLen,k,pCharacteristic->sNotify.c_str());
+				pCharacteristic->notify();
+				vTaskDelay(5);
+				break;
+			}else if (buffer[k] == '\n'){ //new-line --> send chunk		
+				pCharacteristic->sNotify.assign(&buffer[startOffset],iActLen);
+				//log_i("sOffs=%d,l=%d,k=%d,%s",startOffset,iActLen,k,pCharacteristic->sNotify.c_str());
+				startOffset += iActLen;
+				pCharacteristic->notify();
+				vTaskDelay(5);
+			}else if (iActLen >= (maxMtu-1)){ //maxMtu -1, because of zero-termination of String						
+				pCharacteristic->sNotify.assign(&buffer[startOffset],iActLen);
+				//log_i("sOffs=%d,l=%d,k=%d,%s",startOffset,iActLen,k,pCharacteristic->sNotify.c_str());
+				startOffset += iActLen;
+				pCharacteristic->notify();
+				vTaskDelay(5);
+			}
+		}
+	}
+}
+
 void BLESendChunks(String str)
 {
-	String substr;
-	if (status.bluetoothStat == 2) {
+	if (status.bluetoothStat == 2){ //we have a connection
+		String substr;
 		for (int k = 0; k < str.length(); k += _min(str.length(), 20)) {
 			substr = str.substring(k, k + _min(str.length() - k, 20));
 			//pCharacteristic->setValue(substr.c_str());
@@ -99,6 +149,8 @@ void BLESendChunks(String str)
 			pCharacteristic->notify();			
 			vTaskDelay(5);
 		}
+	}else{
+		str = "";
 	}
 	//vTaskDelay(20);
 }
@@ -129,40 +181,13 @@ void start_ble (String bleId)
 	esp_coex_preference_set(ESP_COEX_PREFER_BT);
   NimBLEDevice::init(bleId.c_str());
 	NimBLEDevice::setMTU(256); //set MTU-Size to 256 Byte
-	NimBLEServer *pServer = NimBLEDevice::createServer();
+	pServer = NimBLEDevice::createServer();
 	pServer->setCallbacks(new MyServerCallbacks());
-
-	/*
-	BLEService *pService = pServer->createService(SERVICE_UUID);
-
-	pCharacteristic = pService->createCharacteristic(
-                      CHARACTERISTIC_UUID_TX,
-                      BLECharacteristic::PROPERTY_NOTIFY
-                    );
-                      
-  	pCharacteristic->addDescriptor(new BLE2902());
- 
-  	BLECharacteristic *pCharacteristic = pService->createCharacteristic(
-    	                                     CHARACTERISTIC_UUID_RX,
-        	                                 BLECharacteristic::PROPERTY_WRITE
-            	                           );
- 
-  	pCharacteristic->setCallbacks(new MyCallbacks());
-	pService->start();
-	pServer->getAdvertising()->start();
-	*/
-
 	NimBLEService *pService = pServer->createService(NimBLEUUID((uint16_t)0xFFE0));
 	// Create a BLE Characteristic
 	pCharacteristic = pService->createCharacteristic(NimBLEUUID((uint16_t)0xFFE1),
 		NIMBLE_PROPERTY::NOTIFY| NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::WRITE_NR
 	);
-	//pCharacteristic->addDescriptor(new BLE2902());
-
-	//BLECharacteristic *pCharacteristic = pService->createCharacteristic(
-	//CHARACTERISTIC_UUID_DEVICENAME,
-	//BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_WRITE_NR
-	//);
 	pCharacteristic->setCallbacks(new MyCallbacks());
 	log_i("Starting BLE");
 	// Start the service

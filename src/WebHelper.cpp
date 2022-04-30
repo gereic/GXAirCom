@@ -226,6 +226,7 @@ void onWebSocketEvent(uint8_t client_num,
           doc["z[1]"] = setting.vario.zValues[1];
           doc["sigmaA"] =  setting.vario.sigmaA;
           doc["sigmaP"] =  setting.vario.sigmaP;
+          doc["stateCalibAcc"] = status.calibAccStat;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
 

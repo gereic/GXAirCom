@@ -397,7 +397,7 @@ void NimBLECharacteristic::notify(bool is_notification) {
         }
 
         if (length > _mtu - 3) {
-            NIMBLE_LOGW(LOG_TAG, "- Truncating to %d bytes (maximum notify size)", _mtu - 3);
+            NIMBLE_LOGW(LOG_TAG, "- Truncating from %d to %d bytes (maximum notify size)",length, _mtu - 3);
         }
 
         if(is_notification && (!(it.second & NIMBLE_SUB_NOTIFY))) {

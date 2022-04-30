@@ -66,6 +66,19 @@ function setFts(){
 //this function sets visible depending on actual option
 function setVis(){
   //console.log("visible=" + document.getElementById("mode").style.display)
+  accCalib1
+  if (calibBtnState == 0){
+    document.getElementById("accCalib1").style.display='none'; //set calibration of ACC to invisible
+    document.getElementById("accCalib2").style.display='none'; //set calibration of ACC to invisible
+    document.getElementById("accCalib3").style.display='none'; //set calibration of ACC to invisible
+    document.getElementById("accCalib4").style.display='none'; //set calibration of ACC to invisible
+  }else{
+    document.getElementById("accCalib1").style.display=''; //set calibration of ACC visible
+    document.getElementById("accCalib2").style.display=''; //set calibration of ACC visible
+    document.getElementById("accCalib3").style.display=''; //set calibration of ACC visible
+    document.getElementById("accCalib4").style.display=''; //set calibration of ACC visible
+  }
+
   document.getElementById("VisAWUS").style.display='none'; //set advanced weahter upload settings invisible    
   document.getElementById("VisAWFFNT").style.display='none'; //set advanced weahter upload settings invisible      
   document.getElementById("VisWD").style.display='none'; //set weather-data invisible
@@ -161,33 +174,15 @@ function setVis(){
   }
 }
 
-function setCalibState(StateId,state){
-  e = document.getElementById(StateId);
-  switch(state){
-    case 0:
-      e.innerText = "";
-      break;
-    case 1:
-      e.innerText = "please put module flat on ground";
-      break;
-    case 2:
-      e.innerText = "please put module reverse";
-      break;
-    case 3:
-      e.innerText = "please put module left side";
-      break;
-    case 4:
-      e.innerText = "please put module right side";
-      break;
-    case 5:
-      e.innerText = "please put module up";
-      break;
-    case 6:
-      e.innerText = "please put module down";
-      break;
-    default:
-      break;
-  }
+function setCalibState(state){
+  var green = '#47c266';
+  var red = '#d43535';
+  document.getElementById("Z1").bgColor = (state & 0x01) ? green : red;
+  document.getElementById("Z2").bgColor = (state & 0x02) ? green : red;
+  document.getElementById("Y1").bgColor = (state & 0x04) ? green : red;
+  document.getElementById("Y2").bgColor = (state & 0x08) ? green : red;
+  document.getElementById("X1").bgColor = (state & 0x10) ? green : red;
+  document.getElementById("X2").bgColor = (state & 0x20) ? green : red;
 }
 
 function getRfMode(){
@@ -345,10 +340,13 @@ function calibAcc(){
   if (calibBtnState == 10){
     value = 11;
   }
+  if (calibBtnState == 0){
+    setCalibState(0);
+  }
   setBtnCalib("btnCalibAcc",value);
   var obj = {
     calibAcc : value
-  };
+  };  
   doSend(JSON.stringify(obj));
 }
 
@@ -637,7 +635,7 @@ function onMessage(evt) {
           setBtnCalib("btnCalibAcc",myObj[key]);
           continue; 
        }else if (key == "stateCalibAcc"){
-          setCalibState("stateCalibAcc",myObj[key]);
+          setCalibState(myObj[key]);
           continue;                    
         }else if (key == "useMPU"){
           if (myObj[key] == 0){
@@ -1213,12 +1211,28 @@ window.addEventListener("load", init, false);
             <td id="visAxOffset"><input type="number" id="axOffset" step="1"></td>
             <td id="visAyOffset"><input type="number" id="ayOffset" step="1"></td>
             <td id="visAzOffset"><input type="number" id="azOffset" step="1"></td>
-            <td>
-              <button type="button" onClick="calibAcc()" id="btnCalibAcc" class="button byel" style="line-height: 1.7rem;">calib</button>
-            </td>
+            <td><button type="button" onClick="calibAcc()" id="btnCalibAcc" class="button byel" style="line-height: 1.7rem;">calib</button></td>
           </tr>
-          <tr>
-            <th id="stateCalibAcc"></th>
+          <tr id="accCalib1">
+            <th></th>
+            <td id="X1" style="text-align:center">X1</td>
+            <td id="Z1" style="text-align:center">Z1</td>
+            <td id="X2" style="text-align:center">X2</td>          
+          </tr>
+          <tr id="accCalib2">
+            <th></th>
+            <td></td>
+            <td id="Y1" style="text-align:center">Y1</td>
+          </tr>
+          <tr id="accCalib3">
+            <th></th>
+            <td></td>
+            <td id="Z2" style="text-align:center">Z2</td>
+          </tr>
+          <tr id="accCalib4">
+            <th></th>
+            <td></td>
+            <td id="Y2" style="text-align:center">Y2</td>
           </tr>
           <tr id="visAccTemp1">
             <th>acc-sensor Temp [°C]</th>
