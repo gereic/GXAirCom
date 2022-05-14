@@ -1397,7 +1397,13 @@ void WiFiEvent(WiFiEvent_t event){
       break;
     case SYSTEM_EVENT_STA_CONNECTED:
       log_i("station connected to AP");
-      break;     
+      break;  
+    case SYSTEM_EVENT_STA_DISCONNECTED:
+      log_i("station lost connection to AP");      
+      //will automatically reconnect in 60 seconds
+      WiFi.disconnect(true,true);
+      status.wifiStat=1;
+      break;  
     case SYSTEM_EVENT_ETH_START:
       log_i("ethernet start");
       break;
