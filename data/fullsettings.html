@@ -453,8 +453,7 @@ function sendValues(){
   board : Number(document.getElementById("board").value),
   disp : Number(document.getElementById("disp").value),
   dispRot : Number(document.getElementById("dispRot").value),
-  band : Number(document.getElementById("band").value),
-  power : Number(document.getElementById("power").value),
+  country : Number(document.getElementById("country").value),
   type : Number(document.getElementById("type").value),
   mode : Number(document.getElementById("mode").value),
   fntMode : Number(document.getElementById("fntMode").value),
@@ -779,18 +778,9 @@ window.addEventListener("load", init, false);
         <tbody>
           <tr>
             <th>Radio Frequency</th>
-            <td><select id="band">
-              <option value="0">868mhz</option>
-              <option value="1">915mhz</option>
-            </select></td>
-          </tr>
-          <tr>
-            <th>output-power</th>
-            <td><select id="power">
-              <option value="5">LOW</option>
-              <option value="10">MID</option>
-              <option value="14">HIGH</option>
-              <!--<option value="17">MAX</option>-->
+            <td><select id="country">
+              <!--<option value="0">AUTO</option>-->
+              <option value="1">EU (868.2 Mhz)</option>
             </select></td>
           </tr>
           <tr>

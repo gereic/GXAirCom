@@ -17,6 +17,7 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #include <TimeLib.h>
+#include <ctime>
 
 #define DEG2RAD M_PI / 180.0
 #define RAD2DEG 180.0 / M_PI

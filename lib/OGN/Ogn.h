@@ -89,6 +89,7 @@ private:
     String getActTimeString(time_t timestamp);
     uint8_t getSenderDetails(bool onlinetracking,aircraft_t aircraftType,uint8_t addressType);
     String getOrigin(uint8_t addressType);
+    uint8_t getFANETAircraftType(aircraft_t aircraftType);
     #ifdef OGNTEST
       void sendTestMsg(uint32_t tAct);
     #endif

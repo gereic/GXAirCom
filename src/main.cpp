@@ -1445,25 +1445,9 @@ void setupWifi(){
   WiFi.mode(WIFI_OFF);  
   WiFi.persistent(false);
   WiFi.onEvent(WiFiEvent);
-  WiFiEventId_t eventID = WiFi.onEvent([](WiFiEvent_t event, WiFiEventInfo_t info){
-    log_e("WiFi lost connection. Reason: %d",info.disconnected.reason);
-  }, WiFiEvent_t::SYSTEM_EVENT_STA_DISCONNECTED);  
-  //WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE); // call is only a workaround for bug in WiFi class
-  WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE,INADDR_NONE,INADDR_NONE);
-  //if (WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE,INADDR_NONE,INADDR_NONE) == false){
-  //  log_e("error setting wifi.config");
-  //}
-  //tcpip_adapter_dns_info_t dns;
-  //dns.ip.type = IPADDR_TYPE_V4;
-  //dns.ip.u_addr.ip4.addr = static_cast<uint32_t>(INADDR_NONE);
-  //tcpip_adapter_set_dns_info(TCPIP_ADAPTER_IF_AP,TCPIP_ADAPTER_DNS_MAIN,&dns);
-  //tcpip_adapter_set_dns_info(TCPIP_ADAPTER_IF_AP,TCPIP_ADAPTER_DNS_BACKUP,&dns);
-  //tcpip_adapter_set_dns_info(TCPIP_ADAPTER_IF_AP,TCPIP_ADAPTER_DNS_FALLBACK,&dns);
-  //ip_addr_t d;
-  //d.type = IPADDR_TYPE_V4;
-  //d.u_addr.ip4.addr = static_cast<uint32_t>(INADDR_NONE);
-  //dns_setserver(0, &d);
-  //dns_setserver(1, &d);
+  //WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE,INADDR_NONE,INADDR_NONE);
+  WiFi.config(IPADDR_ANY, IPADDR_ANY, IPADDR_ANY,IPADDR_ANY,IPADDR_ANY); // call is only a workaround for bug in WiFi class
+  WiFi.setHostname(host_name.c_str());
   log_i("Setting soft-AP ... ");
   //if (WiFi.softAP(host_name.c_str(), setting.appw.c_str(),rand() % 12 + 1,0,2)){
   if (WiFi.softAP(host_name.c_str(), setting.wifi.appw.c_str())){
@@ -1474,7 +1458,6 @@ void setupWifi(){
   delay(10);
   log_i("Setting soft-AP configuration ... ");
   if(WiFi.softAPConfig(local_IP, gateway, subnet)){
-  //if(WiFi.softAPConfig(local_IP, INADDR_NONE, subnet)){
     log_i("Ready");
   }else{
     log_i("Failed!");
@@ -1500,8 +1483,7 @@ void setupWifi(){
   }else{
     WiFi.mode(WIFI_MODE_AP);
   }
-  log_i("hostname=%s",host_name.c_str());
-  WiFi.setHostname(host_name.c_str());
+  log_i("hostname=%s",host_name.c_str());  
 
 
   log_i("my APIP=%s",local_IP.toString().c_str());
@@ -2625,7 +2607,7 @@ void taskWeather(void *pvParameters){
   weatherAvg avg[2];
   bool bFirstWData = false;
   TwoWire i2cWeather = TwoWire(0);
-  i2cWeather.begin(PinBaroSDA,PinBaroSCL,200000); //init i2cBaro for Baro
+  i2cWeather.begin(PinBaroSDA,PinBaroSCL,200000u); //init i2cBaro for Baro
   Weather weather;
   weather.setTempOffset(setting.wd.tempOffset);
   weather.setWindDirOffset(setting.wd.windDirOffset);
@@ -2888,7 +2870,7 @@ void taskBaro(void *pvParameters){
     digitalWrite(PinBuzzer,LOW);
     ledcAttachPin(PinBuzzer, channel);
   }  
-  Wire.begin(PinBaroSDA,PinBaroSCL,400000);
+  Wire.begin(PinBaroSDA,PinBaroSCL,400000u);
   //TwoWire i2cBaro = TwoWire(0);
   //i2cBaro.begin(PinBaroSDA,PinBaroSCL,400000); //init i2cBaro for Baro
   //if (baro.begin(&i2cBaro)){
@@ -3585,14 +3567,12 @@ void setWifi(bool on){
     WiFi.disconnect(true,true);
     WiFi.mode(WIFI_OFF);
     WiFi.persistent(false);
-    //WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE); // call is only a workaround for bug in WiFi class
-    WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE,INADDR_NONE,INADDR_NONE); // call is only a workaround for bug in WiFi class
-    //WiFi.config(local_IP, INADDR_NONE, subnet,INADDR_NONE,INADDR_NONE); // call is only a workaround for bug in WiFi class
+    //WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE,INADDR_NONE,INADDR_NONE); // call is only a workaround for bug in WiFi class
+    WiFi.config(IPADDR_ANY, IPADDR_ANY, IPADDR_ANY,IPADDR_ANY,IPADDR_ANY); // call is only a workaround for bug in WiFi class
+    WiFi.setHostname(host_name.c_str());
     WiFi.mode(WIFI_MODE_AP);
     WiFi.softAP(host_name.c_str(), setting.wifi.appw.c_str());
-    WiFi.softAPConfig(local_IP, gateway, subnet);
-    //WiFi.softAPConfig(local_IP, INADDR_NONE, subnet);
-    WiFi.setHostname(host_name.c_str());
+    WiFi.softAPConfig(local_IP, gateway, subnet);    
     Web_setup();
     status.wifiStat = 1;      
   }
@@ -5320,12 +5300,13 @@ void taskBackGround(void *pvParameters){
         WiFi.disconnect(true,true);
         WiFi.mode(WIFI_OFF);
         WiFi.persistent(false);
-        //WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE); // call is only a workaround for bug in WiFi class
-        WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE,INADDR_NONE,INADDR_NONE); // call is only a workaround for bug in WiFi class
+        //WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE,INADDR_NONE,INADDR_NONE); // call is only a workaround for bug in WiFi class
+        WiFi.config(IPADDR_ANY, IPADDR_ANY, IPADDR_ANY,IPADDR_ANY,IPADDR_ANY); // call is only a workaround for bug in WiFi class
+        WiFi.setHostname(host_name.c_str()); //set hostname
         WiFi.mode(WIFI_MODE_APSTA);
         esp_wifi_set_ps (WIFI_PS_NONE);
         WiFi.begin(setting.wifi.ssid.c_str(), setting.wifi.password.c_str()); 
-        WiFi.setHostname(host_name.c_str());
+        
       }
     }
     uint32_t actFreeHeap = xPortGetFreeHeapSize();

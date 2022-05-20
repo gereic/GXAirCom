@@ -255,7 +255,7 @@ void Weather::checkAneometer(void){
 
 void Weather::checkRainSensor(void){
   time_t now;
-  time(&now);
+  std::time(&now);
   //log_i("%04d-%02d-%02d %02d:%02d:%02d",year(now),month(now),day(now),hour(now),minute(now),second(now));
   uint8_t u8Hour = hour(now);
   if (actHour != u8Hour){
