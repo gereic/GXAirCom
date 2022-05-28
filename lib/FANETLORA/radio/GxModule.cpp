@@ -110,7 +110,7 @@ int16_t GxModule::SPIsetRegValue(uint8_t reg, uint8_t value, uint8_t msb, uint8_
   // check register value each millisecond until check interval is reached
   // some registers need a bit of time to process the change (e.g. SX127X_REG_OP_MODE)
   uint32_t start = GxModule::micros();
-  uint8_t readValue;
+  uint8_t readValue = 0;
   if (checkInterval > 0){
     while(GxModule::micros() - start < (checkInterval * 1000)) {
       readValue = SPIreadRegister(reg);

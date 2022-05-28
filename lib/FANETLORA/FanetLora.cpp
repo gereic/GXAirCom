@@ -777,6 +777,9 @@ void FanetLora::handle_frame(Frame *frm){
     actTrackingData.snr = frm->snr;
     actTrackingData.addressType = frm->AddressType;
     actTrackingData.timestamp = frm->timeStamp; //copy timestamp
+    if (frm->legacyAircraftType != 0){
+      actTrackingData.aircraftType = (aircraft_t)(0x80 + frm->legacyAircraftType);
+    }
     if (getGroundTrackingInfo(frm->payload,frm->payload_length) == 0){
       insertDataToNeighbour(actTrackingData.devId,&actTrackingData);
     }else{

@@ -34,19 +34,32 @@ enum
 	ADDR_TYPE_FANET
 };
 
+enum
+{
+	TURN_RATE_0,
+	TURN_RATE_ON_GROUND, //1 (plane on ground)
+	TURN_RATE_2,
+	TURN_RATE_3,
+	TURN_RATE_RIGHT_TURN, //4 (right turn >14deg)
+	TURN_RATE_NO_TURN, //5 (no/slow turn)
+	TURN_RATE_6,
+	TURN_RATE_LEFT_TURN //7 (left turn >14deg)
+};
+
 
 typedef struct {
     /********************/
     unsigned int addr:24;
-    unsigned int _unk0:4;
+    unsigned int zero0:4;
     unsigned int addr_type:3;
-    unsigned int _unk1:1;
+    unsigned int zero1:1;
     // unsigned int magic:8;
     /********************/
     int vs:10;
-    unsigned int onGround:1;
-    unsigned int _unk2:1;
-    unsigned int airborne:1;
+    //unsigned int onGround:1;
+    //unsigned int _unk2:1;
+    //unsigned int airborne:1;
+    unsigned int turnrate:3; //1 (plane on ground), 5 (no/slow turn), 4 (right turn >14deg), 7 (left turn >14deg)
     unsigned int stealth:1;
     unsigned int no_track:1;
     unsigned int parity:1;
@@ -57,7 +70,7 @@ typedef struct {
     unsigned int alt:13;
     /********************/
     unsigned int lon:20;
-    unsigned int _unk3:10;
+    unsigned int zero2:10;
     unsigned int smult:2;
     /********************/
     int8_t ns[4];

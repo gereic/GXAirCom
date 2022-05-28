@@ -255,8 +255,8 @@ void FanetMac::frameReceived(int length)
 	/* build frame from stream */
 	Frame *frm;
   if (_actMode != MODE_LORA){			
-		char Buffer[500];	
-		int len = 0;
+		//char Buffer[500];	
+		//int len = 0;
 		time_t tUnix;
 		time(&tUnix);
 		#if RX_DEBUG > 0
@@ -382,13 +382,13 @@ void FanetMac::frameReceived(int length)
 				//fmac.sendUdpData((uint8_t *)Buffer,len);
 				//Serial.print(Buffer);
 				//legacy_packet_t *pkt = (legacy_packet_t *) newPacket;
-				//len = sprintf(Buffer,"unk0=%d,unk1=%d,unk2=%d,unk3=%d,\n", pkt->_unk0,pkt->_unk1,pkt->_unk2,pkt->_unk3);
+				//len = sprintf(Buffer,"unk0=%d,unk1=%d,unk2=%d,unk3=%d,\n", pkt->zero0,pkt->zero1,pkt->_unk2,pkt->zero2);
 				//fmac.sendUdpData((uint8_t *)Buffer,len);
 				//Serial.print(Buffer);
 
       	//if ((dist <= 100) && (air.addr != 0) && (air.aircraft_type != 0)){
 				//if ((air.addr != 0) && (air.aircraft_type != 0)){
-				//if ((pkt->_unk0 == 0) && (pkt->_unk1 == 0) && (pkt->_unk2 == 0) && (pkt->_unk3 == 0)){
+				//if ((pkt->zero0 == 0) && (pkt->zero1 == 0) && (pkt->_unk2 == 0) && (pkt->zero2 == 0)){
 			  bOk = true;
 				break;
 			//}else if (ret == -2){
@@ -486,17 +486,6 @@ bool FanetMac::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int8_t rese
 	//SPI LoRa pins
 	log_i("sck=%d,miso=%d,mosi=%d,ss=%d,reset=%d,dio0=%d,gpio=%d",sck,miso,mosi,ss,reset,dio0,gpio);
 	SPI.begin(sck, miso, mosi, ss);
-	
-	//setup LoRa transceiver module
-	//LoRa.setPins(ss, reset, dio0);
-	//LoRa.setPins(18, 14, 26);
-	//long frequency = FREQUENCY868;
-	//if (setting.band == BAND915)frequency = FREQUENCY915; 
-	//log_i("Start Lora Frequency=%d",frequency);
-  //pModule = new Module(ss,33,reset,32);
-	//LoRaClass radio = new LoRaClass(&SPI,ss,33,reset,32);
-	//radio.setPins(&SPI,ss,33,reset,32);
-	
 	if (radioChip == RADIO_SX1262){
 		radio.setPins(&SPI,ss,dio0,reset,gpio);
 	}else{

@@ -105,7 +105,7 @@ bool WeatherUnderground::getData(String ID,String KEY,wData *data){ //get Data f
 }
 
 bool  WeatherUnderground::sendData(String ID,String KEY,wData *data){ //send Data to WU with Station-ID and Station-Key
-  time_t now;
+  //time_t now;
   bool bRet = true;
   if (xMutex == NULL){ //create new Mutex
       xMutex = new SemaphoreHandle_t();

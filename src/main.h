@@ -1,4 +1,5 @@
 #include <string.h>
+#include "enums.h"
 //#include "../lib/FANETLORA/FanetLora.h"
 
 #ifndef __MAIN_H__
@@ -185,32 +186,11 @@ SCL 14
 #define RADAR_SCREEN_CENTER_X 32
 #define RADAR_SCREEN_CENTER_Y 38
 
-#define OUTPUT_SERIAL 0
-#define OUTPUT_UDP 1
-#define OUTPUT_BLUETOOTH 2
-#define OUTPUT_BLE 3
-
-#define BOARD_T_BEAM 0
-#define BOARD_HELTEC_LORA 1
-#define BOARD_T_BEAM_V07 2
-#define BOARD_TTGO_TSIM_7000 4
-#define BOARD_T_BEAM_SX1262 5
-#define BOARD_TTGO_TCALL_800 6
-#define BOARD_HELTEC_WIRELESS_STICK_LITE 7
-#define BOARD_UNKNOWN 255
-
-#define BAND868 0
-#define BAND915 1
-
 #define BATTPINOK 2000 //2 Volt for Batt-pinOK
 #define BATTSLEEPTIME 3600 //check every 1h if Battery is full again
 #define BATTPERCSTART 10 //percent, where esp starts normal in addition to min. percentage
 
 #define MAXSCREENS 2
-
-#define RADAR_CLOSEST 0
-#define RADAR_LIST 1
-#define RADAR_FRIENDS 2
 
 #define MIN_FLIGHT_SPEED 15.0 //min speed for flying-detection 
 // > at least for 5sec --> takeoff
@@ -235,63 +215,13 @@ SCL 14
 #define FLARM_UPDATE_RATE 1000
 #define FLARM_UPDATE_STATE 60000
 
-//defines for display
-#define NO_DISPLAY 0
-#define OLED0_96 1
-#define EINK2_9  2
-#define EINK2_9_V2  3
-
-//defines for Mode
-#define MODE_AIR_MODULE 0
-#define MODE_GROUND_STATION 1
-#define MODE_FANET_INTERFACE 2
-#define MODE_DEVELOPER 100
-
-//defines for wifi connect
-#define WIFI_CONNECT_NONE 0
-#define WIFI_CONNECT_ONCE 1
-#define WIFI_CONNECT_ALWAYS 2
-
 #define FANET_CMD_START			"#FN"
 #define FANET_CMD_TRANSMIT	"#FNT"
 #define FANET_CMD_GROUND_TYPE	"#FNG"
 #define SYSTEM_CMD	"#SYC"
 #define GPS_STATE	"$G"
 
-#define MODE_WIFI_DISABLED 0
-#define MODE_WIFI_STA 1
-#define MODE_WIFI_CONNECTED 2
-
-#define MODEM_DISCONNECTED 0
-#define MODEM_CONNECTING 1
-#define MODEM_CONNECTED 2
-
-#define SCREEN_ALWAYS_ON 0
-#define SCREEN_ON_WHEN_TRAFFIC 1
-#define SCREEN_ALWAYS_OFF 2
-#define SCREEN_WEATHER_DATA 3
-
-#define DISPLAY_STAT_OFF 0
-#define DISPLAY_STAT_ON 1
-#define DISPLAY_INVERT 0
-#define GS_POWER_ALWAYS_ON 0
-#define GS_POWER_SAFE 1
-#define GS_POWER_BATT_LIFE 2
-
-#define FN_GROUNT_AIR_TRACKING 0
-#define FN_AIR_TRACKING 1
-
 #define FUELSENDINTERVALL 10000
-
-#define SETTING_BASIC 0
-#define SETTING_ADVANCED 100
-#define SETTING_EXPERT 200
-
-#define OVARIO_NONE 0
-#define OVARIO_LK8EX1 1
-#define OVARIO_LXPW 2
-
-
 
 struct weatherupload{
   bool enable;
@@ -359,8 +289,8 @@ struct GSSettings{
   float lon; //Ground-Station Longitude
   float alt; //Ground-Station altitude
   float geoidAlt; //geoidaltitude for Legacy
-  uint8_t SreenOption; //energy-option for display
-  uint8_t PowerSave; //powersave-option
+  eScreenOption SreenOption; //energy-option for display
+  eGsPower PowerSave; //powersave-option
 };
 
 struct WeatherSettings{
@@ -385,7 +315,7 @@ struct WifiSettings{
   String appw; //access-point-Password
   String ssid; //WIFI SSID
   String password; //WIFI PASSWORD
-  uint8_t connect; //1 connect to wifi, 2 connect to wifi and try to stay connected
+  eWifiMode connect; //1 connect to wifi, 2 connect to wifi and try to stay connected
   uint32_t tWifiStop; //time after wifi will be stopped to save energy 0 --> never
 };
 
@@ -402,17 +332,16 @@ struct WifiSettings{
 
 struct SettingsData{
   uint8_t settingsView; //view of settings (basic, advanced, expert)
-  uint8_t boardType;
-  uint8_t Mode; //Air-Module, GS-Station,
-  uint8_t displayType;
+  eBoard boardType;
+  eMode Mode; //Air-Module, GS-Station,
+  eDisplay displayType;
   uint8_t displayRotation; //displayrotation 0-3;
   float BattVoltOffs; //offset for Battery-multiplier
   uint8_t minBattPercent;
   uint8_t restartBattPercent;
   String myDevId; //my device-ID
-  uint8_t band;
-  uint8_t LoraPower; //output-Power 5-20db
-  uint8_t outputModeVario;
+  eCountry country;
+  eOutputVario outputModeVario;
   uint8_t outputFLARM;
   uint8_t outputGPS;
   uint8_t outputFANET;
@@ -423,7 +352,7 @@ struct SettingsData{
   uint8_t AircraftType; //Aircrafttype
   String UDPServerIP; //UDP-IP-Adress for sending Pakets
   uint16_t UDPSendPort; //Port of udp-server
-  uint8_t outputMode; //output-mode
+  eOutput outputMode; //output-mode
   GSSettings gs;
   VarioSettings vario; //variosettings
   uOgnMode OGNLiveTracking; //OGN-Live-Tracking
@@ -435,7 +364,7 @@ struct SettingsData{
   weatherupload WUUpload; //weather-underground upload-settings
   weatherupload WindyUpload; //weather-underground upload-settings
   GsmSettings gsm; //settings for GSM
-  uint8_t fanetMode; //fanet tracking-mode 0 ... switch between online-tracking and ground-tracking 1 ... always online-tracking
+  eFnMode fanetMode; //fanet tracking-mode 0 ... switch between online-tracking and ground-tracking 1 ... always online-tracking
   uint16_t fanetpin; //pin for fanet (4 signs)
   bool bHasExtPowerSw; //has external power-switch
   bool bHasFuelSensor; //has fuel-Sensor
@@ -506,11 +435,11 @@ struct statusData{
   bool bMuting; //muting beeper
   bool bPowerOff;
   weatherStatus weather;
-  uint8_t modemstatus; //status of mobile-device (sim800)
+  eModemState modemstatus; //status of mobile-device (sim800)
   bool bInternetConnected;
   bool bTimeOk;
   gsmStatus gsm;
-  uint8_t displayStat; //stat of display
+  eDisplayState displayStat; //stat of display
   bool bHasGPS;
   uint8_t updateState; //state of update
   String sNewVersion;

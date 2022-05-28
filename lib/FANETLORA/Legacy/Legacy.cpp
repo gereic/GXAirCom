@@ -174,41 +174,28 @@ int8_t legacy_decode(void *legacy_pkt, ufo_t *this_aircraft, ufo_t *fop) {
 
   
   if (pkt->addr == 0){
-    //log_e("addr = 0");
+    log_e("addr = 0");
     return -8;    
   }
   if (pkt->aircraft_type == 0){
-    //log_e("aircraft_type = 0");
+    log_e("aircraft_type = 0");
     return -9;    
   }
-  if (pkt->_unk0 != 0){
-    //log_e("unknown message unk0=%02X",pkt->_unk0);
+  if (pkt->zero0 != 0){
+    log_e("unknown message zero0=%02X",pkt->zero0);
     return -10;
   }
-  if (pkt->_unk1 != 0){
-    //log_e("unknown message unk1=%02X",pkt->_unk0);
+  if (pkt->zero1 != 0){
+    log_e("unknown message zero1=%02X",pkt->zero1);
     return -11;
   }
-  if (pkt->_unk2 != 0){
-    //log_e("unknown message unk2=%02X",pkt->_unk0);
-    return -12;
-  }
-  if (pkt->_unk3 != 0){
-    //log_e("unknown message unk3=%02X",pkt->_unk0);
+  if (pkt->zero2 != 0){
+    //log_e("unknown message zero2=%02X",pkt->zero2);
     return -13;
   }
-  //log_i("%d unk0=%02X,unk1=%02X,unk2=%02X,unk3=%02X,onground=%02X,AirBorne=%d",millis(),pkt->_unk0,pkt->_unk1,pkt->_unk2,pkt->_unk3,pkt->onGround,pkt->airborne);
+  //log_i("%d unk0=%02X,unk1=%02X,unk2=%02X,unk3=%02X,onground=%02X,AirBorne=%d",millis(),pkt->zero0,pkt->zero1,pkt->_unk2,pkt->zero2,pkt->onGround,pkt->airborne);
 
-  for (ndx = 0; ndx < sizeof (legacy_packet_t); ndx++) {
-    pkt_parity += parity(*(((unsigned char *) pkt) + ndx));
-  }
-  
-  if (pkt_parity % 2) {
-    //log_i("bad parity of decoded packet: %02X",pkt_parity % 2);        
-    return -1;
-  }
-
-  //Serial.printf("onGround=%d,unk0=%d,unk1=%d,unk2=%d,unk3=%d\r\n",pkt->onGround,pkt->_unk0,pkt->_unk1,pkt->_unk2,pkt->_unk3);
+  //Serial.printf("onGround=%d,unk0=%d,unk1=%d,unk2=%d,unk3=%d\r\n",pkt->onGround,pkt->_unk0,pkt->_unk1,pkt->_unk2,pkt->zero2);
 
   int32_t round_lat = (int32_t) (ref_lat * 1e7) >> 7;
   int32_t lat = (pkt->lat - round_lat) % (uint32_t) 0x080000;
@@ -251,8 +238,13 @@ int8_t legacy_decode(void *legacy_pkt, ufo_t *this_aircraft, ufo_t *fop) {
   //fop->vs = ((float) vs10) * (_GPS_FEET_PER_METER * 6.0);
   fop->vs = ((float) vs10) / 10.0;
   fop->aircraft_type = pkt->aircraft_type;
-  fop->onGround = pkt->onGround;
-  fop->airborne = pkt->airborne;
+  if (pkt->turnrate == TURN_RATE_ON_GROUND){
+    fop->onGround = true;
+    fop->airborne = false;
+  }else{
+    fop->onGround = false;
+    fop->airborne = true;
+  }
   fop->stealth = pkt->stealth;
   fop->no_track = pkt->no_track;
   fop->ns[0] = pkt->ns[0]; fop->ns[1] = pkt->ns[1];
@@ -260,95 +252,113 @@ int8_t legacy_decode(void *legacy_pkt, ufo_t *this_aircraft, ufo_t *fop) {
   fop->ew[0] = pkt->ew[0]; fop->ew[1] = pkt->ew[1];
   fop->ew[2] = pkt->ew[2]; fop->ew[3] = pkt->ew[3];
 
+  /*
+  if (pkt->parity != 0){
+    log_i("bad parity of decoded packet");
+    char Buffer[500];	
+    sprintf(Buffer,"adr=%06X;adrType=%d,lat=%.06f,lon=%.06f,alt=%.01f,speed=%.01f,course=%.01f,climb=%.01f\n", fop->addr,fop->addr_type,fop->latitude,fop->longitude,fop->altitude,fop->speed,fop->course,fop->vs);
+    log_e("%s",&Buffer[0]);
+    return -1;
+  }
+  */
+
+  //check parity of frame !!
+  for (ndx = 0; ndx < sizeof (legacy_packet_t); ndx++) {
+    pkt_parity += parity(*(((unsigned char *) pkt) + ndx));
+  }
+  if (pkt_parity % 2) {
+    log_i("bad parity of decoded packet: %02X",pkt_parity % 2);        
+    char Buffer[500];	
+    sprintf(Buffer,"adr=%06X;adrType=%d,lat=%.06f,lon=%.06f,alt=%.01f,speed=%.01f,course=%.01f,climb=%.01f\n", fop->addr,fop->addr_type,fop->latitude,fop->longitude,fop->altitude,fop->speed,fop->course,fop->vs);
+    log_e("%s",&Buffer[0]);
+    return -1;
+  }
+
+  if ((pkt->turnrate != TURN_RATE_ON_GROUND) && (pkt->turnrate != TURN_RATE_RIGHT_TURN) && (pkt->turnrate != TURN_RATE_NO_TURN) && (pkt->turnrate != TURN_RATE_LEFT_TURN)){
+    log_e("unknown message turnrate=%02X",pkt->turnrate);
+    char Buffer[500];	
+    sprintf(Buffer,"adr=%06X;adrType=%d,lat=%.06f,lon=%.06f,alt=%.01f,speed=%.01f,course=%.01f,climb=%.01f\n", fop->addr,fop->addr_type,fop->latitude,fop->longitude,fop->altitude,fop->speed,fop->course,fop->vs);
+    log_e("%s",&Buffer[0]);
+    return -12;
+  }
+
+
   return 0;
 }
 
 size_t legacy_encode(void *legacy_pkt, ufo_t *this_aircraft) {
 
-    legacy_packet_t *pkt = (legacy_packet_t *) legacy_pkt;
-
-    int ndx;
-    uint8_t pkt_parity=0;
-    
-
-    uint32_t id = this_aircraft->addr;
-    float lat = this_aircraft->latitude;
-    float lon = this_aircraft->longitude;
-    int16_t alt = (int16_t) (this_aircraft->altitude + this_aircraft->geoid_separation);
+  legacy_packet_t *pkt = (legacy_packet_t *) legacy_pkt;
+  pkt->zero0 = 0;
+  pkt->zero1 = 0;
+  pkt->zero2 = 0;
+  int ndx;
+  uint8_t pkt_parity=0;
+  uint32_t id = this_aircraft->addr;
+  float lat = this_aircraft->latitude;
+  float lon = this_aircraft->longitude;
+  int16_t alt = (int16_t) (this_aircraft->altitude + this_aircraft->geoid_separation);
  
-    float course = this_aircraft->course;
-    float speedf = this_aircraft->speed * _GPS_KMH_2_MPS; /* m/s */
-    //float vsf = this_aircraft->vs / (_GPS_FEET_PER_METER * 60.0); /* m/s */
-    float vsf = this_aircraft->vs ; /* m/s */
+  float course = this_aircraft->course;
+  float speedf = this_aircraft->speed * _GPS_KMH_2_MPS; /* m/s */
+  //float vsf = this_aircraft->vs / (_GPS_FEET_PER_METER * 60.0); /* m/s */
+  float vsf = this_aircraft->vs ; /* m/s */
 
-    uint16_t speed4 = (uint16_t) roundf(speedf * 4.0f);
-    if (speed4 > 0x3FF) {
-      speed4 = 0x3FF;
-    }
+  uint16_t speed4 = (uint16_t) roundf(speedf * 4.0f);
+  if (speed4 > 0x3FF) {
+    speed4 = 0x3FF;
+  }
 
-    if        (speed4 & 0x200) {
-      pkt->smult = 3;
-    } else if (speed4 & 0x100) {
-      pkt->smult = 2;
-    } else if (speed4 & 0x080) {
-      pkt->smult = 1;
-    } else {
-      pkt->smult = 0;
-    }
+  if (speed4 & 0x200) {
+    pkt->smult = 3;
+  } else if (speed4 & 0x100) {
+    pkt->smult = 2;
+  } else if (speed4 & 0x080) {
+    pkt->smult = 1;
+  } else {
+    pkt->smult = 0;
+  }
 
-    uint8_t speed = speed4 >> pkt->smult;
+  uint8_t speed = speed4 >> pkt->smult;
 
-    int8_t ns = (int8_t) (speed * cosf(radians(course)));
-    int8_t ew = (int8_t) (speed * sinf(radians(course)));
+  int8_t ns = (int8_t) (speed * cosf(radians(course)));
+  int8_t ew = (int8_t) (speed * sinf(radians(course)));
 
-    int16_t vs10 = (int16_t) roundf(vsf * 10.0f);
-    pkt->vs = vs10 >> pkt->smult;
+  int16_t vs10 = (int16_t) roundf(vsf * 10.0f);
+  pkt->vs = vs10 >> pkt->smult;
 
-    pkt->addr = id & 0x00FFFFFF;
+  pkt->addr = id & 0x00FFFFFF;
 
-//pkt->addr_type = ADDR_TYPE_ICAO;
-pkt->addr_type = ADDR_TYPE_ANONYMOUS;
-//pkt->addr_type = ADDR_TYPE_FLARM;
+  //pkt->addr_type = ADDR_TYPE_ICAO;
+  pkt->addr_type = ADDR_TYPE_ANONYMOUS;
+  //pkt->addr_type = ADDR_TYPE_FLARM;
+  pkt->parity = 0;
+  pkt->stealth = this_aircraft->stealth;
+  pkt->no_track = this_aircraft->no_track;
 
+  if (this_aircraft->airborne){
+    pkt->turnrate = TURN_RATE_NO_TURN; //no/slow turn
+  }else{
+    pkt->turnrate = TURN_RATE_ON_GROUND; //on ground
+  }
+  pkt->aircraft_type = this_aircraft->aircraft_type;
 
-//#if !defined(SOFTRF_ADDRESS)
-//    pkt->addr_type = ADDR_TYPE_ANONYMOUS; /* ADDR_TYPE_ANONYMOUS */
-//#else
-//    pkt->addr_type = (pkt->addr == SOFTRF_ADDRESS ?
-//                      ADDR_TYPE_ICAO : ADDR_TYPE_FLARM); /* ADDR_TYPE_ANONYMOUS */
-//#endif
+  pkt->gps = 323;
 
-    pkt->parity = 0;
+  pkt->lat = (uint32_t ( lat * 1e7) >> 7) & 0x7FFFF;
+  pkt->lon = (uint32_t ( lon * 1e7) >> 7) & 0xFFFFF;
+  pkt->alt = alt;
 
-    pkt->onGround = this_aircraft->onGround;
-    //pkt->onGround = false;
-    pkt->stealth = this_aircraft->stealth;
-    pkt->no_track = this_aircraft->no_track;
+  //pkt->airborne = speed > 0 ? 1 : 0;
+  pkt->ns[0] = ns; pkt->ns[1] = ns; pkt->ns[2] = ns; pkt->ns[3] = ns;
+  pkt->ew[0] = ew; pkt->ew[1] = ew; pkt->ew[2] = ew; pkt->ew[3] = ew;
 
-    pkt->aircraft_type = this_aircraft->aircraft_type;
-
-    pkt->gps = 323;
-
-    pkt->lat = (uint32_t ( lat * 1e7) >> 7) & 0x7FFFF;
-    pkt->lon = (uint32_t ( lon * 1e7) >> 7) & 0xFFFFF;
-    pkt->alt = alt;
-
-    //pkt->airborne = speed > 0 ? 1 : 0;
-    pkt->airborne = this_aircraft->airborne;
-    pkt->ns[0] = ns; pkt->ns[1] = ns; pkt->ns[2] = ns; pkt->ns[3] = ns;
-    pkt->ew[0] = ew; pkt->ew[1] = ew; pkt->ew[2] = ew; pkt->ew[3] = ew;
-
-    pkt->_unk0 = 0;
-    pkt->_unk1 = 0;
-    pkt->_unk2 = 0;
-    pkt->_unk3 = 0;
-//    pkt->_unk4 = 0;
-
-    for (ndx = 0; ndx < sizeof (legacy_packet_t); ndx++) {
-      pkt_parity += parity(*(((unsigned char *) pkt) + ndx));
-    }
-    pkt->parity = (pkt_parity % 2);
-    return (sizeof(legacy_packet_t));
+  //create parity for packet
+  for (ndx = 0; ndx < sizeof (legacy_packet_t); ndx++) {
+    pkt_parity += parity(*(((unsigned char *) pkt) + ndx));
+  }
+  pkt->parity = (pkt_parity % 2);
+  return (sizeof(legacy_packet_t));
 }
 
 

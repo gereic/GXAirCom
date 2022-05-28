@@ -233,8 +233,8 @@ float Weather::calcWindspeed(void){
 }
 
 void Weather::checkAneometer(void){
-  static bool bFirstWSpeed = false;
-  static bool bFirstWDir = false;
+  //static bool bFirstWSpeed = false;
+  //static bool bFirstWDir = false;
   
   if (_weather.bWindDir){
     VaneValue = analogRead(_windDirPin);

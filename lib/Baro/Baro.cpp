@@ -66,7 +66,7 @@ void Baro::meansensors() {
 	long i, buff_ax, buff_ay, buff_az, buff_gx, buff_gy, buff_gz;
   int16_t ax, ay, az, gx, gy, gz;
 	const int buffersize = 1000;     //Amount of readings used to average, make it higher to get more precision but sketch will be slower  (default:1000)
-  int16_t az_values[buffersize];
+  //int16_t az_values[buffersize];
 
 	buff_ax = 0; buff_ay = 0; buff_az = 0; buff_gx = 0; buff_gy = 0; buff_gz = 0;
 	i = 0;
@@ -78,7 +78,7 @@ void Baro::meansensors() {
 		buff_ax += ax;
 		buff_ay += ay;
 		buff_az += az;
-		az_values[i] = az;
+		//az_values[i] = az;
 		buff_gx += gx;
 		buff_gy += gy;
 		buff_gz += gz;
@@ -169,7 +169,7 @@ bool Baro::calibrate(bool bInit,uint8_t* calibstate){
     ay_offset = (ayMax + ayMin) / 2 * -1;
     az_offset = (azMax + azMin) / 2 * -1;
     
-    float aRange;
+    //float aRange;
     ax_scale = 32768 / (float(axMax) - float(axMin));
     ay_scale = 32768 / (float(ayMax) - float(ayMin));
     az_scale = 32768 / (float(azMax) - float(azMin));
@@ -512,8 +512,10 @@ uint8_t Baro::begin(TwoWire *pi2c){
   logData.vAcc = 0.0;
   logData.vOffset = 0.0;
   if (initBME280()){
+    log_i("found BME280");
     ret = 1; //BME280;
   }else if (initMS5611()){
+    log_i("found MS5611");
     ret = 2; //GY-86-Board
   }else{
     return 0;
@@ -712,7 +714,7 @@ void Baro::scaleAccel(VectorInt16 *accel){
   offset_y = 2.275;
   offset_z = 581.843;
   */
-  float temp = getMpuTemp();
+  //float temp = getMpuTemp();
   accel->x = (int16_t)round(scale_x * (float)accel->x + offset_x);//(offset_x * scale_x));
   accel->y = (int16_t)round(scale_y * (float)accel->y + offset_y);//(offset_y * scale_y));
   //offset_z = interpolate.Linear(tValues,zValues,2,temp,false);
@@ -927,7 +929,7 @@ void Baro::runBME280(uint32_t tAct){
 }
 
 void Baro::run(void){
-  static uint32_t tOld;  
+  //static uint32_t tOld;  
   uint32_t tAct = millis();
 
   if (sensorType == SENSORTYPE_MS5611){
@@ -949,7 +951,7 @@ void Baro::run(void){
   }
   #endif 
   if (logData.newData){
-    tOld = tAct;  
+    //tOld = tAct;  
     logData.newData = 0;
   }
 }

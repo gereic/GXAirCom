@@ -5,30 +5,29 @@ Preferences preferences;
 void load_configFile(SettingsData* pSetting){
   log_i("LOAD CONFIG FILE");
   preferences.begin("settings", false);                         //Ordner settings anlegen/verwenden
-  pSetting->settingsView = preferences.getUChar("setView",SETTING_BASIC); //
+  pSetting->settingsView = preferences.getUChar("setView",0); //
   pSetting->wifi.appw = preferences.getString("APPW","12345678");
-  pSetting->boardType = preferences.getUChar("BOARDTYPE",BOARD_UNKNOWN); //
-  pSetting->band = preferences.getUChar("BAND",BAND868); //
+  pSetting->boardType = eBoard(preferences.getUChar("BOARDTYPE",eBoard::UNKNOWN)); //
+  pSetting->country = eCountry(preferences.getUChar("COUNTRY",eCountry::EU)); //
   pSetting->bHasExtPowerSw = preferences.getUChar("EXTPWSW",0); //external power-switch
-  pSetting->LoraPower = preferences.getUChar("LORA_POWER",10);//
   pSetting->RFMode = preferences.getUChar("RFM",11); //default FntRx + FntTx + LegTx
   pSetting->awLiveTracking = preferences.getUChar("AWLIVE",0); //
   pSetting->bOutputSerial = preferences.getUChar("OSerial",0); //
-  pSetting->outputModeVario = preferences.getUChar("OVario",1); //
+  pSetting->outputModeVario = eOutputVario(preferences.getUChar("OVario",eOutputVario::OVARIO_LK8EX1)); //
   pSetting->outputFLARM = preferences.getUChar("OFLARM",1); //
   pSetting->outputGPS = preferences.getUChar("OGPS",1); //
   pSetting->outputFANET = preferences.getUChar("OFANET",1); //
   pSetting->PilotName = preferences.getString("PILOTNAME","");
-  pSetting->wifi.connect = preferences.getUChar("WIFI_CONNECT",0); //
+  pSetting->wifi.connect = eWifiMode(preferences.getUChar("WIFI_CONNECT",eWifiMode::CONNECT_NONE)); //
   pSetting->wifi.ssid = preferences.getString("WIFI_SSID","");
   pSetting->wifi.password = preferences.getString("WIFI_PW","");
   pSetting->wifi.tWifiStop = preferences.getUInt("Time_WIFI_Stop",180); //stop wifi after 3min.
   pSetting->AircraftType = preferences.getUChar("AIRCRAFTTYPE",1);
   pSetting->UDPServerIP = preferences.getString("UDP_SERVER","192.168.4.2"); //UDP-IP-Adress to match connected device
   pSetting->UDPSendPort = preferences.getUInt("UDP_PORT",10110); //Port of udp-server
-  pSetting->outputMode = preferences.getUChar("OutputMode",OUTPUT_BLE); //output-mode default ble
-  pSetting->Mode = preferences.getUChar("Mode",MODE_AIR_MODULE);
-  pSetting->fanetMode = preferences.getUChar("fntMode",FN_GROUNT_AIR_TRACKING);  
+  pSetting->outputMode = eOutput(preferences.getUChar("OutputMode",eOutput::oBLE)); //output-mode default ble
+  pSetting->Mode = eMode(preferences.getUChar("Mode",eMode::AIR_MODULE));
+  pSetting->fanetMode = eFnMode(preferences.getUChar("fntMode",eFnMode::FN_GROUNT_AIR_TRACKING));  
   pSetting->fanetpin = preferences.getUInt("fntPin",1234);
   
   //gs settings
@@ -37,8 +36,8 @@ void load_configFile(SettingsData* pSetting){
   pSetting->gs.alt = preferences.getFloat("GSALT",0.0);
   pSetting->gs.geoidAlt = preferences.getFloat("GSGEOALT",0.0);
 
-  pSetting->gs.SreenOption = preferences.getUChar("GSSCR",0);
-  pSetting->gs.PowerSave = preferences.getUChar("GSPS",0);
+  pSetting->gs.SreenOption = eScreenOption(preferences.getUChar("GSSCR",eScreenOption::ALWAYS_ON));
+  pSetting->gs.PowerSave = eGsPower(preferences.getUChar("GSPS",eGsPower::GS_POWER_ALWAYS_ON));
   pSetting->BattVoltOffs = preferences.getFloat("BATOFFS",0.0);
   pSetting->minBattPercent = preferences.getUChar("BattMinPerc",20);
   pSetting->restartBattPercent = preferences.getUChar("restartBattPerc",20);
@@ -46,7 +45,7 @@ void load_configFile(SettingsData* pSetting){
   //live-tracking
   pSetting->OGNLiveTracking.mode = preferences.getUChar("OGN_LIVE",0);
   pSetting->screenNumber = preferences.getUChar("SCREEN",0);
-  pSetting->displayType = preferences.getUChar("Display",0);
+  pSetting->displayType = eDisplay(preferences.getUChar("Display",eDisplay::NO_DISPLAY));
   pSetting->displayRotation = preferences.getUChar("DispRot",0);
   pSetting->traccarLiveTracking = preferences.getUChar("TRACCAR_LIVE",0);
   pSetting->TraccarSrv = preferences.getString("TRACCAR_SRV","");
@@ -122,9 +121,8 @@ void write_configFile(SettingsData* pSetting){
   preferences.putUChar("setView",pSetting->settingsView); //
   preferences.putString("APPW",pSetting->wifi.appw);
   preferences.putUChar("BOARDTYPE",pSetting->boardType); //
-  preferences.putUChar("BAND",pSetting->band); //
+  preferences.putUChar("COUNTRY",uint8_t(pSetting->country)); //
   preferences.putUChar("EXTPWSW",pSetting->bHasExtPowerSw); //
-  preferences.putUChar("LORA_POWER",pSetting->LoraPower);//
   preferences.putUChar("RFM",pSetting->RFMode);
   preferences.putUChar("AWLIVE",pSetting->awLiveTracking); //
   preferences.putUChar("OSerial",pSetting->bOutputSerial); //
@@ -277,12 +275,6 @@ void write_RFMode(void){
 void write_OutputMode(void){
   preferences.begin("settings", false);
   preferences.putUChar("OutputMode",setting.outputMode);
-  preferences.end();
-}
-
-void write_LoraPower(void){
-  preferences.begin("settings", false);
-  preferences.putUChar("LORA_POWER",setting.LoraPower);//
   preferences.end();
 }
 
