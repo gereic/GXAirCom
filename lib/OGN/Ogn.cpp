@@ -270,26 +270,31 @@ void Ogn::sendWeatherData(weatherData *wData){
 
 }
 
-void Ogn::sendGroundTrackingData(time_t timestamp,float lat,float lon,String devId,uint8_t state,uint8_t adressType,float snr){
-    //FLR110F62>OGNFNT,qAS,FNB110F62:/202017h4833.73N/01307.57Eg299/001/A=001065 !W60! id3E110F62 -02fpm FNT71
-    
-    if (initOk < 10) return; //nothing todo
-    char buff[200];
-    float lLat = abs(lat);
-    float lLon = abs(lon);
-    int latDeg = int(lLat);
-    int latMin = (roundf((lLat - int(lLat)) * 60 * 1000));
-    int lonDeg = int(lLon);
-    int lonMin = (roundf((lLon - int(lLon)) * 60 * 1000));
-    String sTime = getActTimeString(timestamp);
-    if (sTime.length() <= 0) return;
-
-    sprintf (buff,"%s%s>OGNFNT,qAS,%s:/%sh%02d%02d.%02d%c\\%03d%02d.%02d%cn !W%01d%01d! id%02X%s FNT%X %0.1fdB\r\n" //3F OGN-Tracker and device 15
-    ,getOrigin(adressType).c_str(),devId.c_str(),_user.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,(lat < 0)?'S':'N',lonDeg,lonMin/1000,lonMin/10 %100,(lon < 0)?'W':'E',int(latMin %10),int(latMin %10),getSenderDetails(true,aircraft_t::STATIC_OBJECT,adressType),devId.c_str(),state,snr);
-    xSemaphoreTake( *xMutex, portMAX_DELAY );
-    client->print(buff);                
-    xSemaphoreGive( *xMutex );
-    //log_i("%s",buff);
+void Ogn::sendGroundTrackingData(time_t timestamp,float lat,float lon,float alt,String devId,uint8_t state,uint8_t adressType,float snr){
+  //FLR110F62>OGNFNT,qAS,FNB110F62:/202017h4833.73N/01307.57Eg299/001/A=001065 !W60! id3E110F62 -02fpm FNT71
+  
+  if (initOk < 10) return; //nothing todo
+  char buff[200];
+  char altBuff[20];
+  float lLat = abs(lat);
+  float lLon = abs(lon);
+  int latDeg = int(lLat);
+  int latMin = (roundf((lLat - int(lLat)) * 60 * 1000));
+  int lonDeg = int(lLon);
+  int lonMin = (roundf((lLon - int(lLon)) * 60 * 1000));
+  String sTime = getActTimeString(timestamp);
+  if (sTime.length() <= 0) return;
+  if (alt > 0.0){
+    sprintf(altBuff,"/A=%06d",int(alt * 3.28084));
+  }else{
+    altBuff[0] = 0;
+  }
+  sprintf (buff,"%s%s>OGNFNT,qAS,%s:/%sh%02d%02d.%02d%c\\%03d%02d.%02d%cn%s !W%01d%01d! id%02X%s FNT%X %0.1fdB\r\n" //3F OGN-Tracker and device 15
+  ,getOrigin(adressType).c_str(),devId.c_str(),_user.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,(lat < 0)?'S':'N',lonDeg,lonMin/1000,lonMin/10 %100,(lon < 0)?'W':'E',altBuff,int(latMin %10),int(latMin %10),getSenderDetails(true,aircraft_t::STATIC_OBJECT,adressType),devId.c_str(),state,snr);
+  xSemaphoreTake( *xMutex, portMAX_DELAY );
+  client->print(buff);                
+  xSemaphoreGive( *xMutex );
+  //log_i("%s",buff);
 
 }
 

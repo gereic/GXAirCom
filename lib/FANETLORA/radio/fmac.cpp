@@ -411,6 +411,7 @@ void FanetMac::frameReceived(int length)
 			frm->src.manufacturer = uint8_t(air.addr >> 16);
 			frm->src.id = uint16_t(air.addr & 0x0000FFFF);
 			frm->dest = MacAddr();
+		  frm->altitude = air.altitude;
 			frm->forward = false;
 			if (!air.airborne){
 				frm->type = FRM_TYPE_GROUNDTRACKING_LEGACY;

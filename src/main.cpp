@@ -1560,7 +1560,7 @@ void startOLED(){
 #endif
 
 void printSettings(){
-  log_i("**** SETTINGS ****");
+  log_i("**** SETTINGS "VERSION" ******");
   log_i("Access-point password=%s",setting.wifi.appw.c_str());
   log_i("Board-Type=%d",setting.boardType);
   log_i("Display-Type=%d",setting.displayType);
@@ -4519,7 +4519,7 @@ void taskStandard(void *pvParameters){
         sendTraccarTrackingdata(&tFanetData);
       }else if (tFanetData.type >= 0x70){ //ground-tracking
         if (setting.OGNLiveTracking.bits.liveTracking){
-          ogn.sendGroundTrackingData(tFanetData.timestamp,tFanetData.lat,tFanetData.lon,fanet.getDevId(tFanetData.devId),tFanetData.type,tFanetData.addressType,(float)tFanetData.snr);
+          ogn.sendGroundTrackingData(tFanetData.timestamp,tFanetData.lat,tFanetData.lon,tFanetData.altitude,fanet.getDevId(tFanetData.devId),tFanetData.type,tFanetData.addressType,(float)tFanetData.snr);
         } 
       }
       #ifdef SENDFLARMDIRECT
@@ -4650,7 +4650,7 @@ void taskStandard(void *pvParameters){
             if (setting.OGNLiveTracking.bits.liveTracking){
               ogn.setGPS(status.GPS_Lat,status.GPS_Lon,status.GPS_alt,status.GPS_speed,MyFanetData.heading);
               if (fanet.onGround){
-                ogn.sendGroundTrackingData(now(),status.GPS_Lat,status.GPS_Lon,fanet.getDevId(tFanetData.devId),fanet.state,MyFanetData.addressType,0.0);
+                ogn.sendGroundTrackingData(now(),status.GPS_Lat,status.GPS_Lon,status.GPS_alt,fanet.getDevId(tFanetData.devId),fanet.state,MyFanetData.addressType,0.0);
               }else{
                 ogn.sendTrackingData(now(),status.GPS_Lat,status.GPS_Lon,status.GPS_alt,status.GPS_speed,MyFanetData.heading,status.ClimbRate,fanet.getMyDevId() ,(Ogn::aircraft_t)fanet.getFlarmAircraftType(&MyFanetData),MyFanetData.addressType,fanet.doOnlineTracking,0.0);
               }

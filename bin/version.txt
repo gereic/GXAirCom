@@ -349,3 +349,6 @@ BLE improvements
 
 V4.16.0
 Bugfix Aircrafttype Burnair
+Sending altitude also in ground-tracking.
+  when Flarm-receive, altitude is ok
+  when Fanet-receive, no altitude given
