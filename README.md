@@ -1,3 +1,5 @@
+[![Donate](https://raw.githubusercontent.com/stefan-niedermann/paypal-donate-button/master/paypal-donate-button.png)](https://www.paypal.com/donate/?business=JD2NRG9RAS8M6&no_recurring=0&item_name=GXAircom&currency_code=EUR)
+
 # GxAirCom
 
 GxAircom aims to be a complete and open source implementation of the [FANET+ (Fanet + Flarm) protocol](https://github.com/3s1d/fanet-stm32/blob/master/Src/fanet/radio/protocol.txt) running on readily available cheap lora modules and interfacing with mobile phones via Bluetooth. It can also act as a Fanet ground station and broadcast recieved FANET information to [OGN](http://wiki.glidernet.org).
