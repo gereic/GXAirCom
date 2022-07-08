@@ -465,14 +465,3 @@ void extrapolate_velocity_vector(AircraftState *aircraft) {
         aircraft->extrapolated_avg_vel_e[i] = (uint8_t)avgVelE;
     }
 }
-
-
------BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2cI0u4seVH8GcZ4ymG2Y
-ypMUI1RT7EQcHSnVpgn0YlcUrACQosRO9V0HaynVq7qs888elyoA9nA5qolRovk1
-JhgKvUFTp5cp3vd1nfTpRrWuBj5nLhmCElB/wCLG/YMEvIoU9Tgj/6jlI8fbt6cZ
-l2dWTvnLQ3+vojA09O4axz2k7e0EkR0rTD0VQNhBXHUnYvaM99Yhkvq+1ev54BQN
-yv6MV09xdF+Ob7qrXPt/S8g0fdt+hYrvAXe7gO26rUk3KELBA2ZRtF2PMl3A7TOs
-0I1aup2EB2l67oxZk5HaureVH/H155asnbprlpddKf1G/93PoCwEQqzke5frXixy
-WwIDAQAB
------END PUBLIC KEY-----

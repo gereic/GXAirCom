@@ -99,6 +99,7 @@ void onWebSocketEvent(uint8_t client_num,
             doc["gpsFix"] = status.GPS_Fix;
             doc["gpsNumSat"] = status.GPS_NumSat;
             doc["gpsSpeed"] = String(status.GPS_speed,2);
+            doc["gpsCourse"] = String(status.GPS_course,2);
           }
           #endif
           doc["gpslat"] = String(status.GPS_Lat,6);
@@ -882,6 +883,11 @@ void sendPage(uint8_t pageNr){
           bSend = true;
           mStatus.GPS_speed = status.GPS_speed;
           doc["gpsSpeed"] = String(status.GPS_speed,2);
+        }    
+        if (mStatus.GPS_course != status.GPS_course){
+          bSend = true;
+          mStatus.GPS_course = status.GPS_course;
+          doc["gpsCourse"] = String(status.GPS_course,2);
         }    
       }
       #endif

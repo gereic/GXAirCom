@@ -441,6 +441,7 @@ struct statusData{
   gsmStatus gsm;
   eDisplayState displayStat; //stat of display
   bool bHasGPS;
+  bool bExtGps = false;
   uint8_t updateState; //state of update
   String sNewVersion;
   uint32_t tRestart;

@@ -16,6 +16,7 @@
 //#include "app.h"
 #include "./radio/LoRa.h"
 #include "CalcTools.h"
+#include "FlarmRadio.h"
 
 
 
@@ -270,6 +271,7 @@ public:
   void sendMSG(String msg);
   void coord2payload_absolut(float lat, float lon, uint8_t *buf);
   uint8_t getFlarmAircraftType(trackingData *tData);
+  uint8_t getFlarmAircraftType(aircraft_t aircraftType);
   void getRxTxCount(uint16_t *pFntRx,uint16_t *pFntTx,uint16_t *pLegRx,uint16_t *pLegTx);
   neighbour neighbours[MAXNEIGHBOURS];
   weatherData weatherDatas[MAXWEATHERDATAS];
@@ -299,6 +301,9 @@ public:
 
 protected:
 private:  
+  AircraftState flarmAircraftState;
+  AircraftConfig flarmAircraftConfig;
+  GpsData flarmGpsData;
   uint8_t _RfMode;
   String _PilotName;  
   uint32_t valid_until;

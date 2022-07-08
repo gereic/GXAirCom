@@ -12,9 +12,9 @@
 #include "LoRa.h"
 #include "fmac.h"
 #include <TimeLib.h>
-#include "Legacy/Legacy.h"
-#include "../FLARM/Flarm.h"
-#include "CRC/lib_crc.h"
+//#include "Legacy/Legacy.h"
+#include "../FLARM/FlarmDataPort.h"
+#include "../FLARM/lib_crc.h"
 #include "WiFi.h"
 #include "Udp.h"
 
@@ -161,19 +161,42 @@ void coord2payload_absolut(float lat, float lon, uint8_t *buf)
 }
 
 int serialize_legacyGroundTracking(ufo_t *Data,uint8_t*& buffer){
-  int msgSize = sizeof(FanetLora::fanet_packet_t1);
+  int msgSize = 7; //sizeof(FanetLora::fanet_packet_t1);
   buffer = new uint8_t[msgSize];
   coord2payload_absolut(Data->latitude,Data->longitude, &buffer[0]);
   buffer[6] = 1 << 4; //set mode to walking
 	if (!Data->no_track){
 		buffer[6] += 1; //set online-tracking
 	}
-	return FANET_LORA_TYPE7_SIZE;
+	return 7;
+}
+
+uint8_t Flarm2FanetAircraft(eFlarmAircraftType aircraft){
+  switch (aircraft)
+  {
+  case eFlarmAircraftType::PARA_GLIDER :
+    return 1; //FanetLora::aircraft_t::paraglider;
+  case eFlarmAircraftType::HANG_GLIDER :
+    return 2; //FanetLora::aircraft_t::hangglider;
+  case eFlarmAircraftType::BALLOON :
+    return 3; //FanetLora::aircraft_t::balloon;
+  case eFlarmAircraftType::GLIDER_MOTOR_GLIDER :
+    return 4; //FanetLora::aircraft_t::glider;
+  case eFlarmAircraftType::TOW_PLANE :
+    return 5; //FanetLora::aircraft_t::poweredAircraft;
+  case eFlarmAircraftType::HELICOPTER_ROTORCRAFT :
+    return 6; //FanetLora::aircraft_t::helicopter;
+  case eFlarmAircraftType::UAV :
+    return 7; //FanetLora::aircraft_t::uav;
+  default:
+    return 0; //FanetLora::aircraft_t::otherAircraft;
+  }
 }
 
 
+
 int serialize_legacyTracking(ufo_t *Data,uint8_t*& buffer){
-  int msgSize = sizeof(FanetLora::fanet_packet_t1);
+  int msgSize = 11; //sizeof(FanetLora::fanet_packet_t1);
   buffer = new uint8_t[msgSize];
   coord2payload_absolut(Data->latitude,Data->longitude, &buffer[0]);
 
@@ -186,7 +209,8 @@ int serialize_legacyTracking(ufo_t *Data,uint8_t*& buffer){
 	/* online tracking */
 	((uint16_t*)buffer)[3] |= !Data->stealth<<15;
 	/* aircraft type */
-	((uint16_t*)buffer)[3] |= (LP_Flarm2FanetAircraft((eFlarmAircraftType)Data->aircraft_type)&0x7)<<12;
+	//((uint16_t*)buffer)[3] |= (LP_Flarm2FanetAircraft((eFlarmAircraftType)Data->aircraft_type)&0x7)<<12;
+	((uint16_t*)buffer)[3] |= (Flarm2FanetAircraft((eFlarmAircraftType)Data->aircraft_type)&0x7)<<12;
 
 	/* Speed */
 	int speed2 = constrain((int)roundf(Data->speed *2.0f), 0, 635);
@@ -205,17 +229,20 @@ int serialize_legacyTracking(ufo_t *Data,uint8_t*& buffer){
 	/* Heading */
 	buffer[10] = constrain((int)roundf(Data->course *256.0f/360.0f), 0, 255);
 
-	return FANET_LORA_TYPE1_SIZE - 2;
+	return 11; //FANET_LORA_TYPE1_SIZE - 2;
 }
 
 
 uint8_t FanetMac::getAddressType(uint8_t manuId){
-	if (manuId == 0x11 || manuId == 0x20 || manuId == 0xDD || manuId == 0xDE || manuId == 0xDF){
+	//  GxAircom            Skytraxx          XCTracer
+	if (manuId == 0x08 || manuId == 0x11 || manuId == 0x20 || manuId == 0xDD || manuId == 0xDE || manuId == 0xDF){
 			return 2; //address type FLARM
 			//log_i("address=%s Flarm",devId.c_str());
+	/*
 	}else if (manuId == 0x08){
 			return 3; //address type OGN        
 			//log_i("address=%s OGN",devId.c_str());
+	*/
 	}else{
 			return 0; //address type unknown
 	}
@@ -255,8 +282,8 @@ void FanetMac::frameReceived(int length)
 	/* build frame from stream */
 	Frame *frm;
   if (_actMode != MODE_LORA){			
-		//char Buffer[500];	
-		//int len = 0;
+		char Buffer[500];	
+		int len = 0;
 		time_t tUnix;
 		time(&tUnix);
 		#if RX_DEBUG > 0
@@ -320,7 +347,7 @@ void FanetMac::frameReceived(int length)
 		*/
 
     //check if Checksum is OK
-  	uint16_t crc16 =  getLegacyCkSum(rx_frame,24);
+  	uint16_t crc16 =  flarm_getCkSum(rx_frame,24);
     uint16_t crc16_2 = (uint16_t(rx_frame[24]) << 8) + uint16_t(rx_frame[25]);
     if (crc16 != crc16_2){
 			/*
@@ -373,14 +400,22 @@ void FanetMac::frameReceived(int length)
 		int8_t ret = 0;
 		for(int i = 0;i < 5; i++){
 			memcpy(&newPacket[0],&rx_frame[0],26);
-			decrypt_legacy(newPacket,tUnix + tOffset);
-			ret = legacy_decode(newPacket,&myAircraft,&air);
+			flarm_decrypt(newPacket,tUnix + tOffset);
+			ret = flarm_decode(newPacket,&myAircraft,&air);
 			//if (legacy_decode(newPacket,&myAircraft,&air) == 0){
 			if (ret == 0){				
 				//float dist = distance(myAircraft.latitude,myAircraft.longitude,air.latitude,air.longitude, 'K');      
 				//len = sprintf(Buffer,"T=%dadr=%06X;adrType=%d;airType=%d,lat=%.06f,lon=%.06f,alt=%.01f,speed=%.01f,course=%.01f,climb=%.01f\n", millis()-fmac._ppsMillis,air.addr,air.addr_type,air.aircraft_type,air.latitude,air.longitude,air.altitude,air.speed,air.course,air.vs);
+				/*
+				len = sprintf(Buffer,"T=%dadr=%06X;adrType=%d;airType=%d,lat=%.06f,lon=%.06f,alt=%.01f,speed=%.01f,course=%.01f,vs=%.01f,geoid=%.01f", air.timestamp,air.addr,air.addr_type,air.aircraft_type,air.latitude,air.longitude,air.altitude,air.speed,air.course,air.vs,air.geoid_separation);
+				Serial.print(Buffer);
+				legacy_packet_t *pkt = (legacy_packet_t *) newPacket;
+				len = sprintf(Buffer,",Turnrate=%d\n", pkt->turnrate);
+				Serial.print(Buffer);
+				*/
+
 				//fmac.sendUdpData((uint8_t *)Buffer,len);
-				//Serial.print(Buffer);
+				
 				//legacy_packet_t *pkt = (legacy_packet_t *) newPacket;
 				//len = sprintf(Buffer,"unk0=%d,unk1=%d,unk2=%d,unk3=%d,\n", pkt->zero0,pkt->zero1,pkt->_unk2,pkt->zero2);
 				//fmac.sendUdpData((uint8_t *)Buffer,len);
@@ -560,11 +595,18 @@ void FanetMac::stateWrapper()
 {
 	//return;
 	static uint32_t tSwitch = millis();
+	//static uint32_t tMsg = millis();
 	static uint8_t ppsCount = 0;
 	static uint32_t ppsMillis = 0;
 	static uint8_t actPPsDiff = 3; 
 	uint32_t tAct = millis();
 	fmac.handleIRQ();
+	/*
+	if ((tAct - tMsg) >= 1000){
+		tMsg = tAct;
+		log_i("hasGPS=%d",fmac.bHasGPS);
+	}
+	*/
 	uint8_t ppsDiff = fmac._ppsCount - ppsCount;  //we have to calc diff here, because in if, it will be calculated as int
 	if (fmac.bHasGPS){
 		if (fmac._RfMode.bits.FntRx && fmac._RfMode.bits.LegRx){
@@ -626,19 +668,19 @@ void FanetMac::stateWrapper()
 		if (fmac._RfMode.bits.FntRx && fmac._RfMode.bits.LegRx){
 			//no GPS-Sensor but Legacy and Fanet-RX --> 4sec. for Fanet 1sec. Legacy 868.2 1sec. Legacy 868.4
 			if (fmac._actMode == MODE_LORA){
-				if ((tAct - tSwitch) >= 4000){
-					tSwitch = tAct;
+				if ((tAct - tSwitch) >= 5300){
 					fmac.switchMode(MODE_FSK_8682);
+					tSwitch = millis();
 				}
 			}else if (fmac._actMode == MODE_FSK_8682){
-				if ((tAct - tSwitch) >= 1000){
-					tSwitch = tAct;
+				if ((tAct - tSwitch) >= 2300){					
 					fmac.switchMode(MODE_FSK_8684);
+					tSwitch = millis();
 				}
 			}else{
-				if ((tAct - tSwitch) >= 1000){
-					tSwitch = tAct;
+				if ((tAct - tSwitch) >= 2300){					
 					fmac.switchMode(MODE_LORA);
+					tSwitch = millis();
 				}
 			}
 		}else if (!fmac._RfMode.bits.FntRx && fmac._RfMode.bits.LegRx){
@@ -886,8 +928,11 @@ void FanetMac::handleTxLegacy()
 	static bool bSend8682 = false;
 	static uint8_t ppsCount = 0;
 	if (!_RfMode.bits.LegTx){
-		return; //legacy disabled
+		return; //Flarm disabled
 	} 
+	if (!fmac.bHasGPS){
+		return; //no Flarm when no GPS
+	}
 	if (legacy_next_tx == 0){
 		if (_RfMode.bits.FntTx){
 			//send only on 868.4 if Fanet is enabled
@@ -895,7 +940,7 @@ void FanetMac::handleTxLegacy()
 				tMillis = _ppsMillis;		
 				ppsCount = _ppsCount;		
 				if (myApp->createLegacy(LegacyBuffer)){
-					//send Legacy 868.4 Mhz
+					//send flarm 868.4 Mhz
 					legacy_next_tx = tMillis + uint32_t(random(LEGACY_8684_BEGIN,LEGACY_8684_END - LEGACY_SEND_TIME));
 					bSend8682 = false;
 				}
@@ -906,7 +951,7 @@ void FanetMac::handleTxLegacy()
 				tMillis = _ppsMillis;	
 				ppsCount = _ppsCount;			
 				if (myApp->createLegacy(LegacyBuffer)){
-					//send Legacy 868.4 Mhz
+					//send flarm 868.2 Mhz
 					legacy_next_tx = tMillis + uint32_t(random(LEGACY_8682_BEGIN,LEGACY_8682_END - LEGACY_SEND_TIME));
 					bSend8682 = true;
 				}
@@ -965,7 +1010,7 @@ void FanetMac::handleTxLegacy()
 		}
 		radio.startReceive();		
 		#if TX_DEBUG > 0
-		log_i("leg_Tx=%d",micros()-tStart);
+		Serial.printf("ppsCount=%d,leg_Tx=%d\n",ppsCount,micros()-tStart);
 		#endif
 		if (bSend8682){
 			//we have sent on 868.2 --> calc send-time on 868.4

@@ -1,7 +1,7 @@
 set PORT=COM1
-set firmware=firmware_v4.12.0_sim7000_psRam.bin
+set firmware=firmware_v5.00.0_nopsRam.bin
 
-set esptooldir=C:\Users\gereic\AppData\Local\Programs\Python\Python38-32\Scripts\
+set esptooldir=C:\Users\gereic\AppData\Local\Programs\Python\Python310\Scripts\
 
 REM set firmware=firmware_v1.6.0_esp32PSRam.bin
 

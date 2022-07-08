@@ -6,7 +6,7 @@
 #include <SPI.h>
 //#include <LoRa.h>
 #include <FanetLora.h>
-#include <Flarm.h>
+#include <FlarmDataPort.h>
 #include <axp20x.h>
 #include <main.h>
 #include <config.h>
@@ -29,14 +29,13 @@
 //#include "Update.h"
 #include "gxUpdater.h"
 #include <AceButton.h>
-#include "../lib/FANETLORA/Legacy/Legacy.h"
 #include <ArduinoJson.h>
 #include "../lib/GxMqtt/GxMqtt.h"
 
 //#include <esp_task_wdt.h>
 
 
-//#define TEST
+//#define GXTEST
 
 #define TINY_GSM_RX_BUFFER 1024
 
@@ -155,7 +154,7 @@ const char compile_date[] = __DATE__ " " __TIME__;
 
 FanetLora fanet;
 //NmeaOut nmeaout;
-Flarm flarm;
+FlarmDataPort flarmDataPort;
 #ifdef AIRMODULE
 HardwareSerial NMeaSerial(2);
 #endif
@@ -392,6 +391,7 @@ void sendFlarmData(uint32_t tAct);
 char* readSerial();
 void checkReceivedLine(char *ch_str);
 void checkSystemCmd(char *ch_str);
+size_t getNextString(char *ch_str,char *pSearch,char *buffer, size_t sizeBuffer);
 void setWifi(bool on);
 void handleUpdate(uint32_t tAct);
 void printChipInfo(void);
@@ -429,7 +429,7 @@ void readFuelSensor(uint32_t tAct){
     char sOut[MAXSTRING];
     int pos = 0;
     pos += snprintf(&sOut[pos],MAXSTRING-pos,"$FUEL,%.03f,",status.fuelSensor);
-    pos = flarm.addChecksum(sOut,MAXSTRING);
+    pos = flarmDataPort.addChecksum(sOut,MAXSTRING);
     sendData2Client(sOut,pos);
   }
   
@@ -785,9 +785,9 @@ void sendFlarmData(uint32_t tAct){
     tSendStatus = tAct;
     char sOut[MAXSTRING];
     int pos = 0;
-    pos = flarm.writeVersion(sOut,MAXSTRING);
+    pos = flarmDataPort.writeVersion(sOut,MAXSTRING);
     sendData2Client(sOut,pos);
-    pos = flarm.writeSelfTestResult(sOut,MAXSTRING);
+    pos = flarmDataPort.writeSelfTestResult(sOut,MAXSTRING);
     sendData2Client(sOut,pos);
   }
 
@@ -809,7 +809,7 @@ void sendFlarmData(uint32_t tAct){
           tFanetData.speed = fanet.neighbours[i].speed;
           Fanet2FlarmData(&tFanetData,&PilotFlarmData);
           char sOut[MAXSTRING];
-          int pos = flarm.writeFlarmData(sOut,MAXSTRING,&myFlarmData,&PilotFlarmData);
+          int pos = flarmDataPort.writeFlarmData(sOut,MAXSTRING,&myFlarmData,&PilotFlarmData);
           sendData2Client(sOut,pos);
           countNeighbours++;    
         }
@@ -817,22 +817,22 @@ void sendFlarmData(uint32_t tAct){
       #endif
 
       if (status.flying){
-        flarm.GPSState = FLARM_GPS_FIX3d_AIR;
+        flarmDataPort.GPSState = FLARM_GPS_FIX3d_AIR;
       }else{
-        flarm.GPSState = FLARM_GPS_FIX3d_GROUND;
+        flarmDataPort.GPSState = FLARM_GPS_FIX3d_GROUND;
       }      
     }else{
-      flarm.GPSState = FLARM_NO_GPS;
+      flarmDataPort.GPSState = FLARM_NO_GPS;
     }
     #ifdef SENDFLARMDIRECT
-      flarm.neighbors = flarmCount;
+      flarmDataPort.neighbors = flarmCount;
       flarmCount = 0;
     #else
-      flarm.neighbors = countNeighbours;
+      flarmDataPort.neighbors = countNeighbours;
     #endif
     
     char sDataPort[MAXSTRING];
-    int iLen = flarm.writeDataPort(&sDataPort[0],sizeof(sDataPort));
+    int iLen = flarmDataPort.writeDataPort(&sDataPort[0],sizeof(sDataPort));
     sendData2Client(&sDataPort[0],iLen);
   }
 }
@@ -1560,7 +1560,7 @@ void startOLED(){
 #endif
 
 void printSettings(){
-  log_i("**** SETTINGS "VERSION" ******");
+  log_i("**** SETTINGS " VERSION " build:%s ******",&compile_date[0]);
   log_i("Access-point password=%s",setting.wifi.appw.c_str());
   log_i("Board-Type=%d",setting.boardType);
   log_i("Display-Type=%d",setting.displayType);
@@ -1842,6 +1842,7 @@ void setup() {
     status.gsm.bHasGSM = true;
   #endif
 
+
   //esp_wifi_stop();
   /*
   pinMode(4, OUTPUT);
@@ -2024,9 +2025,8 @@ void setup() {
     PinOledSDA = 21;
     PinOledSCL = 22;
 
-    // moving SCL SDA to different GPIO to avoid conflicts with mounted SD card on Lilygo T3 v2.1.1.6
-    PinBaroSDA = 3; //13 3;
-    PinBaroSCL = 4; //14 23;
+    PinBaroSDA = 13;
+    PinBaroSCL = 14;
     // set gpio 4 as INPUT
     pinMode(PinBaroSCL, INPUT_PULLUP);
     PinADCVoltage = 35;
@@ -3600,6 +3600,28 @@ void setWifi(bool on){
   wifiCMD = 0;
 }
 
+size_t getNextString(char *ch_str,char *pSearch,char *buffer, size_t sizeBuffer){
+  char *pChar = strstr(ch_str,pSearch);
+
+  if (pChar != NULL){
+    if (pChar > ch_str){
+      size_t count = pChar - ch_str;
+      if (count > sizeBuffer){
+        strncpy(buffer,ch_str,sizeBuffer-1);
+        buffer[sizeBuffer-1] = 0; //zero-termination
+      }else{
+        strncpy(buffer,ch_str,count);
+      }      
+      return count;
+    }else{
+      return 0;
+    }
+  }else{
+    return 0;
+  }
+  
+}
+
 void checkSystemCmd(char *ch_str){
 	/* remove \r\n and any spaces */
 	String line = ch_str;
@@ -3758,30 +3780,23 @@ void checkReceivedLine(char *ch_str){
     checkSystemCmd(ch_str);
   }else if (!strncmp(ch_str,GPS_STATE,2)){
     //got GPS-Info
+    //log_i("GPS-Info:%s",ch_str);
     if (sNmeaIn.length() == 0){
       sNmeaIn = String(ch_str);
     }
+  #ifndef GXTEST
+  }else if (!strncmp(ch_str,"$PPS",4)){
+    //received a PFLAG-Message --> start pps
+    //log_i("trigger pps");
+    status.bExtGps = true;
+    ppsTriggered = true;
+  #endif
+  }else if (!strncmp(ch_str,"$CL,",4)){
+    float climb = atof(&ch_str[4]);
+    status.vario.bHasVario = true;
+    status.ClimbRate = climb;
+    //log_i("Climb=%.1f",climb);
   }
-  /*
-  }else if(!strncmp(ch_str, "@", 1)){
-    char *ptr = strchr(ch_str, '\r');
-    if(ptr == nullptr)
-      ptr = strchr(ch_str, '\n');
-    if(ptr != nullptr)
-      *ptr = '\0';
-
-    char *p = (char *)ch_str + 1;
-    uint32_t devId = strtol(p, NULL, 16);
-    p = strchr(p, SEPARATOR)+1;
-    String msg = p;
-    //log_i("msg=%s",msg.c_str());
-    fanet.writeMsgType3(devId,msg);
-    //fanet.fanet_sendMsg(ch_str+1);
-  }else{
-    log_i("broadcast-msg %s",ch_str);
-    String msg = ch_str;
-    fanet.writeMsgType3(0,msg);
-  }*/
 }
 
 char* readSerial(){
@@ -3855,9 +3870,8 @@ void readGPS(){
         recBufferIndex = 0;
         tGpsOk = millis();
         if (!status.bHasGPS){
-          fanet.setGPS(true);
           status.bHasGPS = true;
-          log_i("GPS detected --> enable GPS");
+          fanet.setGPS(status.bHasGPS);          
         }
         
       }else{
@@ -3868,11 +3882,9 @@ void readGPS(){
     }  
   }
   if (timeOver(millis(),tGpsOk,10000)){
-    if (status.bHasGPS) {
-      fanet.setGPS(false);
+    if (status.bHasGPS) {      
       status.bHasGPS = false;
-      //no GPS for more then 10seconds --> set GPS to false
-      log_i("no GPS detected");
+      fanet.setGPS(status.bHasGPS);
     }
   }
 }
@@ -3946,7 +3958,7 @@ void sendLXPW(uint32_t tAct){
       pos += snprintf(&sOut[pos],MAXSTRING-pos,"%.01f",status.GPS_course);
     }
     pos += snprintf(&sOut[pos],MAXSTRING-pos,",,");
-    pos = flarm.addChecksum(sOut,MAXSTRING);
+    pos = flarmDataPort.addChecksum(sOut,MAXSTRING);
     sendData2Client(sOut,pos);
     /*
     String s = "$LXWP0,N,";
@@ -3962,7 +3974,7 @@ void sendLXPW(uint32_t tAct){
       s += String(status.GPS_course,1);
     }
     s +=  ",,";
-    s = flarm.addChecksum(s);
+    s = flarmDataPort.addChecksum(s);
     sendData2Client(s);
     */
     tOld = tAct;
@@ -3989,7 +4001,7 @@ void sendLK8EX(uint32_t tAct){
       pos += snprintf(&sOut[pos],MAXSTRING-pos,"999999,%.02f,%d,99,",status.GPS_alt,(int32_t)(status.ClimbRate * 100.0));
     }
     pos += snprintf(&sOut[pos],MAXSTRING-pos,"%.02f,",(float)status.vBatt / 1000.);
-    pos = flarm.addChecksum(sOut,MAXSTRING);
+    pos = flarmDataPort.addChecksum(sOut,MAXSTRING);
     sendData2Client(sOut,pos);
     /*
     String s = "$LK8EX1,";
@@ -4012,7 +4024,7 @@ void sendLK8EX(uint32_t tAct){
     }
     
     s += String((float)status.vBatt / 1000.,2) + ",";
-    s = flarm.addChecksum(s);
+    s = flarmDataPort.addChecksum(s);
     sendData2Client(s);
     */
     tOld = tAct;
@@ -4125,9 +4137,25 @@ void taskStandard(void *pvParameters){
   if (status.bHasAXP192){  
     //only on new boards we have an pps-pin
     pinMode(PPSPIN, INPUT);
-    attachInterrupt(digitalPinToInterrupt(PPSPIN), ppsHandler, FALLING);
+    //attachInterrupt(digitalPinToInterrupt(PPSPIN), ppsHandler, FALLING);
+    attachInterrupt(digitalPinToInterrupt(PPSPIN), ppsHandler, RISING);
   }
+  #ifdef GXTEST
+    status.bExtGps = true;
+    fanet.setGPS(true);
+    //only on new boards we have an pps-pin
+    pinMode(PPSPIN, INPUT);
+    //attachInterrupt(digitalPinToInterrupt(PPSPIN), ppsHandler, FALLING);
+    attachInterrupt(digitalPinToInterrupt(PPSPIN), ppsHandler, RISING);
   #endif
+  #endif
+  // create a binary semaphore for task synchronization
+  long frequency = FREQUENCY868;
+  fanet.setRFMode(setting.RFMode);
+  uint8_t radioChip = RADIO_SX1276;
+  if (setting.boardType == eBoard::T_BEAM_SX1262) radioChip = RADIO_SX1262;
+  fanet.begin(PinLora_SCK, PinLora_MISO, PinLora_MOSI, PinLora_SS,PinLoraRst, PinLoraDI0,PinLoraGPIO,frequency,14,radioChip);
+  fanet.setGPS(status.bHasGPS);
   #ifdef GSMODULE
   if (setting.Mode == eMode::GROUND_STATION){
     //mode ground-station
@@ -4141,14 +4169,6 @@ void taskStandard(void *pvParameters){
     fanet.setMyTrackingData(&MyFanetData,setting.gs.geoidAlt,0); //set Data on fanet
   }
   #endif
-
-
-  // create a binary semaphore for task synchronization
-  long frequency = FREQUENCY868;
-  fanet.setRFMode(setting.RFMode);
-  uint8_t radioChip = RADIO_SX1276;
-  if (setting.boardType == eBoard::T_BEAM_SX1262) radioChip = RADIO_SX1262;
-  fanet.begin(PinLora_SCK, PinLora_MISO, PinLora_MOSI, PinLora_SS,PinLoraRst, PinLoraDI0,PinLoraGPIO,frequency,14,radioChip);
   fanet.setPilotname(setting.PilotName);
   fanet.setAircraftType(FanetLora::aircraft_t(setting.AircraftType));
   fanet.autoSendName = true;
@@ -4161,7 +4181,7 @@ void taskStandard(void *pvParameters){
   host_name = APPNAME "-" + setting.myDevId; //String((ESP32_getChipId() & 0xFFFFFF), HEX);
   #ifdef AIRMODULE
   if (setting.Mode == eMode::AIR_MODULE){
-    flarm.begin();
+    flarmDataPort.begin();
   }
   #endif
   if (setting.OGNLiveTracking.mode > 0){
@@ -4528,17 +4548,17 @@ void taskStandard(void *pvParameters){
       Fanet2FlarmData(&fanet._myData,&myFlarmData);
       Fanet2FlarmData(&tFanetData,&PilotFlarmData);
       char sOut[MAXSTRING];
-      int pos = flarm.writeFlarmData(sOut,MAXSTRING,&myFlarmData,&PilotFlarmData);
+      int pos = flarmDataPort.writeFlarmData(sOut,MAXSTRING,&myFlarmData,&PilotFlarmData);
       sendData2Client(sOut,pos);
       flarmCount++;
       #endif
     }    
-    flarm.run();
+    flarmDataPort.run();
     if (setting.outputModeVario == eOutputVario::OVARIO_LK8EX1) sendLK8EX(tAct);
     if (setting.outputModeVario == eOutputVario::OVARIO_LXPW) sendLXPW(tAct); //not output 
     #ifdef AIRMODULE
     if ((setting.Mode == eMode::AIR_MODULE) || ((abs(setting.gs.lat) <= 0.1) && (abs(setting.gs.lon) <= 0.1))){ //in GS-Mode we use the GPS, if in settings disabled
-      if (!status.bHasAXP192){
+      if ((!status.bHasAXP192) && (!status.bExtGps)){
         if ((tAct - tOldPPS) >= 1000){
           ppsMillis = millis();
           ppsTriggered = true;
@@ -4548,7 +4568,11 @@ void taskStandard(void *pvParameters){
         ppsTriggered = false;
         tLastPPS = tAct;
         //log_i("PPS-Triggered t=%d",status.tGPSCycle);
-        //log_e("GPS-FixTime=%s",nmea.getFixTime().c_str());
+        //log_i("lat=%d;lon=%d",nmea.getLatitude(),nmea.getLongitude());
+        //long alt2 = 0;
+        //nmea.getAltitude(alt2);
+        //log_i("alt=%d,speed=%d,course=%d",alt2,nmea.getSpeed(),nmea.getCourse());
+        //log_i("GPS-FixTime=%s",nmea.getFixTime().c_str());
         status.tGPSCycle = tAct - tOldPPS;
         if (nmea.isValid()){
           //log_i("nmea is valid");
@@ -4610,6 +4634,7 @@ void taskStandard(void *pvParameters){
           }
           long geoidalt = 0;
           nmea.getGeoIdAltitude(geoidalt);
+          //log_i("latlon=%d,%d",nmea.getLatitude(),nmea.getLongitude());
           status.GPS_Lat = nmea.getLatitude() / 1000000.;
           status.GPS_Lon = nmea.getLongitude() / 1000000.;  
           status.GPS_alt = alt/1000.;
@@ -4686,7 +4711,7 @@ void taskStandard(void *pvParameters){
         status.GPS_NumSat = 0;
       }
     }else{
-      if (!status.bHasGPS){
+      if ((!status.bHasGPS) && (!status.bExtGps)){
         if ((tAct - tOldPPS) >= 1000){
           ppsMillis = millis();
           ppsTriggered = true;

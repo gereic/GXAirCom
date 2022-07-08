@@ -65,12 +65,14 @@ function setVis(){
     document.getElementById("VisgpsFix").style.display='none';
     document.getElementById("VisgpsNumSat").style.display='none';
     document.getElementById("VisgpsSpeed").style.display='none';
+    document.getElementById("VisgpsCourse").style.display='none';    
   }else{
     //document.getElementById("VisWeather").style.display='none';
     document.getElementById("VisAirCraftType").style.display='';
     document.getElementById("VisgpsFix").style.display='';
     document.getElementById("VisgpsNumSat").style.display='';
     document.getElementById("VisgpsSpeed").style.display='';
+    document.getElementById("VisgpsCourse").style.display='';
   }
 }
 
@@ -269,14 +271,6 @@ window.addEventListener("load", init, false);
             </select></td>
           </tr>
           <tr>
-            <th>output-power</th>
-            <td><select name="power" id="power" disabled>
-              <option value="5">LOW</option>
-              <option value="10">MID</option>
-              <option value="14">HIGH</option>
-            </select></td>
-          </tr>
-          <tr>
             <th>operating-mode</th>
             <td><select name="mode" id="mode" disabled>
               <option value="0">AIR-Module</option>
@@ -379,6 +373,10 @@ window.addEventListener("load", init, false);
             <th>GPS-speed [km/h]</th>
             <td><input type="text" id="gpsSpeed" disabled></td>
           </tr>
+          <tr id="VisgpsCourse">
+            <th>GPS-course [°]</th>
+            <td><input type="text" id="gpsCourse" disabled></td>
+          </tr>
         </tbody>      
       </table>
     </fieldset>
@@ -402,7 +400,7 @@ window.addEventListener("load", init, false);
     <p></p>
     <p></p>
     <fieldset>
-      <legend><b>LEGACY</b></legend>
+      <legend><b>FLARM</b></legend>
       <table style="width:100&#37;">
         <tbody>
           <tr>

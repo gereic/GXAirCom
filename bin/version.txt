@@ -352,3 +352,7 @@ Bugfix Aircrafttype Burnair
 Sending altitude also in ground-tracking.
   when Flarm-receive, altitude is ok
   when Fanet-receive, no altitude given
+Bugfix on T-Beam V07 for Baro-SDL and SCL --> Changed Pins back to 13,14
+
+V5.0.0
+new Flarm-integration for sending compatible Flarm-packages
