@@ -225,7 +225,7 @@ void Screen::drawCompass(int16_t x, int16_t y, int16_t width, int16_t height,flo
 }
 
 void Screen::drawValue(int16_t x, int16_t y, int16_t width, int16_t height,float value,uint8_t decimals){
-  String sText = String(value,decimals);
+  String sText = String(value, (unsigned int)decimals);
   //log_i("%.2f = %s",value,sText.c_str());
   int16_t tbx, tby, posx, posy; uint16_t tbw, tbh;
   pEInk->getTextBounds(sText.c_str(), 0, height, &tbx, &tby, &tbw, &tbh);

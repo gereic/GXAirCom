@@ -1440,8 +1440,8 @@ void setupWifi(){
   WiFi.persistent(false);
   WiFi.onEvent(WiFiEvent);
   WiFiEventId_t eventID = WiFi.onEvent([](WiFiEvent_t event, WiFiEventInfo_t info){
-    log_e("WiFi lost connection. Reason: %d",info.disconnected.reason);
-  }, WiFiEvent_t::SYSTEM_EVENT_STA_DISCONNECTED);  
+    log_e("WiFi lost connection. Reason: %d",info.wifi_sta_disconnected.reason);
+  }, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_DISCONNECTED);  
   //WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE); // call is only a workaround for bug in WiFi class
   WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE,INADDR_NONE,INADDR_NONE);
   //if (WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE,INADDR_NONE,INADDR_NONE) == false){
@@ -2619,7 +2619,7 @@ void taskWeather(void *pvParameters){
   weatherAvg avg[2];
   bool bFirstWData = false;
   TwoWire i2cWeather = TwoWire(0);
-  i2cWeather.begin(PinBaroSDA,PinBaroSCL,200000); //init i2cBaro for Baro
+  i2cWeather.begin((int)PinBaroSDA, (int)PinBaroSCL, (uint32_t)200000); //init i2cBaro for Baro
   Weather weather;
   weather.setTempOffset(setting.wd.tempOffset);
   weather.setWindDirOffset(setting.wd.windDirOffset);
@@ -2882,7 +2882,7 @@ void taskBaro(void *pvParameters){
     digitalWrite(PinBuzzer,LOW);
     ledcAttachPin(PinBuzzer, channel);
   }  
-  Wire.begin(PinBaroSDA,PinBaroSCL,400000);
+  Wire.begin((int)PinBaroSDA, (int)PinBaroSCL, (uint32_t)400000);
   //TwoWire i2cBaro = TwoWire(0);
   //i2cBaro.begin(PinBaroSDA,PinBaroSCL,400000); //init i2cBaro for Baro
   //if (baro.begin(&i2cBaro)){
