@@ -203,11 +203,23 @@ void onWebSocketEvent(uint8_t client_num,
           doc["gsGeoAlt"] = setting.gs.geoidAlt;
           doc["gsScr"] = setting.gs.SreenOption;
           doc["gsPs"] = setting.gs.PowerSave;
+          doc["gsAneo"] = setting.gs.Aneometer;
           doc["MinBatPerc"] = setting.minBattPercent;
           doc["restartBattPerc"] = setting.restartBattPercent;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
 
+          doc.clear();
+          for(int i = 0; i <MAXFNTUPLOADSTATIONS;i++){ //Fanet-Upload to WU and Windy
+            doc["F2WuF"][i] = setting.FntWuUpload[i].FanetId;
+            doc["F2WuI"][i] = setting.FntWuUpload[i].ID;
+            doc["F2WuK"][i] = setting.FntWuUpload[i].KEY;
+            doc["F2WiF"][i] = setting.FntWiUpload[i].FanetId;
+            doc["F2WiI"][i] = setting.FntWiUpload[i].ID;
+            doc["F2WiK"][i] = setting.FntWiUpload[i].KEY;
+          }
+          serializeJson(doc, msg_buf);
+          webSocket.sendTXT(client_num, msg_buf);
 
           doc.clear();
           doc["configGPS"] = command.ConfigGPS;
@@ -364,8 +376,17 @@ void onWebSocketEvent(uint8_t client_num,
         if (root.containsKey("gsGeoAlt")) newSetting.gs.geoidAlt = doc["gsGeoAlt"].as<float>();
         if (root.containsKey("gsScr")) newSetting.gs.SreenOption = eScreenOption(doc["gsScr"].as<uint8_t>());
         if (root.containsKey("gsPs")) newSetting.gs.PowerSave = eGsPower(doc["gsPs"].as<uint8_t>());
+        if (root.containsKey("gsAneo")) newSetting.gs.Aneometer = eAneometer(doc["gsAneo"].as<uint8_t>());
         if (root.containsKey("MinBatPerc")) newSetting.minBattPercent = doc["MinBatPerc"].as<uint8_t>();
         if (root.containsKey("restartBattPerc")) newSetting.restartBattPercent = doc["restartBattPerc"].as<uint8_t>();
+        for(int i = 0; i < MAXFNTUPLOADSTATIONS;i++){ //Fanet-Upload to WU and Windy
+          if (doc["F2WuF"][i]) newSetting.FntWuUpload[i].FanetId = doc["F2WuF"][i].as<uint32_t>();
+          if (doc["F2WuI"][i]) newSetting.FntWuUpload[i].ID = doc["F2WuI"][i].as<String>();
+          if (doc["F2WuK"][i]) newSetting.FntWuUpload[i].KEY = doc["F2WuK"][i].as<String>();
+          if (doc["F2WiF"][i]) newSetting.FntWiUpload[i].FanetId = doc["F2WiF"][i].as<uint32_t>();
+          if (doc["F2WiI"][i]) newSetting.FntWiUpload[i].ID = doc["F2WiI"][i].as<String>();
+          if (doc["F2WiK"][i]) newSetting.FntWiUpload[i].KEY = doc["F2WiK"][i].as<String>();
+        }
         
         if (root.containsKey("mode")) newSetting.Mode = eMode(doc["mode"].as<uint8_t>());
         
@@ -431,9 +452,11 @@ void onWebSocketEvent(uint8_t client_num,
         if (root.containsKey("MqttPw")) newSetting.mqtt.pw = doc["MqttPw"].as<String>();
 
         setting = newSetting;
-        log_i("write config-to file");
-        write_configFile(&newSetting);
+        //log_i("write config-to file");
+        //write_configFile(&newSetting);
         if (value == 2){
+          log_i("write config-to file");
+          write_configFile(&newSetting);
           log_i("reboot");
           ESP.restart();
         }

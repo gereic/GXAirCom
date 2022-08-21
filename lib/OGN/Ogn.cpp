@@ -299,40 +299,36 @@ void Ogn::sendGroundTrackingData(time_t timestamp,float lat,float lon,float alt,
 }
 
 uint8_t Ogn::getFANETAircraftType(aircraft_t aircraftType){
-    switch (aircraftType)
-    {
-    case PARA_GLIDER:
-        return 1;
-        break;
-    case HANG_GLIDER:
-        return 2;
-        break;
-    case BALLOON:
-        return 3;
-        break;
-    case GLIDER_MOTOR_GLIDER:
-        return 4;
-        break;
-    case TOW_PLANE:
-        return 5;
-        break;
-    case HELICOPTER_ROTORCRAFT:
-        return 6;
-        break;
-    case UAV:
-        return 7;
-        break;
-    default:
-        return 0; //unknown
-        break;
-    }
-
+  switch (aircraftType)
+  {
+  case PARA_GLIDER:
+    return 1;
+  case HANG_GLIDER:
+    return 2;
+  case BALLOON:
+    return 3;
+  case GLIDER_MOTOR_GLIDER:
+    return 4;
+  case TOW_PLANE:
+    return 5;
+  case HELICOPTER_ROTORCRAFT:
+    return 6;
+  case UAV:
+    return 7;
+  default:
+    return 0; //unknown
+  }
+  return 0; //unknown
 }
 
 void Ogn::sendTrackingData(time_t timestamp,float lat,float lon,float alt,float speed,float heading,float climb,String devId,aircraft_t aircraftType,uint8_t adressType,bool Onlinetracking,float snr){
     //if ((WiFi.status() != WL_CONNECTED) || (initOk < 10)) return; //nothing todo
     if (initOk < 10) return; //nothing todo
-    char buff[200];
+    if ((aircraftType < 0) || (aircraftType > 15)){
+        Serial.printf("wrong aircraftType %d --> set to unknown\n",(int)aircraftType);
+        aircraftType = UNKNOWN;
+    }
+    char buff[255];
     float lLat = abs(lat);
     float lLon = abs(lon);
     int latDeg = int(lLat);
@@ -341,13 +337,30 @@ void Ogn::sendTrackingData(time_t timestamp,float lat,float lon,float alt,float 
     int lonMin = (roundf((lLon - int(lLon)) * 60 * 1000));
     String sTime = getActTimeString(timestamp);
     if (sTime.length() <= 0) return;
-
-    sprintf (buff,"%s%s>OGNFNT,qAS,%s:/%sh%02d%02d.%02d%c%c%03d%02d.%02d%c%c%03d/%03d/A=%06d !W%01d%01d! id%02X%s %+04.ffpm FNT1%d %0.1fdB\r\n"
-                ,getOrigin(adressType).c_str(),devId.c_str(),_user.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,(lat < 0)?'S':'N',AprsIcon[aircraftType][0],lonDeg,lonMin/1000,lonMin/10 %100,(lon < 0)?'W':'E',AprsIcon[aircraftType][1],int(heading),int(speed * 0.53996),int(alt * 3.28084),int(latMin %10),int(latMin %10),getSenderDetails(Onlinetracking,aircraftType,adressType),devId.c_str(),climb*196.85f,getFANETAircraftType(aircraftType),snr);
+    int pos = 0;
+    pos += snprintf(&buff[pos],255-pos,"%s",getOrigin(adressType).c_str());
+    pos += snprintf(&buff[pos],255-pos,"%s>OGNFNT,qAS,",devId.c_str());
+    pos += snprintf(&buff[pos],255-pos,"%s:/",_user.c_str());
+    pos += snprintf(&buff[pos],255-pos,"%sh",sTime.c_str());
+    pos += snprintf(&buff[pos],255-pos,"%02d%02d.%02d",latDeg,latMin/1000,latMin/10 %100);
+    pos += snprintf(&buff[pos],255-pos,"%c",(lat < 0)?'S':'N');
+    pos += snprintf(&buff[pos],255-pos,"%c",AprsIcon[aircraftType][0]);
+    pos += snprintf(&buff[pos],255-pos,"%03d%02d.%02d",lonDeg,lonMin/1000,lonMin/10 %100);
+    pos += snprintf(&buff[pos],255-pos,"%c",(lon < 0)?'W':'E');
+    pos += snprintf(&buff[pos],255-pos,"%c",AprsIcon[aircraftType][1]);
+    pos += snprintf(&buff[pos],255-pos,"%03d/%03d",int(heading),int(speed * 0.53996));
+    pos += snprintf(&buff[pos],255-pos,"/A=%06d",int(alt * 3.28084));
+    pos += snprintf(&buff[pos],255-pos," !W%01d%01d! ",int(latMin %10),int(latMin %10));
+    pos += snprintf(&buff[pos],255-pos,"id%02X%s ",getSenderDetails(Onlinetracking,aircraftType,adressType),devId.c_str());
+    pos += snprintf(&buff[pos],255-pos,"%+04.ffpm ",climb*196.85f);
+    pos += snprintf(&buff[pos],255-pos,"FNT1%d ",getFANETAircraftType(aircraftType));
+    pos += snprintf(&buff[pos],255-pos,"%0.1fdB\r\n",snr);
+    //sprintf (buff,"%s%s>OGNFNT,qAS,%s:/%sh%02d%02d.%02d%c%c%03d%02d.%02d%c%c%03d/%03d/A=%06d !W%01d%01d! id%02X%s %+04.ffpm FNT1%d %0.1fdB\r\n"
+    //            ,getOrigin(adressType).c_str(),devId.c_str(),_user.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,(lat < 0)?'S':'N',AprsIcon[aircraftType][0],lonDeg,lonMin/1000,lonMin/10 %100,(lon < 0)?'W':'E',AprsIcon[aircraftType][1],int(heading),int(speed * 0.53996),int(alt * 3.28084),int(latMin %10),int(latMin %10),getSenderDetails(Onlinetracking,aircraftType,adressType),devId.c_str(),climb*196.85f,getFANETAircraftType(aircraftType),snr);
+    //Serial.print(buff);
     xSemaphoreTake( *xMutex, portMAX_DELAY );
-    client->print(buff);                
+    client->print(buff);                    
     xSemaphoreGive( *xMutex );
-    //log_i("%s",buff);
 }
 
 void Ogn::setStatusData(float pressure, float temp,float hum, float battVoltage,uint8_t battPercent){

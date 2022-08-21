@@ -97,7 +97,7 @@ private:
     void runMS5611(uint32_t tAct);
     void runBME280(uint32_t tAct);
     bool mpuDrdy(void);
-    float getGravityCompensatedAccel(void);
+    float getGravityCompensatedAccel(float temp);
     void scaleAccel(VectorInt16 *accel);
     void meansensors(void);
     float getMpuTemp(void);

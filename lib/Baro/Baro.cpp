@@ -727,7 +727,7 @@ void Baro::scaleAccel(VectorInt16 *accel){
   accel->z = (int16_t)round(scale_z * (float)accel->z + offset_z);//(offset_z * scale_z));
 }
 
-float Baro::getGravityCompensatedAccel(void){
+float Baro::getGravityCompensatedAccel(float temp){
     // orientation/motion vars
     Quaternion q;           // [w, x, y, z]         quaternion container
     VectorInt16 aa;         // [x, y, z]            accel sensor measurements
@@ -735,6 +735,7 @@ float Baro::getGravityCompensatedAccel(void){
     VectorInt16 aaReal;     // [x, y, z]            gravity-free accel sensor measurements
     VectorInt16 aaWorld;    // [x, y, z]            world-frame accel sensor measurements
     VectorFloat gravity;    // [x, y, z]            gravity vector
+    float tempOffsetZAcc = 0.0;
     // get current FIFO count
     
     //uint16_t fifoCount = mpu.getFIFOCount();
@@ -777,7 +778,8 @@ float Baro::getGravityCompensatedAccel(void){
     logData.aaWorld[0] = aaWorld.x;
     logData.aaWorld[1] = aaWorld.y;
     logData.aaWorld[2] = aaWorld.z;
-    return float(aaWorld.z*(9.80665 / MPU6050_2G_SENSITIVITY)); //to get m/s
+    tempOffsetZAcc = interpolate.Linear(tValues,zValues,2,temp,false);
+    return float(aaWorld.z*(9.80665 / MPU6050_2G_SENSITIVITY)) + tempOffsetZAcc; //to get m/s
 
 }
 
@@ -808,6 +810,7 @@ void Baro::runMS5611(uint32_t tAct){
   static float press = 0.0f;
   static float temp = 0.0f;
   static uint8_t baroCount = 0;
+  float lTemp = 0.0f;
   //static uint32_t tTemp = millis();
 
   static float acc = 0.0f;
@@ -827,8 +830,9 @@ void Baro::runMS5611(uint32_t tAct){
   }
   bool bReady = mpuDrdy();
   if (bReady){
-    acc += getGravityCompensatedAccel();
-    temp += getMpuTemp();
+    lTemp = getMpuTemp();
+    temp += lTemp;
+    acc += getGravityCompensatedAccel(lTemp);
 		mpuCount++;
   }
   #ifdef newBaro

@@ -661,7 +661,7 @@ int16_t LoRaClass::sx1276setRxBandwidth(float rxBw){
 }
 
 int16_t LoRaClass::sx1262SetFrequency(float freq){
-  log_i("frequ=%.2f",_freq);
+  //log_i("frequ=%.2f",_freq);
   uint32_t frf = (_freq * (uint32_t(1) << 25)) / 32.0;
   uint8_t data[4];
   data[0] = (uint8_t)((frf >> 24) & 0xFF);

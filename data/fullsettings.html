@@ -141,6 +141,8 @@ function setVis(){
     document.getElementById("VisAirCraftType").style.display='none';    
     document.getElementById("tName").innerHTML='Ground Station name';
     document.getElementById("VisGS").style.display=''; //set GS visible
+    document.getElementById("VisGSUpload1").style.display=''; //set GS visible
+    document.getElementById("VisGSUpload2").style.display=''; //set GS visible
     document.getElementById("VisVario").style.display='none';
     document.getElementById("VisFanetTracking").style.display='none'; //fanet-tracking mode in ground-station is important 
     //document.getElementById("VisOutputSettings").style.display='none'; //output-settings are not usefull in ground-station
@@ -148,6 +150,8 @@ function setVis(){
     document.getElementById("VisAirCraftType").style.display='';
     document.getElementById("tName").innerHTML='Pilot name';
     document.getElementById("VisGS").style.display='none'; //set GS invisible
+    document.getElementById("VisGSUpload1").style.display='none'; //set GS invisible
+    document.getElementById("VisGSUpload2").style.display='none'; //set GS invisible
     document.getElementById("VisWU").style.display='none'; //set weather-underground upload invisible
     document.getElementById("VisWI").style.display='none'; //set windy upload invisible
     if (bHasVario == 0){
@@ -471,12 +475,48 @@ function sendValues(){
   gsGeoAlt : Number(document.getElementById("gsGeoAlt").value),
   gsScr : Number(document.getElementById("gsScr").value),
   gsPs : Number(document.getElementById("gsPs").value),
+  gsAneo : Number(document.getElementById("gsAneo").value),
   MinBatPerc : Number(document.getElementById("MinBatPerc").value),
   restartBattPerc : Number(document.getElementById("restartBattPerc").value),
   save : 1
   };
   doSend(JSON.stringify(obj));
-  
+
+  var obj = {};
+  obj['F2WuF'] = [ FntIdHex2Dec(document.getElementById("F2WuF0").value).toString(),
+            FntIdHex2Dec(document.getElementById("F2WuF1").value).toString(),
+            FntIdHex2Dec(document.getElementById("F2WuF2").value).toString(),
+            FntIdHex2Dec(document.getElementById("F2WuF3").value).toString(),
+            FntIdHex2Dec(document.getElementById("F2WuF4").value).toString()];
+  obj['F2WuI'] = [ document.getElementById("F2WuI0").value,
+            document.getElementById("F2WuI1").value,
+            document.getElementById("F2WuI2").value,
+            document.getElementById("F2WuI3").value,
+            document.getElementById("F2WuI4").value];
+  obj['F2WuK'] = [ document.getElementById("F2WuK0").value,
+            document.getElementById("F2WuK1").value,
+            document.getElementById("F2WuK2").value,
+            document.getElementById("F2WuK3").value,
+            document.getElementById("F2WuK4").value];
+  obj['F2WiF'] = [ FntIdHex2Dec(document.getElementById("F2WiF0").value).toString(),
+            FntIdHex2Dec(document.getElementById("F2WiF1").value).toString(),
+            FntIdHex2Dec(document.getElementById("F2WiF2").value).toString(),
+            FntIdHex2Dec(document.getElementById("F2WiF3").value).toString(),
+            FntIdHex2Dec(document.getElementById("F2WiF4").value).toString()];
+  obj['F2WiI'] = [ document.getElementById("F2WiI0").value,
+            document.getElementById("F2WiI1").value,
+            document.getElementById("F2WiI2").value,
+            document.getElementById("F2WiI3").value,
+            document.getElementById("F2WiI4").value];
+  obj['F2WiK'] = [ document.getElementById("F2WiK0").value,
+            document.getElementById("F2WiK1").value,
+            document.getElementById("F2WiK2").value,
+            document.getElementById("F2WiK3").value,
+            document.getElementById("F2WiK4").value];
+  obj['save'] = 1;
+  doSend(JSON.stringify(obj));
+
+
   var obj = {
   appw : document.getElementById("appw").value,
   wificonnect : Number(document.getElementById("wificonnect").value),
@@ -584,6 +624,27 @@ function sendValues(){
   var delay = 10000;
   setTimeout( callMainPage, delay )
 }
+
+function FntIdDec2Hex(value){
+  var retVal = "";
+  if (value != 0){
+    retVal = (value).toString(16).toUpperCase().padStart(2, '0')
+    console.log("value="+value+",l="+retVal.length+"retval=" + retVal);
+    while (retVal.length < 6){
+      retVal = "0" + retVal;
+    };
+  }
+  return retVal;
+}
+ 
+function FntIdHex2Dec(value){
+  var retVal = parseInt(value,16);
+  if (!retVal){
+    retVal = 0;
+  }
+  console.log("value="+value+"retval=" + retVal);
+  return retVal;
+}
  
 // Called when a message is received from the server
 function onMessage(evt) {
@@ -595,6 +656,19 @@ function onMessage(evt) {
     var myObj = JSON.parse(evt.data);
     for (var key of Object.keys(myObj)) {
         console.log(key + " -> " + myObj[key])
+        let isArray = Array.isArray(myObj[key]);
+        if (Array.isArray(myObj[key])){
+          var i = 0;
+          for (var myValue of myObj[key]){
+            if ((key == "F2WuF") || (key == "F2WiF")){
+              myValue = FntIdDec2Hex(myValue);
+            }
+            document.getElementById(key + i).value = myValue;
+            document.getElementById(key + i).textContent = myValue;
+            i++;
+          }
+          continue;
+        }
         if (key == "bHasVario"){
           bHasVario = myObj[key];
           continue;
@@ -1009,6 +1083,91 @@ window.addEventListener("load", init, false);
           <tr>
             <th>additional battery capacity for restart [&#037;]</th>
             <td><input type="number" id="restartBattPerc" min="10" max="100" step="1"></td>
+          </tr>
+          <tr>
+            <th>Aneometer</th>
+            <td><select id="gsAneo">
+              <option value="0">DAVIS 6410</option>
+              <option value="1">Technoline TX20</option>
+            </select></td>
+          </tr>
+        </tbody>      
+      </table>
+    </fieldset>
+    <p></p>
+    <p></p>
+    <fieldset id="VisGSUpload1">
+      <legend><b>Upload received Fanet weather-data to weather undergound</b></legend>
+      <table style="width:100&#37;">
+        <tbody>
+          <tr>
+            <th>FANET-ID</th>
+            <th>ID</th>
+            <th>KEY</th>
+          </tr>
+          <tr>
+            <td><input type="text" id="F2WuF0"></td>
+            <td><input type="text" id="F2WuI0"></td>
+            <td><input type="text" id="F2WuK0"></td>
+          </tr>
+          <tr>
+            <td><input type="text" id="F2WuF1"></td>
+            <td><input type="text" id="F2WuI1"></td>
+            <td><input type="text" id="F2WuK1"></td>
+          </tr>
+          <tr>
+            <td><input type="text" id="F2WuF2"></td>
+            <td><input type="text" id="F2WuI2"></td>
+            <td><input type="text" id="F2WuK2"></td>
+          </tr>
+          <tr>
+            <td><input type="text" id="F2WuF3"></td>
+            <td><input type="text" id="F2WuI3"></td>
+            <td><input type="text" id="F2WuK3"></td>
+          </tr>
+          <tr>
+            <td><input type="text" id="F2WuF4"></td>
+            <td><input type="text" id="F2WuI4"></td>
+            <td><input type="text" id="F2WuK4"></td>
+          </tr>
+        </tbody>      
+      </table>
+    </fieldset>
+    <p></p>
+    <p></p>
+    <fieldset id="VisGSUpload2">
+      <legend><b>Upload received Fanet weather-data to windy</b></legend>
+      <table style="width:100&#37;">
+        <tbody>
+          <tr>
+            <th>FANET-ID</th>
+            <th>Station ID</th>
+            <th>API key</th>
+          </tr>
+          <tr>
+            <td><input type="text" id="F2WiF0"></td>
+            <td><input type="text" id="F2WiI0"></td>
+            <td><input type="text" id="F2WiK0"></td>
+          </tr>
+          <tr>
+            <td><input type="text" id="F2WiF1"></td>
+            <td><input type="text" id="F2WiI1"></td>
+            <td><input type="text" id="F2WiK1"></td>
+          </tr>
+          <tr>
+            <td><input type="text" id="F2WiF2"></td>
+            <td><input type="text" id="F2WiI2"></td>
+            <td><input type="text" id="F2WiK2"></td>
+          </tr>
+          <tr>
+            <td><input type="text" id="F2WiF3"></td>
+            <td><input type="text" id="F2WiI3"></td>
+            <td><input type="text" id="F2WiK3"></td>
+          </tr>
+          <tr>
+            <td><input type="text" id="F2WiF4"></td>
+            <td><input type="text" id="F2WiI4"></td>
+            <td><input type="text" id="F2WiK4"></td>
           </tr>
         </tbody>      
       </table>

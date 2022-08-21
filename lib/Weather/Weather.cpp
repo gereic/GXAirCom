@@ -68,7 +68,7 @@ bool Weather::initBME280(void){
 }
 
 
-bool Weather::begin(TwoWire *pi2c, float height,int8_t oneWirePin, int8_t windDirPin, int8_t windSpeedPin,int8_t rainPin){
+bool Weather::begin(TwoWire *pi2c, float height,int8_t oneWirePin, int8_t windDirPin, int8_t windSpeedPin,int8_t rainPin,uint8_t aneoType){
   pI2c = pi2c;
   _height = height;
   hasTempSensor = false;
@@ -76,6 +76,7 @@ bool Weather::begin(TwoWire *pi2c, float height,int8_t oneWirePin, int8_t windDi
   bNewWeather = false;
   actHour = 0;
   actDay = 0;
+  aneometerType = aneoType;
   //log_i("onewire pin=%d",oneWirePin);
   if (oneWirePin >= 0){
     oneWire.begin(oneWirePin);
@@ -106,17 +107,26 @@ bool Weather::begin(TwoWire *pi2c, float height,int8_t oneWirePin, int8_t windDi
   //avgFactor = 128; //factor for avg-factor 
   bFirst = false;
 
-  //init-code for aneometer  
-  _windDirPin = windDirPin;
-  if (windDirPin >= 0){
-    _weather.bWindDir = true;
-    pinMode(_windDirPin, INPUT);
-  }
-  
-  if (windSpeedPin >= 0){
+  if (aneometerType == 1){
     _weather.bWindSpeed = true;
-    pinMode(windSpeedPin, INPUT);
-    attachInterrupt(digitalPinToInterrupt(windSpeedPin), windspeedhandler, FALLING);
+    _weather.bWindDir = true;
+    tx20_init(windSpeedPin);
+  }else{
+    //init-code for aneometer DAVIS6410
+    _windDirPin = windDirPin;
+    if (windDirPin >= 0){
+      _weather.bWindDir = true;
+      pinMode(_windDirPin, INPUT);
+    }
+    if (windSpeedPin >= 0){
+      _weather.bWindSpeed = true;
+      pinMode(windSpeedPin, INPUT);
+      attachInterrupt(digitalPinToInterrupt(windSpeedPin), windspeedhandler, FALLING);
+    }
+    timer = timerBegin(0, 80, true);
+    timerAttachInterrupt(timer, &onTimer, true);
+    timerAlarmWrite(timer, 2250000, true); //every 2.25 seconds
+    timerAlarmEnable(timer);
   }
   //rain-pin
   if (rainPin >= 0){
@@ -125,10 +135,6 @@ bool Weather::begin(TwoWire *pi2c, float height,int8_t oneWirePin, int8_t windDi
     rainDebounceTime = millis();
     attachInterrupt(digitalPinToInterrupt(rainPin), rainhandler, FALLING);
   }
-  timer = timerBegin(0, 80, true);
-  timerAttachInterrupt(timer, &onTimer, true);
-  timerAlarmWrite(timer, 2250000, true); //every 2.25 seconds
-  timerAlarmEnable(timer);
   return true;
 }
 
@@ -216,7 +222,19 @@ void Weather::runBME280(uint32_t tAct){
       dHumidity = humidity;
       dPressure = pressure;
     }
-    checkAneometer();
+    if (aneometerType == 1){
+      uint8_t Dir;
+      uint16_t Speed;
+      uint8_t ret = tx20getNewData(&Dir,&Speed);
+      if (ret == 1){
+        _weather.WindDir = float(Dir) * 22.5;
+        _weather.WindSpeed = float(Speed) / 10.0 * 3.6; //[1/10m/s] --> [km/h]
+        if (_weather.WindSpeed > _weather.WindGust) _weather.WindGust = _weather.WindSpeed; 
+      }
+    }else{
+      checkAneometer();
+    }
+    
     checkRainSensor();
     copyValues();
     tOld = tAct;
@@ -233,9 +251,6 @@ float Weather::calcWindspeed(void){
 }
 
 void Weather::checkAneometer(void){
-  //static bool bFirstWSpeed = false;
-  //static bool bFirstWDir = false;
-  
   if (_weather.bWindDir){
     VaneValue = analogRead(_windDirPin);
     winddir = (map(VaneValue, 0, 1023, 0, 359) + _winddirOffset) % 360;

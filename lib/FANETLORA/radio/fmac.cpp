@@ -282,11 +282,11 @@ void FanetMac::frameReceived(int length)
 	/* build frame from stream */
 	Frame *frm;
   if (_actMode != MODE_LORA){			
-		char Buffer[500];	
-		int len = 0;
 		time_t tUnix;
 		time(&tUnix);
 		#if RX_DEBUG > 0
+			char Buffer[500];	
+			int len = 0;
       char strftime_buf[64];
       struct tm timeinfo;      
 			len += sprintf(Buffer+len,"T=%d;",tUnix);

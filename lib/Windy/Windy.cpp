@@ -44,23 +44,37 @@ bool  Windy::sendData(String ID,String APIKEY,wData *data){ //send Data to WU wi
           );
     strcat(msg,msg2);
   }
-  snprintf(msg2,sizeof(msg2),"&humidity=%.2f&tempf=%.2f&baromin=%.2f&dewptf=%.2f",
-          data->humidity,
-          deg2f(data->temp),
-          data->pressure * 0.029529983071445,
+  if (data->bHum){
+    snprintf(msg2,sizeof(msg2),"&humidity=%.2f",
+          data->humidity
+          );
+    strcat(msg,msg2);
+  }
+  if (data->bTemp){
+    snprintf(msg2,sizeof(msg2),"&tempf=%.2f",
+          deg2f(data->temp)
+          );
+    strcat(msg,msg2);
+  }
+  if ((data->bTemp) && (data->bHum)){
+    snprintf(msg2,sizeof(msg2),"&dewptf=%.2f",
           deg2f(dewpoint)
           );
-  strcat(msg,msg2);
+    strcat(msg,msg2);
+  }
+  if (data->bTemp){
+    snprintf(msg2,sizeof(msg2),"&baromin=%.2f",
+          data->pressure * 0.029529983071445
+          );
+    strcat(msg,msg2);
+  }
   if (data->bRain){
     snprintf(msg2,sizeof(msg2),"&rainin=%.2f",
             data->rain1h
             );
     strcat(msg,msg2);
   }  
-  //log_i("T1=%f h=%f p1=%f dp=%f",temp,humidity,baro,dewpoint);
-  if (strlen(msg) >= (sizeof(msg) - 10)){
-    log_e("len=%d,msg=%s ",strlen(msg),msg);
-  }
+  //log_i("%s len=%d",msg,strlen(msg));
   
   if (client == NULL){    
     client = new WiFiClient();

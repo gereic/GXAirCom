@@ -18,6 +18,7 @@
 #include <DallasTemperature.h>
 #include <TimeLib.h>
 #include <ctime>
+#include "TX20.h"
 
 #define DEG2RAD M_PI / 180.0
 #define RAD2DEG 180.0 / M_PI
@@ -51,7 +52,7 @@ public:
     Weather(); //constructor
     void setTempOffset(float tempOffset);
     void setWindDirOffset(int16_t winddirOffset);
-    bool begin(TwoWire *pi2c, float height,int8_t oneWirePin, int8_t windDirPin, int8_t windSpeedPin,int8_t rainPin);
+    bool begin(TwoWire *pi2c, float height,int8_t oneWirePin, int8_t windDirPin, int8_t windSpeedPin,int8_t rainPin,uint8_t aneoType);
     void run(void);
     bool getValues(weatherData *weather);
     void resetWindGust(void);
@@ -98,5 +99,6 @@ private:
     uint32_t rainTipCount1d = 0;
     uint8_t actHour = 0;
     uint8_t actDay = 0;
+    uint8_t aneometerType = 0;
 };
 #endif

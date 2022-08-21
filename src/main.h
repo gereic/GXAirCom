@@ -8,6 +8,8 @@
 #define MAXSTRING 255
 #define MAXSIZEBLE 512
 
+#define MAXFNTUPLOADSTATIONS 5
+
 /*
 ************* Pins for TTGO-TBeam V1.0 / V1.1 ***************
 ******* LORA ********
@@ -198,7 +200,7 @@ SCL 14
 #define MIN_FLIGHT_TIME 5000
 #define MIN_GROUND_TIME 60000
 
-#define WIFI_RECONNECT_TIME 600000
+#define WIFI_RECONNECT_TIME 600000 //10min.
 
 #define NUMBUTTONS 2
 //#define BUTTON2 38
@@ -225,6 +227,12 @@ SCL 14
 
 struct weatherupload{
   bool enable;
+  String ID;
+  String KEY;
+};
+
+struct Fanetweatherupload{
+  uint32_t FanetId = 0;
   String ID;
   String KEY;
 };
@@ -291,6 +299,7 @@ struct GSSettings{
   float geoidAlt; //geoidaltitude for Legacy
   eScreenOption SreenOption; //energy-option for display
   eGsPower PowerSave; //powersave-option
+  eAneometer Aneometer; //Aneometer
 };
 
 struct WeatherSettings{
@@ -369,6 +378,8 @@ struct SettingsData{
   bool bHasExtPowerSw; //has external power-switch
   bool bHasFuelSensor; //has fuel-Sensor
   MqttSettings mqtt;
+  Fanetweatherupload FntWuUpload[MAXFNTUPLOADSTATIONS]; //Fanet WU Upload
+  Fanetweatherupload FntWiUpload[MAXFNTUPLOADSTATIONS]; //Fanet Wi Upload
 };
 
 struct weatherStatus{

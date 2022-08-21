@@ -397,9 +397,57 @@ void handleUpdate(uint32_t tAct);
 void printChipInfo(void);
 void setAllTime(tm &timeinfo);
 void checkExtPowerOff(uint32_t tAct);
+void sendFanetWeatherData2WU(FanetLora::weatherData *weatherData,uint8_t wuIndex);
+void sendFanetWeatherData2WI(FanetLora::weatherData *weatherData,uint8_t wiIndex);
 #ifdef AIRMODULE
 bool setupUbloxConfig(void);
 #endif
+
+void sendFanetWeatherData2WU(FanetLora::weatherData *weatherData,uint8_t wuIndex){
+  if ((status.bInternetConnected) && (status.bTimeOk)){
+    WeatherUnderground wu;
+    WeatherUnderground::wData wuData;
+    #ifdef GSM_MODULE
+      if (setting.wifi.connect == eWifiMode::CONNECT_NONE){
+        wu.setClient(&GsmWUClient);
+        wu.setMutex(&xGsmMutex);
+      }
+    #endif    wiData.bWind = weatherData->bWind;
+    wuData.bWind = weatherData->bWind;
+    wuData.winddir = weatherData->wHeading;
+    wuData.windspeed = weatherData->wSpeed;
+    wuData.windgust = weatherData->wGust;
+    wuData.bHum = weatherData->bHumidity;
+    wuData.humidity = weatherData->Humidity;
+    wuData.bTemp = weatherData->bTemp;
+    wuData.temp = weatherData->temp;
+    wuData.bPress = weatherData->bBaro;
+    wuData.pressure = weatherData->Baro;
+    wu.sendData(setting.FntWuUpload[wuIndex].ID ,setting.FntWuUpload[wuIndex].KEY,&wuData);
+  }
+}
+void sendFanetWeatherData2WI(FanetLora::weatherData *weatherData,uint8_t wiIndex){
+  if ((status.bInternetConnected) && (status.bTimeOk)){
+    Windy wi;
+    Windy::wData wiData;
+    #ifdef GSM_MODULE
+      if (setting.wifi.connect == eWifiMode::CONNECT_NONE){
+        wi.setClient(&GsmWUClient);
+        wi.setMutex(&xGsmMutex);
+      }
+    #endif    wiData.bWind = weatherData->bWind;
+    wiData.winddir = weatherData->wHeading;
+    wiData.windspeed = weatherData->wSpeed;
+    wiData.windgust = weatherData->wGust;
+    wiData.bHum = weatherData->bHumidity;
+    wiData.humidity = weatherData->Humidity;
+    wiData.bTemp = weatherData->bTemp;
+    wiData.temp = weatherData->temp;
+    wiData.bPress = weatherData->bBaro;
+    wiData.pressure = weatherData->Baro;
+    wi.sendData(setting.FntWiUpload[wiIndex].ID,setting.FntWiUpload[wiIndex].KEY,&wiData);
+  }
+}
 
 void readFuelSensor(uint32_t tAct){
   static uint32_t tRead = millis();
@@ -1285,6 +1333,7 @@ void sendAWUdp(String msg){
 }
 
 void sendData2Client(char *buffer,int iLen){
+  //log_i("endChar=%02X;len=%d",buffer[iLen],iLen);
   //size_t bufLen = strlen(buffer);
   if (setting.outputMode == eOutput::oUDP){
     //output via udp
@@ -1298,7 +1347,8 @@ void sendData2Client(char *buffer,int iLen){
     }
   }
   if ((setting.outputMode == eOutput::oSERIAL) || (setting.bOutputSerial)){//output over serial-connection
-    Serial.print(buffer); 
+    //Serial.print(buffer); 
+    Serial.write(buffer,iLen);
   }
   if (setting.outputMode == eOutput::oBLE){ //output over ble-connection
     if (xHandleBluetooth){
@@ -1410,6 +1460,8 @@ void WiFiEvent(WiFiEvent_t event){
       log_i("station got IP from connected AP IP:%s",status.myIP.c_str());
       status.wifiStat=2;
       break;
+    case SYSTEM_EVENT_STA_LOST_IP:
+      log_i("STA LOST IP");
     case SYSTEM_EVENT_STA_WPS_ER_SUCCESS:
       log_i("STA WPS success");
       break;
@@ -2044,7 +2096,7 @@ void setup() {
     i2cOLED.begin(PinOledSDA, PinOledSCL);
     // voltage-divier 100kOhm and 100kOhm
     // vIn = (R1+R2)/R2 * VOut
-    adcVoltageMultiplier = 2.0f * 3.5f; // maybe also 3.4 or 3.45 .. TODO test
+    adcVoltageMultiplier = 2.12f;
     pinMode(PinADCVoltage, INPUT);
     break;
   /*
@@ -2071,7 +2123,7 @@ void setup() {
     i2cOLED.begin(PinOledSDA, PinOledSCL);
     // voltage-divier 100kOhm and 100kOhm
     // vIn = (R1+R2)/R2 * VOut
-    adcVoltageMultiplier = 2.0f * 3.76f; // not sure if it is ok ?? don't have this kind of board
+    adcVoltageMultiplier = 2.5f; // not sure if it is ok ?? don't have this kind of board
     pinMode(PinADCVoltage, INPUT);
     break;
   */
@@ -2127,7 +2179,7 @@ void setup() {
     // voltage-divier 27kOhm and 100kOhm
     // vIn = (R1+R2)/R2 * VOut
     //1S LiPo
-    adcVoltageMultiplier = (100000.0f + 27000.0f) / 100000.0f * 3.3;
+    adcVoltageMultiplier = (100000.0f + 27000.0f) / 100000.0f;
     pinMode(PinADCVoltage, INPUT); //input-Voltage on GPIO34
     break;
   case eBoard::HELTEC_WIRELESS_STICK_LITE:
@@ -2159,7 +2211,8 @@ void setup() {
     //1S LiPo
     pinMode(21, OUTPUT); //we have to set pin 21 to measure voltage of Battery
     digitalWrite(21,LOW); //set output to Low, so we can measure the voltage
-    adcVoltageMultiplier = (100000.0f + 220000.0f) / 100000.0f * 3.3;
+    //adcVoltageMultiplier =  (100000.0f + 220000.0f) / 100000.0f;
+    adcVoltageMultiplier =  3.69f;
     pinMode(PinADCVoltage, INPUT); //input-Voltage on GPIO37
     break;
   case eBoard::TTGO_TSIM_7000:
@@ -2213,7 +2266,7 @@ void setup() {
 
     // voltage-divier 100kOhm and 100kOhm
     // vIn = (R1+R2)/R2 * VOut
-    adcVoltageMultiplier = 2.0f * 3.76f; // not sure if it is ok ?? don't have this kind of board
+    adcVoltageMultiplier = 2.2279f; // not sure if it is ok ?? don't have this kind of board
     pinMode(PinADCVoltage, INPUT);
 
     break;
@@ -2239,7 +2292,7 @@ void setup() {
 
     PinADCVoltage = 35;
     
-    adcVoltageMultiplier = 2.0f * 3.50f; // not sure if it is ok ?? don't have this kind of board
+    adcVoltageMultiplier = 2.12f; // not sure if it is ok ?? don't have this kind of board
     pinMode(PinADCVoltage, INPUT);
 
     break;
@@ -2606,8 +2659,8 @@ void taskGsm(void *pvParameters){
 
 #ifdef GSMODULE
 void taskWeather(void *pvParameters){
-  static uint32_t tUploadData =  0;
-  static uint32_t tSendData = millis() + 10000; //first sending is in 10 seconds
+  static uint32_t tUploadData =  millis() + setting.wd.WUUploadIntervall; //first sending is in Sending-intervall to have steady-values
+  static uint32_t tSendData = millis() + setting.wd.FanetUploadInterval; //first sending is in FANET-Sending-intervall to have steady-values
   bool bDataOk = false;
   log_i("starting weather-task ");  
   Weather::weatherData wData;
@@ -2622,7 +2675,7 @@ void taskWeather(void *pvParameters){
   weather.setTempOffset(setting.wd.tempOffset);
   weather.setWindDirOffset(setting.wd.windDirOffset);
   //if (weather.begin(&i2cZero,setting.gs.alt,PinOneWire,PinWindDir,PinWindSpeed,PinRainGauge)){
-  if (weather.begin(&Wire,setting.gs.alt,PinOneWire,PinWindDir,PinWindSpeed,PinRainGauge)){
+  if (weather.begin(&Wire,setting.gs.alt,PinOneWire,PinWindDir,PinWindSpeed,PinRainGauge,setting.gs.Aneometer)){
     status.vario.bHasBME = true; //we have a bme-sensor
   }
   if ((setting.WUUpload.enable) && (!status.vario.bHasBME)){
@@ -2638,12 +2691,6 @@ void taskWeather(void *pvParameters){
   TickType_t xLastWakeTime = xTaskGetTickCount (); //get actual tick-count
   while (1){
     uint32_t tAct = millis();
-    if (tUploadData == 0){
-      //first time sending if we have internet and time is ok
-      if ((status.bInternetConnected) && (status.bTimeOk)){
-        tUploadData = tAct - setting.wd.WUUploadIntervall + 2000;
-      }
-    }
     if (status.vario.bHasBME){
       //station has BME --> we are a weather-station
       weather.run();
@@ -2716,8 +2763,11 @@ void taskWeather(void *pvParameters){
             wuData.winddir = avg[1].Winddir;
             wuData.windspeed = avg[1].WindSpeed;
             wuData.windgust = avg[1].WindGust;
+            wuData.bHum = true;
             wuData.humidity = avg[1].Humidity;
+            wuData.bTemp = true;
             wuData.temp = avg[1].temp;
+            wuData.bPress = true;
             wuData.pressure = avg[1].Pressure;
             if (setting.wd.RainSensor == 1){
               wuData.bRain = true;
@@ -2742,16 +2792,17 @@ void taskWeather(void *pvParameters){
             wiData.winddir = avg[1].Winddir;
             wiData.windspeed = avg[1].WindSpeed;
             wiData.windgust = avg[1].WindGust;
+            wiData.bHum = true;
             wiData.humidity = avg[1].Humidity;
+            wiData.bTemp = true;
             wiData.temp = avg[1].temp;
+            wiData.bPress = true;
             wiData.pressure = avg[1].Pressure;
             if (setting.wd.RainSensor == 1){
               wiData.bRain = true;
-            }else{
-              wiData.bRain = false;
+              wiData.rain1h = wData.rain1h ;
+              wiData.raindaily = wData.rain1d;
             }
-            wiData.rain1h = wData.rain1h ;
-            wiData.raindaily = wData.rain1d;
             wi.sendData(setting.WindyUpload.ID,setting.WindyUpload.KEY,&wiData);
           }
 
@@ -3102,9 +3153,9 @@ float readBattvoltage(){
   }
   adc_reading /= NO_OF_SAMPLES;
 
-  vBatt = (adcVoltageMultiplier * float(adc_reading) / 1023.0f) + setting.BattVoltOffs;
+  vBatt = (adcVoltageMultiplier * float(adc_reading) / 1023.0f * 3.3f) + setting.BattVoltOffs;
   //Serial.println(adc_reading);
-  //log_i("adc=%d, vBatt=%.3f",adc_reading,vBatt);
+  //log_i("adc=%d, vADC=%.3f, vBatt=%.3f",adc_reading,float(adc_reading) / 1023.0f * 3.3f,vBatt);
   return vBatt;
 }
 
@@ -3796,6 +3847,8 @@ void checkReceivedLine(char *ch_str){
     status.vario.bHasVario = true;
     status.ClimbRate = climb;
     //log_i("Climb=%.1f",climb);
+  }else{
+    log_i("unknown message=%s",ch_str);
   }
 }
 
@@ -3996,7 +4049,7 @@ void sendLK8EX(uint32_t tAct){
       }else{
         pos += snprintf(&sOut[pos],MAXSTRING-pos,"%.02f,",status.varioAlt);
       }
-      pos += snprintf(&sOut[pos],MAXSTRING-pos,"%d,%.01f,",(int32_t)(status.ClimbRate * 100.0),status.varioTemp);
+      pos += snprintf(&sOut[pos],MAXSTRING-pos,"%d,%.01f,",(int32_t)roundf(status.ClimbRate * 100.0),status.varioTemp);
     }else{
       pos += snprintf(&sOut[pos],MAXSTRING-pos,"999999,%.02f,%d,99,",status.GPS_alt,(int32_t)(status.ClimbRate * 100.0));
     }
@@ -4504,6 +4557,19 @@ void taskStandard(void *pvParameters){
     }
     FanetLora::weatherData weatherData;
     if (fanet.getWeatherData(&weatherData)){
+      //check if we forward the weather-data to WU
+      for (int i = 0; i < MAXFNTUPLOADSTATIONS;i++){
+        if (setting.FntWuUpload[i].FanetId == weatherData.devId){
+          sendFanetWeatherData2WU(&weatherData,i);
+        }
+      }
+      //check if we forward the weather-data to Windy
+      for (int i = 0; i < MAXFNTUPLOADSTATIONS;i++){
+        if (setting.FntWiUpload[i].FanetId == weatherData.devId){
+          sendFanetWeatherData2WI(&weatherData,i);
+        }
+      }
+      
       if (setting.OGNLiveTracking.bits.fwdWeather){
         Ogn::weatherData wData;
         wData.devId = fanet.getDevId(weatherData.devId);
@@ -5149,7 +5215,7 @@ void taskBackGround(void *pvParameters){
   tBattEmpty = millis();
   while (1){
     uint32_t tAct = millis();
-    if  (status.wifiStat){
+    if  (status.wifiStat != 0){
       Web_loop();
     }
     handleUpdate(tAct);
@@ -5305,20 +5371,23 @@ void taskBackGround(void *pvParameters){
       ntpOk = 0;
       tGetTime = tAct;
     }
-    if ((setting.wifi.connect == eWifiMode::CONNECT_ALWAYS) && (WiFi.status() != WL_CONNECTED) && (status.wifiStat)){
-      if (timeOver(tAct,tWifiCheck,WIFI_RECONNECT_TIME)){
-        tWifiCheck = tAct;
-        log_i("WiFi not connected. Try to reconnect");
-        WiFi.disconnect(true,true);
-        WiFi.mode(WIFI_OFF);
-        WiFi.persistent(false);
-        //WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE,INADDR_NONE,INADDR_NONE); // call is only a workaround for bug in WiFi class
-        WiFi.config(IPADDR_ANY, IPADDR_ANY, IPADDR_ANY,IPADDR_ANY,IPADDR_ANY); // call is only a workaround for bug in WiFi class
-        WiFi.setHostname(host_name.c_str()); //set hostname
-        WiFi.mode(WIFI_MODE_APSTA);
-        esp_wifi_set_ps (WIFI_PS_NONE);
-        WiFi.begin(setting.wifi.ssid.c_str(), setting.wifi.password.c_str()); 
-        
+    if (timeOver(tAct,tWifiCheck,WIFI_RECONNECT_TIME)){
+      tWifiCheck = tAct;
+      if (setting.wifi.connect == eWifiMode::CONNECT_ALWAYS){
+        log_i("check Wifi-status %d ",status.wifiStat);
+        if (((WiFi.status() != WL_CONNECTED) && (status.wifiStat != 0)) || (status.wifiStat == 1)){
+          log_i("WiFi not connected. Try to reconnect");
+          WiFi.disconnect(true,true);
+          WiFi.mode(WIFI_OFF);
+          WiFi.persistent(false);
+          //WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE,INADDR_NONE,INADDR_NONE); // call is only a workaround for bug in WiFi class
+          WiFi.config(IPADDR_ANY, IPADDR_ANY, IPADDR_ANY,IPADDR_ANY,IPADDR_ANY); // call is only a workaround for bug in WiFi class
+          WiFi.setHostname(host_name.c_str()); //set hostname
+          WiFi.mode(WIFI_MODE_APSTA);
+          esp_wifi_set_ps (WIFI_PS_NONE);
+          WiFi.begin(setting.wifi.ssid.c_str(), setting.wifi.password.c_str()); 
+          
+        }
       }
     }
     uint32_t actFreeHeap = xPortGetFreeHeapSize();

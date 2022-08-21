@@ -1055,21 +1055,21 @@ uint8_t FanetLora::getFlarmAircraftType(aircraft_t aircraftType){
   switch (aircraftType)
   {
   case aircraft_t::paraglider :
-    return aircraft_t::leg_para_glider;
+    return aircraft_t::leg_para_glider & 0x7F;
   case aircraft_t::hangglider :
-    return aircraft_t::leg_hang_glider;
+    return aircraft_t::leg_hang_glider & 0x7F;
   case aircraft_t::balloon :
-    return aircraft_t::leg_balloon;
+    return aircraft_t::leg_balloon & 0x7F;
   case aircraft_t::glider :
-    return aircraft_t::leg_glider_motor_glider;
+    return aircraft_t::leg_glider_motor_glider & 0x7F;
   case aircraft_t::poweredAircraft :
-    return aircraft_t::leg_aircraft_reciprocating_engine;
+    return aircraft_t::leg_aircraft_reciprocating_engine & 0x7F;
   case aircraft_t::helicopter :
-    return aircraft_t::leg_helicopter_rotorcraft;
+    return aircraft_t::leg_helicopter_rotorcraft & 0x7F;
   case aircraft_t::uav :
-    return aircraft_t::leg_uav;
+    return aircraft_t::leg_uav & 0x7F;
   default:
-    return aircraft_t::leg_unknown;
+    return aircraft_t::leg_unknown & 0x7F;
   }
 }
 

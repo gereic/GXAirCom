@@ -19,6 +19,12 @@ enum eBoard {
     UNKNOWN = 255
 };
 
+/* aneometer */
+enum eAneometer {
+    DAVIS = 0,
+    TX20 = 1
+};
+
 /* Mode of operation */
 enum eMode{
   AIR_MODULE = 0,
