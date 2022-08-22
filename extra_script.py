@@ -1,6 +1,7 @@
 import os
 Import("env", "projenv")
 from shutil import copyfile
+import re
 
 def get_build_flag_value(flag_name):
     build_flags = env.ParseFlags(env['BUILD_FLAGS'])
@@ -13,17 +14,24 @@ def copy_file(*args, **kwargs):
     version = get_build_flag_value("VERSION")
     version = version[1:-1]
     target = str(kwargs['target'][0])
-    savename = target.split(os.path.sep)[-1]   # name of environment
+    savename = target.split(os.path.sep)[-3]   # name of environment
     platform = target.split(os.path.sep)[-2]
     filename = target.split(os.path.sep)[-1]
-    print(target.split(os.path.sep)[-1])    
-    print(target.split(os.path.sep)[-2])    
-    print(target.split(os.path.sep)[-3])    
+    print(target.split(os.path.sep)[-1])
+    print(target.split(os.path.sep)[-2])
+    print(target.split(os.path.sep)[-3])
     print(version)
+
+    if re.match('.*_[0-9]+MB$', platform):
+        size_postfix = re.sub(r'.*(_[0-9]+MB)$', r'\1', platform)
+    else:
+        size_postfix = ''
     if filename == "firmware.bin":
         savefile = 'bin/firmware_{}_{}.bin'.format(version,platform)
     elif filename == "spiffs.bin":
-        savefile = 'bin/spiffs_{}.bin'.format(version)
+        savefile = 'bin/spiffs_{}{}.bin'.format(version, size_postfix)
+    elif filename == "partitions.bin":
+        savefile = "bin/partitions{}.bin".format(size_postfix)
     else:
         savefile = 'bin/{}'.format(filename)
     print("********  copy file " + target + " to " + savefile + " *******")
