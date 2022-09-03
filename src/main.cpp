@@ -2481,6 +2481,9 @@ bool initModem(){
   #ifdef TINY_GSM_MODEM_SIM7000
   log_i("set NetworkMode to %d",setting.gsm.NetworkMode);
   modem.setNetworkMode(setting.gsm.NetworkMode); //set mode
+  delay(500);
+  log_i("set PreferredMode to %d",setting.gsm.PreferredMode);
+  modem.setPreferredMode(setting.gsm.PreferredMode); //set preferred mode
   #endif
   modem.sleepEnable(false); //set sleepmode off
   modem.sendAT(GF("+CMGF=1"));

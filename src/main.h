@@ -318,6 +318,7 @@ struct GsmSettings{
   String user;
   String pwd;
   uint8_t NetworkMode;
+  uint8_t PreferredMode;
 };
 
 struct WifiSettings{
