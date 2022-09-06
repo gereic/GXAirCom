@@ -780,7 +780,8 @@ int16_t LoRaClass::switchFSK(float frequency){
       pGxModule->SPIsetRegValue(0x07, (FRF & 0x00FF00) >> 8);  //RegFrMid
       pGxModule->SPIsetRegValue(0x08, FRF & 0x0000FF); //RegFrLsb
 
-      pGxModule->SPIwriteRegister(0x09,0xFC); //RegPaConfig
+      //pGxModule->SPIwriteRegister(0x09,0xFC); //RegPaConfig
+      pGxModule->SPIwriteRegister(0x09,0xFF); //RegPaConfig PA_Boost on, max_power=15, Output Power 17dBm
       pGxModule->SPIwriteRegister(0x0A,0x49); //RegPaRamp
       pGxModule->SPIwriteRegister(0x0B,0x2B); //RegOcp
       pGxModule->SPIwriteRegister(0x0C,0x23); //RegLna max gain, default LNA current
@@ -966,7 +967,8 @@ int16_t LoRaClass::switchLORA(float frequency){
       //pGxModule->SPIwriteRegister(0x06,0xD9); //RegFrMsb
       //pGxModule->SPIwriteRegister(0x07,0x0C); //RegFrMid
       //pGxModule->SPIwriteRegister(0x08,0xCD); //RegFrLsb
-      pGxModule->SPIwriteRegister(0x09,0xFC); //RegPaConfig PA_Boost on, max_power=15, Output Power 14dBm
+      //pGxModule->SPIwriteRegister(0x09,0xFC); //RegPaConfig PA_Boost on, max_power=15, Output Power 14dBm
+      pGxModule->SPIwriteRegister(0x09,0xFF); //RegPaConfig PA_Boost on, max_power=15, Output Power 17dBm
       pGxModule->SPIwriteRegister(0x0A,0x09); //RegPaRamp 40us
       pGxModule->SPIwriteRegister(0x0B,0x2B); //RegOcp OCP enabled, max. 100mA
       pGxModule->SPIwriteRegister(0x0C,0x23); //RegLna G1 (max gain), Boost on (150% LNA current)

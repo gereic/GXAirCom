@@ -1452,8 +1452,12 @@ void WiFiEvent(WiFiEvent_t event){
     case SYSTEM_EVENT_STA_DISCONNECTED:
       log_i("station lost connection to AP");      
       //will automatically reconnect in 60 seconds
-      WiFi.disconnect(true,true);
       status.wifiStat=1;
+      status.bInternetConnected = false; //no more connected to Internet
+      WiFi.disconnect(true,true);
+      WiFi.mode(WIFI_OFF);
+      WiFi.persistent(false);
+      WiFi.config(IPADDR_ANY, IPADDR_ANY, IPADDR_ANY,IPADDR_ANY,IPADDR_ANY); // call is only a workaround for bug in WiFi class
       break;  
     case SYSTEM_EVENT_STA_GOT_IP:
       status.myIP = WiFi.localIP().toString();
@@ -1505,6 +1509,7 @@ void setupWifi(){
   while(host_name.length() == 0){
     delay(100); //wait until we have the devid
   }
+  status.bInternetConnected = false;
   status.wifiStat = 0;
   WiFi.disconnect(true,true);
   WiFi.mode(WIFI_OFF);  
@@ -5290,7 +5295,7 @@ void taskBackGround(void *pvParameters){
       }
     }
     #endif
-    if ((WiFi.status() == WL_CONNECTED) || ((status.modemstatus == eModemState::CONNECTED) && (setting.wifi.connect == eWifiMode::CONNECT_NONE))){
+    if (((WiFi.status() == WL_CONNECTED) && (status.wifiStat == 2)) || ((status.modemstatus == eModemState::CONNECTED) && (setting.wifi.connect == eWifiMode::CONNECT_NONE))){
       status.bInternetConnected = true;
     }else{
       status.bInternetConnected = false;
@@ -5380,8 +5385,8 @@ void taskBackGround(void *pvParameters){
           WiFi.disconnect(true,true);
           WiFi.mode(WIFI_OFF);
           WiFi.persistent(false);
-          //WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE,INADDR_NONE,INADDR_NONE); // call is only a workaround for bug in WiFi class
           WiFi.config(IPADDR_ANY, IPADDR_ANY, IPADDR_ANY,IPADDR_ANY,IPADDR_ANY); // call is only a workaround for bug in WiFi class
+          //WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE,INADDR_NONE,INADDR_NONE); // call is only a workaround for bug in WiFi class
           WiFi.setHostname(host_name.c_str()); //set hostname
           WiFi.mode(WIFI_MODE_APSTA);
           esp_wifi_set_ps (WIFI_PS_NONE);
@@ -5401,10 +5406,10 @@ void taskBackGround(void *pvParameters){
       }
     }
     */
-    if (minFreeHeap<20000)
+    if (minFreeHeap<10000)
     {
       log_e( "*****LOOP current free heap: %d, minimum ever free heap: %d ******", actFreeHeap, minFreeHeap);
-      log_e("System Low on Memory - xPortGetMinimumEverFreeHeapSize < 20KB");
+      log_e("System Low on Memory - xPortGetMinimumEverFreeHeapSize < 10KB");
       log_e("ESP Restarting !");
       esp_restart();
     }
