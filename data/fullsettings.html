@@ -616,6 +616,7 @@ function sendValues(){
   GSMUSER : document.getElementById("GSMUSER").value,  
   GSMPWD : document.getElementById("GSMPWD").value,    
   GSMMODE : document.getElementById("GSMMODE").value,
+  GSMPREF : document.getElementById("GSMPREF").value,
   save : 2
 	};
   doSend(JSON.stringify(obj));
@@ -1072,7 +1073,7 @@ window.addEventListener("load", init, false);
             <th>Power option</th>
             <td><select id="gsPs">
               <option value="0">always on</option>
-              <option value="1">only on between sunset and sunrise</option>
+              <option value="1">only on between sunrise and sunset</option>
               <option value="2">battery life algorithm mode</option>
             </select></td>
           </tr>
@@ -1429,6 +1430,15 @@ window.addEventListener("load", init, false);
               <option value="13">GSM only</option>
               <option value="38">LTE only</option>
               <option value="51">GSM and LTE only</option>
+            </select></td>
+          </tr>
+          <tr>
+            <th>Network-Preference</th>
+            <td><select id="GSMPREF">
+              <option value="0">don't set</option>
+              <option value="1">CAT-M</option>
+              <option value="2">NB-IOT</option>
+              <option value="3">CAT-M and NB-IOT</option>
             </select></td>
           </tr>
         </tbody>      

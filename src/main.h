@@ -171,8 +171,6 @@ SCL 14
 
 #define APPNAME "GXAirCom"
 
-//#define SENDFLARMDIRECT //send Flarm-msg, when received
-
 #define BLE_LOW_HEAP 10000
 #define MAX_BLE_LOW_HEAP_TIME 30000
 
@@ -317,7 +315,8 @@ struct GsmSettings{
   String apn;
   String user;
   String pwd;
-  uint8_t NetworkMode;
+  eGsmNetworkMode NetworkMode;
+  eGsmPreferedMode PreferredMode;
 };
 
 struct WifiSettings{

@@ -56,6 +56,22 @@ enum eWifiMode{
   CONNECT_ALWAYS = 2
 };
 
+/* GSMPreferedMode */
+enum eGsmNetworkMode{
+  GSM_NW_AUTO = 2,
+  GSM_NW_GSM = 13,
+  GSM_NW_LTE = 38,
+  GSM_NW_GSM_LTE = 51
+};
+
+/* GSMPreferedMode */
+enum eGsmPreferedMode{
+  GSM_PREF_NOT_SET = 0,
+  GSM_PREF_CAT_M = 1,
+  GSM_PREF_NB_IOT = 2,
+  GSM_PREF_CAT_M_NB_IOT = 3
+};
+
 /* Screen Option */
 enum eScreenOption{
   ALWAYS_ON = 0,

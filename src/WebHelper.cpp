@@ -280,7 +280,8 @@ void onWebSocketEvent(uint8_t client_num,
           doc["GSMAPN"] = setting.gsm.apn;
           doc["GSMUSER"] = setting.gsm.user;
           doc["GSMPWD"] = setting.gsm.pwd;
-          doc["GSMMODE"] = setting.gsm.NetworkMode;          
+          doc["GSMMODE"] = setting.gsm.NetworkMode;
+          doc["GSMPREF"] = setting.gsm.PreferredMode;      
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
 
@@ -442,7 +443,8 @@ void onWebSocketEvent(uint8_t client_num,
         if (root.containsKey("GSMAPN")) newSetting.gsm.apn = doc["GSMAPN"].as<String>();
         if (root.containsKey("GSMUSER")) newSetting.gsm.user = doc["GSMUSER"].as<String>();
         if (root.containsKey("GSMPWD")) newSetting.gsm.pwd = doc["GSMPWD"].as<String>();
-        if (root.containsKey("GSMMODE")) newSetting.gsm.NetworkMode = doc["GSMMODE"].as<uint8_t>();
+        if (root.containsKey("GSMMODE")) newSetting.gsm.NetworkMode = eGsmNetworkMode(doc["GSMMODE"].as<uint8_t>());
+        if (root.containsKey("GSMPREF")) newSetting.gsm.PreferredMode = eGsmPreferedMode(doc["GSMPREF"].as<uint8_t>());
         //fuel-sensor
         if (root.containsKey("fuelSensor")) newSetting.bHasFuelSensor = doc["fuelSensor"].as<uint8_t>();
 

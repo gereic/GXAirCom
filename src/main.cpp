@@ -121,10 +121,6 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &i2cOLED);
 
 #define USE_BEEPER
 
-#ifdef SENDFLARMDIRECT
-  uint8_t flarmCount = 0;
-#endif
-
 char nmeaBuffer[100];
 MicroNMEA nmea(nmeaBuffer, sizeof(nmeaBuffer));
 
@@ -357,6 +353,7 @@ void drawBluetoothstat(int16_t x, int16_t y);
 void drawWifiStat(int wifiStat);
 void oledPowerOff();
 void oledPowerOn();
+#endif
 void checkBoardType();
 void checkLoraChip();
 // Forward reference to prevent Arduino compiler becoming confused.
@@ -412,7 +409,7 @@ void sendFanetWeatherData2WU(FanetLora::weatherData *weatherData,uint8_t wuIndex
         wu.setClient(&GsmWUClient);
         wu.setMutex(&xGsmMutex);
       }
-    #endif    wiData.bWind = weatherData->bWind;
+    #endif    
     wuData.bWind = weatherData->bWind;
     wuData.winddir = weatherData->wHeading;
     wuData.windspeed = weatherData->wSpeed;
@@ -435,7 +432,8 @@ void sendFanetWeatherData2WI(FanetLora::weatherData *weatherData,uint8_t wiIndex
         wi.setClient(&GsmWUClient);
         wi.setMutex(&xGsmMutex);
       }
-    #endif    wiData.bWind = weatherData->bWind;
+    #endif
+    wiData.bWind = weatherData->bWind;
     wiData.winddir = weatherData->wHeading;
     wiData.windspeed = weatherData->wSpeed;
     wiData.windgust = weatherData->wGust;
@@ -649,7 +647,7 @@ void add2OutputString(String s){
   sOutputData += s;
   xSemaphoreGive(xOutputMutex);
 }
-
+#ifdef OLED
 void oledPowerOn(){
   if (status.displayStat == eDisplayState::DISPLAY_STAT_ON){
     return;
@@ -842,7 +840,6 @@ void sendFlarmData(uint32_t tAct){
   if (timeOver(tAct,tSend,FLARM_UPDATE_RATE)){
     tSend = tAct;
     if (status.GPS_Fix){
-      #ifndef SENDFLARMDIRECT
       Fanet2FlarmData(&fanet._myData,&myFlarmData);
       for (int i = 0; i < MAXNEIGHBOURS; i++){
         //if ((fanet.neighbours[i].devId) && (fanet.neighbours[i].type == 0x11)){ //we have a ID an we are flying !!
@@ -862,7 +859,6 @@ void sendFlarmData(uint32_t tAct){
           countNeighbours++;    
         }
       }
-      #endif
 
       if (status.flying){
         flarmDataPort.GPSState = FLARM_GPS_FIX3d_AIR;
@@ -872,12 +868,7 @@ void sendFlarmData(uint32_t tAct){
     }else{
       flarmDataPort.GPSState = FLARM_NO_GPS;
     }
-    #ifdef SENDFLARMDIRECT
-      flarmDataPort.neighbors = flarmCount;
-      flarmCount = 0;
-    #else
-      flarmDataPort.neighbors = countNeighbours;
-    #endif
+    flarmDataPort.neighbors = countNeighbours;
     
     char sDataPort[MAXSTRING];
     int iLen = flarmDataPort.writeDataPort(&sDataPort[0],sizeof(sDataPort));
@@ -2486,6 +2477,11 @@ bool initModem(){
   #ifdef TINY_GSM_MODEM_SIM7000
   log_i("set NetworkMode to %d",setting.gsm.NetworkMode);
   modem.setNetworkMode(setting.gsm.NetworkMode); //set mode
+  if (setting.gsm.PreferredMode > 0){
+    delay(500);
+    log_i("set PreferredMode to %d",setting.gsm.PreferredMode);
+    modem.setPreferredMode(setting.gsm.PreferredMode); //set preferred mode
+  }
   #endif
   modem.sleepEnable(false); //set sleepmode off
   modem.sendAT(GF("+CMGF=1"));
@@ -4613,16 +4609,6 @@ void taskStandard(void *pvParameters){
           ogn.sendGroundTrackingData(tFanetData.timestamp,tFanetData.lat,tFanetData.lon,tFanetData.altitude,fanet.getDevId(tFanetData.devId),tFanetData.type,tFanetData.addressType,(float)tFanetData.snr);
         } 
       }
-      #ifdef SENDFLARMDIRECT
-      FlarmtrackingData myFlarmData;
-      FlarmtrackingData PilotFlarmData;
-      Fanet2FlarmData(&fanet._myData,&myFlarmData);
-      Fanet2FlarmData(&tFanetData,&PilotFlarmData);
-      char sOut[MAXSTRING];
-      int pos = flarmDataPort.writeFlarmData(sOut,MAXSTRING,&myFlarmData,&PilotFlarmData);
-      sendData2Client(sOut,pos);
-      flarmCount++;
-      #endif
     }    
     flarmDataPort.run();
     if (setting.outputModeVario == eOutputVario::OVARIO_LK8EX1) sendLK8EX(tAct);
