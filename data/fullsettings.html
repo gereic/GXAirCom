@@ -66,7 +66,6 @@ function setFts(){
 //this function sets visible depending on actual option
 function setVis(){
   //console.log("visible=" + document.getElementById("mode").style.display)
-  accCalib1
   if (calibBtnState == 0){
     document.getElementById("accCalib1").style.display='none'; //set calibration of ACC to invisible
     document.getElementById("accCalib2").style.display='none'; //set calibration of ACC to invisible
@@ -78,7 +77,7 @@ function setVis(){
     document.getElementById("accCalib3").style.display=''; //set calibration of ACC visible
     document.getElementById("accCalib4").style.display=''; //set calibration of ACC visible
   }
-
+  document.getElementById("VisFrequ").style.display='none'; //set Frequency-settings invisible
   document.getElementById("VisAWUS").style.display='none'; //set advanced weahter upload settings invisible    
   document.getElementById("VisAWFFNT").style.display='none'; //set advanced weahter upload settings invisible      
   document.getElementById("VisWD").style.display='none'; //set weather-data invisible
@@ -133,8 +132,9 @@ function setVis(){
       document.getElementById("VisWI").style.display=''; //set weather-underground upload invisible
       if (document.getElementById("setView").value > 0){ //we are advanced or expert
         document.getElementById("VisAWUS").style.display=''; //set advanced weather upload settings visible  
-        if (document.getElementById("setView").value > 100){ //we are expert
+        if (document.getElementById("setView").value > 100){ //we are expert user
           document.getElementById("VisAWFFNT").style.display=''; //set advanced weather settings visible    
+          document.getElementById("VisFrequ").style.display=''; //set Frequency-settings visible
         }
       }
     }
@@ -455,6 +455,7 @@ function sendValues(){
   var obj = {
   setView : Number(document.getElementById("setView").value),
   board : Number(document.getElementById("board").value),
+  Frequ : Number(document.getElementById("Frequ").value),
   disp : Number(document.getElementById("disp").value),
   dispRot : Number(document.getElementById("dispRot").value),
   country : Number(document.getElementById("country").value),
@@ -784,6 +785,14 @@ window.addEventListener("load", init, false);
               <option value="6">TTGO TCall SIM800L</option>
               <option value="7">HELTEC Wireless Stick Lite</option>
               <option value="255">unknown</option>
+            </select></td>
+          </tr>
+          <tr id="VisFrequ">
+            <th>CPU Frequency</th>
+            <td><select id="Frequ">
+              <option value="240">240MHz</option>
+              <option value="160">160MHz</option>
+              <option value="80">80MHz</option>
             </select></td>
           </tr>
           <tr>

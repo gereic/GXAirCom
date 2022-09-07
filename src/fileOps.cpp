@@ -8,6 +8,7 @@ void load_configFile(SettingsData* pSetting){
   pSetting->settingsView = preferences.getUChar("setView",0); //
   pSetting->wifi.appw = preferences.getString("APPW","12345678");
   pSetting->boardType = eBoard(preferences.getUChar("BOARDTYPE",eBoard::UNKNOWN)); //
+  pSetting->CPUFrequency = preferences.getUChar("CPUFREQU",240); //
   pSetting->country = eCountry(preferences.getUChar("COUNTRY",eCountry::EU)); //
   pSetting->bHasExtPowerSw = preferences.getUChar("EXTPWSW",0); //external power-switch
   pSetting->RFMode = preferences.getUChar("RFM",11); //default FntRx + FntTx + LegTx
@@ -152,6 +153,7 @@ void write_configFile(SettingsData* pSetting){
   preferences.putUChar("setView",pSetting->settingsView); //
   preferences.putString("APPW",pSetting->wifi.appw);
   preferences.putUChar("BOARDTYPE",pSetting->boardType); //
+  preferences.putUChar("CPUFREQU",pSetting->CPUFrequency); //
   preferences.putUChar("COUNTRY",uint8_t(pSetting->country)); //
   preferences.putUChar("EXTPWSW",pSetting->bHasExtPowerSw); //
   preferences.putUChar("RFM",pSetting->RFMode);

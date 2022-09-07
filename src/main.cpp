@@ -1835,9 +1835,16 @@ void setup() {
   bleSize = 0;
 
   log_i("SDK-Version=%s",ESP.getSdkVersion());
-  log_i("CPU-Speed=%dMhz",ESP.getCpuFreqMHz());
+  log_i("CPU-Speed=%dMHz",getCpuFrequencyMhz());
+  log_i("XTAL-Freq=%dMHz",getXtalFrequencyMhz());
+  log_i("APB-Freq=%dHz",getApbFrequency());
   log_i("Total heap: %d", ESP.getHeapSize());
   log_i("Free heap: %d", ESP.getFreeHeap());
+  //function takes the following frequencies as valid values:
+  //  240, 160, 80    <<< For all XTAL types
+  //  40, 20, 10      <<< For 40MHz XTAL
+  //  26, 13          <<< For 26MHz XTAL
+  //  24, 12          <<< For 24MHz XTAL
 
   #ifdef BOARD_HAS_PSRAM
   if (psramFound()){
@@ -1865,6 +1872,8 @@ void setup() {
 
   //listSpiffsFiles();
   load_configFile(&setting); //load configuration
+  bool bRet = setCpuFrequencyMhz(uint32_t(setting.CPUFrequency));
+  log_i("set CPU-Speed to %dMHz",getCpuFrequencyMhz());
   //setting.boardType = BOARD_UNKNOWN;
   if (setting.boardType == eBoard::UNKNOWN){
     checkBoardType();

@@ -69,6 +69,7 @@ void onWebSocketEvent(uint8_t client_num,
           doc["bHasMPU"] = (uint8_t)status.vario.bHasMPU;   
           doc["VisWeather"] = (uint8_t)(status.vario.bHasBME | status.bWUBroadCast);
           doc["board"] = setting.boardType;
+          doc["Frequ"] = setting.CPUFrequency;
           doc["disp"] = setting.displayType;
           doc["country"] = setting.country;
           doc["mode"] = setting.Mode;
@@ -157,6 +158,7 @@ void onWebSocketEvent(uint8_t client_num,
           doc.clear();
           doc["setView"] = setting.settingsView;                  
           doc["board"] = setting.boardType;
+          doc["Frequ"] = setting.CPUFrequency;
           doc["disp"] = setting.displayType;
           doc["dispRot"] = setting.displayRotation;
           doc["country"] = setting.country;
@@ -354,6 +356,7 @@ void onWebSocketEvent(uint8_t client_num,
         if (root.containsKey("ssid")) newSetting.wifi.ssid = doc["ssid"].as<String>();
         if (root.containsKey("password")) newSetting.wifi.password = doc["password"].as<String>();
         if (root.containsKey("board")) newSetting.boardType = eBoard(doc["board"].as<uint8_t>());          
+        if (root.containsKey("board")) newSetting.CPUFrequency = eBoard(doc["Frequ"].as<uint8_t>());          
         if (root.containsKey("disp")) newSetting.displayType = eDisplay(doc["disp"].as<uint8_t>());          
         if (root.containsKey("dispRot")) newSetting.displayRotation = doc["dispRot"].as<uint8_t>();          
         if (root.containsKey("country")) newSetting.country = eCountry(doc["country"].as<uint8_t>());          
