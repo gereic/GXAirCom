@@ -116,6 +116,11 @@ function setVis(){
   }    
   if (document.getElementById("mode").value == 1){ //mode ground-station
     document.getElementById("VisMqtt").style.display='';  //enable Mqtt settings
+    if (document.getElementById("setView").value > 0){ //we are advanced or expert
+        if (document.getElementById("setView").value > 100){ //we are expert user
+          document.getElementById("VisFrequ").style.display=''; //set Frequency-settings visible
+        }
+      }
     if (bHasBME == 0){      
       document.getElementById("tWu").innerHTML='Broadcast weather-underground data to FANET';
       document.getElementById("tWu2").innerHTML='enable sending wu-data to FANET';
@@ -134,7 +139,6 @@ function setVis(){
         document.getElementById("VisAWUS").style.display=''; //set advanced weather upload settings visible  
         if (document.getElementById("setView").value > 100){ //we are expert user
           document.getElementById("VisAWFFNT").style.display=''; //set advanced weather settings visible    
-          document.getElementById("VisFrequ").style.display=''; //set Frequency-settings visible
         }
       }
     }
