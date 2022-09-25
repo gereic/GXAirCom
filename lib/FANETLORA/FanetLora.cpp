@@ -547,17 +547,10 @@ int8_t FanetLora::getWeatherinfo(uint8_t *buffer,uint16_t length){
   index ++;
   if (header & 0x01) index ++; //additional header direct after first byte
   // integer values /
-  int32_t lati = int32_t(buffer[index+2])<<16 | int32_t(buffer[index+1])<<8 | int32_t(buffer[index]);
+  lastWeatherData.lat = getLatFromBuffer(&buffer[index]);
   index += 3;
-  if(lati & 0x00800000)
-    lati |= 0xFF000000;
-  int32_t loni = int32_t(buffer[index+2])<<16 | int32_t(buffer[index+1])<<8 | int32_t(buffer[index]);
+  lastWeatherData.lon = getLonFromBuffer(&buffer[index]);
   index += 3;
-  if(loni & 0x00800000)
-    loni |= 0xFF000000;    
-  lastWeatherData.lat = (float)lati / 93206.0f;
-  lastWeatherData.lon = (float)loni / 46603.0f;
-  //log_i("lat=%.6f;lon=%.6f",lastWeatherData.lat,lastWeatherData.lon);
   if (header & 0x40){ //temp
     int8_t temp = (int8_t)buffer[index];
     lastWeatherData.bTemp = true;
@@ -615,6 +608,18 @@ int8_t FanetLora::getWeatherinfo(uint8_t *buffer,uint16_t length){
   return 0;
 }
 
+int32_t FanetLora::getLatLonFromBuffer(uint8_t *buffer){
+  int32_t lati = int32_t(buffer[2])<<16 | int32_t(buffer[1])<<8 | int32_t(buffer[0]);
+  if(lati & 0x00800000) lati |= 0xFF000000;  
+  return lati;
+}
+
+float FanetLora::getLatFromBuffer(uint8_t *buffer){
+  return (float)getLatLonFromBuffer(buffer) / 93206.0f;
+}
+float FanetLora::getLonFromBuffer(uint8_t *buffer){
+  return (float)getLatLonFromBuffer(buffer) / 46603.0f;
+}
 
 
 int8_t FanetLora::getGroundTrackingInfo(uint8_t *buffer,uint16_t length){
@@ -623,20 +628,10 @@ int8_t FanetLora::getGroundTrackingInfo(uint8_t *buffer,uint16_t length){
       return -1;
     }
     uint8_t index = 0;
-      // integer values /
-    int32_t lati = int32_t(buffer[index+2])<<16 | int32_t(buffer[index+1])<<8 | int32_t(buffer[index]);
+    actTrackingData.lat = getLatFromBuffer(&buffer[index]);
     index += 3;
-    if(lati & 0x00800000)
-      lati |= 0xFF000000;
-    int32_t loni = int32_t(buffer[index+2])<<16 | int32_t(buffer[index+1])<<8 | int32_t(buffer[index]);
+    actTrackingData.lon = getLonFromBuffer(&buffer[index]);
     index += 3;
-    if(loni & 0x00800000)
-      loni |= 0xFF000000;    
-    actTrackingData.lat = (float)lati / 93206.0f;
-    actTrackingData.lon = (float)loni / 46603.0f;
-    //Serial.print("FANETlat=");Serial.println(actTrackingData.lat);
-    //Serial.print("FANETlon=");Serial.println(actTrackingData.lon);
-
     uint8_t type = buffer[index];
     if (type & 0x01){
       actTrackingData.OnlineTracking = true;  
@@ -1084,17 +1079,10 @@ int8_t FanetLora::getTrackingInfo(Frame *frm){
     }
     uint8_t index = 0;
       // integer values /
-    int32_t lati = int32_t(frm->payload[index+2])<<16 | int32_t(frm->payload[index+1])<<8 | int32_t(frm->payload[index]);
+    actTrackingData.lat = getLatFromBuffer(&frm->payload[index]);
     index += 3;
-    if(lati & 0x00800000)
-      lati |= 0xFF000000;
-    int32_t loni = int32_t(frm->payload[index+2])<<16 | int32_t(frm->payload[index+1])<<8 | int32_t(frm->payload[index]);
+    actTrackingData.lon = getLonFromBuffer(&frm->payload[index]);
     index += 3;
-    if(loni & 0x00800000)
-      loni |= 0xFF000000;    
-    actTrackingData.lat = (float)lati / 93206.0f;
-    actTrackingData.lon = (float)loni / 46603.0f;
-
     uint16_t Type = (uint16_t(frm->payload[index+1]) << 8) + uint16_t(frm->payload[index]);
     index += 2;
     uint16_t altitude = Type & 0x7FF;
@@ -1254,7 +1242,8 @@ int FanetLora::serialize_tracking(trackingData *Data,uint8_t*& buffer){
 int FanetLora::serialize_service(weatherData *wData,uint8_t*& buffer){
   int msgSize = sizeof(fanet_packet_t4);
   buffer = new uint8_t[msgSize];
-  fanet_packet_t4 *pkt = (fanet_packet_t4 *)&buffer[0];
+  uint8_t index = 0;
+  fanet_packet_t4 *pkt = (fanet_packet_t4 *)&buffer[index];
   pkt->bExt_header2 = false;
   pkt->bStateOfCharge = wData->bStateOfCharge;
   pkt->bRemoteConfig = false;
@@ -1263,34 +1252,62 @@ int FanetLora::serialize_service(weatherData *wData,uint8_t*& buffer){
   pkt->bWind = wData->bWind;
   pkt->bTemp = wData->bTemp;
   pkt->bInternetGateway = false;
-  coord2payload_absolut(wData->lat,wData->lon, &buffer[1]);
-  int iTemp = (int)(round(wData->temp * 2)); //Temperature (+1byte in 0.5 degree, 2-Complement)
-  pkt->temp = iTemp & 0xFF;
-  pkt->heading = uint8_t(round(wData->wHeading * 256.0 / 360.0)); //Wind (+3byte: 1byte Heading in 360/256 degree, 1byte speed and 1byte gusts in 0.2km/h (each: bit 7 scale 5x or 1x, bit 0-6))
-
-  int speed = (int)roundf(wData->wSpeed * 5.0f);
-  if(speed > 127) {
-      pkt->speed_scale  = 1;
-      pkt->speed        = (speed / 5);
-  } else {
-      pkt->speed_scale  = 0;
-      pkt->speed        = speed & 0x7F;
+  index++;
+  coord2payload_absolut(wData->lat,wData->lon, &buffer[index]);
+  index+= 6;
+  if (wData->bTemp){
+    int iTemp = (int)(round(wData->temp * 2)); //Temperature (+1byte in 0.5 degree, 2-Complement)
+    buffer[index] = iTemp & 0xFF;
+    index++;
+    //pkt->temp = iTemp & 0xFF;
   }
-  speed = (int)roundf(wData->wGust * 5.0f);
-  if(speed > 127) {
-      pkt->gust_scale  = 1;
-      pkt->gust        = (speed / 5);
-  } else {
-      pkt->gust_scale  = 0;
-      pkt->gust        = speed & 0x7F;
+  if (wData->bWind){
+    //pkt->heading = uint8_t(round(wData->wHeading * 256.0 / 360.0)); //Wind (+3byte: 1byte Heading in 360/256 degree, 1byte speed and 1byte gusts in 0.2km/h (each: bit 7 scale 5x or 1x, bit 0-6))
+    buffer[index] = uint8_t(round(wData->wHeading * 256.0 / 360.0)); //Wind (+3byte: 1byte Heading in 360/256 degree, 1byte speed and 1byte gusts in 0.2km/h (each: bit 7 scale 5x or 1x, bit 0-6))
+    index++;
+
+    int speed = (int)roundf(wData->wSpeed * 5.0f);
+    if(speed > 127) {
+        //pkt->speed_scale  = 1;
+        //pkt->speed        = (speed / 5);
+        buffer[index] = (speed / 5) + 0x80;
+        index++;
+    } else {
+        //pkt->speed_scale  = 0;
+        //pkt->speed        = speed & 0x7F;
+        buffer[index] = speed & 0x7F;
+        index++;
+    }
+    speed = (int)roundf(wData->wGust * 5.0f);
+    if(speed > 127) {
+        //pkt->gust_scale  = 1;
+        //pkt->gust        = (speed / 5);
+        buffer[index] = (speed / 5) + 0x80;
+        index++;
+    } else {
+        //pkt->gust_scale  = 0;
+        //pkt->gust        = speed & 0x7F;
+        buffer[index] = speed & 0x7F;
+        index++;
+    }
   }
-
-  pkt->humidity = uint8_t(round(wData->Humidity * 10 / 4)); //Humidity (+1byte: in 0.4% (%rh*10/4))
-
-  pkt->baro = int16_t(round((wData->Baro - 430.0) * 10));  //Barometric pressure normailized (+2byte: in 10Pa, offset by 430hPa, unsigned little endian (hPa-430)*10)
-
-  pkt->charge = constrain(roundf(float(wData->Charge) / 100.0 * 15.0),0,15); //State of Charge  (+1byte lower 4 bits: 0x00 = 0%, 0x01 = 6.666%, .. 0x0F = 100%)
-  return msgSize;
+  if (wData->bHumidity){
+    //  pkt->humidity = uint8_t(round(wData->Humidity * 10 / 4)); //Humidity (+1byte: in 0.4% (%rh*10/4))
+    buffer[index] = uint8_t(round(wData->Humidity * 10 / 4)); //Humidity (+1byte: in 0.4% (%rh*10/4))
+    index++;
+  }
+  if (wData->bHumidity){
+    int16_t *pInt;
+    pInt = (int16_t *)&buffer[index];
+    //pkt->baro = int16_t(round((wData->Baro - 430.0) * 10));  //Barometric pressure normailized (+2byte: in 10Pa, offset by 430hPa, unsigned little endian (hPa-430)*10)
+    *pInt = int16_t(round((wData->Baro - 430.0) * 10));  //Barometric pressure normailized (+2byte: in 10Pa, offset by 430hPa, unsigned little endian (hPa-430)*10)
+    index+=2;
+  }
+  //pkt->charge = constrain(roundf(float(wData->Charge) / 100.0 * 15.0),0,15); //State of Charge  (+1byte lower 4 bits: 0x00 = 0%, 0x01 = 6.666%, .. 0x0F = 100%)
+  buffer[index] = constrain(roundf(float(wData->Charge) / 100.0 * 15.0),0,15); //State of Charge  (+1byte lower 4 bits: 0x00 = 0%, 0x01 = 6.666%, .. 0x0F = 100%)
+  index++;
+  //return msgSize;
+  return index;
 }
 
 void FanetLora::writeMsgType4(weatherData *wData){

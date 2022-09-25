@@ -358,4 +358,9 @@ V5.0.0
 new Flarm-integration for sending compatible Flarm-packages
 added upload fanet-weatherstation to weather-underground and windy (up to 5)
 added support for Technoline TX20-Aneometer
+ATTENTION new parameter for weatherstation.
+If Ground-station should be a weatherstation, parameter has to be switched on.
+Also it is possible, to set optional BME280 and rain-sensor for weather-station, so a weather-station can be only with wind-sensor
+When BME280 can't be read or has faulty data, only wind will be sent to FANET or WU/WI.
+
 

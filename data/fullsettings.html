@@ -8,10 +8,16 @@
 <script language="javascript" type="text/javascript">
  
  var url = "ws://" + window.location.hostname + ":1337/";
- var bHasBME = 0;
  var bHasVario = 0;
  var calibBtnState = 0;
+ var wsMode = 0;
  
+ const wsModeEn = 1;
+ const wsModeBme = 2;
+ const wsModeRain = 4;
+
+
+
 // This is called when the page finishes loading
 function init() {
  
@@ -93,6 +99,8 @@ function setVis(){
   document.getElementById("visSigmaA").style.display='none';  
   document.getElementById("VisFuelSensor").style.display='none'; //set FuelSensor invisible
   document.getElementById("VisMqtt").style.display='none';  //disable Mqtt settings
+  document.getElementById("VisOwnWs").style.display='none';  //disable Own weather-station  
+  document.getElementById("VisWDBme").style.display='none';  //disable temp-correction for BME
   if (document.getElementById("useMPU").checked){
     document.getElementById("KfP").innerHTML='Kalman filter pressure-value (default 0.3)';
     document.getElementById("KfA").innerHTML='Kalman filter accelerator-value (default 0.3)';
@@ -115,33 +123,36 @@ function setVis(){
     document.getElementById("visAccTemp2").style.display='';
   }    
   if (document.getElementById("mode").value == 1){ //mode ground-station
-    document.getElementById("VisMqtt").style.display='';  //enable Mqtt settings
-    if (document.getElementById("setView").value > 0){ //we are advanced or expert
-        if (document.getElementById("setView").value > 100){ //we are expert user
-          document.getElementById("VisFrequ").style.display=''; //set Frequency-settings visible
-        }
-      }
-    if (bHasBME == 0){      
-      document.getElementById("tWu").innerHTML='Broadcast weather-underground data to FANET';
-      document.getElementById("tWu2").innerHTML='enable sending wu-data to FANET';
-      document.getElementById("VisWU").style.display=''; //set weather-underground upload invisible
-      document.getElementById("VisWI").style.display='none'; //set windy upload invisible
-      //document.getElementById("VisWU").style.display='none'; //set weather-underground upload invisible
-    }else{
+    document.getElementById("VisOwnWs").style.display='';  //enable Own weather-station  
+    if (wsMode & wsModeEn){
       document.getElementById("VisWD").style.display=''; //set weather-data invisible
       document.getElementById("tWu").innerHTML='Weather Underground Upload';
       document.getElementById("tWu2").innerHTML='enable sending weather-data to WU';
       document.getElementById("VisWU").style.display=''; //set weather-underground upload invisible
       document.getElementById("tWi").innerHTML='windy Upload';
       document.getElementById("tWi2").innerHTML='enable sending weather-data to windy';
-      document.getElementById("VisWI").style.display=''; //set weather-underground upload invisible
+      document.getElementById("VisWI").style.display=''; //set windy upload invisible
       if (document.getElementById("setView").value > 0){ //we are advanced or expert
         document.getElementById("VisAWUS").style.display=''; //set advanced weather upload settings visible  
         if (document.getElementById("setView").value > 100){ //we are expert user
           document.getElementById("VisAWFFNT").style.display=''; //set advanced weather settings visible    
         }
       }
+      if (wsMode & wsModeBme){
+        document.getElementById("VisWDBme").style.display='';  //enable temp-correction for BME
+      }
+    }else{
+      document.getElementById("tWu").innerHTML='Broadcast weather-underground data to FANET';
+      document.getElementById("tWu2").innerHTML='enable sending wu-data to FANET';
+      document.getElementById("VisWU").style.display=''; //set weather-underground visible
+      document.getElementById("VisWI").style.display='none'; //set windy upload invisible
     }
+    document.getElementById("VisMqtt").style.display='';  //enable Mqtt settings
+    if (document.getElementById("setView").value > 0){ //we are advanced or expert
+        if (document.getElementById("setView").value > 100){ //we are expert user
+          document.getElementById("VisFrequ").style.display=''; //set Frequency-settings visible
+        }
+      }
     document.getElementById("VisAirCraftType").style.display='none';    
     document.getElementById("tName").innerHTML='Ground Station name';
     document.getElementById("VisGS").style.display=''; //set GS visible
@@ -180,6 +191,26 @@ function setVis(){
     document.getElementById("VisWifiPwd").style.display='';
     document.getElementById("VisExtPowerSw").style.display = '';
   }
+  document.getElementById("wdModeEnable").checked = wsMode & wsModeEn;
+  document.getElementById("wdModeHasBME").checked = wsMode & wsModeBme;
+  document.getElementById("wdModeRainSensor").checked = wsMode & wsModeRain;
+}
+
+function setWsMode(){
+  console.log("in function setWsMode");
+  wsMode = 0;
+  if (document.getElementById("wdModeEnable").checked) wsMode += 1;
+  if (document.getElementById("wdModeHasBME").checked) wsMode += 2;
+  if (document.getElementById("wdModeRainSensor").checked) wsMode += 4;
+  setVis();
+}
+
+function getWsMode(){
+  var Ret = 0;
+  if (document.getElementById("wdModeEnable").checked) Ret += 1;
+  if (document.getElementById("wdModeHasBME").checked) Ret += 2;
+  if (document.getElementById("wdModeRainSensor").checked) Ret += 4;
+  return Ret;
 }
 
 function setCalibState(state){
@@ -588,10 +619,10 @@ function sendValues(){
 
 
   var obj = {  
+  WsMode : getWsMode(),
   sFWD : Number(document.getElementById("sFWD").checked),
   wdTempOffset : Number(document.getElementById("wdTempOffset").value),  
   wdWDirOffset : Number(document.getElementById("wdWDirOffset").value),  
-  wdRain : Number(document.getElementById("wdRain").checked),
 
   WUUlEnable : Number(document.getElementById("WUUlEnable").checked),
   WUUlID : document.getElementById("WUUlID").value,  
@@ -675,11 +706,12 @@ function onMessage(evt) {
           }
           continue;
         }
+        if (key == "WsMode"){
+          wsMode = myObj[key];
+          continue;
+        }
         if (key == "bHasVario"){
           bHasVario = myObj[key];
-          continue;
-        }else if (key == "bHasBME"){
-          bHasBME = myObj[key];
           continue;
         }else if (key == "bHasMPU"){
           if (myObj[key] == 0){
@@ -824,6 +856,10 @@ window.addEventListener("load", init, false);
               <option value="1">Ground-Station</option>
               <!--<option value="100">Developer-mode</option>-->
             </select></td>
+          </tr>
+          <tr id="VisOwnWs">
+            <th>ground-station is weather-station</th>
+            <td><input onchange="setWsMode()" type="checkbox" id="wdModeEnable"></td>
           </tr>
           <tr>
             <th id="tName">PilotName</th>
@@ -1098,12 +1134,41 @@ window.addEventListener("load", init, false);
             <th>additional battery capacity for restart [&#037;]</th>
             <td><input type="number" id="restartBattPerc" min="10" max="100" step="1"></td>
           </tr>
+        </tbody>      
+      </table>
+    </fieldset>
+    <p></p>
+    <p></p>
+    <fieldset id="VisWD">
+      <legend><b>Weather-Station settings</b></legend>
+      <table style="width:100&#37;">
+        <tbody>
           <tr>
             <th>Aneometer</th>
             <td><select id="gsAneo">
               <option value="0">DAVIS 6410</option>
               <option value="1">Technoline TX20</option>
             </select></td>
+          </tr>
+          <tr>
+            <th>offset wind direction [°]</th>
+            <td><input type="number" id="wdWDirOffset" step="1"></td>
+          </tr>
+          <tr>
+            <th>BME280</th>
+            <td><input onchange="setWsMode()" type="checkbox" id="wdModeHasBME"></td>
+          </tr>
+          <tr id="VisWDBme">
+            <th>offset Temperature [K]</th>
+            <td><input type="number" id="wdTempOffset" step=".5"></td>
+          </tr>
+          <tr>
+            <th>rain-sensor avaiable</th>
+            <td><input onchange="setWsMode()" type="checkbox" id="wdModeRainSensor"></td>
+          </tr>
+          <tr>
+            <th>send weather-data over FANET</th>
+            <td><input type="checkbox" id="sFWD"></td>
           </tr>
         </tbody>      
       </table>
@@ -1211,31 +1276,6 @@ window.addEventListener("load", init, false);
           <tr>
             <th>Password</th>
             <td><input type="text" id="MqttPw"></td>
-          </tr>
-        </tbody>      
-      </table>
-    </fieldset>
-    <p></p>
-    <p></p>
-    <fieldset id="VisWD">
-      <legend><b>Weather-Station settings</b></legend>
-      <table style="width:100&#37;">
-        <tbody>
-          <tr>
-            <th>send weather-data over FANET</th>
-            <td><input type="checkbox" id="sFWD"></td>
-          </tr>
-          <tr>
-            <th>offset Temperature [K]</th>
-            <td><input type="number" id="wdTempOffset" step=".5"></td>
-          </tr>
-          <tr>
-            <th>offset wind direction [°]</th>
-            <td><input type="number" id="wdWDirOffset" step="1"></td>
-          </tr>
-          <tr>
-            <th>rain-sensor avaiable</th>
-            <td><input type="checkbox" id="wdRain"></td>
           </tr>
         </tbody>      
       </table>

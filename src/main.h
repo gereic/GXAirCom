@@ -273,6 +273,17 @@ struct VarioSettings{
 			uint8_t mode;
 	};
 
+	struct WeatherStationModeBits
+	{
+			unsigned enable:1, hasBME:1, rainSensor:1, b3:1, b4:1, b5:1, b6:1, b7:1;
+	};
+
+  	union uWeatherStationMode
+	{
+			WeatherStationModeBits bits;
+			uint8_t mode;
+	};
+
 
 struct MqttSettings{
   uMqttMode mode;
@@ -284,7 +295,6 @@ struct MqttSettings{
 struct VarioStatus{
   bool bHasVario;
   bool bHasMPU;
-  bool bHasBME;
   int16_t accel[3];
   int16_t gyro[3];
   float acc_Z;
@@ -301,6 +311,8 @@ struct GSSettings{
 };
 
 struct WeatherSettings{
+  
+  uWeatherStationMode mode;
   float tempOffset;
   int16_t windDirOffset;
   uint8_t sendFanet;  
@@ -308,7 +320,6 @@ struct WeatherSettings{
   uint32_t FanetUploadInterval;
   float avgFactorWU;
   uint32_t WUUploadIntervall;
-  uint8_t RainSensor;
 };
 
 struct GsmSettings{
@@ -383,12 +394,16 @@ struct SettingsData{
 };
 
 struct weatherStatus{
+  bool bTemp; //temp exists
   float temp = NAN; //temp [°C]
+  bool bHumidity; //humidity exists
   float Humidity = NAN; // [%rH]
+  bool bPressure; // pressure exists
   float Pressure = NAN; // [hPa]
   float WindDir = NAN; //[Deg]
   float WindSpeed = NAN; //[km/h]
   float WindGust = NAN; //[km/h]
+  bool bRain; //rain-sensor exists
   float rain1h = NAN; // rain this hour [l/h]
   float rain1d = NAN; // rain this day [l/h]
 };

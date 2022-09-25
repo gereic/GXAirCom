@@ -64,11 +64,15 @@ bool Weather::initBME280(void){
                   Adafruit_BME280::SAMPLING_X1, // humidity
                   Adafruit_BME280::FILTER_OFF,  //filter
                   Adafruit_BME280::STANDBY_MS_0_5);  //duration
+  bme.readADCValues(); //we read adc-values 2 times and dismiss it
+  delay(50);
+  bme.readADCValues();
   return true;
 }
 
 
-bool Weather::begin(TwoWire *pi2c, float height,int8_t oneWirePin, int8_t windDirPin, int8_t windSpeedPin,int8_t rainPin,uint8_t aneoType){
+bool Weather::begin(TwoWire *pi2c, float height,int8_t oneWirePin, int8_t windDirPin, int8_t windSpeedPin,int8_t rainPin,uint8_t aneoType,bool bHasBME){
+  bool bRet = true;
   pI2c = pi2c;
   _height = height;
   hasTempSensor = false;
@@ -77,6 +81,7 @@ bool Weather::begin(TwoWire *pi2c, float height,int8_t oneWirePin, int8_t windDi
   actHour = 0;
   actDay = 0;
   aneometerType = aneoType;
+  _bHasBME = bHasBME;
   //log_i("onewire pin=%d",oneWirePin);
   if (oneWirePin >= 0){
     oneWire.begin(oneWirePin);
@@ -97,13 +102,14 @@ bool Weather::begin(TwoWire *pi2c, float height,int8_t oneWirePin, int8_t windDi
   _weather.bTemp = false;
   _weather.bHumidity = false;
   _weather.bPressure = false;
-  if (!initBME280()){
-      return false;
+  if (_bHasBME){
+    if (initBME280()){
+    }else{
+      log_i("no BME280 found");
+      _bHasBME = false;
+      bRet = false;
+    }
   }
-  bme.readADCValues(); //we read adc-values 2 times and dismiss it
-  delay(500);
-  bme.readADCValues();
-  delay(500); 
   //avgFactor = 128; //factor for avg-factor 
   bFirst = false;
 
@@ -134,18 +140,10 @@ bool Weather::begin(TwoWire *pi2c, float height,int8_t oneWirePin, int8_t windDi
     pinMode(rainPin, INPUT);
     rainDebounceTime = millis();
     attachInterrupt(digitalPinToInterrupt(rainPin), rainhandler, FALLING);
+  }else{
+    _weather.bRain = false;
   }
-  return true;
-}
-
-void Weather::copyValues(void){
-  _weather.bTemp = true;
-  _weather.bHumidity = true;
-  _weather.bPressure = true;
-  _weather.temp = dTemp;
-  _weather.Humidity = dHumidity;
-  _weather.Pressure = dPressure;
-  bNewWeather = true;
+  return bRet;
 }
 
 float Weather::calcPressure(float p, float t, float h){
@@ -171,75 +169,6 @@ bool Weather::getValues(weatherData *weather){
 
 void Weather::setTempOffset(float tempOffset){
   _tempOffset = tempOffset; //set temperature-offset
-}
-
-void Weather::runBME280(uint32_t tAct){
-  static uint32_t tOld = millis();
-	float temp = 0;
-	float pressure = 0;
-	float humidity = 0;
-	float rawPressure = 0;
-  bool bReadErr = true;
-  if ((tAct - tOld) >= WEATHER_REFRESH){
-    int i = 0;
-    uint8_t bmeRet = 0;
-    for (i = 0;i < 5;i++){
-      bmeRet = bme.readADCValues();
-      if (bmeRet == 0){
-        temp = (float)bme.getTemp() / 100.; // in °C
-        rawPressure = (float)bme.getPressure() / 100.;
-        humidity = (float)(bme.getHumidity()/ 100.); // in %
-        pressure = calcPressure(rawPressure,temp,_height); // in mbar
-        bReadErr = false; //we got the values !!        
-        break; //ready with reading
-      }
-      delay(500);
-      //log_e("error reading bme280 %d",i);
-    }
-    if (bReadErr){
-      log_e("error reading bme280 ret=%d",bmeRet);
-    }
-    if (hasTempSensor){
-      float actTemp = -127.0;
-      for (int i = 0;i < 5;i++){
-        if (sensors.isConnected(tempSensorAdr)){
-          actTemp = sensors.getTempC(tempSensorAdr); //get temperature of sensor
-          sensors.requestTemperatures(); //start next temperature-conversion
-          break;
-        }
-      }
-      if (actTemp > -100.0){
-        //temp-conversion finished --> take measurement
-        dTemp = actTemp + _tempOffset;
-      }
-      
-    }else{
-      if (!bReadErr){
-        dTemp = temp + _tempOffset;
-      }      
-    }
-    if (!bReadErr){
-      dHumidity = humidity;
-      dPressure = pressure;
-    }
-    if (aneometerType == 1){
-      uint8_t Dir;
-      uint16_t Speed;
-      uint8_t ret = tx20getNewData(&Dir,&Speed);
-      if (ret == 1){
-        _weather.WindDir = float(Dir) * 22.5;
-        _weather.WindSpeed = float(Speed) / 10.0 * 3.6; //[1/10m/s] --> [km/h]
-        if (_weather.WindSpeed > _weather.WindGust) _weather.WindGust = _weather.WindSpeed; 
-      }
-    }else{
-      checkAneometer();
-    }
-    
-    checkRainSensor();
-    copyValues();
-    tOld = tAct;
-  }
-
 }
 
 void Weather::setWindDirOffset(int16_t winddirOffset){
@@ -291,5 +220,72 @@ void Weather::checkRainSensor(void){
 
 void Weather::run(void){
   uint32_t tAct = millis();
-  runBME280(tAct);
+  static uint32_t tOld = millis();
+	float temp = 0;
+	float rawPressure = 0;
+  bool bReadOk = false;
+  if ((tAct - tOld) >= WEATHER_REFRESH){
+    int i = 0;
+    uint8_t bmeRet = 0;
+    _weather.bTemp = false;
+    _weather.bHumidity = false;
+    _weather.bPressure = false;
+    if (_bHasBME){ //BME280 sensor
+      for (i = 0;i < 5;i++){
+        bmeRet = bme.readADCValues();
+        if (bmeRet == 0){
+          _weather.temp = ((float)bme.getTemp() / 100.) + _tempOffset; // in °C
+          _weather.bTemp = true;
+          rawPressure = (float)bme.getPressure() / 100.;
+          _weather.bHumidity = true;
+          _weather.Humidity = (float)(bme.getHumidity()/ 100.); // in %
+          _weather.bPressure = true;
+          _weather.Pressure = calcPressure(rawPressure,temp,_height); // in mbar
+          bReadOk = true; //we got the values !!            
+          break; //ready with reading
+        }
+        delay(500);
+        //log_e("error reading bme280 %d",i);
+      }
+      if (!bReadOk){
+        log_e("error reading bme280 ret=%d",bmeRet);
+        initBME280(); //try to reinit BME
+      }
+    }
+    if (hasTempSensor){ //one-wire Temp-sensor
+      float actTemp = -127.0;
+      bReadOk = false;
+      for (int i = 0;i < 5;i++){
+        if (sensors.isConnected(tempSensorAdr)){
+          actTemp = sensors.getTempC(tempSensorAdr); //get temperature of sensor          
+          sensors.requestTemperatures(); //start next temperature-conversion
+          if (actTemp > -100.0){
+            _weather.temp = actTemp + _tempOffset;
+            _weather.bTemp = true;
+            bReadOk = true;
+          }
+          break;
+        }
+      }
+      if (!bReadOk){
+        log_e("error reading oneWire");
+      }
+    }
+    if (aneometerType == 1){
+      uint8_t Dir;
+      uint16_t Speed;
+      uint8_t ret = tx20getNewData(&Dir,&Speed);
+      if (ret == 1){
+        _weather.WindDir = float(Dir) * 22.5;
+        _weather.WindSpeed = float(Speed) / 10.0 * 3.6; //[1/10m/s] --> [km/h]
+        if (_weather.WindSpeed > _weather.WindGust) _weather.WindGust = _weather.WindSpeed; 
+      }
+    }else{
+      checkAneometer();
+    }
+    
+    checkRainSensor();
+    bNewWeather = true;
+    tOld = tAct;
+  }
 }

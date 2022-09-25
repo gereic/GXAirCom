@@ -258,8 +258,7 @@ void Ogn::sendWeatherData(weatherData *wData){
         sprintf (buff,"b%05d",int(wData->Baro * 10));
         send += buff;
     }
-    sprintf (buff," %0.1fdB\r\n"
-    ,wData->snr);
+    sprintf (buff," %0.1fdB\r\n",wData->snr);
     send += buff;
 
 

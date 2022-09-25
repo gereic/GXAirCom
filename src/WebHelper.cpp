@@ -67,7 +67,7 @@ void onWebSocketEvent(uint8_t client_num,
           doc["compiledate"] = String(compile_date);
           doc["bHasVario"] = (uint8_t)status.vario.bHasVario;       
           doc["bHasMPU"] = (uint8_t)status.vario.bHasMPU;   
-          doc["VisWeather"] = (uint8_t)(status.vario.bHasBME | status.bWUBroadCast);
+          doc["VisWeather"] = (uint8_t)(setting.wd.mode.bits.enable | status.bWUBroadCast);
           doc["board"] = setting.boardType;
           doc["Frequ"] = setting.CPUFrequency;
           doc["disp"] = setting.displayType;
@@ -121,6 +121,7 @@ void onWebSocketEvent(uint8_t client_num,
           #ifdef GSMODULE
           if (setting.Mode == eMode::GROUND_STATION){
             doc.clear();
+            doc["WsMode"] = setting.wd.mode.mode;
             doc["wsTemp"] = String(status.weather.temp,1);
             doc["wsHum"] = String(status.weather.Humidity,1);
             doc["wsPress"] = String(status.weather.Pressure,2);
@@ -246,10 +247,10 @@ void onWebSocketEvent(uint8_t client_num,
 
 
           doc.clear();
+          doc["WsMode"] = setting.wd.mode.mode;
           doc["sFWD"] = setting.wd.sendFanet;
           doc["wdTempOffset"] = setting.wd.tempOffset;
           doc["wdWDirOffset"] = setting.wd.windDirOffset;
-          doc["wdRain"] = setting.wd.RainSensor;
           doc["bHasVario"] = (uint8_t)status.vario.bHasVario;
           doc["bHasMPU"] = (uint8_t)status.vario.bHasMPU;
           doc["vSinkTh"] = serialized(String(setting.vario.sinkingThreshold,2));
@@ -263,7 +264,6 @@ void onWebSocketEvent(uint8_t client_num,
           webSocket.sendTXT(client_num, msg_buf);
 
           doc.clear();
-          doc["bHasBME"] = (uint8_t)status.vario.bHasBME;
           doc["WUUlEnable"] = setting.WUUpload.enable;
           doc["WUUlID"] = setting.WUUpload.ID;
           doc["WUUlKEY"] = setting.WUUpload.KEY;
@@ -412,7 +412,7 @@ void onWebSocketEvent(uint8_t client_num,
         if (newSetting.wd.avgFactorWU <= 0) newSetting.wd.avgFactorWU = 128; //prevent division 0
         if (root.containsKey("WIWU")) newSetting.wd.WUUploadIntervall = doc["WIWU"].as<uint32_t>() * 1000;        
         if (newSetting.wd.WUUploadIntervall <= 10000) newSetting.wd.WUUploadIntervall = 10000;
-        if (root.containsKey("wdRain")) newSetting.wd.RainSensor = doc["wdRain"].as<uint8_t>();        
+        if (root.containsKey("WsMode")) newSetting.wd.mode.mode = doc["WsMode"].as<uint8_t>();        
         //vario
         if (root.containsKey("vSinkTh")) newSetting.vario.sinkingThreshold = doc["vSinkTh"].as<float>();
         if (root.containsKey("vClimbTh")) newSetting.vario.climbingThreshold = doc["vClimbTh"].as<float>();
@@ -1039,8 +1039,8 @@ void sendPage(uint8_t pageNr){
 
 
       #ifdef GSMODULE
-      if ((setting.Mode == eMode::GROUND_STATION) && (status.vario.bHasBME | status.bWUBroadCast)){
-        //weahter-data
+      if ((setting.Mode == eMode::GROUND_STATION) && (setting.wd.mode.bits.enable | status.bWUBroadCast)){
+        //weather-data
         doc.clear();
         bSend = false;
         if (mStatus.weather.temp != status.weather.temp){

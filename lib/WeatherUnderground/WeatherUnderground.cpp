@@ -66,8 +66,13 @@ bool WeatherUnderground::getData(String ID,String KEY,wData *data){ //get Data f
   }
   if (doc["observations"][0]["lat"]) data->lat = doc["observations"][0]["lat"].as<float>();
   if (doc["observations"][0]["lon"]) data->lon = doc["observations"][0]["lon"].as<float>();
-  if (doc["observations"][0]["metric"]["elev"]) data->height = doc["observations"][0]["metric"]["elev"].as<float>();
-  if (doc["observations"][0]["metric"]["temp"]) data->temp = doc["observations"][0]["metric"]["temp"].as<float>();
+  if (doc["observations"][0]["metric"]["elev"]) data->height = doc["observations"][0]["metric"]["elev"].as<float>();  
+  if (doc["observations"][0]["metric"]["temp"]){
+    data->bTemp = true;
+    data->temp = doc["observations"][0]["metric"]["temp"].as<float>();
+  }else{
+    data->bTemp = false;
+  }
   if (doc["observations"][0]["humidity"]) data->humidity = doc["observations"][0]["humidity"].as<float>();
   String s = doc["observations"][0]["winddir"].as<String>();
   if (s != "null"){
@@ -84,7 +89,12 @@ bool WeatherUnderground::getData(String ID,String KEY,wData *data){ //get Data f
   }
   
   
-  if (doc["observations"][0]["metric"]["pressure"]) data->pressure = doc["observations"][0]["metric"]["pressure"].as<float>();
+  if (doc["observations"][0]["metric"]["pressure"]){
+    data->bPress = true;
+    data->pressure = doc["observations"][0]["metric"]["pressure"].as<float>();
+  }else{
+    data->bPress = false;
+  }
   
   s = doc["observations"][0]["metric"]["precipRate"].as<String>();
   if (s != "null"){

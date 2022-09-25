@@ -143,13 +143,35 @@ function changeRow(key,myObj){
   document.getElementById("table1").rows[actIndex].cells[1].innerHTML = myObj["LAT"];
   document.getElementById("table1").rows[actIndex].cells[2].innerHTML = myObj["LON"];
   document.getElementById("table1").rows[actIndex].cells[3].innerHTML = myObj["DIST"] + "km";
-  document.getElementById("table1").rows[actIndex].cells[4].innerHTML = myObj["T"] + "&deg;C";
-  document.getElementById("table1").rows[actIndex].cells[5].innerHTML = getWDir(myObj["WD"]) + " " + myObj["WD"] + "&deg;";
-  document.getElementById("table1").rows[actIndex].cells[6].innerHTML = myObj["WS"] + "km/h";
-  document.getElementById("table1").rows[actIndex].cells[7].innerHTML = myObj["WG"] + "km/h";
+  if (myObj["T"] != ""){
+    document.getElementById("table1").rows[actIndex].cells[4].innerHTML = myObj["T"] + "&deg;C";
+  }else{
+    document.getElementById("table1").rows[actIndex].cells[4].innerHTML = "";
+  }  
+  if ((myObj["WD"] != "") && (myObj["WS"] != "") && (myObj["WG"] != "")){
+    document.getElementById("table1").rows[actIndex].cells[5].innerHTML = getWDir(myObj["WD"]) + " " + myObj["WD"] + "&deg;";
+    document.getElementById("table1").rows[actIndex].cells[6].innerHTML = myObj["WS"] + "km/h";
+    document.getElementById("table1").rows[actIndex].cells[7].innerHTML = myObj["WG"] + "km/h";
+  }else{
+    document.getElementById("table1").rows[actIndex].cells[5].innerHTML = "";
+    document.getElementById("table1").rows[actIndex].cells[6].innerHTML = "";
+    document.getElementById("table1").rows[actIndex].cells[7].innerHTML = "";
+  }
+  if (myObj["H"] != ""){
   document.getElementById("table1").rows[actIndex].cells[8].innerHTML = myObj["H"] + "&#37;";
-  document.getElementById("table1").rows[actIndex].cells[9].innerHTML = myObj["P"] + "hPa";
-  document.getElementById("table1").rows[actIndex].cells[10].innerHTML = myObj["B"] + "&#37;";
+  }else{
+    document.getElementById("table1").rows[actIndex].cells[8].innerHTML = "";
+  }
+  if (myObj["P"] != ""){
+    document.getElementById("table1").rows[actIndex].cells[9].innerHTML = myObj["P"] + "hPa";
+  }else{
+    document.getElementById("table1").rows[actIndex].cells[9].innerHTML = "";
+  }
+  if (myObj["B"] != ""){
+    document.getElementById("table1").rows[actIndex].cells[10].innerHTML = myObj["B"] + "&#37;";
+  }else{
+    document.getElementById("table1").rows[actIndex].cells[10].innerHTML = "";
+  }
   document.getElementById("table1").rows[actIndex].cells[11].innerHTML = myObj["RSSI"] + "dB";
   document.getElementById("table1").rows[actIndex].cells[12].innerHTML = myObj["SEEN"] + "s";
   

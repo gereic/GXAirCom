@@ -1671,9 +1671,9 @@ void printSettings(){
 
   //weather-data
   //general
+  log_i("WD mode=%d",setting.wd.mode.mode);
   log_i("WD tempoffset=%.1f [°]",setting.wd.tempOffset);
   log_i("WD windDirOffset=%d [°]",setting.wd.windDirOffset);
-  log_i("WD rainSensor=%d",setting.wd.RainSensor);
   // FANET
   log_i("WD FANET-Weatherdata=%d",setting.wd.sendFanet);
   log_i("WD FANET-Interval=%d [msec]",setting.wd.FanetUploadInterval);
@@ -1821,7 +1821,6 @@ void setup() {
   Serial.begin(115200);
 
   status.bPowerOff = false;
-  status.vario.bHasBME = false;
   status.bWUBroadCast = false;
   status.bInternetConnected = false;
   status.bTimeOk = false;
@@ -1872,7 +1871,7 @@ void setup() {
 
   //listSpiffsFiles();
   load_configFile(&setting); //load configuration
-  bool bRet = setCpuFrequencyMhz(uint32_t(setting.CPUFrequency));
+  setCpuFrequencyMhz(uint32_t(setting.CPUFrequency));
   log_i("set CPU-Speed to %dMHz",getCpuFrequencyMhz());
   //setting.boardType = BOARD_UNKNOWN;
   if (setting.boardType == eBoard::UNKNOWN){
@@ -2147,8 +2146,8 @@ void setup() {
     PinLora_MOSI = 27;
     PinLora_SCK = 5;
     PinGsmRst = 25;
-    PinGsmTx = 12;
-    PinGsmRx = 21;
+    PinGsmTx = 21;
+    PinGsmRx = 35;
 
     if (setting.displayType == OLED0_96){
       PinOledRst = 16;
@@ -2426,7 +2425,10 @@ bool connectGPRS(){
 
 bool connectModem(){
   log_i("Waiting for network...");
-  if (!modem.waitForNetwork(600000L)) return false;
+  if (!modem.waitForNetwork(600000L)){
+    log_e("no network");
+    return false;
+  } 
   status.gsm.SignalQuality = modem.getSignalQuality();
   //log_i("signal quality %d",status.gsm.SignalQuality);
   status.gsm.sOperator = modem.getOperator();
@@ -2457,11 +2459,17 @@ bool factoryResetModem(){
     delay(6000); //wait until modem is ok now
   }  
   log_i("test modem-connection");
-  if (!modem.testAT()) return false;
+  if (!modem.testAT()){
+    log_e("modem-connection not OK");
+    return false;
+  } 
   log_i("set factory-settings");
   modem.sendAT(GF("&F"));  // Factory settings
   modem.waitResponse();
-  if (!modem.testAT()) return false;
+  if (!modem.testAT()){
+    log_e("modem-connection not OK");
+    return false;
+  } 
   modem.sendAT(GF("&W"));  // Factory settings
   modem.waitResponse();
   return true;
@@ -2480,9 +2488,15 @@ bool initModem(){
     delay(6000); //wait until modem is ok now
   }  
   log_i("test modem-connection");
-  if (!modem.testAT()) return false;
+  if (!modem.testAT()){
+    log_e("modem-connection not OK");
+    return false;
+  }
   log_i("restarting modem...");  
-  if (!modem.restart()) return false;
+  if (!modem.restart()){
+    log_e("restarting modem failed");
+    return false; 
+  }
   #ifdef TINY_GSM_MODEM_SIM7000
   log_i("set NetworkMode to %d",setting.gsm.NetworkMode);
   modem.setNetworkMode(setting.gsm.NetworkMode); //set mode
@@ -2669,8 +2683,8 @@ void taskGsm(void *pvParameters){
 
 #ifdef GSMODULE
 void taskWeather(void *pvParameters){
-  static uint32_t tUploadData =  millis() + setting.wd.WUUploadIntervall; //first sending is in Sending-intervall to have steady-values
-  static uint32_t tSendData = millis() + setting.wd.FanetUploadInterval; //first sending is in FANET-Sending-intervall to have steady-values
+  static uint32_t tUploadData; //first sending is in Sending-intervall to have steady-values
+  static uint32_t tSendData; //first sending is in FANET-Sending-intervall to have steady-values
   bool bDataOk = false;
   log_i("starting weather-task ");  
   Weather::weatherData wData;
@@ -2685,23 +2699,25 @@ void taskWeather(void *pvParameters){
   weather.setTempOffset(setting.wd.tempOffset);
   weather.setWindDirOffset(setting.wd.windDirOffset);
   //if (weather.begin(&i2cZero,setting.gs.alt,PinOneWire,PinWindDir,PinWindSpeed,PinRainGauge)){
-  if (weather.begin(&Wire,setting.gs.alt,PinOneWire,PinWindDir,PinWindSpeed,PinRainGauge,setting.gs.Aneometer)){
-    status.vario.bHasBME = true; //we have a bme-sensor
+  if (!weather.begin(&Wire,setting.gs.alt,PinOneWire,PinWindDir,PinWindSpeed,PinRainGauge,setting.gs.Aneometer,setting.wd.mode.bits.hasBME)){
+  
   }
-  if ((setting.WUUpload.enable) && (!status.vario.bHasBME)){
+  if ((setting.WUUpload.enable) && (!setting.wd.mode.bits.enable)){
     status.bWUBroadCast = true;
     log_i("wu broadcast enabled");
   }
-  if ((!status.vario.bHasBME) && (!status.bWUBroadCast)){
+  if ((!setting.wd.mode.bits.enable) && (!status.bWUBroadCast)){
     log_i("stopping task");
     vTaskDelete(xHandleWeather);
     return;    
   }
   const TickType_t xDelay = 1000 / portTICK_PERIOD_MS;   //only every 1sek.
   TickType_t xLastWakeTime = xTaskGetTickCount (); //get actual tick-count
+  tUploadData = millis();
+  tSendData = millis();
   while (1){
     uint32_t tAct = millis();
-    if (status.vario.bHasBME){
+    if (setting.wd.mode.bits.enable){
       //station has BME --> we are a weather-station
       weather.run();
       if (weather.getValues(&wData)){
@@ -2739,20 +2755,24 @@ void taskWeather(void *pvParameters){
           }
           avg[i].WindSpeed = calcExpAvgf(avg[i].WindSpeed,wData.WindSpeed,fAvg); 
           if (wData.WindSpeed > avg[i].WindGust) avg[i].WindGust = wData.WindSpeed;
-          avg[i].Humidity = calcExpAvgf(avg[i].Humidity,wData.Humidity,fAvg);
-          avg[i].Pressure = calcExpAvgf(avg[i].Pressure,wData.Pressure,fAvg);
-          avg[i].temp = calcExpAvgf(avg[i].temp,wData.temp,fAvg);
+          if (wData.bHumidity) avg[i].Humidity = calcExpAvgf(avg[i].Humidity,wData.Humidity,fAvg);
+          if (wData.bPressure) avg[i].Pressure = calcExpAvgf(avg[i].Pressure,wData.Pressure,fAvg);
+          if (wData.bTemp) avg[i].temp = calcExpAvgf(avg[i].temp,wData.temp,fAvg);
         }
         //log_i("wDir=%f,wDir0=%f,wDir1=%f",wData.WindDir,avg[0].Winddir,avg[1].Winddir);
-        if (setting.wd.RainSensor == 1){
+        status.weather.bRain = setting.wd.mode.bits.rainSensor;
+        if (setting.wd.mode.bits.rainSensor){
           status.weather.rain1h = wData.rain1h;
           status.weather.rain1d = wData.rain1d;
         }else{
           status.weather.rain1h = 0;
           status.weather.rain1d = 0;
         }
+        status.weather.bTemp = wData.bTemp;
         status.weather.temp = avg[0].temp;
+        status.weather.bHumidity = wData.bHumidity;
         status.weather.Humidity = avg[0].Humidity;
+        status.weather.bPressure = wData.bPressure;
         status.weather.Pressure = avg[0].Pressure;
         status.weather.WindDir = avg[0].Winddir;
         status.weather.WindSpeed = avg[0].WindSpeed; //we use the Fanet-Weather-Speed
@@ -2773,17 +2793,13 @@ void taskWeather(void *pvParameters){
             wuData.winddir = avg[1].Winddir;
             wuData.windspeed = avg[1].WindSpeed;
             wuData.windgust = avg[1].WindGust;
-            wuData.bHum = true;
+            wuData.bHum = status.weather.bHumidity;
             wuData.humidity = avg[1].Humidity;
-            wuData.bTemp = true;
+            wuData.bTemp = status.weather.bTemp;
             wuData.temp = avg[1].temp;
-            wuData.bPress = true;
+            wuData.bPress = status.weather.bPressure;
             wuData.pressure = avg[1].Pressure;
-            if (setting.wd.RainSensor == 1){
-              wuData.bRain = true;
-            }else{
-              wuData.bRain = false;
-            }
+            wuData.bRain = setting.wd.mode.bits.rainSensor;
             wuData.rain1h = wData.rain1h ;
             wuData.raindaily = wData.rain1d;
             //log_i("wuData:wDir=%f;wSpeed=%f,gust=%f,temp=%f,h=%f,p=%f",wuData.winddir,wuData.windspeed,wuData.windgust,wuData.temp,wuData.humidity,wuData.pressure);
@@ -2802,17 +2818,15 @@ void taskWeather(void *pvParameters){
             wiData.winddir = avg[1].Winddir;
             wiData.windspeed = avg[1].WindSpeed;
             wiData.windgust = avg[1].WindGust;
-            wiData.bHum = true;
+            wiData.bHum = status.weather.bHumidity;
             wiData.humidity = avg[1].Humidity;
-            wiData.bTemp = true;
+            wiData.bTemp = status.weather.bTemp;
             wiData.temp = avg[1].temp;
-            wiData.bPress = true;
+            wiData.bPress = status.weather.bPressure;
             wiData.pressure = avg[1].Pressure;
-            if (setting.wd.RainSensor == 1){
-              wiData.bRain = true;
-              wiData.rain1h = wData.rain1h ;
-              wiData.raindaily = wData.rain1d;
-            }
+            wiData.bRain = setting.wd.mode.bits.rainSensor;
+            wiData.rain1h = wData.rain1h ;
+            wiData.raindaily = wData.rain1d;
             wi.sendData(setting.WindyUpload.ID,setting.WindyUpload.KEY,&wiData);
           }
 
@@ -2823,6 +2837,7 @@ void taskWeather(void *pvParameters){
       
       if (timeOver(tAct,tSendData,setting.wd.FanetUploadInterval)){
         //print weather-data to serial
+        //log_i("send Fanet-weatherData");
         if (timeStatus() == timeSet){
           StaticJsonDocument<500> doc;                      //Memory pool
           char buff[20];
@@ -2878,12 +2893,16 @@ void taskWeather(void *pvParameters){
           #endif
           bDataOk = wu.getData(setting.WUUpload.ID,setting.WUUpload.KEY,&wuData);
           if (bDataOk){
+            status.weather.bTemp = wuData.bTemp;
             status.weather.temp = wuData.temp;
+            status.weather.bHumidity = wuData.bHum;
             status.weather.Humidity = wuData.humidity;
-            status.weather.Pressure = wuData.pressure;
+            status.weather.bPressure = wuData.bPress;
+            status.weather.Pressure = wuData.pressure;            
             status.weather.WindDir = wuData.winddir;
             status.weather.WindSpeed = wuData.windspeed;
             status.weather.WindGust = wuData.windgust;
+            status.weather.bRain = wuData.bRain;
             status.weather.rain1h = wuData.rain1h;
             status.weather.rain1d = wuData.raindaily;
             fanetWeatherData.lat = wuData.lat;
@@ -4367,7 +4386,7 @@ void taskStandard(void *pvParameters){
     if (setting.OGNLiveTracking.mode > 0){
       if (status.vario.bHasVario){
         ogn.setStatusData(status.pressure ,status.varioTemp,NAN,(float)status.vBatt / 1000.,status.BattPerc);
-      }else if ((status.vario.bHasBME) || (status.bWUBroadCast)){
+      }else if ((setting.wd.mode.bits.enable) || (status.bWUBroadCast)){
         ogn.setStatusData(status.weather.Pressure ,status.weather.temp,status.weather.Humidity,(float)status.vBatt / 1000.,status.BattPerc);
       }else{
         ogn.setStatusData(NAN ,NAN, NAN, (float)status.vBatt / 1000.,status.BattPerc);
@@ -4487,25 +4506,21 @@ void taskStandard(void *pvParameters){
       sendFanetData = 0;
     }
     if (sendWeatherData){ //we have to send weatherdata
-      //log_i("sending weatherdata");
+      //log_i("sending weatherdata %d,%d,%d,%d,%d",fanetWeatherData.bTemp,fanetWeatherData.bHumidity,fanetWeatherData.bStateOfCharge,fanetWeatherData.bWind,fanetWeatherData.bBaro);
       fanet.writeMsgType4(&fanetWeatherData);
       if (setting.OGNLiveTracking.bits.sendWeather) {
         Ogn::weatherData wData;
         wData.devId = fanet.getMyDevId();
         wData.lat = status.GPS_Lat;
         wData.lon = status.GPS_Lon;
-        wData.bBaro = true;
+        wData.bBaro = status.weather.bPressure;
         wData.Baro = status.weather.Pressure;
-        wData.bHumidity = true;
+        wData.bHumidity = status.weather.bHumidity;
         wData.Humidity = status.weather.Humidity;
-        if (setting.wd.RainSensor == 1){
-          wData.bRain = true;
-        }else{
-          wData.bRain = false;
-        }
+        wData.bRain = setting.wd.mode.bits.rainSensor;
         wData.rain1h = status.weather.rain1h;
         wData.rain24h = status.weather.rain1d;
-        wData.bTemp = true;
+        wData.bTemp = status.weather.bTemp;
         wData.temp = status.weather.temp;
         wData.bWind = true;
         wData.wHeading = status.weather.WindDir;

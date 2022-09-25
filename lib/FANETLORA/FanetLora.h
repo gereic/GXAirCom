@@ -325,6 +325,9 @@ private:
   int8_t getGroundTrackingInfo(uint8_t *buffer,uint16_t length);  
   int8_t getWeatherinfo(uint8_t *buffer,uint16_t length);  
   float getSpeedFromByte(uint8_t speed);
+  int32_t getLatLonFromBuffer(uint8_t *buffer);
+  float getLatFromBuffer(uint8_t *buffer);
+  float getLonFromBuffer(uint8_t *buffer);
   void printAircraftType(aircraft_t type);
   String CreateFNFMSG(Frame *frm);
   int16_t getneighbourIndex(uint32_t devId,bool getEmptyEntry);

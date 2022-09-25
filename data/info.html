@@ -8,6 +8,11 @@
 <script language="javascript" type="text/javascript">
  
 var url = "ws://" + window.location.hostname + ":1337/";
+var wsMode = 0;
+ 
+ const wsModeEn = 1;
+ const wsModeBme = 2;
+ const wsModeRain = 4;
  
 // This is called when the page finishes loading
 function init() {
@@ -59,15 +64,27 @@ function resetMaxLoopTime(){
 //this function sets visible depending on actual option
 function setVis(){
   //console.log("visible=" + document.getElementById("mode").style.display)
+  document.getElementById("VisWdTemp").style.display='none';
+  document.getElementById("VisWdHum").style.display='none';
+  document.getElementById("VisWdPress").style.display='none';
+  document.getElementById("VisWdR1h").style.display='none';
+  document.getElementById("VisWdR1d").style.display='none';
+  document.getElementById("VisAirCraftType").style.display='none';
+  document.getElementById("VisgpsFix").style.display='none';
+  document.getElementById("VisgpsNumSat").style.display='none';
+  document.getElementById("VisgpsSpeed").style.display='none';
+  document.getElementById("VisgpsCourse").style.display='none';    
   if (document.getElementById("mode").value == 1){ //mode ground-station
-    //document.getElementById("VisWeather").style.display='';
-    document.getElementById("VisAirCraftType").style.display='none';
-    document.getElementById("VisgpsFix").style.display='none';
-    document.getElementById("VisgpsNumSat").style.display='none';
-    document.getElementById("VisgpsSpeed").style.display='none';
-    document.getElementById("VisgpsCourse").style.display='none';    
+    if (wsMode & wsModeBme){
+      document.getElementById("VisWdTemp").style.display='';
+      document.getElementById("VisWdHum").style.display='';
+      document.getElementById("VisWdPress").style.display='';
+    }
+    if (wsMode & wsModeRain){
+      document.getElementById("VisWdR1h").style.display='';
+      document.getElementById("VisWdR1d").style.display='';
+    }
   }else{
-    //document.getElementById("VisWeather").style.display='none';
     document.getElementById("VisAirCraftType").style.display='';
     document.getElementById("VisgpsFix").style.display='';
     document.getElementById("VisgpsNumSat").style.display='';
@@ -92,6 +109,9 @@ function onMessage(evt) {
           if (myObj[key] == 0){
             document.getElementById("VisVario").style.display='none';
           }
+          continue;
+        }else if (key == "WsMode"){
+          wsMode = myObj[key];
           continue;
         }else if (key == "bHasGSM"){
           if (myObj[key] == 0){
@@ -462,15 +482,15 @@ window.addEventListener("load", init, false);
       <legend><b>Weather-data</b></legend>
       <table style="width:100&#37;">
         <tbody>
-          <tr>
+          <tr id="VisWdTemp">
             <th>Temp [°C]</th>
             <td><input type="text" id="wsTemp" disabled></td>
           </tr>
-          <tr>
+          <tr id="VisWdHum">
             <th>Humidity [%rH]</th>
             <td><input type="text" id="wsHum" disabled></td>
           </tr>
-          <tr>
+          <tr id="VisWdPress">
             <th>Pressure [hPa]</th>
             <td><input type="text" id="wsPress" disabled></td>
           </tr>
@@ -486,11 +506,11 @@ window.addEventListener("load", init, false);
             <th>Wind gust [km/h]</th>
             <td><input type="text" id="wsWGust" disabled></td>
           </tr>
-          <tr>
+          <tr id="VisWdR1h">
             <th>rain 1 hour [l]</th>
             <td><input type="text" id="wsR1h" disabled></td>
           </tr>
-          <tr>
+          <tr id="VisWdR1d">
             <th>rain 1 day [l]</th>
             <td><input type="text" id="wsR1d" disabled></td>
           </tr>

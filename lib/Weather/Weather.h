@@ -18,7 +18,7 @@
 #include <DallasTemperature.h>
 #include <TimeLib.h>
 #include <ctime>
-#include "TX20.h"
+#include "Tx20.h"
 
 #define DEG2RAD M_PI / 180.0
 #define RAD2DEG 180.0 / M_PI
@@ -52,7 +52,7 @@ public:
     Weather(); //constructor
     void setTempOffset(float tempOffset);
     void setWindDirOffset(int16_t winddirOffset);
-    bool begin(TwoWire *pi2c, float height,int8_t oneWirePin, int8_t windDirPin, int8_t windSpeedPin,int8_t rainPin,uint8_t aneoType);
+    bool begin(TwoWire *pi2c, float height,int8_t oneWirePin, int8_t windDirPin, int8_t windSpeedPin,int8_t rainPin,uint8_t aneoType,bool bHasBME);
     void run(void);
     bool getValues(weatherData *weather);
     void resetWindGust(void);
@@ -61,9 +61,7 @@ protected:
 private:
     TwoWire *pI2c;
     bool initBME280(void);
-    void runBME280(uint32_t tAct);
     float calcPressure(float p, float t, float h);    
-    void copyValues(void);
     void checkAneometer(void);
     void checkRainSensor(void);
     float calcWindspeed(void);
@@ -72,9 +70,6 @@ private:
     //uint16_t avgFactor; //factor for avg-factor
     float _tempOffset = 0;
     int16_t _winddirOffset = 0;
-    float dTemp = 0;
-    float dHumidity = 0;
-    float dPressure = 0;
     float _height = 0;
     uint8_t _windDirPin;
     bool bFirst;
@@ -100,5 +95,6 @@ private:
     uint8_t actHour = 0;
     uint8_t actDay = 0;
     uint8_t aneometerType = 0;
+    bool _bHasBME = false;
 };
 #endif
