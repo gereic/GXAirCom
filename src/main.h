@@ -223,6 +223,8 @@ SCL 14
 
 #define FUELSENDINTERVALL 10000
 
+#define GETNTPINTERVALL 1800000 //refresh timer from NTP every 30min.
+
 struct weatherupload{
   bool enable;
   String ID;

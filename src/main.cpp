@@ -220,6 +220,7 @@ int8_t PinEink_Din    =  2;
 
 //LED
 int8_t PinUserLed = -1;
+int8_t PinBeaconLed = -1;
 
 //ADC-Voltage
 int8_t PinADCVoltage = -1;
@@ -242,6 +243,7 @@ int8_t PinGsmRx = -1;
 //GPS
 int8_t PinGPSRX = -1;
 int8_t PinGPSTX = -1;
+int8_t PinPPS = -1;
 
 //OLED-Display / AXP192
 int8_t PinOledRst = -1;
@@ -1443,12 +1445,14 @@ void WiFiEvent(WiFiEvent_t event){
     case SYSTEM_EVENT_STA_DISCONNECTED:
       log_i("station lost connection to AP");      
       //will automatically reconnect in 60 seconds
-      status.wifiStat=1;
-      status.bInternetConnected = false; //no more connected to Internet
-      WiFi.disconnect(true,true);
-      WiFi.mode(WIFI_OFF);
-      WiFi.persistent(false);
-      WiFi.config(IPADDR_ANY, IPADDR_ANY, IPADDR_ANY,IPADDR_ANY,IPADDR_ANY); // call is only a workaround for bug in WiFi class
+      if (status.wifiStat > 0){
+        status.wifiStat=1;
+        status.bInternetConnected = false; //no more connected to Internet
+        WiFi.disconnect(true,true);
+        WiFi.mode(WIFI_MODE_NULL);
+        WiFi.persistent(false);
+        WiFi.config(IPADDR_ANY, IPADDR_ANY, IPADDR_ANY,IPADDR_ANY,IPADDR_ANY); // call is only a workaround for bug in WiFi class
+      }
       break;  
     case SYSTEM_EVENT_STA_GOT_IP:
       status.myIP = WiFi.localIP().toString();
@@ -1503,7 +1507,7 @@ void setupWifi(){
   status.bInternetConnected = false;
   status.wifiStat = 0;
   WiFi.disconnect(true,true);
-  WiFi.mode(WIFI_OFF);  
+  WiFi.mode(WIFI_MODE_NULL);  
   WiFi.persistent(false);
   WiFi.onEvent(WiFiEvent);
   //WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE,INADDR_NONE,INADDR_NONE);
@@ -1871,7 +1875,11 @@ void setup() {
 
   //listSpiffsFiles();
   load_configFile(&setting); //load configuration
-  setCpuFrequencyMhz(uint32_t(setting.CPUFrequency));
+  if (setting.CPUFrequency <  80){
+    setCpuFrequencyMhz(uint32_t(80));
+  }else{
+    setCpuFrequencyMhz(uint32_t(setting.CPUFrequency));
+  }
   log_i("set CPU-Speed to %dMHz",getCpuFrequencyMhz());
   //setting.boardType = BOARD_UNKNOWN;
   if (setting.boardType == eBoard::UNKNOWN){
@@ -1969,6 +1977,7 @@ void setup() {
     log_i("Board=T_BEAM");
     PinGPSRX = 34;
     PinGPSTX = 12;
+    PinPPS = 37;
 
     PinLoraRst = 23;
     PinLoraDI0 = 26;
@@ -2016,6 +2025,7 @@ void setup() {
     log_i("Board=T_BEAM SX1262");
     PinGPSRX = 34;
     PinGPSTX = 12;
+    PinPPS = 37;
     
     PinLoraRst = 23;
     if ((setting.displayType == EINK2_9) || (setting.displayType == EINK2_9_V2)){
@@ -2189,6 +2199,12 @@ void setup() {
   case eBoard::HELTEC_WIRELESS_STICK_LITE:
     log_i("Board=Heltec Wireless Stick Lite");
 
+    PinBeaconLed = 25;
+
+    PinGPSRX = 9;
+    PinGPSTX = 10;
+    PinPPS = 23;
+
 
     PinLoraRst = 14;
     PinLoraDI0 = 26;
@@ -2333,6 +2349,10 @@ void setup() {
   buttonConfig->setClickDelay(500); //set click-delay to 200ms
 
 
+  if (PinBeaconLed >= 0) {
+    pinMode(PinBeaconLed, OUTPUT);
+    digitalWrite(PinBeaconLed,LOW); 
+  }
   if (PinUserLed >= 0){
     pinMode(PinUserLed, OUTPUT);
     digitalWrite(PinUserLed,HIGH); 
@@ -3654,8 +3674,16 @@ void printGPSData(uint32_t tAct){
 void setWifi(bool on){
   if ((on) && (status.wifiStat == 0)){
     log_i("switch WIFI ACCESS-POINT ON");
+    if (setting.CPUFrequency <  80){ //set to min. 80Mhz, because of Wifi
+      setCpuFrequencyMhz(uint32_t(80));
+    }else{
+      setCpuFrequencyMhz(uint32_t(setting.CPUFrequency));
+    }
+    log_i("set CPU-Speed to %dMHz",getCpuFrequencyMhz());
+    delay(10); //wait 10ms
+    status.wifiStat=0;
     WiFi.disconnect(true,true);
-    WiFi.mode(WIFI_OFF);
+    WiFi.mode(WIFI_MODE_NULL);
     WiFi.persistent(false);
     //WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE,INADDR_NONE,INADDR_NONE); // call is only a workaround for bug in WiFi class
     WiFi.config(IPADDR_ANY, IPADDR_ANY, IPADDR_ANY,IPADDR_ANY,IPADDR_ANY); // call is only a workaround for bug in WiFi class
@@ -3668,14 +3696,26 @@ void setWifi(bool on){
   }
   if ((!on) && (status.wifiStat != 0)){
     log_i("switch WIFI OFF");
-    Web_stop();
-    WiFi.softAPdisconnect(true);
-    WiFi.disconnect();
-    WiFi.mode(WIFI_MODE_NULL);
-    esp_wifi_set_mode(WIFI_MODE_NULL);
-    esp_wifi_stop();
     setting.wifi.tWifiStop=0;
     status.wifiStat=0;
+    Web_stop();
+    WiFi.softAPdisconnect(true);
+    //adc_power_off();
+    WiFi.disconnect(true);
+    //WiFi.mode(WIFI_MODE_NULL);
+    WiFi.mode(WIFI_MODE_NULL);
+    //esp_wifi_set_mode(WIFI_MODE_NULL);
+    esp_wifi_stop();
+    //if (setting.CPUFrequency < 80){
+    delay(10);//wait 10ms.
+    if ((setting.outputMode == eOutput::oBLE) && (setting.CPUFrequency <  80)){ //output over ble-connection and frequency < 80Mhz --> set to 80Mhz min.
+      setCpuFrequencyMhz(uint32_t(setting.CPUFrequency));      
+    }else{
+      setCpuFrequencyMhz(uint32_t(setting.CPUFrequency));
+    }
+    log_i("set CPU-Speed to %dMHz",getCpuFrequencyMhz());
+    //}
+    
   }
   wifiCMD = 0;
 }
@@ -4216,19 +4256,20 @@ void taskStandard(void *pvParameters){
       NMeaSerial.read();
   }
   
-  if (status.bHasAXP192){  
+  if (PinPPS > 0){  
     //only on new boards we have an pps-pin
-    pinMode(PPSPIN, INPUT);
-    //attachInterrupt(digitalPinToInterrupt(PPSPIN), ppsHandler, FALLING);
-    attachInterrupt(digitalPinToInterrupt(PPSPIN), ppsHandler, RISING);
+    log_i("setup PPS-Pin for GPS");
+    pinMode(PinPPS, INPUT);
+    //attachInterrupt(digitalPinToInterrupt(PinPPS), ppsHandler, FALLING);
+    attachInterrupt(digitalPinToInterrupt(PinPPS), ppsHandler, RISING);
   }
   #ifdef GXTEST
     status.bExtGps = true;
     fanet.setGPS(true);
     //only on new boards we have an pps-pin
-    pinMode(PPSPIN, INPUT);
-    //attachInterrupt(digitalPinToInterrupt(PPSPIN), ppsHandler, FALLING);
-    attachInterrupt(digitalPinToInterrupt(PPSPIN), ppsHandler, RISING);
+    pinMode(PinPPS, INPUT);
+    //attachInterrupt(digitalPinToInterrupt(PinPPS), ppsHandler, FALLING);
+    attachInterrupt(digitalPinToInterrupt(PinPPS), ppsHandler, RISING);
   #endif
   #endif
   // create a binary semaphore for task synchronization
@@ -4639,7 +4680,7 @@ void taskStandard(void *pvParameters){
     if (setting.outputModeVario == eOutputVario::OVARIO_LXPW) sendLXPW(tAct); //not output 
     #ifdef AIRMODULE
     if ((setting.Mode == eMode::AIR_MODULE) || ((abs(setting.gs.lat) <= 0.1) && (abs(setting.gs.lon) <= 0.1))){ //in GS-Mode we use the GPS, if in settings disabled
-      if ((!status.bHasAXP192) && (!status.bExtGps)){
+      if ((PinPPS < 0) && (!status.bExtGps)){
         if ((tAct - tOldPPS) >= 1000){
           ppsMillis = millis();
           ppsTriggered = true;
@@ -4648,7 +4689,7 @@ void taskStandard(void *pvParameters){
       if (ppsTriggered){
         ppsTriggered = false;
         tLastPPS = tAct;
-        //log_i("PPS-Triggered t=%d",status.tGPSCycle);
+        log_i("PPS-Triggered t=%d",status.tGPSCycle);
         //log_i("lat=%d;lon=%d",nmea.getLatitude(),nmea.getLongitude());
         //long alt2 = 0;
         //nmea.getAltitude(alt2);
@@ -4792,7 +4833,7 @@ void taskStandard(void *pvParameters){
         status.GPS_NumSat = 0;
       }
     }else{
-      if ((!status.bHasGPS) && (!status.bExtGps)){
+      if ((PinPPS < 0) && (!status.bExtGps)){
         if ((tAct - tOldPPS) >= 1000){
           ppsMillis = millis();
           ppsTriggered = true;
@@ -4942,6 +4983,9 @@ void powerOff(){
   if (PinBuzzer >= 0){
     digitalWrite(PinBuzzer,LOW);     
   }  
+  if (PinBeaconLed >= 0){
+    digitalWrite(PinBeaconLed,LOW);    
+  }
   
   log_i("switch power-supply off");  
   delay(100);
@@ -4977,9 +5021,14 @@ void powerOff(){
   esp_bt_controller_disable();
   esp_bt_controller_deinit();
   esp_bt_mem_release(ESP_BT_MODE_BTDM);
-  //adc_power_off();
-  //adc_power_release();
+  if (PinLora_SCK >= 0) pinMode(PinLora_SCK,INPUT);
+  if (PinLoraRst >= 0) pinMode(PinLoraRst,INPUT);
+  if (PinLora_MISO >= 0) pinMode(PinLora_MISO,INPUT);
+  if (PinLora_MOSI>= 0) pinMode(PinLora_MOSI,INPUT);
+  if (PinLora_SS >= 0) pinMode(PinLora_SS,INPUT);
+  if (PinLoraDI0 >= 0) pinMode(PinLoraDI0,INPUT);
   esp_deep_sleep_start();
+  
 
 }
 
@@ -5191,7 +5240,6 @@ void readSMS(){
 void taskBackGround(void *pvParameters){
   static uint32_t tWifiCheck = millis();
   //static uint32_t warning_time=0;
-  static uint8_t ntpOk = 0;
   static uint32_t tGetTime = millis();
   uint32_t tBattEmpty = millis();
   uint32_t tRuntime = millis();
@@ -5316,7 +5364,7 @@ void taskBackGround(void *pvParameters){
       //log_i("wifi-strength=%d",status.wifiRssi);
     }
     if (WiFi.status() == WL_CONNECTED){
-      if ((!ntpOk) && (timeOver(tAct,tGetTime,5000))){
+      if (timeOver(tAct,tGetTime,GETNTPINTERVALL)){
         log_i("get ntp-time");
         configTime(0, 0, "pool.ntp.org");
         adjustTime(0);
@@ -5332,13 +5380,12 @@ void taskBackGround(void *pvParameters){
         }
         tGetTime = tAct;
         if (printLocalTime() == true){
-          ntpOk = 1;
           status.bTimeOk = true;
         } 
       }
     #ifdef GSM_MODULE
     }else if ((status.modemstatus == eModemState::CONNECTED) && (setting.wifi.connect == eWifiMode::CONNECT_NONE)){
-      if ((!ntpOk) && (timeOver(tAct,tGetTime,5000))){
+      if (timeOver(tAct,tGetTime,GETNTPINTERVALL)){
         log_i("get ntp-time");
         byte ret = -1;
         xSemaphoreTake( xGsmMutex, portMAX_DELAY );
@@ -5377,14 +5424,12 @@ void taskBackGround(void *pvParameters){
         tGetTime = tAct;
         //log_i("print time");        
         if (printLocalTime() == true){
-          ntpOk = 1;
           status.bTimeOk = true;
         } 
       }
     #endif
     }else{
-      ntpOk = 0;
-      tGetTime = tAct;
+      tGetTime = tAct - (GETNTPINTERVALL - 5000); //we refresh NTP-Time 5 sec. after internet is connected
     }
     if (timeOver(tAct,tWifiCheck,WIFI_RECONNECT_TIME)){
       tWifiCheck = tAct;
@@ -5393,7 +5438,7 @@ void taskBackGround(void *pvParameters){
         if (((WiFi.status() != WL_CONNECTED) && (status.wifiStat != 0)) || (status.wifiStat == 1)){
           log_i("WiFi not connected. Try to reconnect");
           WiFi.disconnect(true,true);
-          WiFi.mode(WIFI_OFF);
+          WiFi.mode(WIFI_MODE_NULL);
           WiFi.persistent(false);
           WiFi.config(IPADDR_ANY, IPADDR_ANY, IPADDR_ANY,IPADDR_ANY,IPADDR_ANY); // call is only a workaround for bug in WiFi class
           //WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE,INADDR_NONE,INADDR_NONE); // call is only a workaround for bug in WiFi class

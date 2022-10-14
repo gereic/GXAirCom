@@ -4,5 +4,4 @@
 
 //GPS
 #define GPSBAUDRATE 9600
-#define PPSPIN 37
 

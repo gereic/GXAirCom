@@ -1,8 +1,8 @@
 set PORT=COM1
 REM set version=v4.8.4
 set version=v5.00.0
-set option=psRam
-REM set option=nopsRam
+REM set option=psRam
+set option=nopsRam
 REM set option=sim800
 REM set option=sim7000_psRam
 

@@ -101,6 +101,9 @@ function setVis(){
   document.getElementById("VisMqtt").style.display='none';  //disable Mqtt settings
   document.getElementById("VisOwnWs").style.display='none';  //disable Own weather-station  
   document.getElementById("VisWDBme").style.display='none';  //disable temp-correction for BME
+  if (document.getElementById("setView").value > 100){ //we are expert user
+          document.getElementById("VisFrequ").style.display=''; //set Frequency-settings visible
+  }
   if (document.getElementById("useMPU").checked){
     document.getElementById("KfP").innerHTML='Kalman filter pressure-value (default 0.3)';
     document.getElementById("KfA").innerHTML='Kalman filter accelerator-value (default 0.3)';
@@ -148,11 +151,6 @@ function setVis(){
       document.getElementById("VisWI").style.display='none'; //set windy upload invisible
     }
     document.getElementById("VisMqtt").style.display='';  //enable Mqtt settings
-    if (document.getElementById("setView").value > 0){ //we are advanced or expert
-        if (document.getElementById("setView").value > 100){ //we are expert user
-          document.getElementById("VisFrequ").style.display=''; //set Frequency-settings visible
-        }
-      }
     document.getElementById("VisAirCraftType").style.display='none';    
     document.getElementById("tName").innerHTML='Ground Station name';
     document.getElementById("VisGS").style.display=''; //set GS visible
@@ -790,113 +788,115 @@ window.addEventListener("load", init, false);
 </script>
 </head>
 <body>
-  <div style="text-align:left;display:inline-block;color:#eaeaea;min-width:340px;">
-    <div style='text-align:center;color:#eaeaea;'>
-      <noscript>JavaScript aktivieren um GXAirCom benutzen zu können<br></noscript>
-      <h1>%APPNAME%-%VERSION%</h1>
-      <h3>build-date: %BUILD%</h3>
-      <h3>%PILOT%</h3>            
-    </div>
-    <!--<div style='text-align:center;color:#eaeaea;' id="TxtConn"></div>-->
-    <fieldset>
-      <legend><b>General settings</b></legend>
-      <table style="width:100&#37;">
-        <tbody>
-          <tr>
-            <th>settings view</th>
-            <td><select onchange="setVis()" id="setView">
-              <option value="0">basic</option>
-              <option value="100">advanced</option>
-              <option value="200">expert</option>
-            </select></td>
-          </tr>
-          <tr>
-            <th>Board Type</th>
-            <td><select id="board">
-              <option value="0">TTGO T-Beam T22_V1.0 / T22_V1.1</option>
-              <option value="2">TTGO T-Beam T22_V07/TTGO LORA T3_V1.6 (V2 1.6)</option>
-              <option value="5">TTGO T-Beam SX1262</option>
-              <option value="1">HELTEC / TTGO LORA</option>
-              <option value="4">TTGO T-SIM7000G</option>
-              <option value="6">TTGO TCall SIM800L</option>
-              <option value="7">HELTEC Wireless Stick Lite</option>
-              <option value="255">unknown</option>
-            </select></td>
-          </tr>
-          <tr id="VisFrequ">
-            <th>CPU Frequency</th>
-            <td><select id="Frequ">
-              <option value="240">240MHz</option>
-              <option value="160">160MHz</option>
-              <option value="80">80MHz</option>
-            </select></td>
-          </tr>
-          <tr>
-            <th>Display Type</th>
-            <td><select id="disp">
-              <option value="0">no display</option>
-              <option value="1">0.96' OLED</option>
-              <option value="2">2.9' E-Ink</option>
-              <option value="3">2.9' E-Ink V2</option>              
-            </select></td>
-          </tr>
-          <tr>
-            <th>Display Rotation</th>
-            <td><select id="dispRot">
-              <option value="0">0&deg;</option>
-              <option value="1">90&deg;</option>
-              <option value="2">180&deg;</option>
-              <option value="3">270&deg;</option>
-            </select></td>
-          </tr>
-          <tr>
-            <th>operating-mode</th>
-            <td><select onchange="setVis()" id="mode">
-              <option value="0">AIR-Module</option>
-              <option value="1">Ground-Station</option>
-              <!--<option value="100">Developer-mode</option>-->
-            </select></td>
-          </tr>
-          <tr id="VisOwnWs">
-            <th>ground-station is weather-station</th>
-            <td><input onchange="setWsMode()" type="checkbox" id="wdModeEnable"></td>
-          </tr>
-          <tr>
-            <th id="tName">PilotName</th>
-            <td><input type="text" id="PilotName"></td>
-          </tr>
-          <tr id="VisBattOffs">
-            <th>Battery Voltage calib</th>
-            <td><input type="text" id="vBatt" disabled></td>
-            <td><input type="number" onchange="setBattVoltOffs()" id="BATOFFS" min="-1.00" max="1.00" step="0.01"></td>
-          </tr>
-          <tr id="VisAirCraftType">
-            <th>Aircraft Type</th>
-            <td><select id="type">
-              <option value="0">Unknown</option>
-              <option value="1">Paraglider</option>
-              <option value="2">Hangglider</option>
-              <option value="3">Balloon</option>
-              <option value="4">Glider</option>
-              <option value="5">Powered Aircraft</option>
-              <option value="6">Helicopter</option>
-              <option value="7">UAV</option>
-            </select></td>
-          </tr>	
-          <tr id="VisExtPowerSw">
-            <th>external power swtich (pin36) only for kobo</th>
-            <td><input type="checkbox" id="expwsw"></td>
-          </tr>
-          <tr id="VisFuelSensor">
-            <th>Fuel-sensor available</th>
-            <td><input type="checkbox" id="fuelSensor" ></td>
-          </tr>	
-        </tbody>      
-      </table>
-    </fieldset>
-    <p></p>
-    <p></p>
-    <fieldset>
+<div style="text-align:left;display:inline-block;color:#eaeaea;min-width:340px;">
+<div style='text-align:center;color:#eaeaea;'>
+<noscript>JavaScript aktivieren um GXAirCom benutzen zu können<br></noscript>
+<h1>%APPNAME%-%VERSION%</h1>
+<h3>build-date: %BUILD%</h3>
+<h3>%PILOT%</h3>            
+</div>
+<fieldset>
+<legend><b>General settings</b></legend>
+<table style="width:100&#37;">
+<tbody>
+<tr>
+<th>settings view</th>
+<td><select onchange="setVis()" id="setView">
+<option value="0">basic</option>
+<option value="100">advanced</option>
+<option value="200">expert</option>
+</select></td>
+</tr>
+<tr>
+<th>Board Type</th>
+<td><select id="board">
+  <option value="0">TTGO T-Beam T22_V1.0 / T22_V1.1</option>
+  <option value="2">TTGO T-Beam T22_V07/TTGO LORA T3_V1.6 (V2 1.6)</option>
+  <option value="5">TTGO T-Beam SX1262</option>
+  <option value="1">HELTEC / TTGO LORA</option>
+  <option value="4">TTGO T-SIM7000G</option>
+  <option value="6">TTGO TCall SIM800L</option>
+  <option value="7">HELTEC Wireless Stick Lite</option>
+  <option value="255">unknown</option>
+</select></td>
+</tr>
+<tr id="VisFrequ">
+<th>CPU Frequency</th>
+<td><select id="Frequ">
+  <option value="240">240MHz</option>
+  <option value="160">160MHz</option>
+  <option value="80">80MHz</option>
+  <option value="40">40MHz</option>
+  <option value="20">20MHz</option>
+  <option value="10">10MHz</option>
+</select></td>
+</tr>
+<tr>
+<th>Display Type</th>
+<td><select id="disp">
+<option value="0">no display</option>
+<option value="1">0.96' OLED</option>
+<option value="2">2.9' E-Ink</option>
+<option value="3">2.9' E-Ink V2</option>              
+</select></td>
+</tr>
+<tr>
+<th>Display Rotation</th>
+<td><select id="dispRot">
+<option value="0">0&deg;</option>
+<option value="1">90&deg;</option>
+<option value="2">180&deg;</option>
+<option value="3">270&deg;</option>
+</select></td>
+</tr>
+<tr>
+<th>operating-mode</th>
+<td><select onchange="setVis()" id="mode">
+<option value="0">AIR-Module</option>
+<option value="1">Ground-Station</option>
+<!--<option value="100">Developer-mode</option>-->
+</select></td>
+</tr>
+<tr id="VisOwnWs">
+<th>ground-station is weather-station</th>
+<td><input onchange="setWsMode()" type="checkbox" id="wdModeEnable"></td>
+</tr>
+<tr>
+<th id="tName">PilotName</th>
+<td><input type="text" id="PilotName"></td>
+</tr>
+<tr id="VisBattOffs">
+<th>Battery Voltage calib</th>
+<td><input type="text" id="vBatt" disabled></td>
+<td><input type="number" onchange="setBattVoltOffs()" id="BATOFFS" min="-1.00" max="1.00" step="0.01"></td>
+</tr>
+<tr id="VisAirCraftType">
+<th>Aircraft Type</th>
+<td><select id="type">
+<option value="0">Unknown</option>
+<option value="1">Paraglider</option>
+<option value="2">Hangglider</option>
+<option value="3">Balloon</option>
+<option value="4">Glider</option>
+<option value="5">Powered Aircraft</option>
+<option value="6">Helicopter</option>
+<option value="7">UAV</option>
+</select></td>
+</tr>	
+<tr id="VisExtPowerSw">
+<th>external power swtich (pin36) only for kobo</th>
+<td><input type="checkbox" id="expwsw"></td>
+</tr>
+<tr id="VisFuelSensor">
+<th>Fuel-sensor available</th>
+<td><input type="checkbox" id="fuelSensor" ></td>
+</tr>	
+</tbody>      
+</table>
+</fieldset>
+<p></p>
+<p></p>
+<fieldset>
       <legend><b>RF-Module settings</b></legend>
       <table style="width:100&#37;">
         <tbody>
