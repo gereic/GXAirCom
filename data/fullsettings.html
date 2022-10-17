@@ -101,8 +101,10 @@ function setVis(){
   document.getElementById("VisMqtt").style.display='none';  //disable Mqtt settings
   document.getElementById("VisOwnWs").style.display='none';  //disable Own weather-station  
   document.getElementById("VisWDBme").style.display='none';  //disable temp-correction for BME
+  document.getElementById("VisAutoUpdate").style.display='none';  //disable autoupdate
   if (document.getElementById("setView").value > 100){ //we are expert user
           document.getElementById("VisFrequ").style.display=''; //set Frequency-settings visible
+          //document.getElementById("VisAutoUpdate").style.display='';  //set autoupdate visible
   }
   if (document.getElementById("useMPU").checked){
     document.getElementById("KfP").innerHTML='Kalman filter pressure-value (default 0.3)';
@@ -498,6 +500,7 @@ function sendValues(){
   fntPin : Number(document.getElementById("fntPin").value),
   PilotName : document.getElementById("PilotName").value,
   expwsw : Number(document.getElementById("expwsw").checked),
+  AUTOUPDATE : Number(document.getElementById("AUTOUPDATE").checked),
   save : 1
   };
   doSend(JSON.stringify(obj));
@@ -816,6 +819,7 @@ window.addEventListener("load", init, false);
   <option value="1">HELTEC / TTGO LORA</option>
   <option value="4">TTGO T-SIM7000G</option>
   <option value="6">TTGO TCall SIM800L</option>
+  <option value="8">HELTEC Wireless Stick</option>
   <option value="7">HELTEC Wireless Stick Lite</option>
   <option value="255">unknown</option>
 </select></td>
@@ -891,7 +895,11 @@ window.addEventListener("load", init, false);
 <th>Fuel-sensor available</th>
 <td><input type="checkbox" id="fuelSensor" ></td>
 </tr>	
-</tbody>      
+<tr id="VisAutoUpdate">
+  <th>automatic update over Internet</th>
+  <td><input type="checkbox" id="AUTOUPDATE" ></td>
+  </tr>	
+  </tbody>      
 </table>
 </fieldset>
 <p></p>

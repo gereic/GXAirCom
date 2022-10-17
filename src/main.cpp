@@ -28,6 +28,7 @@
 #include "driver/adc.h"
 //#include "Update.h"
 #include "gxUpdater.h"
+#include "gxUserLed.h"
 #include <AceButton.h>
 #include <ArduinoJson.h>
 #include "../lib/GxMqtt/GxMqtt.h"
@@ -162,6 +163,7 @@ uint16_t battEmpty = 3300;
 Ogn ogn;
 
 gxUpdater updater;  
+gxUserLed userled;
 
 FanetLora::trackingData MyFanetData;  
 
@@ -221,6 +223,9 @@ int8_t PinEink_Din    =  2;
 //LED
 int8_t PinUserLed = -1;
 int8_t PinBeaconLed = -1;
+
+//Power
+int8_t PinExtPower = -1;
 
 //ADC-Voltage
 int8_t PinADCVoltage = -1;
@@ -340,7 +345,7 @@ void add2OutputString(String s);
 void DrawRadarScreen(uint32_t tAct,eRadarDispMode mode);
 void DrawRadarPilot(uint8_t neighborIndex);
 void printGSData(uint32_t tAct);
-void printBattVoltage(uint32_t tAct);
+bool printBattVoltage(uint32_t tAct);
 void printScanning(uint32_t tAct);
 void printWeather(uint32_t tAct);
 void printGPSData(uint32_t tAct);
@@ -2229,11 +2234,34 @@ void setup() {
     // voltage-divier 27kOhm and 100kOhm
     // vIn = (R1+R2)/R2 * VOut
     //1S LiPo
-    pinMode(21, OUTPUT); //we have to set pin 21 to measure voltage of Battery
-    digitalWrite(21,LOW); //set output to Low, so we can measure the voltage
+    PinExtPower = 21;
     //adcVoltageMultiplier =  (100000.0f + 220000.0f) / 100000.0f;
     adcVoltageMultiplier =  3.69f;
     pinMode(PinADCVoltage, INPUT); //input-Voltage on GPIO37
+    break;
+  case eBoard::HELTEC_WIRELESS_STICK:
+    log_i("Board=HELTEC Wireless Stick");
+    PinBeaconLed = 25;
+
+    sButton[0].PinButton = 0; //pin for program-button
+    
+    //PinGPSRX = 34;
+    //PinGPSTX = 39;
+
+
+    PinLoraRst = 14;
+    PinLoraDI0 = 26;
+    PinLora_SS = 18;
+    PinLora_MISO = 19;
+    PinLora_MOSI = 27;
+    PinLora_SCK = 5;
+
+    PinOledRst = 16;
+    PinOledSDA = 4;
+    PinOledSCL = 15;
+    i2cOLED.begin(PinOledSDA, PinOledSCL);
+
+    PinExtPower = 21;
     break;
   case eBoard::TTGO_TSIM_7000:
     log_i("Board=TTGO_TSIM_7000");
@@ -2360,6 +2388,10 @@ void setup() {
   if (PinExtPowerOnOff >= 0){
     pinMode(PinExtPowerOnOff, INPUT);
     log_i("ext power-state=%d",digitalRead(PinExtPowerOnOff));
+  }
+  if (PinExtPower >= 0){
+    pinMode(PinExtPower, OUTPUT); //we have to set pin 21 to measure voltage of Battery
+    digitalWrite(PinExtPower,LOW); //set output to Low, so we can measure the voltage
   }
 
   #ifdef GSMODULE
@@ -3194,6 +3226,9 @@ float readBattvoltage(){
   const byte NO_OF_SAMPLES = 5;
   uint32_t adc_reading = 0;
   float vBatt = 0.0;
+  if (PinADCVoltage < 0){
+    return 0.0; //not voltage-pin defined !!
+  }
 
   analogRead(PinADCVoltage); // First measurement has the biggest difference on my board, this line just skips the first measurement
   for (int i = 0; i < NO_OF_SAMPLES; i++) {
@@ -3208,7 +3243,7 @@ float readBattvoltage(){
   return vBatt;
 }
 
-void printBattVoltage(uint32_t tAct){
+bool printBattVoltage(uint32_t tAct){
   static uint32_t tBatt = millis() - 5000;
   if ((tAct - tBatt) >= 5000){
     tBatt = tAct;
@@ -3239,6 +3274,9 @@ void printBattVoltage(uint32_t tAct){
         // }
     }
     */
+    return true; //bat-status readed
+  }else{
+    return false;
   }
 }
 
@@ -4218,9 +4256,12 @@ void taskStandard(void *pvParameters){
   static uint32_t tLastPPS = millis();
   static uint32_t tDisplay = millis();
   static uint32_t tMaxLoop = millis();
+  bool bBatPowerOk = false;
+  bool bShowBattPower = true;
   #ifdef TEST
   static uint32_t tSend = millis();
   #endif
+  userled.setUserLed(PinBeaconLed,true);
   char * pSerialLine = NULL;
   String sSerial = "";
   String s = "";
@@ -4348,11 +4389,20 @@ void taskStandard(void *pvParameters){
   }
 #endif
 
-  //udp.begin(UDPPORT);
   tLoop = micros();
   while(1){    
     // put your main code here, to run repeatedly:
     uint32_t tAct = millis();
+    if ((bShowBattPower) && (bBatPowerOk)){
+      //log_i("show batt-percent");
+      userled.setBattPower(status.BattPerc);
+      userled.setState(gxUserLed::showBattPower); //blink slow 1-5 times for batt-percent 0-100percent
+      bShowBattPower = false;
+    }else if (status.GPS_Fix){
+      userled.setBlinkFast(1); //blink fast 1 times
+    }else{
+      userled.setBlinkFast(2); //blink fast 2 times
+    }
     #ifdef TEST
     if (timeOver(tAct,tSend,1000)){
       tSend = tSend;
@@ -4394,6 +4444,7 @@ void taskStandard(void *pvParameters){
     if (sButton[0].state == ace_button::AceButton::kEventClicked){
       log_v("Short Press IRQ");
       setting.screenNumber ++;
+      bShowBattPower = true; //show battery-state again
       if (setting.screenNumber > MAXSCREENS) setting.screenNumber = 0;
       write_screenNumber(); //save screennumber in File
       tDisplay = tAct - DISPLAY_UPDATE_RATE;
@@ -4435,7 +4486,9 @@ void taskStandard(void *pvParameters){
       ogn.run(status.bInternetConnected);
     } 
     checkFlyingState(tAct);
-    printBattVoltage(tAct);
+    if (printBattVoltage(tAct)){
+      bBatPowerOk = true;
+    }
     if (sOutputData.length() > 0){
       String s;
       xSemaphoreTake( xOutputMutex, portMAX_DELAY );
@@ -4583,7 +4636,8 @@ void taskStandard(void *pvParameters){
     }
     if (!WebUpdateRunning){
       fanet.run();
-    }    
+    }
+    userled.run();
     //status.fanetRx = fanet.rxCount;
     //status.fanetTx = fanet.txCount;
     fanet.getRxTxCount(&status.fanetRx,&status.fanetTx,&status.legRx,&status.legTx);
@@ -4689,7 +4743,7 @@ void taskStandard(void *pvParameters){
       if (ppsTriggered){
         ppsTriggered = false;
         tLastPPS = tAct;
-        log_i("PPS-Triggered t=%d",status.tGPSCycle);
+        //log_i("PPS-Triggered t=%d",status.tGPSCycle);
         //log_i("lat=%d;lon=%d",nmea.getLatitude(),nmea.getLongitude());
         //long alt2 = 0;
         //nmea.getAltitude(alt2);
@@ -4986,6 +5040,10 @@ void powerOff(){
   if (PinBeaconLed >= 0){
     digitalWrite(PinBeaconLed,LOW);    
   }
+  if (PinExtPower >= 0){
+    digitalWrite(PinExtPower,HIGH);
+    //pinMode(PinExtPower,INPUT); //set ext-power-pin to input (if low --> ext-power is enabled)  
+  }
   
   log_i("switch power-supply off");  
   delay(100);
@@ -5005,8 +5063,15 @@ void powerOff(){
     
     delay(20);
     esp_sleep_enable_ext0_wakeup((gpio_num_t) AXP_IRQ, 0); // 1 = High, 0 = Low
+  }else if ((sButton[0].PinButton >= 0) && (PinExtPowerOnOff < 0)){
+    while (!digitalRead(sButton[0].PinButton)){
+      log_i("wait until power-button is released");
+      delay(500); //wait 500ms
+    }
+    uint64_t mask = uint64_t(1) << uint64_t(sButton[0].PinButton); //prg-Button has a pull-up-resistor --> Pin has to go low, if pressed
+    esp_sleep_enable_ext1_wakeup(mask,ESP_EXT1_WAKEUP_ALL_LOW); //wait until power is back again
   }
-  if (PinExtPowerOnOff > 0){
+  if (PinExtPowerOnOff >= 0){
     if (!digitalRead(PinExtPowerOnOff)){
       //pin has to be low, if not, somebody switched off with button !!
       uint64_t mask = uint64_t(1) << uint64_t(PinExtPowerOnOff);
@@ -5014,6 +5079,8 @@ void powerOff(){
       esp_sleep_enable_ext1_wakeup(mask,ESP_EXT1_WAKEUP_ANY_HIGH); //wait until power is back again
     }
   }
+  
+
   //Serial.end();
   esp_wifi_stop();
   esp_bluedroid_disable();
@@ -5102,10 +5169,18 @@ void checkExtPowerOff(uint32_t tAct){
 }
 
 void handleUpdate(uint32_t tAct){
+  static uint32_t tStartAutoUpdate = millis();
   if (status.tRestart != 0){
     if (timeOver(tAct,status.tRestart,5000)){
       esp_restart();
     }
+  }
+  if ((setting.bAutoupdate) && (status.bInternetConnected)){
+    if ((status.updateState == 0) && (timeOver(tAct,tStartAutoUpdate,10000))){
+      status.updateState = 50; //auto-update
+    }
+  }else{
+    tStartAutoUpdate = tAct;
   }
   if (status.updateState == 1){
     status.updateState = 2;      
@@ -5115,7 +5190,7 @@ void handleUpdate(uint32_t tAct){
         status.updateState = 10; //we can update --> newer Version
       }
     }
-  }else if (status.updateState == 50){ //autoupdate via FANET !!
+  }else if (status.updateState == 50){ //autoupdate
     if (updater.checkVersion()){
       status.sNewVersion = updater.getVersion();
       if (updater.checkVersionNewer()){
@@ -5124,20 +5199,20 @@ void handleUpdate(uint32_t tAct){
         delay(500); //wait 1 second until tasks are stopped
         if (updater.updateVersion()){ //update to newest version  
           add2OutputString("update complete\r\n");
-          status.updateState = 60;
+          status.updateState = 200;
           status.tRestart = millis();
         }else{
           add2OutputString("update failed\r\n");
-          status.updateState = 60;
+          status.updateState = 254;
           status.tRestart = millis();
         }
       }else{
         add2OutputString("no new Version avaiable\r\n");
-        status.updateState = 60;
+        status.updateState = 253;
       }
     }else{
       add2OutputString("no connection to server\r\n");
-      status.updateState = 60;
+      status.updateState = 252;
     }
   }else if (status.updateState == 100){
     status.updateState = 110;

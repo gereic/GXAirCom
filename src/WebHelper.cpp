@@ -173,6 +173,7 @@ void onWebSocketEvent(uint8_t client_num,
           doc["fntMode"] = setting.fanetMode;
           doc["fntPin"] = setting.fanetpin;
           doc["RFM"] = setting.RFMode;
+          doc["AUTOUPDATE"] = setting.bAutoupdate;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
 
@@ -373,6 +374,7 @@ void onWebSocketEvent(uint8_t client_num,
         if (root.containsKey("wifioff")) newSetting.wifi.tWifiStop = doc["wifioff"].as<uint32_t>();
         if (root.containsKey("UDPServerIP")) newSetting.UDPServerIP = doc["UDPServerIP"].as<String>();
         if (root.containsKey("UDPSendPort")) newSetting.UDPSendPort = doc["UDPSendPort"].as<uint16_t>();
+        if (root.containsKey("AUTOUPDATE")) newSetting.bAutoupdate = doc["AUTOUPDATE"].as<uint8_t>();
         //gs settings
         if (root.containsKey("gslat")) newSetting.gs.lat = doc["gslat"].as<float>();
         if (root.containsKey("gslon")) newSetting.gs.lon = doc["gslon"].as<float>();

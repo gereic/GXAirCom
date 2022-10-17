@@ -30,6 +30,7 @@ void load_configFile(SettingsData* pSetting){
   pSetting->Mode = eMode(preferences.getUChar("Mode",eMode::AIR_MODULE));
   pSetting->fanetMode = eFnMode(preferences.getUChar("fntMode",eFnMode::FN_GROUNT_AIR_TRACKING));  
   pSetting->fanetpin = preferences.getUInt("fntPin",1234);
+  pSetting->bAutoupdate = preferences.getUChar("AUTOUPDATE",1); //auto-update
   
   //gs settings
   pSetting->gs.lat = preferences.getFloat("GSLAT",0.0);
@@ -175,6 +176,7 @@ void write_configFile(SettingsData* pSetting){
   preferences.putUChar("Mode",pSetting->Mode);
   preferences.putUChar("fntMode",pSetting->fanetMode);
   preferences.putUInt("fntPin",pSetting->fanetpin);
+  preferences.putUChar("AUTOUPDATE",pSetting->bAutoupdate); //auto-update
 
   //GS Settings
   preferences.putFloat("GSLAT",pSetting->gs.lat);

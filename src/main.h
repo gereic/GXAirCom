@@ -393,6 +393,7 @@ struct SettingsData{
   MqttSettings mqtt;
   Fanetweatherupload FntWuUpload[MAXFNTUPLOADSTATIONS]; //Fanet WU Upload
   Fanetweatherupload FntWiUpload[MAXFNTUPLOADSTATIONS]; //Fanet Wi Upload
+  bool bAutoupdate; //auto-update to new Version
 };
 
 struct weatherStatus{
