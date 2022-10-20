@@ -717,14 +717,7 @@ void drawWifiStat(int wifiStat)
 
 void setAllTime(tm &timeinfo){
   tmElements_t tm;          // a cache of time elements
-  //fill time-structure
-  
-  //tm.Year = timeinfo.tm_year+1900 - 1970;
-  //if( timeinfo.tm_year > 99){
   tm.Year = uint8_t(timeinfo.tm_year + 1900 - 1970);
-  //}else{
-  //  tm.Year = timeinfo.tm_year + 30;    
-  //}      
   tm.Month = timeinfo.tm_mon+1;
   tm.Day = timeinfo.tm_mday;
   tm.Hour = timeinfo.tm_hour;
@@ -5440,23 +5433,33 @@ void taskBackGround(void *pvParameters){
     }
     if (WiFi.status() == WL_CONNECTED){
       if (timeOver(tAct,tGetTime,GETNTPINTERVALL)){
+        tGetTime = tAct;
         log_i("get ntp-time");
+        uint32_t tStart = millis();
+        uint32_t tBeforeNtp = now();
         configTime(0, 0, "pool.ntp.org");
         adjustTime(0);
         struct tm timeinfo;
         if(getLocalTime(&timeinfo)){
+          uint32_t tEnd = millis();
           log_i("h=%d,min=%d,sec=%d,day=%d,month=%d,year=%d",timeinfo.tm_hour,timeinfo.tm_min, timeinfo.tm_sec, timeinfo.tm_mday,timeinfo.tm_mon+1, timeinfo.tm_year + 1900);
           setAllTime(timeinfo);
-          struct tm now;
-          getLocalTime(&now,0);
-          if (now.tm_year >= 117) Serial.println(&now, "%B %d %Y %H:%M:%S (%A)");
-
-
-        }
-        tGetTime = tAct;
-        if (printLocalTime() == true){
-          status.bTimeOk = true;
-        } 
+          uint32_t tAfterNtp = now(); 
+          tBeforeNtp += ((tEnd - tStart) / 1000);
+          uint32_t tDist = tAfterNtp - tBeforeNtp;          
+          if (tDist > 1){
+            log_e("%ds delay timediff to big --> try again in 5 seconds");
+            tGetTime = tAct - GETNTPINTERVALL + 5000; //try again in 5 second
+          }else{
+            log_i("get ntp-time OK",tDist);
+            if (printLocalTime() == true){
+              status.bTimeOk = true;
+            } 
+          }
+        }else{
+          log_e("failed to get time from NTP-Server --> try again in 5 seconds");
+          tGetTime = tAct - GETNTPINTERVALL + 5000; //try again in 5 second
+        }        
       }
     #ifdef GSM_MODULE
     }else if ((status.modemstatus == eModemState::CONNECTED) && (setting.wifi.connect == eWifiMode::CONNECT_NONE)){
