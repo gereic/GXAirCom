@@ -3998,14 +3998,11 @@ void sendLK8EX(uint32_t tAct){
     pos += snprintf(&sOut[pos],MAXSTRING-pos,"$LK8EX1,");
     if (status.vario.bHasVario){
       pos += snprintf(&sOut[pos],MAXSTRING-pos,"%d,",(uint32_t)status.pressure);
-      if (status.GPS_Fix){
-        pos += snprintf(&sOut[pos],MAXSTRING-pos,"%.02f,",status.GPS_alt);
-      }else{
-        pos += snprintf(&sOut[pos],MAXSTRING-pos,"%.02f,",status.varioAlt);
-      }
+      pos += snprintf(&sOut[pos],MAXSTRING-pos,"%.02f,",status.varioAlt);
       pos += snprintf(&sOut[pos],MAXSTRING-pos,"%d,%.01f,",(int32_t)(status.ClimbRate * 100.0),status.varioTemp);
     }else{
-      pos += snprintf(&sOut[pos],MAXSTRING-pos,"999999,%.02f,%d,99,",status.GPS_alt,(int32_t)(status.ClimbRate * 100.0));
+      // Don't send altitude nor baro data if baro sensor is not available.
+      pos += snprintf(&sOut[pos],MAXSTRING-pos,"999999,99999,9999,99,");
     }
     pos += snprintf(&sOut[pos],MAXSTRING-pos,"%.02f,",(float)status.vBatt / 1000.);
     pos = flarm.addChecksum(sOut,MAXSTRING);
