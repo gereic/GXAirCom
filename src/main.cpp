@@ -3988,6 +3988,12 @@ void sendLXPW(uint32_t tAct){
   }
 }
 
+template<typename Tp>
+static inline
+Tp Clamp(Tp value, Tp min, Tp max) {
+  return std::min<Tp>(std::max<Tp>(value, min), max);
+}
+
 void sendLK8EX(uint32_t tAct){
   if (WebUpdateRunning) return;
   static uint32_t tOld = millis();
@@ -4004,7 +4010,7 @@ void sendLK8EX(uint32_t tAct){
       // Don't send altitude nor baro data if baro sensor is not available.
       pos += snprintf(&sOut[pos],MAXSTRING-pos,"999999,99999,9999,99,");
     }
-    pos += snprintf(&sOut[pos],MAXSTRING-pos,"%.02f,",(float)status.vBatt / 1000.);
+    pos += snprintf(&sOut[pos],MAXSTRING-pos,"%u,", Clamp<uint32_t>(status.BattPerc, 0, 100) + 1000U);
     pos = flarm.addChecksum(sOut,MAXSTRING);
     sendData2Client(sOut,pos);
     /*
