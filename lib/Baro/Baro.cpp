@@ -778,9 +778,12 @@ float Baro::getGravityCompensatedAccel(float temp){
     logData.aaWorld[0] = aaWorld.x;
     logData.aaWorld[1] = aaWorld.y;
     logData.aaWorld[2] = aaWorld.z;
-    tempOffsetZAcc = interpolate.Linear(tValues,zValues,2,temp,false);
+    if ((tValues[0] != tValues[1]) && (zValues[0] != zValues[1])){
+      tempOffsetZAcc = interpolate.Linear(tValues,zValues,2,temp,false);
+    }else{
+      tempOffsetZAcc = 0.0; //no temp-Offset
+    }    
     return float(aaWorld.z*(9.80665 / MPU6050_2G_SENSITIVITY)) + tempOffsetZAcc; //to get m/s
-
 }
 
 float Baro::getMpuTemp(void){
