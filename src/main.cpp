@@ -4134,26 +4134,30 @@ void sendLXPW(uint32_t tAct){
   }
 }
 
+template<typename Tp>
+static inline
+Tp Clamp(Tp value, Tp min, Tp max) {
+  return std::min<Tp>(std::max<Tp>(value, min), max);
+}
+
 void sendLK8EX(uint32_t tAct){
   if (WebUpdateRunning) return;
   static uint32_t tOld = millis();
   if ((tAct - tOld) >= 100){
+    //            $LK8EX1,pressure [1/100mbar],altVario [m],temp [°C],batt [percent],chksum crlf
     //String s = "$LK8EX1,101300,99999,99999,99,999,";
     char sOut[MAXSTRING];
     int pos = 0;
     pos += snprintf(&sOut[pos],MAXSTRING-pos,"$LK8EX1,");
     if (status.vario.bHasVario){
       pos += snprintf(&sOut[pos],MAXSTRING-pos,"%d,",(uint32_t)status.pressure);
-      if (status.GPS_Fix){
-        pos += snprintf(&sOut[pos],MAXSTRING-pos,"%.02f,",status.GPS_alt);
-      }else{
-        pos += snprintf(&sOut[pos],MAXSTRING-pos,"%.02f,",status.varioAlt);
-      }
+      pos += snprintf(&sOut[pos],MAXSTRING-pos,"%.02f,",status.varioAlt);
       pos += snprintf(&sOut[pos],MAXSTRING-pos,"%d,%.01f,",(int32_t)roundf(status.ClimbRate * 100.0),status.varioTemp);
     }else{
-      pos += snprintf(&sOut[pos],MAXSTRING-pos,"999999,%.02f,%d,99,",status.GPS_alt,(int32_t)(status.ClimbRate * 100.0));
+      // Don't send altitude nor baro data if baro sensor is not available.
+      pos += snprintf(&sOut[pos],MAXSTRING-pos,"999999,99999,9999,99,");      
     }
-    pos += snprintf(&sOut[pos],MAXSTRING-pos,"%.02f,",(float)status.vBatt / 1000.);
+    pos += snprintf(&sOut[pos],MAXSTRING-pos,"%u,", Clamp<uint32_t>(status.BattPerc, 0, 100) + 1000U);
     pos = flarmDataPort.addChecksum(sOut,MAXSTRING);
     sendData2Client(sOut,pos);
     /*
