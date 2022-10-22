@@ -4142,8 +4142,9 @@ Tp Clamp(Tp value, Tp min, Tp max) {
 
 void sendLK8EX(uint32_t tAct){
   if (WebUpdateRunning) return;
-  static uint32_t tOld = millis();
-  if ((tAct - tOld) >= 100){
+  static uint32_t tSend = millis();
+  if ((timeOver(tAct,tSend,100) && status.vario.bHasVario) || //update every 100ms if baro exists
+     (timeOver(tAct,tSend,1000) && !status.vario.bHasVario)) { //update every 1 second of no baro exists (only battery-state)
     //            $LK8EX1,pressure [1/100mbar],altVario [m],temp [°C],batt [percent],chksum crlf
     //String s = "$LK8EX1,101300,99999,99999,99,999,";
     char sOut[MAXSTRING];
@@ -4160,31 +4161,7 @@ void sendLK8EX(uint32_t tAct){
     pos += snprintf(&sOut[pos],MAXSTRING-pos,"%u,", Clamp<uint32_t>(status.BattPerc, 0, 100) + 1000U);
     pos = flarmDataPort.addChecksum(sOut,MAXSTRING);
     sendData2Client(sOut,pos);
-    /*
-    String s = "$LK8EX1,";
-
-    if (status.vario.bHasVario){
-      s += String(status.pressure,2) + ","; //raw pressure in hPascal: hPA*100 (example for 1013.25 becomes  101325) 
-      if (status.GPS_Fix){
-        s += String(status.GPS_alt,2) + ","; // altitude in meters, relative to QNH 1013.25
-      }else{
-        s += String(status.varioAlt,2) + ","; // altitude in meters, relative to QNH 1013.25
-      }
-      s += String((int32_t)(status.ClimbRate * 100.0)) + ","; //climbrate in cm/s
-      s += String(status.varioTemp,1) + ","; //temperature
-    }else{
-      s += "999999,"; //raw pressure in hPascal: hPA*100 (example for 1013.25 becomes  101325) 
-      s += String(status.GPS_alt,2) + ","; // altitude in meters, relative to QNH 1013.25
-      s += String((int32_t)(status.ClimbRate * 100.0)) + ","; //climbrate in cm/s
-      //s += String(status.) + ",";
-      s += "99,"; //temperature
-    }
-    
-    s += String((float)status.vBatt / 1000.,2) + ",";
-    s = flarmDataPort.addChecksum(s);
-    sendData2Client(s);
-    */
-    tOld = tAct;
+    tSend = tAct;
   }
 }
 

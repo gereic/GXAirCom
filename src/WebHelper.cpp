@@ -236,9 +236,9 @@ void onWebSocketEvent(uint8_t client_num,
           doc["gyOffset"] = setting.vario.gyro[1];
           doc["gzOffset"] = setting.vario.gyro[2];
           doc["t[0]"] = setting.vario.tValues[0];
-          doc["t[1]"] = setting.vario.tValues[1];
+          //doc["t[1]"] = setting.vario.tValues[1];
           doc["z[0]"] = setting.vario.zValues[0];
-          doc["z[1]"] = setting.vario.zValues[1];
+          //doc["z[1]"] = setting.vario.zValues[1];
           doc["sigmaA"] =  setting.vario.sigmaA;
           doc["sigmaP"] =  setting.vario.sigmaP;
           doc["stateCalibAcc"] = status.calibAccStat;
@@ -430,9 +430,9 @@ void onWebSocketEvent(uint8_t client_num,
         if (root.containsKey("gyOffset")) newSetting.vario.gyro[1] = doc["gyOffset"].as<int16_t>();
         if (root.containsKey("gzOffset")) newSetting.vario.gyro[2] = doc["gzOffset"].as<int16_t>();
         if (root.containsKey("t[0]")) newSetting.vario.tValues[0] = doc["t[0]"].as<float>();
-        if (root.containsKey("t[1]")) newSetting.vario.tValues[1] = doc["t[1]"].as<float>();
+        //if (root.containsKey("t[1]")) newSetting.vario.tValues[1] = doc["t[1]"].as<float>();
         if (root.containsKey("z[0]")) newSetting.vario.zValues[0] = doc["z[0]"].as<float>();
-        if (root.containsKey("z[1]")) newSetting.vario.zValues[1] = doc["z[1]"].as<float>();
+        //if (root.containsKey("z[1]")) newSetting.vario.zValues[1] = doc["z[1]"].as<float>();
         if (root.containsKey("sigmaA")) newSetting.vario.sigmaA = doc["sigmaA"].as<float>();
         if (root.containsKey("sigmaP")) newSetting.vario.sigmaP = doc["sigmaP"].as<float>();
 
