@@ -13,8 +13,7 @@
 #include <math.h>
 #include <Arduino.h>
 #include "LoRa.h"
-
-//#include "../Legacy/Legacy.h"
+#include "../FLARM/FlarmRadio.h"
 
 /* Debug */
 #define MAC_debug_mode				0
@@ -241,7 +240,7 @@ public:
   float lon = 0;
   float geoidAlt = 0;
   bool bPPS = false;
-	bool bHasGPS = true;
+	bool bHasGPS = false;
 	uRfMode _RfMode;	
 	uint16_t txFntCount = 0;
 	uint16_t rxFntCount = 0;

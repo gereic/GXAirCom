@@ -13,13 +13,10 @@ volatile bool enableInterrupt = true;
 
 void IRAM_ATTR setFlag(void)
 {
-    //log_i("i");
     // check if the interrupt is enabled
     if (!enableInterrupt) {
         return;
     }
-
-    // we got a packet, set the flag
     receivedFlag = true;
 }
 
@@ -516,7 +513,6 @@ int16_t LoRaClass::readData(uint8_t* data, size_t len){
             val1 = ManchesterDecode[rx_frame[i]];
             val2 = ManchesterDecode[rx_frame[i+1]];
             data[i>>1] = ((val1 & 0x0F) << 4) | (val2 & 0x0F);
-            //data[i>>1] = ~data[i>>1];
             i++;
           }
           return ret;
@@ -623,6 +619,7 @@ int16_t LoRaClass::sx1276setOpMode(uint8_t mode){
   //if (ret){
   //  log_e("sx1276 error set OP-Mode %d",ret);    
   //}
+  //delay(10); //wait 10ms.
   return ret;
 }
 
@@ -640,7 +637,7 @@ float LoRaClass::getSNR(){
 
 void LoRaClass::printReg(uint8_t reg){
 	uint8_t regVal = pGxModule->SPIreadRegister(reg);
-  Serial.printf("%02X:%02X\n",reg,regVal);
+  Serial.printf("REG=%02X;%02X\n",reg,regVal);
 }
 
 int16_t LoRaClass::sx1276setRxBandwidth(float rxBw){
@@ -664,6 +661,7 @@ int16_t LoRaClass::sx1276setRxBandwidth(float rxBw){
 }
 
 int16_t LoRaClass::sx1262SetFrequency(float freq){
+  //log_i("frequ=%.2f",_freq);
   uint32_t frf = (_freq * (uint32_t(1) << 25)) / 32.0;
   uint8_t data[4];
   data[0] = (uint8_t)((frf >> 24) & 0xFF);
@@ -684,7 +682,7 @@ int16_t LoRaClass::switchFSK(float frequency){
   _freq = frequency;
   int16_t ret = 0;
   uint8_t syncWord[] = {0x99, 0xA5, 0xA9, 0x55, 0x66, 0x65, 0x96};	
-  //log_i("switchFSK frequ=%.2f",_freq);
+  //log_i("switchFSK %d frequ=%.2f",millis(),_freq);
   switch (radioType){
     case RADIO_SX1262:
       {
@@ -760,7 +758,7 @@ int16_t LoRaClass::switchFSK(float frequency){
       break;
       }
     case RADIO_SX1276:
-      sx1276setOpMode(SX1276_MODE_SLEEP); //RegOpMode --> set Module to sleep
+      sx1276setOpMode(SX1276_MODE_SLEEP); //RegOpMode --> set Module to sleep      
       ret = pGxModule->SPIsetRegValue(0x01, 0b00000000, 6, 5, 200); //set modulation to FSK
       if (ret) log_e("sx1276 error set OP-Mode 1 %d",ret);
       ret = pGxModule->SPIsetRegValue(0x01, 0b00000000, 3, 3, 200); //clear low frequency-mode
@@ -776,18 +774,20 @@ int16_t LoRaClass::switchFSK(float frequency){
       pGxModule->SPIwriteRegister(0x04,0x03); //RegFdevMsb Frequency deviation +/- 50kHz
       pGxModule->SPIwriteRegister(0x05,0x33); //RegFdevLsb
       //calculate register values
-      uint32_t FRF = (_freq * (uint32_t(1) << 19)) / 32.0;
+      uint32_t FRF = (frequency * (uint32_t(1) << 19)) / 32.0;
       // write registers
       pGxModule->SPIsetRegValue(0x06, (FRF & 0xFF0000) >> 16); //RegFrMsb
       pGxModule->SPIsetRegValue(0x07, (FRF & 0x00FF00) >> 8);  //RegFrMid
       pGxModule->SPIsetRegValue(0x08, FRF & 0x0000FF); //RegFrLsb
 
-      pGxModule->SPIwriteRegister(0x09,0xFC); //RegPaConfig
+      //pGxModule->SPIwriteRegister(0x09,0xFC); //RegPaConfig
+      pGxModule->SPIwriteRegister(0x09,0xFF); //RegPaConfig PA_Boost on, max_power=15, Output Power 17dBm
       pGxModule->SPIwriteRegister(0x0A,0x49); //RegPaRamp
       pGxModule->SPIwriteRegister(0x0B,0x2B); //RegOcp
       pGxModule->SPIwriteRegister(0x0C,0x23); //RegLna max gain, default LNA current
       //pGxModule->SPIwriteRegister(0x0D,0x0E); //RegRxConfig AFC off, AGC on, trigger on preamble?!?
-      pGxModule->SPIwriteRegister(0x0D,0x1E); //RegRxConfig Auto AFC on, AGC on, trigger on preamble?!?
+      //pGxModule->SPIwriteRegister(0x0D,0x1E); //RegRxConfig Auto AFC on, AGC on, trigger on preamble?!?
+      pGxModule->SPIwriteRegister(0x0D,0x09); //RegRxConfig Auto AFC off, LNA controlled by AGC
       pGxModule->SPIwriteRegister(0x0E,0x02); //RegRssiConfig
       pGxModule->SPIwriteRegister(0x0F,0x0A); //RegRssiCollision
       pGxModule->SPIwriteRegister(0x10,0xFF); //RegRssiThresh
@@ -841,18 +841,20 @@ int16_t LoRaClass::switchFSK(float frequency){
       sx1276setOpMode(SX1276_MODE_STANDBY); //RegOpMode --> set Module to stand-by
 
       /*
-      for (int i = 0x00;i <= 0x44;i++){
+      int i = 0;
+      for (i = 0x00;i <= 0x19;i++){
         printReg(i);
       }
-      printReg(0x4B);
-      printReg(0x4D);
-      printReg(0x5B);
-      printReg(0x5D);
-      printReg(0x61);
-      printReg(0x62);
-      printReg(0x63);
-      printReg(0x64);
-      printReg(0x70);
+      for (i = 0x1A; i <= 0x44;i++ ){
+        printReg(i);
+      }
+      i = 0x4B; printReg(i);
+      i = 0x4D; printReg(i);
+      i = 0x5B; printReg(i);
+      i = 0x5D; printReg(i);
+      for (i = 0x61; i <= 0x64;i++ ){
+        printReg(i);
+      }
       */
 
       break;
@@ -901,7 +903,7 @@ int16_t LoRaClass::sx1262SetDioIrqParams(uint16_t irqMask, uint16_t dio1Mask, ui
 int16_t LoRaClass::switchLORA(float frequency){
   _freq = frequency;
   int16_t ret = -1;
-  //log_i("switchLora frequ=%.2f",_freq);
+  //log_i("switchLora %d frequ=%.2f",millis(),_freq);
   switch (radioType){
     case RADIO_SX1262:
       {
@@ -965,7 +967,8 @@ int16_t LoRaClass::switchLORA(float frequency){
       //pGxModule->SPIwriteRegister(0x06,0xD9); //RegFrMsb
       //pGxModule->SPIwriteRegister(0x07,0x0C); //RegFrMid
       //pGxModule->SPIwriteRegister(0x08,0xCD); //RegFrLsb
-      pGxModule->SPIwriteRegister(0x09,0xFC); //RegPaConfig PA_Boost on, max_power=15, Output Power 14dBm
+      //pGxModule->SPIwriteRegister(0x09,0xFC); //RegPaConfig PA_Boost on, max_power=15, Output Power 14dBm
+      pGxModule->SPIwriteRegister(0x09,0xFF); //RegPaConfig PA_Boost on, max_power=15, Output Power 17dBm
       pGxModule->SPIwriteRegister(0x0A,0x09); //RegPaRamp 40us
       pGxModule->SPIwriteRegister(0x0B,0x2B); //RegOcp OCP enabled, max. 100mA
       pGxModule->SPIwriteRegister(0x0C,0x23); //RegLna G1 (max gain), Boost on (150% LNA current)
@@ -1090,7 +1093,8 @@ int16_t LoRaClass::startReceive(){
 
       // set RF switch (if present)
       pGxModule->setRfSwitchState(HIGH, LOW);
-
+      receivedFlag = false;
+      enableInterrupt = true;
       //start RX
       //uint8_t data[] = { 0xFF,0xFF,0xFF };
       uint8_t data[3];
@@ -1125,6 +1129,8 @@ int16_t LoRaClass::startReceive(){
           // set RF switch (if present)
           pGxModule->setRfSwitchState(HIGH, LOW);
           //iRet = sx1276setOpMode(SX1276_MODE_FS_MODE_RX); //RegOpMode --> set Module to RXCONTINUOUS
+          receivedFlag = false;
+          enableInterrupt = true;
           iRet = sx1276setOpMode(SX1276_MODE_RX_CONTINUOUS); //RegOpMode --> set Module to RXCONTINUOUS
           /*
           if (iRet){
@@ -1139,6 +1145,8 @@ int16_t LoRaClass::startReceive(){
           pGxModule->SPIsetRegValue(0x0D, 0x00); //REG_FIFO_ADDR_PTR
           // set RF switch (if present)
           pGxModule->setRfSwitchState(HIGH, LOW);
+          receivedFlag = false;
+          enableInterrupt = true;
           iRet = sx1276setOpMode(SX1276_MODE_RX_CONTINUOUS); //RegOpMode --> set Module to RXCONTINUOUS
           if (iRet){
             log_e("LORA-Mode set OP-Mode RX_Continous failed");
@@ -1146,10 +1154,8 @@ int16_t LoRaClass::startReceive(){
         }
       break;
   }
-  receivedFlag = false;
-  enableInterrupt = true;
   #if LORA_RX_DEBUG > 10
-  //log_i("%d start Receive",millis());
+    log_i("%d start Receive",millis());
   #endif
   #if LORA_RX_DEBUG > 0
   sprintf(Buffer,"startReceive %dus\n",int(micros()-tBegin));

@@ -4,6 +4,7 @@
 
 #include <Preferences.h>
 #include "main.h"
+#include "enums.h"
 
 extern SettingsData setting;
 

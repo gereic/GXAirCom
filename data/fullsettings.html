@@ -8,10 +8,16 @@
 <script language="javascript" type="text/javascript">
  
  var url = "ws://" + window.location.hostname + ":1337/";
- var bHasBME = 0;
  var bHasVario = 0;
  var calibBtnState = 0;
+ var wsMode = 0;
  
+ const wsModeEn = 1;
+ const wsModeBme = 2;
+ const wsModeRain = 4;
+
+
+
 // This is called when the page finishes loading
 function init() {
  
@@ -66,7 +72,6 @@ function setFts(){
 //this function sets visible depending on actual option
 function setVis(){
   //console.log("visible=" + document.getElementById("mode").style.display)
-  accCalib1
   if (calibBtnState == 0){
     document.getElementById("accCalib1").style.display='none'; //set calibration of ACC to invisible
     document.getElementById("accCalib2").style.display='none'; //set calibration of ACC to invisible
@@ -78,7 +83,7 @@ function setVis(){
     document.getElementById("accCalib3").style.display=''; //set calibration of ACC visible
     document.getElementById("accCalib4").style.display=''; //set calibration of ACC visible
   }
-
+  document.getElementById("VisFrequ").style.display='none'; //set Frequency-settings invisible
   document.getElementById("VisAWUS").style.display='none'; //set advanced weahter upload settings invisible    
   document.getElementById("VisAWFFNT").style.display='none'; //set advanced weahter upload settings invisible      
   document.getElementById("VisWD").style.display='none'; //set weather-data invisible
@@ -94,6 +99,13 @@ function setVis(){
   document.getElementById("visSigmaA").style.display='none';  
   document.getElementById("VisFuelSensor").style.display='none'; //set FuelSensor invisible
   document.getElementById("VisMqtt").style.display='none';  //disable Mqtt settings
+  document.getElementById("VisOwnWs").style.display='none';  //disable Own weather-station  
+  document.getElementById("VisWDBme").style.display='none';  //disable temp-correction for BME
+  document.getElementById("VisAutoUpdate").style.display='none';  //disable autoupdate
+  if (document.getElementById("setView").value > 100){ //we are expert user
+          document.getElementById("VisFrequ").style.display=''; //set Frequency-settings visible
+          //document.getElementById("VisAutoUpdate").style.display='';  //set autoupdate visible
+  }
   if (document.getElementById("useMPU").checked){
     document.getElementById("KfP").innerHTML='Kalman filter pressure-value (default 0.3)';
     document.getElementById("KfA").innerHTML='Kalman filter accelerator-value (default 0.3)';
@@ -116,31 +128,36 @@ function setVis(){
     document.getElementById("visAccTemp2").style.display='';
   }    
   if (document.getElementById("mode").value == 1){ //mode ground-station
-    document.getElementById("VisMqtt").style.display='';  //enable Mqtt settings
-    if (bHasBME == 0){      
-      document.getElementById("tWu").innerHTML='Broadcast weather-underground data to FANET';
-      document.getElementById("tWu2").innerHTML='enable sending wu-data to FANET';
-      document.getElementById("VisWU").style.display=''; //set weather-underground upload invisible
-      document.getElementById("VisWI").style.display='none'; //set windy upload invisible
-      //document.getElementById("VisWU").style.display='none'; //set weather-underground upload invisible
-    }else{
+    document.getElementById("VisOwnWs").style.display='';  //enable Own weather-station  
+    if (wsMode & wsModeEn){
       document.getElementById("VisWD").style.display=''; //set weather-data invisible
       document.getElementById("tWu").innerHTML='Weather Underground Upload';
       document.getElementById("tWu2").innerHTML='enable sending weather-data to WU';
       document.getElementById("VisWU").style.display=''; //set weather-underground upload invisible
       document.getElementById("tWi").innerHTML='windy Upload';
       document.getElementById("tWi2").innerHTML='enable sending weather-data to windy';
-      document.getElementById("VisWI").style.display=''; //set weather-underground upload invisible
+      document.getElementById("VisWI").style.display=''; //set windy upload invisible
       if (document.getElementById("setView").value > 0){ //we are advanced or expert
         document.getElementById("VisAWUS").style.display=''; //set advanced weather upload settings visible  
-        if (document.getElementById("setView").value > 100){ //we are expert
+        if (document.getElementById("setView").value > 100){ //we are expert user
           document.getElementById("VisAWFFNT").style.display=''; //set advanced weather settings visible    
         }
       }
+      if (wsMode & wsModeBme){
+        document.getElementById("VisWDBme").style.display='';  //enable temp-correction for BME
+      }
+    }else{
+      document.getElementById("tWu").innerHTML='Broadcast weather-underground data to FANET';
+      document.getElementById("tWu2").innerHTML='enable sending wu-data to FANET';
+      document.getElementById("VisWU").style.display=''; //set weather-underground visible
+      document.getElementById("VisWI").style.display='none'; //set windy upload invisible
     }
+    document.getElementById("VisMqtt").style.display='';  //enable Mqtt settings
     document.getElementById("VisAirCraftType").style.display='none';    
     document.getElementById("tName").innerHTML='Ground Station name';
     document.getElementById("VisGS").style.display=''; //set GS visible
+    document.getElementById("VisGSUpload1").style.display=''; //set GS visible
+    document.getElementById("VisGSUpload2").style.display=''; //set GS visible
     document.getElementById("VisVario").style.display='none';
     document.getElementById("VisFanetTracking").style.display='none'; //fanet-tracking mode in ground-station is important 
     //document.getElementById("VisOutputSettings").style.display='none'; //output-settings are not usefull in ground-station
@@ -148,6 +165,8 @@ function setVis(){
     document.getElementById("VisAirCraftType").style.display='';
     document.getElementById("tName").innerHTML='Pilot name';
     document.getElementById("VisGS").style.display='none'; //set GS invisible
+    document.getElementById("VisGSUpload1").style.display='none'; //set GS invisible
+    document.getElementById("VisGSUpload2").style.display='none'; //set GS invisible
     document.getElementById("VisWU").style.display='none'; //set weather-underground upload invisible
     document.getElementById("VisWI").style.display='none'; //set windy upload invisible
     if (bHasVario == 0){
@@ -172,6 +191,26 @@ function setVis(){
     document.getElementById("VisWifiPwd").style.display='';
     document.getElementById("VisExtPowerSw").style.display = '';
   }
+  document.getElementById("wdModeEnable").checked = wsMode & wsModeEn;
+  document.getElementById("wdModeHasBME").checked = wsMode & wsModeBme;
+  document.getElementById("wdModeRainSensor").checked = wsMode & wsModeRain;
+}
+
+function setWsMode(){
+  console.log("in function setWsMode");
+  wsMode = 0;
+  if (document.getElementById("wdModeEnable").checked) wsMode += 1;
+  if (document.getElementById("wdModeHasBME").checked) wsMode += 2;
+  if (document.getElementById("wdModeRainSensor").checked) wsMode += 4;
+  setVis();
+}
+
+function getWsMode(){
+  var Ret = 0;
+  if (document.getElementById("wdModeEnable").checked) Ret += 1;
+  if (document.getElementById("wdModeHasBME").checked) Ret += 2;
+  if (document.getElementById("wdModeRainSensor").checked) Ret += 4;
+  return Ret;
 }
 
 function setCalibState(state){
@@ -451,16 +490,17 @@ function sendValues(){
   var obj = {
   setView : Number(document.getElementById("setView").value),
   board : Number(document.getElementById("board").value),
+  Frequ : Number(document.getElementById("Frequ").value),
   disp : Number(document.getElementById("disp").value),
   dispRot : Number(document.getElementById("dispRot").value),
-  band : Number(document.getElementById("band").value),
-  power : Number(document.getElementById("power").value),
+  country : Number(document.getElementById("country").value),
   type : Number(document.getElementById("type").value),
   mode : Number(document.getElementById("mode").value),
   fntMode : Number(document.getElementById("fntMode").value),
   fntPin : Number(document.getElementById("fntPin").value),
   PilotName : document.getElementById("PilotName").value,
   expwsw : Number(document.getElementById("expwsw").checked),
+  AUTOUPDATE : Number(document.getElementById("AUTOUPDATE").checked),
   save : 1
   };
   doSend(JSON.stringify(obj));
@@ -472,12 +512,48 @@ function sendValues(){
   gsGeoAlt : Number(document.getElementById("gsGeoAlt").value),
   gsScr : Number(document.getElementById("gsScr").value),
   gsPs : Number(document.getElementById("gsPs").value),
+  gsAneo : Number(document.getElementById("gsAneo").value),
   MinBatPerc : Number(document.getElementById("MinBatPerc").value),
   restartBattPerc : Number(document.getElementById("restartBattPerc").value),
   save : 1
   };
   doSend(JSON.stringify(obj));
-  
+
+  var obj = {};
+  obj['F2WuF'] = [ FntIdHex2Dec(document.getElementById("F2WuF0").value).toString(),
+            FntIdHex2Dec(document.getElementById("F2WuF1").value).toString(),
+            FntIdHex2Dec(document.getElementById("F2WuF2").value).toString(),
+            FntIdHex2Dec(document.getElementById("F2WuF3").value).toString(),
+            FntIdHex2Dec(document.getElementById("F2WuF4").value).toString()];
+  obj['F2WuI'] = [ document.getElementById("F2WuI0").value,
+            document.getElementById("F2WuI1").value,
+            document.getElementById("F2WuI2").value,
+            document.getElementById("F2WuI3").value,
+            document.getElementById("F2WuI4").value];
+  obj['F2WuK'] = [ document.getElementById("F2WuK0").value,
+            document.getElementById("F2WuK1").value,
+            document.getElementById("F2WuK2").value,
+            document.getElementById("F2WuK3").value,
+            document.getElementById("F2WuK4").value];
+  obj['F2WiF'] = [ FntIdHex2Dec(document.getElementById("F2WiF0").value).toString(),
+            FntIdHex2Dec(document.getElementById("F2WiF1").value).toString(),
+            FntIdHex2Dec(document.getElementById("F2WiF2").value).toString(),
+            FntIdHex2Dec(document.getElementById("F2WiF3").value).toString(),
+            FntIdHex2Dec(document.getElementById("F2WiF4").value).toString()];
+  obj['F2WiI'] = [ document.getElementById("F2WiI0").value,
+            document.getElementById("F2WiI1").value,
+            document.getElementById("F2WiI2").value,
+            document.getElementById("F2WiI3").value,
+            document.getElementById("F2WiI4").value];
+  obj['F2WiK'] = [ document.getElementById("F2WiK0").value,
+            document.getElementById("F2WiK1").value,
+            document.getElementById("F2WiK2").value,
+            document.getElementById("F2WiK3").value,
+            document.getElementById("F2WiK4").value];
+  obj['save'] = 1;
+  doSend(JSON.stringify(obj));
+
+
   var obj = {
   appw : document.getElementById("appw").value,
   wificonnect : Number(document.getElementById("wificonnect").value),
@@ -529,9 +605,7 @@ function sendValues(){
   gyOffset : Number(document.getElementById("gyOffset").value),
   gzOffset : Number(document.getElementById("gzOffset").value),
   "t[0]" : parseFloat(document.getElementById("t[0]").value),
-  "t[1]" : parseFloat(document.getElementById("t[1]").value),
   "z[0]" : parseFloat(document.getElementById("z[0]").value),
-  "z[1]" : parseFloat(document.getElementById("z[1]").value),
   save : 1
 	};
   doSend(JSON.stringify(obj));
@@ -544,10 +618,10 @@ function sendValues(){
 
 
   var obj = {  
+  WsMode : getWsMode(),
   sFWD : Number(document.getElementById("sFWD").checked),
   wdTempOffset : Number(document.getElementById("wdTempOffset").value),  
   wdWDirOffset : Number(document.getElementById("wdWDirOffset").value),  
-  wdRain : Number(document.getElementById("wdRain").checked),
 
   WUUlEnable : Number(document.getElementById("WUUlEnable").checked),
   WUUlID : document.getElementById("WUUlID").value,  
@@ -577,6 +651,7 @@ function sendValues(){
   GSMUSER : document.getElementById("GSMUSER").value,  
   GSMPWD : document.getElementById("GSMPWD").value,    
   GSMMODE : document.getElementById("GSMMODE").value,
+  GSMPREF : document.getElementById("GSMPREF").value,
   save : 2
 	};
   doSend(JSON.stringify(obj));
@@ -584,6 +659,27 @@ function sendValues(){
   document.getElementById("btnsave").innerText  = "rebooting ..."
   var delay = 10000;
   setTimeout( callMainPage, delay )
+}
+
+function FntIdDec2Hex(value){
+  var retVal = "";
+  if (value != 0){
+    retVal = (value).toString(16).toUpperCase().padStart(2, '0')
+    console.log("value="+value+",l="+retVal.length+"retval=" + retVal);
+    while (retVal.length < 6){
+      retVal = "0" + retVal;
+    };
+  }
+  return retVal;
+}
+ 
+function FntIdHex2Dec(value){
+  var retVal = parseInt(value,16);
+  if (!retVal){
+    retVal = 0;
+  }
+  console.log("value="+value+"retval=" + retVal);
+  return retVal;
 }
  
 // Called when a message is received from the server
@@ -596,11 +692,25 @@ function onMessage(evt) {
     var myObj = JSON.parse(evt.data);
     for (var key of Object.keys(myObj)) {
         console.log(key + " -> " + myObj[key])
+        let isArray = Array.isArray(myObj[key]);
+        if (Array.isArray(myObj[key])){
+          var i = 0;
+          for (var myValue of myObj[key]){
+            if ((key == "F2WuF") || (key == "F2WiF")){
+              myValue = FntIdDec2Hex(myValue);
+            }
+            document.getElementById(key + i).value = myValue;
+            document.getElementById(key + i).textContent = myValue;
+            i++;
+          }
+          continue;
+        }
+        if (key == "WsMode"){
+          wsMode = myObj[key];
+          continue;
+        }
         if (key == "bHasVario"){
           bHasVario = myObj[key];
-          continue;
-        }else if (key == "bHasBME"){
-          bHasBME = myObj[key];
           continue;
         }else if (key == "bHasMPU"){
           if (myObj[key] == 0){
@@ -679,118 +789,128 @@ window.addEventListener("load", init, false);
 </script>
 </head>
 <body>
-  <div style="text-align:left;display:inline-block;color:#eaeaea;min-width:340px;">
-    <div style='text-align:center;color:#eaeaea;'>
-      <noscript>JavaScript aktivieren um GXAirCom benutzen zu können<br></noscript>
-      <h1>%APPNAME%-%VERSION%</h1>
-      <h3>build-date: %BUILD%</h3>
-      <h3>%PILOT%</h3>            
-    </div>
-    <!--<div style='text-align:center;color:#eaeaea;' id="TxtConn"></div>-->
-    <fieldset>
-      <legend><b>General settings</b></legend>
-      <table style="width:100&#37;">
-        <tbody>
-          <tr>
-            <th>settings view</th>
-            <td><select onchange="setVis()" id="setView">
-              <option value="0">basic</option>
-              <option value="100">advanced</option>
-              <option value="200">expert</option>
-            </select></td>
-          </tr>
-          <tr>
-            <th>Board Type</th>
-            <td><select id="board">
-              <option value="0">TTGO T-Beam T22_V1.0 / T22_V1.1</option>
-              <option value="2">TTGO T-Beam T22_V07/TTGO LORA T3_V1.6 (V2 1.6)</option>
-              <option value="5">TTGO T-Beam SX1262</option>
-              <option value="1">HELTEC / TTGO LORA</option>
-              <option value="4">TTGO T-SIM7000G</option>
-              <option value="6">TTGO TCall SIM800L</option>
-              <option value="7">HELTEC Wireless Stick Lite</option>
-              <option value="255">unknown</option>
-            </select></td>
-          </tr>
-          <tr>
-            <th>Display Type</th>
-            <td><select id="disp">
-              <option value="0">no display</option>
-              <option value="1">0.96' OLED</option>
-              <option value="2">2.9' E-Ink</option>
-              <option value="3">2.9' E-Ink V2</option>              
-            </select></td>
-          </tr>
-          <tr>
-            <th>Display Rotation</th>
-            <td><select id="dispRot">
-              <option value="0">0&deg;</option>
-              <option value="1">90&deg;</option>
-              <option value="2">180&deg;</option>
-              <option value="3">270&deg;</option>
-            </select></td>
-          </tr>
-          <tr>
-            <th>operating-mode</th>
-            <td><select onchange="setVis()" id="mode">
-              <option value="0">AIR-Module</option>
-              <option value="1">Ground-Station</option>
-              <!--<option value="100">Developer-mode</option>-->
-            </select></td>
-          </tr>
-          <tr>
-            <th id="tName">PilotName</th>
-            <td><input type="text" id="PilotName"></td>
-          </tr>
-          <tr id="VisBattOffs">
-            <th>Battery Voltage calib</th>
-            <td><input type="text" id="vBatt" disabled></td>
-            <td><input type="number" onchange="setBattVoltOffs()" id="BATOFFS" min="-1.00" max="1.00" step="0.01"></td>
-          </tr>
-          <tr id="VisAirCraftType">
-            <th>Aircraft Type</th>
-            <td><select id="type">
-              <option value="0">Unknown</option>
-              <option value="1">Paraglider</option>
-              <option value="2">Hangglider</option>
-              <option value="3">Balloon</option>
-              <option value="4">Glider</option>
-              <option value="5">Powered Aircraft</option>
-              <option value="6">Helicopter</option>
-              <option value="7">UAV</option>
-            </select></td>
-          </tr>	
-          <tr id="VisExtPowerSw">
-            <th>external power swtich (pin36) only for kobo</th>
-            <td><input type="checkbox" id="expwsw"></td>
-          </tr>
-          <tr id="VisFuelSensor">
-            <th>Fuel-sensor available</th>
-            <td><input type="checkbox" id="fuelSensor" ></td>
-          </tr>	
-        </tbody>      
-      </table>
-    </fieldset>
-    <p></p>
-    <p></p>
-    <fieldset>
+<div style="text-align:left;display:inline-block;color:#eaeaea;min-width:340px;">
+<div style='text-align:center;color:#eaeaea;'>
+<noscript>JavaScript aktivieren um GXAirCom benutzen zu können<br></noscript>
+<h1>%APPNAME%-%VERSION%</h1>
+<h3>build-date: %BUILD%</h3>
+<h3>%PILOT%</h3>            
+</div>
+<fieldset>
+<legend><b>General settings</b></legend>
+<table style="width:100&#37;">
+<tbody>
+<tr>
+<th>settings view</th>
+<td><select onchange="setVis()" id="setView">
+<option value="0">basic</option>
+<option value="100">advanced</option>
+<option value="200">expert</option>
+</select></td>
+</tr>
+<tr>
+<th>Board Type</th>
+<td><select id="board">
+  <option value="0">TTGO T-Beam T22_V1.0 / T22_V1.1</option>
+  <option value="2">TTGO T-Beam T22_V07/TTGO LORA T3_V1.6 (V2 1.6)</option>
+  <option value="5">TTGO T-Beam SX1262</option>
+  <option value="1">HELTEC / TTGO LORA</option>
+  <option value="4">TTGO T-SIM7000G</option>
+  <option value="6">TTGO TCall SIM800L</option>
+  <option value="8">HELTEC Wireless Stick</option>
+  <option value="7">HELTEC Wireless Stick Lite</option>
+  <option value="255">unknown</option>
+</select></td>
+</tr>
+<tr id="VisFrequ">
+<th>CPU Frequency</th>
+<td><select id="Frequ">
+  <option value="240">240MHz</option>
+  <option value="160">160MHz</option>
+  <option value="80">80MHz</option>
+  <option value="40">40MHz</option>
+  <option value="20">20MHz</option>
+  <option value="10">10MHz</option>
+</select></td>
+</tr>
+<tr>
+<th>Display Type</th>
+<td><select id="disp">
+<option value="0">no display</option>
+<option value="1">0.96' OLED</option>
+<option value="2">2.9' E-Ink</option>
+<option value="3">2.9' E-Ink V2</option>              
+</select></td>
+</tr>
+<tr>
+<th>Display Rotation</th>
+<td><select id="dispRot">
+<option value="0">0&deg;</option>
+<option value="1">90&deg;</option>
+<option value="2">180&deg;</option>
+<option value="3">270&deg;</option>
+</select></td>
+</tr>
+<tr>
+<th>operating-mode</th>
+<td><select onchange="setVis()" id="mode">
+<option value="0">AIR-Module</option>
+<option value="1">Ground-Station</option>
+<!--<option value="100">Developer-mode</option>-->
+</select></td>
+</tr>
+<tr id="VisOwnWs">
+<th>ground-station is weather-station</th>
+<td><input onchange="setWsMode()" type="checkbox" id="wdModeEnable"></td>
+</tr>
+<tr>
+<th id="tName">PilotName</th>
+<td><input type="text" id="PilotName"></td>
+</tr>
+<tr id="VisBattOffs">
+<th>Battery Voltage calib</th>
+<td><input type="text" id="vBatt" disabled></td>
+<td><input type="number" onchange="setBattVoltOffs()" id="BATOFFS" min="-1.00" max="1.00" step="0.01"></td>
+</tr>
+<tr id="VisAirCraftType">
+<th>Aircraft Type</th>
+<td><select id="type">
+<option value="0">Unknown</option>
+<option value="1">Paraglider</option>
+<option value="2">Hangglider</option>
+<option value="3">Balloon</option>
+<option value="4">Glider</option>
+<option value="5">Powered Aircraft</option>
+<option value="6">Helicopter</option>
+<option value="7">UAV</option>
+</select></td>
+</tr>	
+<tr id="VisExtPowerSw">
+<th>external power swtich (pin36) only for kobo</th>
+<td><input type="checkbox" id="expwsw"></td>
+</tr>
+<tr id="VisFuelSensor">
+<th>Fuel-sensor available</th>
+<td><input type="checkbox" id="fuelSensor" ></td>
+</tr>	
+<tr id="VisAutoUpdate">
+  <th>automatic update over Internet</th>
+  <td><input type="checkbox" id="AUTOUPDATE" ></td>
+  </tr>	
+  </tbody>      
+</table>
+</fieldset>
+<p></p>
+<p></p>
+<fieldset>
       <legend><b>RF-Module settings</b></legend>
       <table style="width:100&#37;">
         <tbody>
           <tr>
             <th>Radio Frequency</th>
-            <td><select id="band">
-              <option value="0">868mhz</option>
-              <option value="1">915mhz</option>
-            </select></td>
-          </tr>
-          <tr>
-            <th>output-power</th>
-            <td><select id="power">
-              <option value="5">LOW</option>
-              <option value="10">MID</option>
-              <option value="14">HIGH</option>
-              <!--<option value="17">MAX</option>-->
+            <td><select id="country">
+              <!--<option value="0">AUTO</option>-->
+              <option value="1">EU (868.2/868.4 Mhz)</option>
             </select></td>
           </tr>
           <tr>
@@ -802,11 +922,11 @@ window.addEventListener("load", init, false);
             <td><input type="checkbox" id="FntTx"></td>
           </tr>
           <tr>
-            <th>Legacy RX (receiving Legacy-MSG)</th>
+            <th>Flarm RX (receiving Flarm-MSG)</th>
             <td><input type="checkbox" id="LegRx"></td>
           </tr>
           <tr>
-            <th>Legacy TX (sending Legacy-MSG)</th>
+            <th>Flarm TX (sending Flarm-MSG)</th>
             <td><input type="checkbox" id="LegTx"></td>
           </tr>
           <tr id="VisFanetTracking">
@@ -1008,7 +1128,7 @@ window.addEventListener("load", init, false);
             <th>Power option</th>
             <td><select id="gsPs">
               <option value="0">always on</option>
-              <option value="1">only on between sunset and sunrise</option>
+              <option value="1">only on between sunrise and sunset</option>
               <option value="2">battery life algorithm mode</option>
             </select></td>
           </tr>
@@ -1019,6 +1139,120 @@ window.addEventListener("load", init, false);
           <tr>
             <th>additional battery capacity for restart [&#037;]</th>
             <td><input type="number" id="restartBattPerc" min="10" max="100" step="1"></td>
+          </tr>
+        </tbody>      
+      </table>
+    </fieldset>
+    <p></p>
+    <p></p>
+    <fieldset id="VisWD">
+      <legend><b>Weather-Station settings</b></legend>
+      <table style="width:100&#37;">
+        <tbody>
+          <tr>
+            <th>Aneometer</th>
+            <td><select id="gsAneo">
+              <option value="0">DAVIS 6410</option>
+              <option value="1">Technoline TX20</option>
+            </select></td>
+          </tr>
+          <tr>
+            <th>offset wind direction [°]</th>
+            <td><input type="number" id="wdWDirOffset" step="1"></td>
+          </tr>
+          <tr>
+            <th>BME280</th>
+            <td><input onchange="setWsMode()" type="checkbox" id="wdModeHasBME"></td>
+          </tr>
+          <tr id="VisWDBme">
+            <th>offset Temperature [K]</th>
+            <td><input type="number" id="wdTempOffset" step=".5"></td>
+          </tr>
+          <tr>
+            <th>rain-sensor avaiable</th>
+            <td><input onchange="setWsMode()" type="checkbox" id="wdModeRainSensor"></td>
+          </tr>
+          <tr>
+            <th>send weather-data over FANET</th>
+            <td><input type="checkbox" id="sFWD"></td>
+          </tr>
+        </tbody>      
+      </table>
+    </fieldset>
+    <p></p>
+    <p></p>
+    <fieldset id="VisGSUpload1">
+      <legend><b>Upload received Fanet weather-data to weather undergound</b></legend>
+      <table style="width:100&#37;">
+        <tbody>
+          <tr>
+            <th>FANET-ID</th>
+            <th>ID</th>
+            <th>KEY</th>
+          </tr>
+          <tr>
+            <td><input type="text" id="F2WuF0"></td>
+            <td><input type="text" id="F2WuI0"></td>
+            <td><input type="text" id="F2WuK0"></td>
+          </tr>
+          <tr>
+            <td><input type="text" id="F2WuF1"></td>
+            <td><input type="text" id="F2WuI1"></td>
+            <td><input type="text" id="F2WuK1"></td>
+          </tr>
+          <tr>
+            <td><input type="text" id="F2WuF2"></td>
+            <td><input type="text" id="F2WuI2"></td>
+            <td><input type="text" id="F2WuK2"></td>
+          </tr>
+          <tr>
+            <td><input type="text" id="F2WuF3"></td>
+            <td><input type="text" id="F2WuI3"></td>
+            <td><input type="text" id="F2WuK3"></td>
+          </tr>
+          <tr>
+            <td><input type="text" id="F2WuF4"></td>
+            <td><input type="text" id="F2WuI4"></td>
+            <td><input type="text" id="F2WuK4"></td>
+          </tr>
+        </tbody>      
+      </table>
+    </fieldset>
+    <p></p>
+    <p></p>
+    <fieldset id="VisGSUpload2">
+      <legend><b>Upload received Fanet weather-data to windy</b></legend>
+      <table style="width:100&#37;">
+        <tbody>
+          <tr>
+            <th>FANET-ID</th>
+            <th>Station ID</th>
+            <th>API key</th>
+          </tr>
+          <tr>
+            <td><input type="text" id="F2WiF0"></td>
+            <td><input type="text" id="F2WiI0"></td>
+            <td><input type="text" id="F2WiK0"></td>
+          </tr>
+          <tr>
+            <td><input type="text" id="F2WiF1"></td>
+            <td><input type="text" id="F2WiI1"></td>
+            <td><input type="text" id="F2WiK1"></td>
+          </tr>
+          <tr>
+            <td><input type="text" id="F2WiF2"></td>
+            <td><input type="text" id="F2WiI2"></td>
+            <td><input type="text" id="F2WiK2"></td>
+          </tr>
+          <tr>
+            <td><input type="text" id="F2WiF3"></td>
+            <td><input type="text" id="F2WiI3"></td>
+            <td><input type="text" id="F2WiK3"></td>
+          </tr>
+          <tr>
+            <td><input type="text" id="F2WiF4"></td>
+            <td><input type="text" id="F2WiI4"></td>
+            <td><input type="text" id="F2WiK4"></td>
           </tr>
         </tbody>      
       </table>
@@ -1048,31 +1282,6 @@ window.addEventListener("load", init, false);
           <tr>
             <th>Password</th>
             <td><input type="text" id="MqttPw"></td>
-          </tr>
-        </tbody>      
-      </table>
-    </fieldset>
-    <p></p>
-    <p></p>
-    <fieldset id="VisWD">
-      <legend><b>Weather-Station settings</b></legend>
-      <table style="width:100&#37;">
-        <tbody>
-          <tr>
-            <th>send weather-data over FANET</th>
-            <td><input type="checkbox" id="sFWD"></td>
-          </tr>
-          <tr>
-            <th>offset Temperature [K]</th>
-            <td><input type="number" id="wdTempOffset" step=".5"></td>
-          </tr>
-          <tr>
-            <th>offset wind direction [°]</th>
-            <td><input type="number" id="wdWDirOffset" step="1"></td>
-          </tr>
-          <tr>
-            <th>rain-sensor avaiable</th>
-            <td><input type="checkbox" id="wdRain"></td>
           </tr>
         </tbody>      
       </table>
@@ -1237,12 +1446,10 @@ window.addEventListener("load", init, false);
           <tr id="visAccTemp1">
             <th>acc-sensor Temp [°C]</th>
             <td><input type="number" id="t[0]" step="0.1"></td>
-            <td><input type="number" id="t[1]" step="0.1"></td>
           </tr>
           <tr id="visAccTemp2">
             <th>acc-sensor Z-Offset</th>
             <td><input type="number" id="z[0]" step="1"></td>
-            <td><input type="number" id="z[1]" step="1"></td>
           </tr>
           <tr>
             <th>gyro-sensor</th>
@@ -1280,6 +1487,15 @@ window.addEventListener("load", init, false);
               <option value="13">GSM only</option>
               <option value="38">LTE only</option>
               <option value="51">GSM and LTE only</option>
+            </select></td>
+          </tr>
+          <tr>
+            <th>Network-Preference</th>
+            <td><select id="GSMPREF">
+              <option value="0">don't set</option>
+              <option value="1">CAT-M</option>
+              <option value="2">NB-IOT</option>
+              <option value="3">CAT-M and NB-IOT</option>
             </select></td>
           </tr>
         </tbody>      

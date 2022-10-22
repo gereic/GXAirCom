@@ -66,7 +66,7 @@ void Baro::meansensors() {
 	long i, buff_ax, buff_ay, buff_az, buff_gx, buff_gy, buff_gz;
   int16_t ax, ay, az, gx, gy, gz;
 	const int buffersize = 1000;     //Amount of readings used to average, make it higher to get more precision but sketch will be slower  (default:1000)
-  int16_t az_values[buffersize];
+  //int16_t az_values[buffersize];
 
 	buff_ax = 0; buff_ay = 0; buff_az = 0; buff_gx = 0; buff_gy = 0; buff_gz = 0;
 	i = 0;
@@ -78,7 +78,7 @@ void Baro::meansensors() {
 		buff_ax += ax;
 		buff_ay += ay;
 		buff_az += az;
-		az_values[i] = az;
+		//az_values[i] = az;
 		buff_gx += gx;
 		buff_gy += gy;
 		buff_gz += gz;
@@ -169,7 +169,7 @@ bool Baro::calibrate(bool bInit,uint8_t* calibstate){
     ay_offset = (ayMax + ayMin) / 2 * -1;
     az_offset = (azMax + azMin) / 2 * -1;
     
-    float aRange;
+    //float aRange;
     ax_scale = 32768 / (float(axMax) - float(axMin));
     ay_scale = 32768 / (float(ayMax) - float(ayMin));
     az_scale = 32768 / (float(azMax) - float(azMin));
@@ -185,6 +185,10 @@ bool Baro::calibrate(bool bInit,uint8_t* calibstate){
     preferences.putFloat("axScale", ax_scale);
     preferences.putFloat("ayScale", ay_scale);
     preferences.putFloat("azScale", az_scale);
+    
+    logData.temp = getMpuTemp();
+    log_i("temp=%.1f",logData.temp);
+    preferences.putFloat("t[0]",logData.temp); //set temp from calibrating
 
     preferences.end();
     //return true;
@@ -194,7 +198,7 @@ bool Baro::calibrate(bool bInit,uint8_t* calibstate){
 
 bool Baro::calibration() {
 
-  int acel_deadzone = 8;			 //Acelerometer error allowed, make it lower to get more precision, but sketch may not converge  (default:8)
+  //int acel_deadzone = 8;			 //Acelerometer error allowed, make it lower to get more precision, but sketch may not converge  (default:8)
   int giro_deadzone = 1;           //Giro error allowed, make it lower to get more precision, but sketch may not converge  (default:1)
 	int numtries = 0;
   int16_t ax, ay, az, gx, gy, gz;
@@ -238,7 +242,8 @@ bool Baro::calibration() {
 		meansensors();
 		Serial.printf("...\r\n");
 
-		if (abs(mean_ax) <= acel_deadzone) ready++;
+		/*
+    if (abs(mean_ax) <= acel_deadzone) ready++;
 		else ax_offset = ax_offset - mean_ax / acel_deadzone;
 
 		if (abs(mean_ay) <= acel_deadzone) ready++;
@@ -246,6 +251,7 @@ bool Baro::calibration() {
 
 		if (abs(MAX2G - mean_az) <= acel_deadzone) ready++;
 		else az_offset = az_offset + (MAX2G - mean_az) / acel_deadzone;
+    */
 
 		if (abs(mean_gx) <= giro_deadzone) ready++;
 		else gx_offset = gx_offset - mean_gx / (giro_deadzone + 1);
@@ -258,13 +264,14 @@ bool Baro::calibration() {
 
 		numtries++;
 
-		if (ready == 6) {
+		//if (ready == 6) {
+    if (ready == 3){
       log_i("write new offsets");
       Preferences preferences;
       preferences.begin("fastvario", false);
-      preferences.putInt("axOffset", ax_offset);
-      preferences.putInt("ayOffset", ay_offset);
-      preferences.putInt("azOffset", az_offset);
+      //preferences.putInt("axOffset", ax_offset);
+      //preferences.putInt("ayOffset", ay_offset);
+      //preferences.putInt("azOffset", az_offset);
       preferences.putInt("gxOffset", gx_offset);
       preferences.putInt("gyOffset", gy_offset);
       preferences.putInt("gzOffset", gz_offset);
@@ -452,12 +459,13 @@ bool Baro::initMS5611(void){
   tValues[0] = preferences.getFloat("t[0]",20.0);
   tValues[1] = preferences.getFloat("t[1]",0.0);
   zValues[0] = preferences.getFloat("z[0]",0.0);
-  zValues[1] = preferences.getFloat("z[1]",0.0);
+  zValues[1] = preferences.getFloat("z[1]",0.0);  
   preferences.end();
   // initialize device
   mpu.initialize();
 
-  log_i("tempcorrection: t0=%.2f z0=%.2f t1=%.2f z1=%.2f",tValues[0],zValues[0],tValues[1],zValues[1]);
+  //log_i("tempcorrection: t0=%.2f z0=%.2f t1=%.2f z1=%.2f",tValues[0],zValues[0],tValues[1],zValues[1]);
+  log_i("tempcorrection: t0=%.2f z0=%.2f",tValues[0],zValues[0]);
 
 	log_i("Initializing DMP...");
 	devStatus = mpu.dmpInitialize();
@@ -512,8 +520,10 @@ uint8_t Baro::begin(TwoWire *pi2c){
   logData.vAcc = 0.0;
   logData.vOffset = 0.0;
   if (initBME280()){
+    log_i("found BME280");
     ret = 1; //BME280;
   }else if (initMS5611()){
+    log_i("found MS5611");
     ret = 2; //GY-86-Board
   }else{
     return 0;
@@ -668,11 +678,13 @@ bool Baro::mpuDrdy(void){
   return false;
 
 }
-void Baro::scaleAccel(VectorInt16 *accel){
+void Baro::scaleAccel(VectorInt16 *accel,float temp){
   //static uint32_t tLog = millis();
   //y=mx+b; //linear function  
   float scale_x,scale_y,scale_z;
   float offset_x,offset_y,offset_z;  
+  float tempOffsetZ;
+  float tempdiff;
   /*
   scale_x = 1;
   scale_y = 1;
@@ -703,29 +715,25 @@ void Baro::scaleAccel(VectorInt16 *accel){
 
   */
   
-  /*
-  scale_x = 1.0079;
-  scale_y = 1.0076;
-  scale_z = 0.9879;
-
-  offset_x = -165.07225;
-  offset_y = 2.275;
-  offset_z = 581.843;
-  */
-  float temp = getMpuTemp();
   accel->x = (int16_t)round(scale_x * (float)accel->x + offset_x);//(offset_x * scale_x));
   accel->y = (int16_t)round(scale_y * (float)accel->y + offset_y);//(offset_y * scale_y));
-  //offset_z = interpolate.Linear(tValues,zValues,2,temp,false);
   /*
   if ((millis() - tLog) >= 1000){
     tLog = millis();
     log_i("t=%.2f,offset_z=%.2f",temp,offset_z);
   }
   */
-  accel->z = (int16_t)round(scale_z * (float)accel->z + offset_z);//(offset_z * scale_z));
+  //accel->z is drifting with temperature --> so we have to correct it.
+  if (zValues[0] != 0){
+    tempdiff = tValues[0] - temp;
+    tempOffsetZ = tempdiff * zValues[0]; //calc temp-kompensation
+  }else{
+    tempOffsetZ = 0.0;
+  }
+  accel->z = (int16_t)round(scale_z * (float)accel->z + offset_z + tempOffsetZ);//(offset_z * scale_z));
 }
 
-float Baro::getGravityCompensatedAccel(void){
+float Baro::getGravityCompensatedAccel(float temp){
     // orientation/motion vars
     Quaternion q;           // [w, x, y, z]         quaternion container
     VectorInt16 aa;         // [x, y, z]            accel sensor measurements
@@ -733,6 +741,7 @@ float Baro::getGravityCompensatedAccel(void){
     VectorInt16 aaReal;     // [x, y, z]            gravity-free accel sensor measurements
     VectorInt16 aaWorld;    // [x, y, z]            world-frame accel sensor measurements
     VectorFloat gravity;    // [x, y, z]            gravity vector
+    //float tempOffsetZAcc = 0.0;
     // get current FIFO count
     
     //uint16_t fifoCount = mpu.getFIFOCount();
@@ -756,7 +765,7 @@ float Baro::getGravityCompensatedAccel(void){
     mpu.dmpGetQuaternion(&q, fifoBuffer);
     mpu.dmpGetAccel(&aa, fifoBuffer);
     mpu.dmpGetGyro(&gy, fifoBuffer);
-    scaleAccel(&aa); //scale an offset to acceleration !!
+    scaleAccel(&aa,temp); //scale an offset to acceleration !!
     logData.accel[0] = aa.x;
     logData.accel[1] = aa.y;
     logData.accel[2] = aa.z;
@@ -775,8 +784,14 @@ float Baro::getGravityCompensatedAccel(void){
     logData.aaWorld[0] = aaWorld.x;
     logData.aaWorld[1] = aaWorld.y;
     logData.aaWorld[2] = aaWorld.z;
-    return float(aaWorld.z*(9.80665 / MPU6050_2G_SENSITIVITY)); //to get m/s
-
+    /*
+    if ((tValues[0] != tValues[1]) && (zValues[0] != zValues[1])){
+      tempOffsetZAcc = interpolate.Linear(tValues,zValues,2,temp,false);
+    }else{
+      tempOffsetZAcc = 0.0; //no temp-Offset
+    } 
+    */   
+    return float(aaWorld.z*(9.80665 / MPU6050_2G_SENSITIVITY));// + tempOffsetZAcc; //to get m/s
 }
 
 float Baro::getMpuTemp(void){
@@ -806,6 +821,7 @@ void Baro::runMS5611(uint32_t tAct){
   static float press = 0.0f;
   static float temp = 0.0f;
   static uint8_t baroCount = 0;
+  float lTemp = 0.0f;
   //static uint32_t tTemp = millis();
 
   static float acc = 0.0f;
@@ -825,8 +841,9 @@ void Baro::runMS5611(uint32_t tAct){
   }
   bool bReady = mpuDrdy();
   if (bReady){
-    acc += getGravityCompensatedAccel();
-    temp += getMpuTemp();
+    lTemp = getMpuTemp();
+    temp += lTemp;
+    acc += getGravityCompensatedAccel(lTemp);
 		mpuCount++;
   }
   #ifdef newBaro
@@ -927,7 +944,7 @@ void Baro::runBME280(uint32_t tAct){
 }
 
 void Baro::run(void){
-  static uint32_t tOld;  
+  //static uint32_t tOld;  
   uint32_t tAct = millis();
 
   if (sensorType == SENSORTYPE_MS5611){
@@ -949,7 +966,7 @@ void Baro::run(void){
   }
   #endif 
   if (logData.newData){
-    tOld = tAct;  
+    //tOld = tAct;  
     logData.newData = 0;
   }
 }

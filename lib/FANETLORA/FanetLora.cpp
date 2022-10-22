@@ -5,7 +5,7 @@
  */
 
 #include "FanetLora.h"
-#include "Legacy/Legacy.h"
+//#include "Legacy/Legacy.h"
 
 FanetLora::FanetLora(){
 }
@@ -42,7 +42,6 @@ bool FanetLora::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int8_t res
   Fapp * fa = this;
   //_myData.devId = getDevIdFromMac(fmac.myAddr);
   
-
   _PilotName = "";  
   _myData.aircraftType = FanetLora::aircraft_t::paraglider; //default Paraglider
   _myData.lat = NAN;
@@ -55,6 +54,21 @@ bool FanetLora::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int8_t res
   fmac.setRfMode(_RfMode);
   bool bRet = fmac.begin(sck, miso, mosi, ss, reset, dio0,gpio,*fa,frequency,outputPower,radio);
   _myData.devId = ((uint32_t)fmac.myAddr.manufacturer << 16) + (uint32_t)fmac.myAddr.id;
+  
+  // init Flarm-Data
+  memset(&flarmAircraftConfig,0,sizeof(flarmAircraftConfig)); //clear aircraftconfig
+  memset(&flarmGpsData,0,sizeof(flarmGpsData)); //clear gps-data
+  memset(&flarmAircraftState,0,sizeof(flarmAircraftState)); //clear aircraftstate
+  flarmAircraftConfig.identifier[2] = uint8_t(_myData.devId >> 16);
+  flarmAircraftConfig.identifier[1] = uint8_t(_myData.devId >> 8);
+  flarmAircraftConfig.identifier[0] = uint8_t(_myData.devId >> 0);
+  flarmAircraftConfig.airborne_mode = 1; //on ground
+  flarmAircraftConfig.no_tracking_mode = false;
+  flarmAircraftConfig.private_mode = false;
+  flarmAircraftConfig.type = getFlarmAircraftType(_myData.aircraftType); //set aircraftType
+  flarmAircraftState.config = &flarmAircraftConfig;
+  flarmAircraftState.gps = &flarmGpsData;
+  flarm_init_aircraft_state(&flarmAircraftState);
   log_i("myDevId:%02X%04X",fmac.myAddr.manufacturer,fmac.myAddr.id);
   if (!bRet){
     log_e("radio failed");
@@ -65,6 +79,11 @@ bool FanetLora::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int8_t res
 }
 
 void FanetLora::setGPS(bool bHasGps){
+  if (bHasGps){
+    log_i("enable GPS PPS");
+  }else{
+    log_i("disable GPS PPS");
+  }
   fmac.bHasGPS = bHasGps;
 }
 
@@ -400,6 +419,7 @@ void FanetLora::setPilotname(String name){
 
 void FanetLora::setAircraftType(aircraft_t type){
     _myData.aircraftType = type;
+    flarmAircraftConfig.type = getFlarmAircraftType(_myData.aircraftType); //set aircraftType for Flarm
 }
 
 int16_t FanetLora::getNextNeighbor(uint8_t index){
@@ -527,17 +547,10 @@ int8_t FanetLora::getWeatherinfo(uint8_t *buffer,uint16_t length){
   index ++;
   if (header & 0x01) index ++; //additional header direct after first byte
   // integer values /
-  int32_t lati = int32_t(buffer[index+2])<<16 | int32_t(buffer[index+1])<<8 | int32_t(buffer[index]);
+  lastWeatherData.lat = getLatFromBuffer(&buffer[index]);
   index += 3;
-  if(lati & 0x00800000)
-    lati |= 0xFF000000;
-  int32_t loni = int32_t(buffer[index+2])<<16 | int32_t(buffer[index+1])<<8 | int32_t(buffer[index]);
+  lastWeatherData.lon = getLonFromBuffer(&buffer[index]);
   index += 3;
-  if(loni & 0x00800000)
-    loni |= 0xFF000000;    
-  lastWeatherData.lat = (float)lati / 93206.0f;
-  lastWeatherData.lon = (float)loni / 46603.0f;
-  //log_i("lat=%.6f;lon=%.6f",lastWeatherData.lat,lastWeatherData.lon);
   if (header & 0x40){ //temp
     int8_t temp = (int8_t)buffer[index];
     lastWeatherData.bTemp = true;
@@ -595,6 +608,18 @@ int8_t FanetLora::getWeatherinfo(uint8_t *buffer,uint16_t length){
   return 0;
 }
 
+int32_t FanetLora::getLatLonFromBuffer(uint8_t *buffer){
+  int32_t lati = int32_t(buffer[2])<<16 | int32_t(buffer[1])<<8 | int32_t(buffer[0]);
+  if(lati & 0x00800000) lati |= 0xFF000000;  
+  return lati;
+}
+
+float FanetLora::getLatFromBuffer(uint8_t *buffer){
+  return (float)getLatLonFromBuffer(buffer) / 93206.0f;
+}
+float FanetLora::getLonFromBuffer(uint8_t *buffer){
+  return (float)getLatLonFromBuffer(buffer) / 46603.0f;
+}
 
 
 int8_t FanetLora::getGroundTrackingInfo(uint8_t *buffer,uint16_t length){
@@ -603,20 +628,10 @@ int8_t FanetLora::getGroundTrackingInfo(uint8_t *buffer,uint16_t length){
       return -1;
     }
     uint8_t index = 0;
-      // integer values /
-    int32_t lati = int32_t(buffer[index+2])<<16 | int32_t(buffer[index+1])<<8 | int32_t(buffer[index]);
+    actTrackingData.lat = getLatFromBuffer(&buffer[index]);
     index += 3;
-    if(lati & 0x00800000)
-      lati |= 0xFF000000;
-    int32_t loni = int32_t(buffer[index+2])<<16 | int32_t(buffer[index+1])<<8 | int32_t(buffer[index]);
+    actTrackingData.lon = getLonFromBuffer(&buffer[index]);
     index += 3;
-    if(loni & 0x00800000)
-      loni |= 0xFF000000;    
-    actTrackingData.lat = (float)lati / 93206.0f;
-    actTrackingData.lon = (float)loni / 46603.0f;
-    //Serial.print("FANETlat=");Serial.println(actTrackingData.lat);
-    //Serial.print("FANETlon=");Serial.println(actTrackingData.lon);
-
     uint8_t type = buffer[index];
     if (type & 0x01){
       actTrackingData.OnlineTracking = true;  
@@ -777,6 +792,10 @@ void FanetLora::handle_frame(Frame *frm){
     actTrackingData.snr = frm->snr;
     actTrackingData.addressType = frm->AddressType;
     actTrackingData.timestamp = frm->timeStamp; //copy timestamp
+    if (frm->altitude > 0) actTrackingData.altitude = frm->altitude;
+    if (frm->legacyAircraftType != 0){
+      actTrackingData.aircraftType = (aircraft_t)(0x80 + frm->legacyAircraftType);
+    }
     if (getGroundTrackingInfo(frm->payload,frm->payload_length) == 0){
       insertDataToNeighbour(actTrackingData.devId,&actTrackingData);
     }else{
@@ -829,9 +848,17 @@ bool FanetLora::createLegacy(uint8_t *buffer){
 	if(millis() > valid_until || isnan(_myData.lat) || isnan(_myData.lon))
 		return false;
   //we create the complete legacy-packet ready for sending
-  createLegacyPkt(&_myData,_geoIdAltitude,onGround,buffer);
-  encrypt_legacy(buffer,_myData.timestamp);
-	uint16_t crc16 = getLegacyCkSum(buffer,24);
+  //createLegacyPkt(&_myData,_geoIdAltitude,onGround,buffer);
+  //encrypt_legacy(buffer,_myData.timestamp);
+  if (onGround){
+    flarmAircraftConfig.airborne_mode = 1; //onGround
+  }else{
+    flarmAircraftConfig.airborne_mode = 2; //inAir
+  }
+  
+  flarm_create_packet(&flarmAircraftState, buffer);
+  flarm_encrypt(buffer,_myData.timestamp);
+	uint16_t crc16 = flarm_getCkSum(buffer,24);
 	buffer[24]=(crc16 >>8);
   buffer[25]=crc16;
   return true;
@@ -1018,9 +1045,9 @@ bool FanetLora::getTrackingData(trackingData *tData){
     return bRet;
 }
 
-uint8_t FanetLora::getFlarmAircraftType(trackingData *tData){
-  if (tData->aircraftType >= 0x80) return tData->aircraftType & 0x7F; //is already a Flarm-Aircraft-Type
-  switch (tData->aircraftType)
+uint8_t FanetLora::getFlarmAircraftType(aircraft_t aircraftType){
+  if (aircraftType >= 0x80) return aircraftType & 0x7F; //is already a Flarm-Aircraft-Type
+  switch (aircraftType)
   {
   case aircraft_t::paraglider :
     return aircraft_t::leg_para_glider & 0x7F;
@@ -1039,7 +1066,10 @@ uint8_t FanetLora::getFlarmAircraftType(trackingData *tData){
   default:
     return aircraft_t::leg_unknown & 0x7F;
   }
-  
+}
+
+uint8_t FanetLora::getFlarmAircraftType(trackingData *tData){
+  return getFlarmAircraftType(tData->aircraftType);
 }
 
 int8_t FanetLora::getTrackingInfo(Frame *frm){
@@ -1049,17 +1079,10 @@ int8_t FanetLora::getTrackingInfo(Frame *frm){
     }
     uint8_t index = 0;
       // integer values /
-    int32_t lati = int32_t(frm->payload[index+2])<<16 | int32_t(frm->payload[index+1])<<8 | int32_t(frm->payload[index]);
+    actTrackingData.lat = getLatFromBuffer(&frm->payload[index]);
     index += 3;
-    if(lati & 0x00800000)
-      lati |= 0xFF000000;
-    int32_t loni = int32_t(frm->payload[index+2])<<16 | int32_t(frm->payload[index+1])<<8 | int32_t(frm->payload[index]);
+    actTrackingData.lon = getLonFromBuffer(&frm->payload[index]);
     index += 3;
-    if(loni & 0x00800000)
-      loni |= 0xFF000000;    
-    actTrackingData.lat = (float)lati / 93206.0f;
-    actTrackingData.lon = (float)loni / 46603.0f;
-
     uint16_t Type = (uint16_t(frm->payload[index+1]) << 8) + uint16_t(frm->payload[index]);
     index += 2;
     uint16_t altitude = Type & 0x7FF;
@@ -1219,7 +1242,8 @@ int FanetLora::serialize_tracking(trackingData *Data,uint8_t*& buffer){
 int FanetLora::serialize_service(weatherData *wData,uint8_t*& buffer){
   int msgSize = sizeof(fanet_packet_t4);
   buffer = new uint8_t[msgSize];
-  fanet_packet_t4 *pkt = (fanet_packet_t4 *)&buffer[0];
+  uint8_t index = 0;
+  fanet_packet_t4 *pkt = (fanet_packet_t4 *)&buffer[index];
   pkt->bExt_header2 = false;
   pkt->bStateOfCharge = wData->bStateOfCharge;
   pkt->bRemoteConfig = false;
@@ -1228,34 +1252,62 @@ int FanetLora::serialize_service(weatherData *wData,uint8_t*& buffer){
   pkt->bWind = wData->bWind;
   pkt->bTemp = wData->bTemp;
   pkt->bInternetGateway = false;
-  coord2payload_absolut(wData->lat,wData->lon, &buffer[1]);
-  int iTemp = (int)(round(wData->temp * 2)); //Temperature (+1byte in 0.5 degree, 2-Complement)
-  pkt->temp = iTemp & 0xFF;
-  pkt->heading = uint8_t(round(wData->wHeading * 256.0 / 360.0)); //Wind (+3byte: 1byte Heading in 360/256 degree, 1byte speed and 1byte gusts in 0.2km/h (each: bit 7 scale 5x or 1x, bit 0-6))
-
-  int speed = (int)roundf(wData->wSpeed * 5.0f);
-  if(speed > 127) {
-      pkt->speed_scale  = 1;
-      pkt->speed        = (speed / 5);
-  } else {
-      pkt->speed_scale  = 0;
-      pkt->speed        = speed & 0x7F;
+  index++;
+  coord2payload_absolut(wData->lat,wData->lon, &buffer[index]);
+  index+= 6;
+  if (wData->bTemp){
+    int iTemp = (int)(round(wData->temp * 2)); //Temperature (+1byte in 0.5 degree, 2-Complement)
+    buffer[index] = iTemp & 0xFF;
+    index++;
+    //pkt->temp = iTemp & 0xFF;
   }
-  speed = (int)roundf(wData->wGust * 5.0f);
-  if(speed > 127) {
-      pkt->gust_scale  = 1;
-      pkt->gust        = (speed / 5);
-  } else {
-      pkt->gust_scale  = 0;
-      pkt->gust        = speed & 0x7F;
+  if (wData->bWind){
+    //pkt->heading = uint8_t(round(wData->wHeading * 256.0 / 360.0)); //Wind (+3byte: 1byte Heading in 360/256 degree, 1byte speed and 1byte gusts in 0.2km/h (each: bit 7 scale 5x or 1x, bit 0-6))
+    buffer[index] = uint8_t(round(wData->wHeading * 256.0 / 360.0)); //Wind (+3byte: 1byte Heading in 360/256 degree, 1byte speed and 1byte gusts in 0.2km/h (each: bit 7 scale 5x or 1x, bit 0-6))
+    index++;
+
+    int speed = (int)roundf(wData->wSpeed * 5.0f);
+    if(speed > 127) {
+        //pkt->speed_scale  = 1;
+        //pkt->speed        = (speed / 5);
+        buffer[index] = (speed / 5) + 0x80;
+        index++;
+    } else {
+        //pkt->speed_scale  = 0;
+        //pkt->speed        = speed & 0x7F;
+        buffer[index] = speed & 0x7F;
+        index++;
+    }
+    speed = (int)roundf(wData->wGust * 5.0f);
+    if(speed > 127) {
+        //pkt->gust_scale  = 1;
+        //pkt->gust        = (speed / 5);
+        buffer[index] = (speed / 5) + 0x80;
+        index++;
+    } else {
+        //pkt->gust_scale  = 0;
+        //pkt->gust        = speed & 0x7F;
+        buffer[index] = speed & 0x7F;
+        index++;
+    }
   }
-
-  pkt->humidity = uint8_t(round(wData->Humidity * 10 / 4)); //Humidity (+1byte: in 0.4% (%rh*10/4))
-
-  pkt->baro = int16_t(round((wData->Baro - 430.0) * 10));  //Barometric pressure normailized (+2byte: in 10Pa, offset by 430hPa, unsigned little endian (hPa-430)*10)
-
-  pkt->charge = constrain(roundf(float(wData->Charge) / 100.0 * 15.0),0,15); //State of Charge  (+1byte lower 4 bits: 0x00 = 0%, 0x01 = 6.666%, .. 0x0F = 100%)
-  return msgSize;
+  if (wData->bHumidity){
+    //  pkt->humidity = uint8_t(round(wData->Humidity * 10 / 4)); //Humidity (+1byte: in 0.4% (%rh*10/4))
+    buffer[index] = uint8_t(round(wData->Humidity * 10 / 4)); //Humidity (+1byte: in 0.4% (%rh*10/4))
+    index++;
+  }
+  if (wData->bHumidity){
+    int16_t *pInt;
+    pInt = (int16_t *)&buffer[index];
+    //pkt->baro = int16_t(round((wData->Baro - 430.0) * 10));  //Barometric pressure normailized (+2byte: in 10Pa, offset by 430hPa, unsigned little endian (hPa-430)*10)
+    *pInt = int16_t(round((wData->Baro - 430.0) * 10));  //Barometric pressure normailized (+2byte: in 10Pa, offset by 430hPa, unsigned little endian (hPa-430)*10)
+    index+=2;
+  }
+  //pkt->charge = constrain(roundf(float(wData->Charge) / 100.0 * 15.0),0,15); //State of Charge  (+1byte lower 4 bits: 0x00 = 0%, 0x01 = 6.666%, .. 0x0F = 100%)
+  buffer[index] = constrain(roundf(float(wData->Charge) / 100.0 * 15.0),0,15); //State of Charge  (+1byte lower 4 bits: 0x00 = 0%, 0x01 = 6.666%, .. 0x0F = 100%)
+  index++;
+  //return msgSize;
+  return index;
 }
 
 void FanetLora::writeMsgType4(weatherData *wData){
@@ -1282,6 +1334,18 @@ void FanetLora::setMyTrackingData(trackingData *tData,float geoidAlt,uint32_t pp
     fmac.setPps(&_ppsMillis); 
     _geoIdAltitude = geoidAlt;
     valid_until = millis() + FANET_LORA_VALID_STATE_MS;
+    
+    flarmGpsData.lat_deg_e7 = int32_t(tData->lat * 10000000.0);
+    flarmGpsData.lon_deg_e7 = int32_t(tData->lon * 10000000.0);
+    flarmGpsData.height_m = int32_t(tData->altitude + geoidAlt);
+    flarmGpsData.vel_u_cm_s = int32_t(tData->climb * 100);
+    flarmGpsData.gspeed_cm_s = uint32_t(tData->speed * 100000 / 3600);
+    flarmGpsData.vel_n_cm_s = int32_t(flarmGpsData.gspeed_cm_s * cosf(radians(tData->heading)));
+    flarmGpsData.vel_e_cm_s = int32_t(flarmGpsData.gspeed_cm_s * sinf(radians(tData->heading)));    
+    flarmGpsData.heading_deg_e1 = int32_t(tData->heading * 10);
+    //log_i("speed=%d,speed2=%.1f",flarmGpsData.gspeed_cm_s,tData->speed);
+    //log_i("lat=%d,lon=%d,h=%d,vario=%d,speed=%d,heading=%d",flarmGpsData.lat_deg_e7,flarmGpsData.lon_deg_e7,flarmGpsData.height_m,flarmGpsData.vel_u_cm_s,flarmGpsData.gspeed_cm_s,flarmGpsData.heading_deg_e1);
+    flarm_update_aircraft_state(&flarmAircraftState); //update Flarm aircraftstate
     //log_i("valid_until %lu",valid_until);
 }
 

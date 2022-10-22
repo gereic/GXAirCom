@@ -67,11 +67,11 @@ void onWebSocketEvent(uint8_t client_num,
           doc["compiledate"] = String(compile_date);
           doc["bHasVario"] = (uint8_t)status.vario.bHasVario;       
           doc["bHasMPU"] = (uint8_t)status.vario.bHasMPU;   
-          doc["VisWeather"] = (uint8_t)(status.vario.bHasBME | status.bWUBroadCast);
+          doc["VisWeather"] = (uint8_t)(setting.wd.mode.bits.enable | status.bWUBroadCast);
           doc["board"] = setting.boardType;
+          doc["Frequ"] = setting.CPUFrequency;
           doc["disp"] = setting.displayType;
-          doc["band"] = setting.band;
-          doc["power"] = setting.LoraPower;
+          doc["country"] = setting.country;
           doc["mode"] = setting.Mode;
           doc["type"] = (uint8_t)setting.AircraftType;
           doc["bHasGSM"] = (uint8_t)status.gsm.bHasGSM;
@@ -96,10 +96,11 @@ void onWebSocketEvent(uint8_t client_num,
           doc["vBatt"] = String((float)status.vBatt/1000.,2);
           doc["Battperc"] = status.BattPerc;
           #ifdef AIRMODULE
-          if (setting.Mode == MODE_AIR_MODULE){
+          if (setting.Mode == eMode::AIR_MODULE){
             doc["gpsFix"] = status.GPS_Fix;
             doc["gpsNumSat"] = status.GPS_NumSat;
             doc["gpsSpeed"] = String(status.GPS_speed,2);
+            doc["gpsCourse"] = String(status.GPS_course,2);
           }
           #endif
           doc["gpslat"] = String(status.GPS_Lat,6);
@@ -118,8 +119,9 @@ void onWebSocketEvent(uint8_t client_num,
           webSocket.sendTXT(client_num, msg_buf);
 
           #ifdef GSMODULE
-          if (setting.Mode == MODE_GROUND_STATION){
+          if (setting.Mode == eMode::GROUND_STATION){
             doc.clear();
+            doc["WsMode"] = setting.wd.mode.mode;
             doc["wsTemp"] = String(status.weather.temp,1);
             doc["wsHum"] = String(status.weather.Humidity,1);
             doc["wsPress"] = String(status.weather.Pressure,2);
@@ -157,11 +159,11 @@ void onWebSocketEvent(uint8_t client_num,
           doc.clear();
           doc["setView"] = setting.settingsView;                  
           doc["board"] = setting.boardType;
+          doc["Frequ"] = setting.CPUFrequency;
           doc["disp"] = setting.displayType;
           doc["dispRot"] = setting.displayRotation;
-          doc["band"] = setting.band;
+          doc["country"] = setting.country;
           doc["expwsw"] = setting.bHasExtPowerSw;
-          doc["power"] = setting.LoraPower;
           doc["mode"] = setting.Mode;
           doc["type"] = (uint8_t)setting.AircraftType;
           doc["PilotName"] = setting.PilotName;
@@ -171,6 +173,7 @@ void onWebSocketEvent(uint8_t client_num,
           doc["fntMode"] = setting.fanetMode;
           doc["fntPin"] = setting.fanetpin;
           doc["RFM"] = setting.RFMode;
+          doc["AUTOUPDATE"] = setting.bAutoupdate;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
 
@@ -204,11 +207,23 @@ void onWebSocketEvent(uint8_t client_num,
           doc["gsGeoAlt"] = setting.gs.geoidAlt;
           doc["gsScr"] = setting.gs.SreenOption;
           doc["gsPs"] = setting.gs.PowerSave;
+          doc["gsAneo"] = setting.gs.Aneometer;
           doc["MinBatPerc"] = setting.minBattPercent;
           doc["restartBattPerc"] = setting.restartBattPercent;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
 
+          doc.clear();
+          for(int i = 0; i <MAXFNTUPLOADSTATIONS;i++){ //Fanet-Upload to WU and Windy
+            doc["F2WuF"][i] = setting.FntWuUpload[i].FanetId;
+            doc["F2WuI"][i] = setting.FntWuUpload[i].ID;
+            doc["F2WuK"][i] = setting.FntWuUpload[i].KEY;
+            doc["F2WiF"][i] = setting.FntWiUpload[i].FanetId;
+            doc["F2WiI"][i] = setting.FntWiUpload[i].ID;
+            doc["F2WiK"][i] = setting.FntWiUpload[i].KEY;
+          }
+          serializeJson(doc, msg_buf);
+          webSocket.sendTXT(client_num, msg_buf);
 
           doc.clear();
           doc["configGPS"] = command.ConfigGPS;
@@ -221,9 +236,9 @@ void onWebSocketEvent(uint8_t client_num,
           doc["gyOffset"] = setting.vario.gyro[1];
           doc["gzOffset"] = setting.vario.gyro[2];
           doc["t[0]"] = setting.vario.tValues[0];
-          doc["t[1]"] = setting.vario.tValues[1];
+          //doc["t[1]"] = setting.vario.tValues[1];
           doc["z[0]"] = setting.vario.zValues[0];
-          doc["z[1]"] = setting.vario.zValues[1];
+          //doc["z[1]"] = setting.vario.zValues[1];
           doc["sigmaA"] =  setting.vario.sigmaA;
           doc["sigmaP"] =  setting.vario.sigmaP;
           doc["stateCalibAcc"] = status.calibAccStat;
@@ -233,10 +248,10 @@ void onWebSocketEvent(uint8_t client_num,
 
 
           doc.clear();
+          doc["WsMode"] = setting.wd.mode.mode;
           doc["sFWD"] = setting.wd.sendFanet;
           doc["wdTempOffset"] = setting.wd.tempOffset;
           doc["wdWDirOffset"] = setting.wd.windDirOffset;
-          doc["wdRain"] = setting.wd.RainSensor;
           doc["bHasVario"] = (uint8_t)status.vario.bHasVario;
           doc["bHasMPU"] = (uint8_t)status.vario.bHasMPU;
           doc["vSinkTh"] = serialized(String(setting.vario.sinkingThreshold,2));
@@ -250,7 +265,6 @@ void onWebSocketEvent(uint8_t client_num,
           webSocket.sendTXT(client_num, msg_buf);
 
           doc.clear();
-          doc["bHasBME"] = (uint8_t)status.vario.bHasBME;
           doc["WUUlEnable"] = setting.WUUpload.enable;
           doc["WUUlID"] = setting.WUUpload.ID;
           doc["WUUlKEY"] = setting.WUUpload.KEY;
@@ -269,7 +283,8 @@ void onWebSocketEvent(uint8_t client_num,
           doc["GSMAPN"] = setting.gsm.apn;
           doc["GSMUSER"] = setting.gsm.user;
           doc["GSMPWD"] = setting.gsm.pwd;
-          doc["GSMMODE"] = setting.gsm.NetworkMode;          
+          doc["GSMMODE"] = setting.gsm.NetworkMode;
+          doc["GSMPREF"] = setting.gsm.PreferredMode;      
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
 
@@ -285,40 +300,6 @@ void onWebSocketEvent(uint8_t client_num,
           doc["MqttServer"] = setting.mqtt.server ;
           doc["MqttPort"] = setting.mqtt.port;
           doc["MqttPw"] = setting.mqtt.pw;
-          serializeJson(doc, msg_buf);
-          webSocket.sendTXT(client_num, msg_buf);
-          
-        }else if (clientPages[client_num] == 11){ //settings general
-          doc["board"] = setting.boardType;
-          doc["band"] = setting.band;
-          doc["power"] = setting.LoraPower;
-          doc["type"] = (uint8_t)setting.AircraftType;
-          doc["PilotName"] = setting.PilotName;
-          serializeJson(doc, msg_buf);
-          webSocket.sendTXT(client_num, msg_buf);
-        }else if (clientPages[client_num] == 12){ //settings output
-          doc["output"] = setting.outputMode;
-          doc["oGPS"] = setting.outputGPS;
-          doc["oFlarm"] = setting.outputFLARM;
-          doc["oFanet"] = setting.outputFANET;
-          doc["oVario"] = setting.outputModeVario;
-          doc["awlive"] = setting.awLiveTracking;
-          doc["UDPServerIP"] = setting.UDPServerIP;
-          doc["UDPSendPort"] = setting.UDPSendPort;
-          serializeJson(doc, msg_buf);
-          webSocket.sendTXT(client_num, msg_buf);
-        }else if (clientPages[client_num] == 13){ //settings wifi
-          doc["appw"] = setting.wifi.appw;
-          doc["ssid"] = setting.wifi.ssid;
-          doc["password"] = setting.wifi.password;
-          doc["wifioff"] = setting.wifi.tWifiStop;
-          serializeJson(doc, msg_buf);
-          webSocket.sendTXT(client_num, msg_buf);
-        }else if (clientPages[client_num] == 14){ //settings ground station
-          doc["gslat"] = setting.gs.lat;
-          doc["gslon"] = setting.gs.lon;
-          doc["gsalt"] = setting.gs.alt;
-          doc["mode"] = setting.Mode;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
         }else if (clientPages[client_num] == 101){ //msg-type 1 test
@@ -372,44 +353,54 @@ void onWebSocketEvent(uint8_t client_num,
         SettingsData newSetting = setting;
         if (root.containsKey("setView")) newSetting.settingsView = doc["setView"].as<uint8_t>();                  
         if (root.containsKey("appw")) newSetting.wifi.appw = doc["appw"].as<String>();          
-        if (root.containsKey("wificonnect")) newSetting.wifi.connect = doc["wificonnect"].as<uint8_t>();
+        if (root.containsKey("wificonnect")) newSetting.wifi.connect = eWifiMode(doc["wificonnect"].as<uint8_t>());
         if (root.containsKey("ssid")) newSetting.wifi.ssid = doc["ssid"].as<String>();
         if (root.containsKey("password")) newSetting.wifi.password = doc["password"].as<String>();
-        if (root.containsKey("board")) newSetting.boardType = doc["board"].as<uint8_t>();          
-        if (root.containsKey("disp")) newSetting.displayType = doc["disp"].as<uint8_t>();          
+        if (root.containsKey("board")) newSetting.boardType = eBoard(doc["board"].as<uint8_t>());          
+        if (root.containsKey("board")) newSetting.CPUFrequency = eBoard(doc["Frequ"].as<uint8_t>());          
+        if (root.containsKey("disp")) newSetting.displayType = eDisplay(doc["disp"].as<uint8_t>());          
         if (root.containsKey("dispRot")) newSetting.displayRotation = doc["dispRot"].as<uint8_t>();          
-        if (root.containsKey("power")) newSetting.LoraPower = constrain(doc["power"].as<uint8_t>(),0,20);          
-        if (root.containsKey("band")) newSetting.band = doc["band"].as<uint8_t>();          
+        if (root.containsKey("country")) newSetting.country = eCountry(doc["country"].as<uint8_t>());          
         if (root.containsKey("expwsw")) newSetting.bHasExtPowerSw = doc["expwsw"].as<uint8_t>();
         if (root.containsKey("type")) newSetting.AircraftType = (FanetLora::aircraft_t)doc["type"].as<uint8_t>();
         if (root.containsKey("PilotName")) newSetting.PilotName = doc["PilotName"].as<String>();
-        if (root.containsKey("output")) newSetting.outputMode = doc["output"].as<uint8_t>();
+        if (root.containsKey("output")) newSetting.outputMode = eOutput(doc["output"].as<uint8_t>());
         if (root.containsKey("oSERIAL")) newSetting.bOutputSerial = doc["oSERIAL"].as<uint8_t>();
         if (root.containsKey("oGPS")) newSetting.outputGPS = doc["oGPS"].as<uint8_t>();
         if (root.containsKey("oFlarm")) newSetting.outputFLARM = doc["oFlarm"].as<uint8_t>();
         if (root.containsKey("oFanet")) newSetting.outputFANET = doc["oFanet"].as<uint8_t>();
-        if (root.containsKey("oVario")) newSetting.outputModeVario = doc["oVario"].as<uint8_t>();
+        if (root.containsKey("oVario")) newSetting.outputModeVario = eOutputVario(doc["oVario"].as<uint8_t>());
         if (root.containsKey("awlive")) newSetting.awLiveTracking = doc["awlive"].as<uint8_t>();
         if (root.containsKey("wifioff")) newSetting.wifi.tWifiStop = doc["wifioff"].as<uint32_t>();
         if (root.containsKey("UDPServerIP")) newSetting.UDPServerIP = doc["UDPServerIP"].as<String>();
         if (root.containsKey("UDPSendPort")) newSetting.UDPSendPort = doc["UDPSendPort"].as<uint16_t>();
+        if (root.containsKey("AUTOUPDATE")) newSetting.bAutoupdate = doc["AUTOUPDATE"].as<uint8_t>();
         //gs settings
         if (root.containsKey("gslat")) newSetting.gs.lat = doc["gslat"].as<float>();
         if (root.containsKey("gslon")) newSetting.gs.lon = doc["gslon"].as<float>();
         if (root.containsKey("gsalt")) newSetting.gs.alt = doc["gsalt"].as<float>();
         if (root.containsKey("gsGeoAlt")) newSetting.gs.geoidAlt = doc["gsGeoAlt"].as<float>();
-        if (root.containsKey("gsScr")) newSetting.gs.SreenOption = doc["gsScr"].as<uint8_t>();
-        if (root.containsKey("gsPs")) newSetting.gs.PowerSave = doc["gsPs"].as<uint8_t>();
+        if (root.containsKey("gsScr")) newSetting.gs.SreenOption = eScreenOption(doc["gsScr"].as<uint8_t>());
+        if (root.containsKey("gsPs")) newSetting.gs.PowerSave = eGsPower(doc["gsPs"].as<uint8_t>());
+        if (root.containsKey("gsAneo")) newSetting.gs.Aneometer = eAneometer(doc["gsAneo"].as<uint8_t>());
         if (root.containsKey("MinBatPerc")) newSetting.minBattPercent = doc["MinBatPerc"].as<uint8_t>();
         if (root.containsKey("restartBattPerc")) newSetting.restartBattPercent = doc["restartBattPerc"].as<uint8_t>();
+        for(int i = 0; i < MAXFNTUPLOADSTATIONS;i++){ //Fanet-Upload to WU and Windy
+          if (doc["F2WuF"][i]) newSetting.FntWuUpload[i].FanetId = doc["F2WuF"][i].as<uint32_t>();
+          if (doc["F2WuI"][i]) newSetting.FntWuUpload[i].ID = doc["F2WuI"][i].as<String>();
+          if (doc["F2WuK"][i]) newSetting.FntWuUpload[i].KEY = doc["F2WuK"][i].as<String>();
+          if (doc["F2WiF"][i]) newSetting.FntWiUpload[i].FanetId = doc["F2WiF"][i].as<uint32_t>();
+          if (doc["F2WiI"][i]) newSetting.FntWiUpload[i].ID = doc["F2WiI"][i].as<String>();
+          if (doc["F2WiK"][i]) newSetting.FntWiUpload[i].KEY = doc["F2WiK"][i].as<String>();
+        }
         
-        if (root.containsKey("mode")) newSetting.Mode = doc["mode"].as<uint8_t>();
+        if (root.containsKey("mode")) newSetting.Mode = eMode(doc["mode"].as<uint8_t>());
         
         if (root.containsKey("ognlive")) newSetting.OGNLiveTracking.mode = doc["ognlive"].as<uint8_t>();
         if (root.containsKey("traccar_live")) newSetting.traccarLiveTracking = doc["traccar_live"].as<uint8_t>();
         if (root.containsKey("traccarsrv")) newSetting.TraccarSrv = doc["traccarsrv"].as<String>();
         if (root.containsKey("RFM")) newSetting.RFMode = doc["RFM"].as<uint8_t>();
-        if (root.containsKey("fntMode")) newSetting.fanetMode = doc["fntMode"].as<uint8_t>();
+        if (root.containsKey("fntMode")) newSetting.fanetMode = eFnMode(doc["fntMode"].as<uint8_t>());
         if (root.containsKey("fntPin")) newSetting.fanetpin = doc["fntPin"].as<uint16_t>();
         //weatherdata
         if (root.containsKey("sFWD")) newSetting.wd.sendFanet = doc["sFWD"].as<uint8_t>();
@@ -423,7 +414,7 @@ void onWebSocketEvent(uint8_t client_num,
         if (newSetting.wd.avgFactorWU <= 0) newSetting.wd.avgFactorWU = 128; //prevent division 0
         if (root.containsKey("WIWU")) newSetting.wd.WUUploadIntervall = doc["WIWU"].as<uint32_t>() * 1000;        
         if (newSetting.wd.WUUploadIntervall <= 10000) newSetting.wd.WUUploadIntervall = 10000;
-        if (root.containsKey("wdRain")) newSetting.wd.RainSensor = doc["wdRain"].as<uint8_t>();        
+        if (root.containsKey("WsMode")) newSetting.wd.mode.mode = doc["WsMode"].as<uint8_t>();        
         //vario
         if (root.containsKey("vSinkTh")) newSetting.vario.sinkingThreshold = doc["vSinkTh"].as<float>();
         if (root.containsKey("vClimbTh")) newSetting.vario.climbingThreshold = doc["vClimbTh"].as<float>();
@@ -439,9 +430,9 @@ void onWebSocketEvent(uint8_t client_num,
         if (root.containsKey("gyOffset")) newSetting.vario.gyro[1] = doc["gyOffset"].as<int16_t>();
         if (root.containsKey("gzOffset")) newSetting.vario.gyro[2] = doc["gzOffset"].as<int16_t>();
         if (root.containsKey("t[0]")) newSetting.vario.tValues[0] = doc["t[0]"].as<float>();
-        if (root.containsKey("t[1]")) newSetting.vario.tValues[1] = doc["t[1]"].as<float>();
+        //if (root.containsKey("t[1]")) newSetting.vario.tValues[1] = doc["t[1]"].as<float>();
         if (root.containsKey("z[0]")) newSetting.vario.zValues[0] = doc["z[0]"].as<float>();
-        if (root.containsKey("z[1]")) newSetting.vario.zValues[1] = doc["z[1]"].as<float>();
+        //if (root.containsKey("z[1]")) newSetting.vario.zValues[1] = doc["z[1]"].as<float>();
         if (root.containsKey("sigmaA")) newSetting.vario.sigmaA = doc["sigmaA"].as<float>();
         if (root.containsKey("sigmaP")) newSetting.vario.sigmaP = doc["sigmaP"].as<float>();
 
@@ -457,7 +448,8 @@ void onWebSocketEvent(uint8_t client_num,
         if (root.containsKey("GSMAPN")) newSetting.gsm.apn = doc["GSMAPN"].as<String>();
         if (root.containsKey("GSMUSER")) newSetting.gsm.user = doc["GSMUSER"].as<String>();
         if (root.containsKey("GSMPWD")) newSetting.gsm.pwd = doc["GSMPWD"].as<String>();
-        if (root.containsKey("GSMMODE")) newSetting.gsm.NetworkMode = doc["GSMMODE"].as<uint8_t>();
+        if (root.containsKey("GSMMODE")) newSetting.gsm.NetworkMode = eGsmNetworkMode(doc["GSMMODE"].as<uint8_t>());
+        if (root.containsKey("GSMPREF")) newSetting.gsm.PreferredMode = eGsmPreferedMode(doc["GSMPREF"].as<uint8_t>());
         //fuel-sensor
         if (root.containsKey("fuelSensor")) newSetting.bHasFuelSensor = doc["fuelSensor"].as<uint8_t>();
 
@@ -467,9 +459,11 @@ void onWebSocketEvent(uint8_t client_num,
         if (root.containsKey("MqttPw")) newSetting.mqtt.pw = doc["MqttPw"].as<String>();
 
         setting = newSetting;
-        log_i("write config-to file");
-        write_configFile(&newSetting);
+        //log_i("write config-to file");
+        //write_configFile(&newSetting);
         if (value == 2){
+          log_i("write config-to file");
+          write_configFile(&newSetting);
           log_i("reboot");
           ESP.restart();
         }
@@ -602,7 +596,7 @@ String processor(const String& var){
     sRet += "</tbody></table>";
     return sRet;
   }else if (var == "DEVELOPER"){
-    if (setting.Mode == MODE_DEVELOPER){
+    if (setting.Mode == eMode::DEVELOPER){
       return DevelopMenue;
     }else{
       return "";
@@ -633,91 +627,6 @@ String processor(const String& var){
           sRet += fanet.weatherDatas[i].name;
         }
         sRet +=  " [" + fanet.getDevId(fanet.weatherDatas[i].devId) + "]</option>\r\n";
-      }
-    }
-    return sRet;
-  }else if (var == "NEIGHBOURSLIST"){
-    sRet = "";
-    sRet =  "<tr><th>ID</th><td>type</td><td>lat</td><td>lon</td><td>state</td><td>dist</td><td>alt</td><td>speed</td><td>climb</td><td>heading</td><td>rssi</td><td>last seen</td><td>received by</td></tr>\r\n";    
-    for (int i = 0; i < MAXNEIGHBOURS; i++){
-      if (fanet.neighbours[i].devId){
-        sRet += "<tr><th><a href=\"https://www.google.com/maps/search/?api=1&query=" + String(fanet.neighbours[i].lat,6) + "," + String(fanet.neighbours[i].lon,6)+ "\"  target=\"_blank\">";
-        if (fanet.neighbours[i].name.length() > 0){
-          sRet += fanet.neighbours[i].name;
-        }
-        sRet += " [" + fanet.getDevId(fanet.neighbours[i].devId) + "]</a></th>" + 
-        "<td>" +fanet.getAircraftType(fanet.neighbours[i].aircraftType) + "</td>" + 
-        "<td>" +String(fanet.neighbours[i].lat,6) + "</td>" + 
-        "<td>" + String(fanet.neighbours[i].lon,6) + "</td>" +
-        "<td>" + fanet.getType(fanet.neighbours[i].type) + "</td>";
-        if ((status.GPS_Lat != 0) && (status.GPS_Lon != 0 )){
-          sRet +=  "<td>" + String(distance(status.GPS_Lat,status.GPS_Lon,fanet.neighbours[i].lat,fanet.neighbours[i].lon, 'K'),1) + "km</td>" ;
-        }else{
-          sRet +=  "<td></td>";
-        }
-        sRet = sRet + 
-        "<td>" + String(fanet.neighbours[i].altitude,0) + "m</td>" +
-        "<td>" + String(fanet.neighbours[i].speed,1) + "km/h</td>" +
-        "<td>" + String(fanet.neighbours[i].climb,1) + "m/s</td>" +
-        "<td>" + String(fanet.neighbours[i].heading,0) + "°</td>" +
-        "<td>" + String(fanet.neighbours[i].rssi) + "dB</td>" +
-        "<td>" + String((millis() - fanet.neighbours[i].tLastMsg) / 1000) + "s</td>";
-        if (fanet.neighbours[i].addressType & 0x80){
-          sRet += "<td>FANET</td>";
-        }else{
-          sRet += "<td>LEGACY</td>";
-        }
-        sRet += "</th>\r\n";
-      }
-    }
-    return sRet;
-  }else if (var == "WEATHERLIST"){
-    sRet =  "<tr><th>ID</th><td>lat</td><td>lon</td><td>dist</td><td>temperature</td><td>wind direction</td><td>wind speed</td><td>wind gust</td><td>Humidity</td><td>barometric pressure</td><td>state of charge</td><td>rssi</td><td>last seen</td></tr>\r\n";    
-    for (int i = 0; i < MAXWEATHERDATAS; i++){
-      if (fanet.weatherDatas[i].devId){
-        sRet += "<tr><th><a href=\"https://www.google.com/maps/search/?api=1&query=" + String(fanet.weatherDatas[i].lat,6) + "," + String(fanet.weatherDatas[i].lon,6)+ "\"  target=\"_blank\">";
-        if (fanet.weatherDatas[i].name.length() > 0){
-          sRet += fanet.weatherDatas[i].name;
-        }
-        sRet += " [" + fanet.getDevId(fanet.weatherDatas[i].devId) + "]</a></th>" +
-        "<td>" + String(fanet.weatherDatas[i].lat,6) + "</td>" + 
-        "<td>" + String(fanet.weatherDatas[i].lon,6) + "</td>" ;
-        if ((status.GPS_Lat != 0) && (status.GPS_Lon != 0 )){
-          sRet +=  "<td>" + String(distance(status.GPS_Lat,status.GPS_Lon,fanet.weatherDatas[i].lat,fanet.weatherDatas[i].lon, 'K'),1) + "km</td>" ;
-        }else{
-          sRet +=  "<td></td>";
-        }
-        if (fanet.weatherDatas[i].bTemp == 1 ) {
-          sRet +=  "<td>" + String(fanet.weatherDatas[i].temp,0) + "&deg;C</td>" ;
-        }else{
-          sRet +=  "<td></td>";
-        }
-        if (fanet.weatherDatas[i].bWind == 1 ) {
-          sRet += "<td>" + getWDir(fanet.weatherDatas[i].wHeading) + " " + String(fanet.weatherDatas[i].wHeading,0) + "&deg;</td>" +
-        "<td>" + String(fanet.weatherDatas[i].wSpeed,0) + "km/h</td>" +
-        "<td>" + String(fanet.weatherDatas[i].wGust,0) + "km/h</td>" ;
-        }else{
-          sRet +=  "<td></td><td></td><td></td>";
-        }
-        if (fanet.weatherDatas[i].bHumidity == 1 ) {
-          sRet +=  "<td>" + String(fanet.weatherDatas[i].Humidity,0) + "&#37;</td>" ;
-        }else{
-          sRet +=  "<td></td>";
-        }
-        if (fanet.weatherDatas[i].bBaro == 1 ) {
-          sRet +=  "<td>" + String(fanet.weatherDatas[i].Baro,0) + "hPa</td>" ;
-        }else{
-          sRet +=  "<td></td>";
-        }
-        if (fanet.weatherDatas[i].bStateOfCharge == 1 ) {
-          sRet +=  "<td>" + String(fanet.weatherDatas[i].Charge,1) + "&#37;</td>" ;
-        }else{
-          sRet +=  "<td></td>";
-        }
-        sRet +=  "<td>" + String(fanet.weatherDatas[i].rssi) + "dB</td>" +
-        "<td>" + String((millis() - fanet.weatherDatas[i].tLastMsg) / 1000) + " sec.</td>" +
-        "</tr>" +
-        "\r\n";
       }
     }
     return sRet;
@@ -883,11 +792,13 @@ void Web_stop(void){
 void sendPage(uint8_t pageNr){
   static statusData mStatus;
   static commandData mCommand;
-  StaticJsonDocument<300> doc; //Memory pool  
+  StaticJsonDocument<500> doc; //Memory pool  
   bool bSend = false;
   uint32_t tAct = millis();
   static uint32_t tCounter = millis();
   static uint16_t counter = 0;
+  static uint32_t tCount20 = millis();
+  static uint32_t tCount30 = millis();
   switch (pageNr) {
     case 1:
       //page info.html
@@ -987,7 +898,7 @@ void sendPage(uint8_t pageNr){
         doc["Battperc"] = status.BattPerc;
       }          
       #ifdef AIRMODULE
-      if (setting.Mode == MODE_AIR_MODULE){
+      if (setting.Mode == eMode::AIR_MODULE){
         if (mStatus.GPS_Fix != status.GPS_Fix){
           bSend = true;
           mStatus.GPS_Fix = status.GPS_Fix;
@@ -1002,6 +913,11 @@ void sendPage(uint8_t pageNr){
           bSend = true;
           mStatus.GPS_speed = status.GPS_speed;
           doc["gpsSpeed"] = String(status.GPS_speed,2);
+        }    
+        if (mStatus.GPS_course != status.GPS_course){
+          bSend = true;
+          mStatus.GPS_course = status.GPS_course;
+          doc["gpsCourse"] = String(status.GPS_course,2);
         }    
       }
       #endif
@@ -1125,8 +1041,8 @@ void sendPage(uint8_t pageNr){
 
 
       #ifdef GSMODULE
-      if ((setting.Mode == MODE_GROUND_STATION) && (status.vario.bHasBME | status.bWUBroadCast)){
-        //weahter-data
+      if ((setting.Mode == eMode::GROUND_STATION) && (setting.wd.mode.bits.enable | status.bWUBroadCast)){
+        //weather-data
         doc.clear();
         bSend = false;
         if (mStatus.weather.temp != status.weather.temp){
@@ -1266,6 +1182,139 @@ void sendPage(uint8_t pageNr){
         }
       }
       break;
+    case 20:
+      if ((tAct - tCount20) >= 1000){ //send every second neighbours !!
+        tCount20 = tAct;
+        doc.clear();
+        uint8_t count = fanet.getNeighboursCount();
+        doc["NBCount"] = count;
+        serializeJson(doc, msg_buf);
+        for (int i = 0;i <MAXCLIENTS;i++){
+          if (clientPages[i] == pageNr){
+            //log_d("Sending to [%u]: %s", i, msg_buf);
+            webSocket.sendTXT(i, msg_buf);
+          }
+        }
+        if (count == 0){
+          break; //no Neighbours
+        }
+        uint8_t iIndex = 0;                  
+        for (int i = 0; i < MAXNEIGHBOURS; i++){
+          if (fanet.neighbours[i].devId){              
+            doc.clear();
+            doc["INDEX"] = iIndex;
+            doc["ID"] = fanet.getDevId(fanet.neighbours[i].devId);
+            doc["LAT"] = String(fanet.neighbours[i].lat,6);
+            doc["LON"] = String(fanet.neighbours[i].lon,6);
+            doc["NAME"] = (fanet.neighbours[i].name.length() > 0) ? fanet.neighbours[i].name : "";
+            doc["TYPE"] = fanet.getAircraftType(fanet.neighbours[i].aircraftType);
+            doc["STATE"] = fanet.getType(fanet.neighbours[i].type);
+            if ((status.GPS_Lat != 0) && (status.GPS_Lon != 0 )){
+              doc["DIST"] =  String(distance(status.GPS_Lat,status.GPS_Lon,fanet.neighbours[i].lat,fanet.neighbours[i].lon, 'K'),1);
+            }else{
+              doc["DIST"] = "";
+            }
+            doc["ALT"] = String(fanet.neighbours[i].altitude,0);
+            doc["SPEED"] = String(fanet.neighbours[i].speed,1);
+            doc["CLIMB"] = String(fanet.neighbours[i].climb,1);
+            doc["HEAD"] = String(fanet.neighbours[i].heading,0);
+            doc["RSSI"] = String(fanet.neighbours[i].rssi);
+            if (fanet.neighbours[i].addressType & 0x80){
+              doc["BY"] = "1";
+            }else{
+              doc["BY"] = "2";
+            }
+            doc["SEEN"] = String((millis() - fanet.neighbours[i].tLastMsg) / 1000);
+            serializeJson(doc, msg_buf);
+            for (int i = 0;i <MAXCLIENTS;i++){
+              if (clientPages[i] == pageNr){
+                //log_d("Sending to [%u]: %s", i, msg_buf);
+                webSocket.sendTXT(i, msg_buf);
+              }
+            }
+            iIndex++;
+          }
+        }
+      }
+      break;
+    case 30: //weather-stations
+      if ((tAct - tCount30) >= 1000){ //send every second weatherstations !!
+        tCount30 = tAct;
+        doc.clear();
+        uint8_t count = 0;
+        for (int i = 0; i < MAXWEATHERDATAS; i++){
+          if (fanet.weatherDatas[i].devId){
+            count++;
+          }
+        }
+        doc["NBCount"] = count;
+        serializeJson(doc, msg_buf);
+        for (int i = 0;i <MAXCLIENTS;i++){
+          if (clientPages[i] == pageNr){
+            //log_d("Sending to [%u]: %s", i, msg_buf);
+            webSocket.sendTXT(i, msg_buf);
+          }
+        }
+        if (count == 0){
+          break; //no weatherstations
+        }
+        uint8_t iIndex = 0;                  
+        for (int i = 0; i < MAXWEATHERDATAS; i++){
+          if (fanet.weatherDatas[i].devId){
+            doc.clear();
+            doc["INDEX"] = iIndex;
+            doc["ID"] = fanet.getDevId(fanet.weatherDatas[i].devId);
+            doc["LAT"] = String(fanet.weatherDatas[i].lat,6);
+            doc["LON"] = String(fanet.weatherDatas[i].lon,6);
+            doc["NAME"] = (fanet.weatherDatas[i].name.length() > 0) ? fanet.weatherDatas[i].name : "";
+            if ((status.GPS_Lat != 0) && (status.GPS_Lon != 0 )){
+              doc["DIST"] =  String(distance(status.GPS_Lat,status.GPS_Lon,fanet.weatherDatas[i].lat,fanet.weatherDatas[i].lon, 'K'),1);
+            }else{
+              doc["DIST"] = "";
+            }
+            if (fanet.weatherDatas[i].bTemp == 1 ) {
+              doc["T"] = String(fanet.weatherDatas[i].temp,0);
+            }else{
+              doc["T"] = "";
+            }
+            if (fanet.weatherDatas[i].bWind == 1 ) {
+              doc["WD"] = String(fanet.weatherDatas[i].wHeading,0);
+              doc["WS"] = String(fanet.weatherDatas[i].wSpeed,0);
+              doc["WG"] = String(fanet.weatherDatas[i].wGust,0);
+            }else{
+              doc["WD"] = "";
+              doc["WS"] = "";
+              doc["WG"] = "";
+            }
+            if (fanet.weatherDatas[i].bHumidity == 1 ) {
+              doc["H"] = String(fanet.weatherDatas[i].Humidity,0);
+            }else{
+              doc["H"] = "";
+            }
+            if (fanet.weatherDatas[i].bBaro == 1 ) {
+              doc["P"] = String(fanet.weatherDatas[i].Baro,0);
+            }else{
+              doc["P"] = "";
+            }
+            if (fanet.weatherDatas[i].bStateOfCharge == 1 ) {
+              doc["B"] =  String(fanet.weatherDatas[i].Charge,1);
+            }else{
+              doc["B"] = "";
+            }
+            doc["RSSI"] =  String(fanet.weatherDatas[i].rssi);
+            doc["SEEN"] = String((millis() - fanet.weatherDatas[i].tLastMsg) / 1000);
+            serializeJson(doc, msg_buf);
+            for (int i = 0;i <MAXCLIENTS;i++){
+              if (clientPages[i] == pageNr){
+                //log_d("Sending to [%u]: %s", i, msg_buf);
+                webSocket.sendTXT(i, msg_buf);
+              }
+            }
+            iIndex++;
+          }
+        }
+     }
+      break;
   }
   
 }
@@ -1301,6 +1350,18 @@ void Web_loop(void){
     for (int i = 0;i <MAXCLIENTS;i++){
       if (clientPages[i] == 10){
         sendPage(10);
+        break;
+      }
+    }
+    for (int i = 0;i <MAXCLIENTS;i++){
+      if (clientPages[i] == 20){
+        sendPage(20);
+        break;
+      }
+    }
+    for (int i = 0;i <MAXCLIENTS;i++){
+      if (clientPages[i] == 30){
+        sendPage(30);
         break;
       }
     }

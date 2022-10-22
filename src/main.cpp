@@ -6,7 +6,7 @@
 #include <SPI.h>
 //#include <LoRa.h>
 #include <FanetLora.h>
-#include <Flarm.h>
+#include <FlarmDataPort.h>
 #include <axp20x.h>
 #include <main.h>
 #include <config.h>
@@ -28,15 +28,15 @@
 #include "driver/adc.h"
 //#include "Update.h"
 #include "gxUpdater.h"
+#include "gxUserLed.h"
 #include <AceButton.h>
-#include "../lib/FANETLORA/Legacy/Legacy.h"
 #include <ArduinoJson.h>
 #include "../lib/GxMqtt/GxMqtt.h"
 
 //#include <esp_task_wdt.h>
 
 
-//#define TEST
+//#define GXTEST
 
 #define TINY_GSM_RX_BUFFER 1024
 
@@ -101,6 +101,7 @@ RTC_DATA_ATTR int iSunSet = -1;
 
 //Libraries for OLED Display
 #include <Wire.h>
+//TwoWire i2cZero = TwoWire(0);
 TwoWire i2cOLED = TwoWire(1);
 
 
@@ -120,10 +121,6 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &i2cOLED);
 #include <toneAC.h>
 
 #define USE_BEEPER
-
-#ifdef SENDFLARMDIRECT
-  uint8_t flarmCount = 0;
-#endif
 
 char nmeaBuffer[100];
 MicroNMEA nmea(nmeaBuffer, sizeof(nmeaBuffer));
@@ -154,7 +151,7 @@ const char compile_date[] = __DATE__ " " __TIME__;
 
 FanetLora fanet;
 //NmeaOut nmeaout;
-Flarm flarm;
+FlarmDataPort flarmDataPort;
 #ifdef AIRMODULE
 HardwareSerial NMeaSerial(2);
 #endif
@@ -166,6 +163,7 @@ uint16_t battEmpty = 3300;
 Ogn ogn;
 
 gxUpdater updater;  
+gxUserLed userled;
 
 FanetLora::trackingData MyFanetData;  
 
@@ -224,6 +222,10 @@ int8_t PinEink_Din    =  2;
 
 //LED
 int8_t PinUserLed = -1;
+int8_t PinBeaconLed = -1;
+
+//Power
+int8_t PinExtPower = -1;
 
 //ADC-Voltage
 int8_t PinADCVoltage = -1;
@@ -246,6 +248,7 @@ int8_t PinGsmRx = -1;
 //GPS
 int8_t PinGPSRX = -1;
 int8_t PinGPSTX = -1;
+int8_t PinPPS = -1;
 
 //OLED-Display / AXP192
 int8_t PinOledRst = -1;
@@ -339,10 +342,10 @@ void setupSim7000Gps();
 #ifdef OLED
 void startOLED();
 void add2OutputString(String s);
-void DrawRadarScreen(uint32_t tAct,uint8_t mode);
+void DrawRadarScreen(uint32_t tAct,eRadarDispMode mode);
 void DrawRadarPilot(uint8_t neighborIndex);
 void printGSData(uint32_t tAct);
-void printBattVoltage(uint32_t tAct);
+bool printBattVoltage(uint32_t tAct);
 void printScanning(uint32_t tAct);
 void printWeather(uint32_t tAct);
 void printGPSData(uint32_t tAct);
@@ -357,6 +360,7 @@ void drawBluetoothstat(int16_t x, int16_t y);
 void drawWifiStat(int wifiStat);
 void oledPowerOff();
 void oledPowerOn();
+#endif
 void checkBoardType();
 void checkLoraChip();
 // Forward reference to prevent Arduino compiler becoming confused.
@@ -391,14 +395,64 @@ void sendFlarmData(uint32_t tAct);
 char* readSerial();
 void checkReceivedLine(char *ch_str);
 void checkSystemCmd(char *ch_str);
+size_t getNextString(char *ch_str,char *pSearch,char *buffer, size_t sizeBuffer);
 void setWifi(bool on);
 void handleUpdate(uint32_t tAct);
 void printChipInfo(void);
 void setAllTime(tm &timeinfo);
 void checkExtPowerOff(uint32_t tAct);
+void sendFanetWeatherData2WU(FanetLora::weatherData *weatherData,uint8_t wuIndex);
+void sendFanetWeatherData2WI(FanetLora::weatherData *weatherData,uint8_t wiIndex);
 #ifdef AIRMODULE
 bool setupUbloxConfig(void);
 #endif
+
+void sendFanetWeatherData2WU(FanetLora::weatherData *weatherData,uint8_t wuIndex){
+  if ((status.bInternetConnected) && (status.bTimeOk)){
+    WeatherUnderground wu;
+    WeatherUnderground::wData wuData;
+    #ifdef GSM_MODULE
+      if (setting.wifi.connect == eWifiMode::CONNECT_NONE){
+        wu.setClient(&GsmWUClient);
+        wu.setMutex(&xGsmMutex);
+      }
+    #endif    
+    wuData.bWind = weatherData->bWind;
+    wuData.winddir = weatherData->wHeading;
+    wuData.windspeed = weatherData->wSpeed;
+    wuData.windgust = weatherData->wGust;
+    wuData.bHum = weatherData->bHumidity;
+    wuData.humidity = weatherData->Humidity;
+    wuData.bTemp = weatherData->bTemp;
+    wuData.temp = weatherData->temp;
+    wuData.bPress = weatherData->bBaro;
+    wuData.pressure = weatherData->Baro;
+    wu.sendData(setting.FntWuUpload[wuIndex].ID ,setting.FntWuUpload[wuIndex].KEY,&wuData);
+  }
+}
+void sendFanetWeatherData2WI(FanetLora::weatherData *weatherData,uint8_t wiIndex){
+  if ((status.bInternetConnected) && (status.bTimeOk)){
+    Windy wi;
+    Windy::wData wiData;
+    #ifdef GSM_MODULE
+      if (setting.wifi.connect == eWifiMode::CONNECT_NONE){
+        wi.setClient(&GsmWUClient);
+        wi.setMutex(&xGsmMutex);
+      }
+    #endif
+    wiData.bWind = weatherData->bWind;
+    wiData.winddir = weatherData->wHeading;
+    wiData.windspeed = weatherData->wSpeed;
+    wiData.windgust = weatherData->wGust;
+    wiData.bHum = weatherData->bHumidity;
+    wiData.humidity = weatherData->Humidity;
+    wiData.bTemp = weatherData->bTemp;
+    wiData.temp = weatherData->temp;
+    wiData.bPress = weatherData->bBaro;
+    wiData.pressure = weatherData->Baro;
+    wi.sendData(setting.FntWiUpload[wiIndex].ID,setting.FntWiUpload[wiIndex].KEY,&wiData);
+  }
+}
 
 void readFuelSensor(uint32_t tAct){
   static uint32_t tRead = millis();
@@ -428,7 +482,7 @@ void readFuelSensor(uint32_t tAct){
     char sOut[MAXSTRING];
     int pos = 0;
     pos += snprintf(&sOut[pos],MAXSTRING-pos,"$FUEL,%.03f,",status.fuelSensor);
-    pos = flarm.addChecksum(sOut,MAXSTRING);
+    pos = flarmDataPort.addChecksum(sOut,MAXSTRING);
     sendData2Client(sOut,pos);
   }
   
@@ -491,7 +545,7 @@ void checkLoraChip(){
   if (v == 0x12){
     log_i("Lora-Chip SX1276 found --> Board is a T-Beam with SX1276");    
   }else{
-    setting.boardType = BOARD_T_BEAM_SX1262;
+    setting.boardType = eBoard::T_BEAM_SX1262;
     log_i("Lora-Chip SX1262 found --> Board is a T-Beam with SX1262");
   }
 }
@@ -513,7 +567,7 @@ uint8_t checkI2C(){
 void checkBoardType(){
   #ifdef TINY_GSM_MODEM_SIM7000
     setting.displayType = NO_DISPLAY;
-    setting.boardType = BOARD_TTGO_TSIM_7000;
+    setting.boardType = eBoard::TTGO_TSIM_7000;
     log_i("TTGO-T-Sim7000 found");
     write_configFile(&setting);
     delay(1000);
@@ -521,7 +575,7 @@ void checkBoardType(){
   #endif
   #ifdef TINY_GSM_MODEM_SIM800
     setting.displayType = NO_DISPLAY;
-    setting.boardType = BOARD_TTGO_TCALL_800;
+    setting.boardType = eBoard::TTGO_TCALL_800;
     log_i("TTGO-T-Sim800 found");
     write_configFile(&setting);
     delay(1000);
@@ -537,7 +591,7 @@ void checkBoardType(){
     if (i2cOLED.endTransmission() == 0) {
       //ok we have a T-Beam !! 
       //check, if we have an OLED
-      setting.boardType = BOARD_T_BEAM;
+      setting.boardType = eBoard::T_BEAM;
       log_i("AXP192 found");
       checkLoraChip();
       setting.displayType = NO_DISPLAY;
@@ -556,7 +610,7 @@ void checkBoardType(){
     i2cOLED.beginTransmission(OLED_SLAVE_ADDRESS);
     if (i2cOLED.endTransmission() == 0) {
       //we have found the OLED
-      setting.boardType = BOARD_T_BEAM_V07;
+      setting.boardType = eBoard::T_BEAM_V07;
       setting.displayType = OLED0_96;
       log_i("OLED found");
       log_i("Board is T-Beam v0.7");
@@ -581,14 +635,14 @@ void checkBoardType(){
     //we have found also the OLED
     setting.displayType = OLED0_96;
     log_i("OLED found");
-    setting.boardType = BOARD_HELTEC_LORA;
+    setting.boardType = eBoard::HELTEC_LORA;
     log_i("Board is Heltec/Lora");
     write_configFile(&setting);
     delay(1000);
     esp_restart(); //we need to restart
   }
   log_i("Board is Heltec Wireless Stick Lite");
-  setting.boardType = BOARD_HELTEC_WIRELESS_STICK_LITE;
+  setting.boardType = eBoard::HELTEC_WIRELESS_STICK_LITE;
   write_configFile(&setting);
   delay(1000);
   esp_restart(); //we need to restart
@@ -600,9 +654,9 @@ void add2OutputString(String s){
   sOutputData += s;
   xSemaphoreGive(xOutputMutex);
 }
-
+#ifdef OLED
 void oledPowerOn(){
-  if (status.displayStat == DISPLAY_STAT_ON){
+  if (status.displayStat == eDisplayState::DISPLAY_STAT_ON){
     return;
   }
   //reset OLED display via software
@@ -624,12 +678,12 @@ void oledPowerOn(){
   display.ssd1306_command(SSD1306_SETCONTRAST);
   display.ssd1306_command(0xFF);
   //added the possibility to invert BW .. whould be nice to put it in the settings TODO
-  display.invertDisplay(DISPLAY_INVERT);
-  status.displayStat = DISPLAY_STAT_ON;
+  display.invertDisplay(0);
+  status.displayStat = eDisplayState::DISPLAY_STAT_ON;
 }
 
 void oledPowerOff(){
-  if (status.displayStat == DISPLAY_STAT_OFF){
+  if (status.displayStat == eDisplayState::DISPLAY_STAT_OFF){
     return;
   }
   display.clearDisplay();
@@ -638,7 +692,7 @@ void oledPowerOff(){
   display.ssd1306_command(0x8D); //into charger pump set mode
   display.ssd1306_command(0x10); //turn off charger pump
   display.ssd1306_command(0xAE); //set OLED sleep  
-  status.displayStat = DISPLAY_STAT_OFF; //Display if off now
+  status.displayStat = eDisplayState::DISPLAY_STAT_OFF; //Display if off now
 }
 
 void drawWifiStat(int wifiStat)
@@ -663,14 +717,7 @@ void drawWifiStat(int wifiStat)
 
 void setAllTime(tm &timeinfo){
   tmElements_t tm;          // a cache of time elements
-  //fill time-structure
-  
-  //tm.Year = timeinfo.tm_year+1900 - 1970;
-  //if( timeinfo.tm_year > 99){
   tm.Year = uint8_t(timeinfo.tm_year + 1900 - 1970);
-  //}else{
-  //  tm.Year = timeinfo.tm_year + 30;    
-  //}      
   tm.Month = timeinfo.tm_mon+1;
   tm.Day = timeinfo.tm_mday;
   tm.Hour = timeinfo.tm_hour;
@@ -784,16 +831,15 @@ void sendFlarmData(uint32_t tAct){
     tSendStatus = tAct;
     char sOut[MAXSTRING];
     int pos = 0;
-    pos = flarm.writeVersion(sOut,MAXSTRING);
+    pos = flarmDataPort.writeVersion(sOut,MAXSTRING);
     sendData2Client(sOut,pos);
-    pos = flarm.writeSelfTestResult(sOut,MAXSTRING);
+    pos = flarmDataPort.writeSelfTestResult(sOut,MAXSTRING);
     sendData2Client(sOut,pos);
   }
 
   if (timeOver(tAct,tSend,FLARM_UPDATE_RATE)){
     tSend = tAct;
     if (status.GPS_Fix){
-      #ifndef SENDFLARMDIRECT
       Fanet2FlarmData(&fanet._myData,&myFlarmData);
       for (int i = 0; i < MAXNEIGHBOURS; i++){
         //if ((fanet.neighbours[i].devId) && (fanet.neighbours[i].type == 0x11)){ //we have a ID an we are flying !!
@@ -808,30 +854,24 @@ void sendFlarmData(uint32_t tAct){
           tFanetData.speed = fanet.neighbours[i].speed;
           Fanet2FlarmData(&tFanetData,&PilotFlarmData);
           char sOut[MAXSTRING];
-          int pos = flarm.writeFlarmData(sOut,MAXSTRING,&myFlarmData,&PilotFlarmData);
+          int pos = flarmDataPort.writeFlarmData(sOut,MAXSTRING,&myFlarmData,&PilotFlarmData);
           sendData2Client(sOut,pos);
           countNeighbours++;    
         }
       }
-      #endif
 
       if (status.flying){
-        flarm.GPSState = FLARM_GPS_FIX3d_AIR;
+        flarmDataPort.GPSState = FLARM_GPS_FIX3d_AIR;
       }else{
-        flarm.GPSState = FLARM_GPS_FIX3d_GROUND;
+        flarmDataPort.GPSState = FLARM_GPS_FIX3d_GROUND;
       }      
     }else{
-      flarm.GPSState = FLARM_NO_GPS;
+      flarmDataPort.GPSState = FLARM_NO_GPS;
     }
-    #ifdef SENDFLARMDIRECT
-      flarm.neighbors = flarmCount;
-      flarmCount = 0;
-    #else
-      flarm.neighbors = countNeighbours;
-    #endif
+    flarmDataPort.neighbors = countNeighbours;
     
     char sDataPort[MAXSTRING];
-    int iLen = flarm.writeDataPort(&sDataPort[0],sizeof(sDataPort));
+    int iLen = flarmDataPort.writeDataPort(&sDataPort[0],sizeof(sDataPort));
     sendData2Client(&sDataPort[0],iLen);
   }
 }
@@ -1241,12 +1281,12 @@ void sendAWTrackingdata(FanetLora::trackingData *FanetData){
   char chs[20];
   String msg;
   #ifdef GSMODULE
-    if (setting.Mode == MODE_GROUND_STATION){
+    if (setting.Mode == eMode::GROUND_STATION){
       msg = "000000,";
     }
   #endif
   #ifdef AIRMODULE
-  if (setting.Mode == MODE_AIR_MODULE){
+  if (setting.Mode == eMode::AIR_MODULE){
     if (nmea.getFixTime().length() == 0){
       msg = "000000,";
     }else{
@@ -1284,8 +1324,9 @@ void sendAWUdp(String msg){
 }
 
 void sendData2Client(char *buffer,int iLen){
+  //log_i("endChar=%02X;len=%d",buffer[iLen],iLen);
   //size_t bufLen = strlen(buffer);
-  if (setting.outputMode == OUTPUT_UDP){
+  if (setting.outputMode == eOutput::oUDP){
     //output via udp
     if ((WiFi.status() == WL_CONNECTED) || (WiFi.softAPgetStationNum() > 0)){ //connected to wifi or a client is connected to me
       //log_i("sending udp");
@@ -1296,10 +1337,11 @@ void sendData2Client(char *buffer,int iLen){
       udp.endPacket();    
     }
   }
-  if ((setting.outputMode == OUTPUT_SERIAL) || (setting.bOutputSerial)){//output over serial-connection
-    Serial.print(buffer); 
+  if ((setting.outputMode == eOutput::oSERIAL) || (setting.bOutputSerial)){//output over serial-connection
+    //Serial.print(buffer); 
+    Serial.write(buffer,iLen);
   }
-  if (setting.outputMode == OUTPUT_BLE){ //output over ble-connection
+  if (setting.outputMode == eOutput::oBLE){ //output over ble-connection
     if (xHandleBluetooth){
       if ((bleSize + iLen) < MAXSIZEBLE){
         while(ble_mutex){
@@ -1397,9 +1439,37 @@ void WiFiEvent(WiFiEvent_t event){
       break;
     case SYSTEM_EVENT_STA_CONNECTED:
       log_i("station connected to AP");
-      break;     
-    case SYSTEM_EVENT_ETH_START:
-      log_i("ethernet start");
+      break;  
+    case SYSTEM_EVENT_STA_DISCONNECTED:
+      log_i("station lost connection to AP");      
+      //will automatically reconnect in 60 seconds
+      if (status.wifiStat > 0){
+        status.wifiStat=1;
+        status.bInternetConnected = false; //no more connected to Internet
+        WiFi.disconnect(true,true);
+        WiFi.mode(WIFI_MODE_NULL);
+        WiFi.persistent(false);
+        WiFi.config(IPADDR_ANY, IPADDR_ANY, IPADDR_ANY,IPADDR_ANY,IPADDR_ANY); // call is only a workaround for bug in WiFi class
+      }
+      break;  
+    case SYSTEM_EVENT_STA_GOT_IP:
+      status.myIP = WiFi.localIP().toString();
+      log_i("station got IP from connected AP IP:%s",status.myIP.c_str());
+      status.wifiStat=2;
+      break;
+    case SYSTEM_EVENT_STA_LOST_IP:
+      log_i("STA LOST IP");
+    case SYSTEM_EVENT_STA_WPS_ER_SUCCESS:
+      log_i("STA WPS success");
+      break;
+    case SYSTEM_EVENT_STA_WPS_ER_FAILED:
+      log_i("STA WPS error");
+      break;
+    case SYSTEM_EVENT_STA_WPS_ER_TIMEOUT:
+      log_i("STA WPS timeout");
+      break;
+    case SYSTEM_EVENT_STA_WPS_ER_PBC_OVERLAP:
+      log_i("STA WPS PBC overlap");
       break;
     case SYSTEM_EVENT_AP_START:
       log_i("soft-AP start. IP: [%s]", WiFi.softAPIP().toString().c_str() );
@@ -1407,19 +1477,17 @@ void WiFiEvent(WiFiEvent_t event){
     case SYSTEM_EVENT_AP_STOP:
       log_i("soft-AP stop");
       break;
-    case SYSTEM_EVENT_AP_STADISCONNECTED:
-      log_i("a station disconnected from ESP32 soft-AP");
-      break;
     case SYSTEM_EVENT_AP_STACONNECTED:
       log_i("a station connected to ESP32 soft-AP");
       break;
-    case SYSTEM_EVENT_STA_GOT_IP:
-      status.myIP = WiFi.localIP().toString();
-      log_i("station got IP from connected AP IP:%s",status.myIP.c_str());
-      status.wifiStat=2;
+    case SYSTEM_EVENT_AP_STADISCONNECTED:
+      log_i("a station disconnected from ESP32 soft-AP");
       break;
     case SYSTEM_EVENT_AP_STAIPASSIGNED:
       log_i("soft-AP assign an IP to a connected station");
+      break;
+    case SYSTEM_EVENT_ETH_START:
+      log_i("ethernet start");
       break;
 
     default:
@@ -1434,30 +1502,15 @@ void setupWifi(){
   while(host_name.length() == 0){
     delay(100); //wait until we have the devid
   }
+  status.bInternetConnected = false;
   status.wifiStat = 0;
   WiFi.disconnect(true,true);
-  WiFi.mode(WIFI_OFF);  
+  WiFi.mode(WIFI_MODE_NULL);  
   WiFi.persistent(false);
   WiFi.onEvent(WiFiEvent);
-  WiFiEventId_t eventID = WiFi.onEvent([](WiFiEvent_t event, WiFiEventInfo_t info){
-    log_e("WiFi lost connection. Reason: %d",info.disconnected.reason);
-  }, WiFiEvent_t::SYSTEM_EVENT_STA_DISCONNECTED);  
-  //WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE); // call is only a workaround for bug in WiFi class
-  WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE,INADDR_NONE,INADDR_NONE);
-  //if (WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE,INADDR_NONE,INADDR_NONE) == false){
-  //  log_e("error setting wifi.config");
-  //}
-  //tcpip_adapter_dns_info_t dns;
-  //dns.ip.type = IPADDR_TYPE_V4;
-  //dns.ip.u_addr.ip4.addr = static_cast<uint32_t>(INADDR_NONE);
-  //tcpip_adapter_set_dns_info(TCPIP_ADAPTER_IF_AP,TCPIP_ADAPTER_DNS_MAIN,&dns);
-  //tcpip_adapter_set_dns_info(TCPIP_ADAPTER_IF_AP,TCPIP_ADAPTER_DNS_BACKUP,&dns);
-  //tcpip_adapter_set_dns_info(TCPIP_ADAPTER_IF_AP,TCPIP_ADAPTER_DNS_FALLBACK,&dns);
-  //ip_addr_t d;
-  //d.type = IPADDR_TYPE_V4;
-  //d.u_addr.ip4.addr = static_cast<uint32_t>(INADDR_NONE);
-  //dns_setserver(0, &d);
-  //dns_setserver(1, &d);
+  //WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE,INADDR_NONE,INADDR_NONE);
+  WiFi.config(IPADDR_ANY, IPADDR_ANY, IPADDR_ANY,IPADDR_ANY,IPADDR_ANY); // call is only a workaround for bug in WiFi class
+  WiFi.setHostname(host_name.c_str());
   log_i("Setting soft-AP ... ");
   //if (WiFi.softAP(host_name.c_str(), setting.appw.c_str(),rand() % 12 + 1,0,2)){
   if (WiFi.softAP(host_name.c_str(), setting.wifi.appw.c_str())){
@@ -1468,7 +1521,6 @@ void setupWifi(){
   delay(10);
   log_i("Setting soft-AP configuration ... ");
   if(WiFi.softAPConfig(local_IP, gateway, subnet)){
-  //if(WiFi.softAPConfig(local_IP, INADDR_NONE, subnet)){
     log_i("Ready");
   }else{
     log_i("Failed!");
@@ -1479,7 +1531,7 @@ void setupWifi(){
   //now configure access-point
   //so we have wifi connect and access-point at same time
   //we connecto to wifi
-  if (setting.wifi.connect != WIFI_CONNECT_NONE){
+  if (setting.wifi.connect != eWifiMode::CONNECT_NONE){
     //esp_wifi_set_auto_connect(true);
     log_i("Try to connect to WiFi ...");
     WiFi.status();
@@ -1494,15 +1546,14 @@ void setupWifi(){
   }else{
     WiFi.mode(WIFI_MODE_AP);
   }
-  log_i("hostname=%s",host_name.c_str());
-  WiFi.setHostname(host_name.c_str());
+  log_i("hostname=%s",host_name.c_str());  
 
 
   log_i("my APIP=%s",local_IP.toString().c_str());
 
   
   if((WiFi.getMode() & WIFI_MODE_STA)){
-    if (setting.outputMode != OUTPUT_BLE){
+    if (setting.outputMode != eOutput::oBLE){
       WiFi.setSleep(false); //disable power-save-mode !! will increase ping-time
     }
   }
@@ -1559,19 +1610,16 @@ void startOLED(){
 #endif
 
 void printSettings(){
-  log_i("**** SETTINGS ****");
+  log_i("**** SETTINGS " VERSION " build:%s ******",&compile_date[0]);
   log_i("Access-point password=%s",setting.wifi.appw.c_str());
   log_i("Board-Type=%d",setting.boardType);
   log_i("Display-Type=%d",setting.displayType);
   log_i("Display-Rotation=%d",setting.displayRotation);
   log_i("AXP192=%d",uint8_t(status.bHasAXP192));
-  if (setting.band == 0){
-    log_i("BAND=868mhz");
-  }else{
-    log_i("BAND=915mhz");
+  if (setting.country == eCountry::EU){
+    log_i("COUNTRY=EU (868mhz)");
   }
-  log_i("BAND=%d",setting.band);
-  log_i("LORA_POWER=%d",setting.LoraPower);
+  log_i("COUNTRY=%d",uint8_t(setting.country));
   log_i("Mode=%d",setting.Mode);
   log_i("Fanet-Mode=%d",setting.fanetMode);
   log_i("Fanet-Pin=%d",setting.fanetpin);
@@ -1625,9 +1673,9 @@ void printSettings(){
 
   //weather-data
   //general
+  log_i("WD mode=%d",setting.wd.mode.mode);
   log_i("WD tempoffset=%.1f [°]",setting.wd.tempOffset);
   log_i("WD windDirOffset=%d [°]",setting.wd.windDirOffset);
-  log_i("WD rainSensor=%d",setting.wd.RainSensor);
   // FANET
   log_i("WD FANET-Weatherdata=%d",setting.wd.sendFanet);
   log_i("WD FANET-Interval=%d [msec]",setting.wd.FanetUploadInterval);
@@ -1775,11 +1823,10 @@ void setup() {
   Serial.begin(115200);
 
   status.bPowerOff = false;
-  status.vario.bHasBME = false;
   status.bWUBroadCast = false;
   status.bInternetConnected = false;
   status.bTimeOk = false;
-  status.modemstatus = MODEM_DISCONNECTED;
+  status.modemstatus = eModemState::DISCONNECTED;
   command.ConfigGPS = 0;
   status.bHasGPS = false;
   fanet.setGPS(false);
@@ -1789,9 +1836,16 @@ void setup() {
   bleSize = 0;
 
   log_i("SDK-Version=%s",ESP.getSdkVersion());
-  log_i("CPU-Speed=%dMhz",ESP.getCpuFreqMHz());
+  log_i("CPU-Speed=%dMHz",getCpuFrequencyMhz());
+  log_i("XTAL-Freq=%dMHz",getXtalFrequencyMhz());
+  log_i("APB-Freq=%dHz",getApbFrequency());
   log_i("Total heap: %d", ESP.getHeapSize());
   log_i("Free heap: %d", ESP.getFreeHeap());
+  //function takes the following frequencies as valid values:
+  //  240, 160, 80    <<< For all XTAL types
+  //  40, 20, 10      <<< For 40MHz XTAL
+  //  26, 13          <<< For 26MHz XTAL
+  //  24, 12          <<< For 24MHz XTAL
 
   #ifdef BOARD_HAS_PSRAM
   if (psramFound()){
@@ -1819,8 +1873,14 @@ void setup() {
 
   //listSpiffsFiles();
   load_configFile(&setting); //load configuration
+  if (setting.CPUFrequency <  80){
+    setCpuFrequencyMhz(uint32_t(80));
+  }else{
+    setCpuFrequencyMhz(uint32_t(setting.CPUFrequency));
+  }
+  log_i("set CPU-Speed to %dMHz",getCpuFrequencyMhz());
   //setting.boardType = BOARD_UNKNOWN;
-  if (setting.boardType == BOARD_UNKNOWN){
+  if (setting.boardType == eBoard::UNKNOWN){
     checkBoardType();
   }  
   #if defined(OLED) && !defined(EINK)
@@ -1833,16 +1893,17 @@ void setup() {
   status.displayType = setting.displayType; //we have to copy the display-type in case, setting is changing
   #if defined(GSMODULE)  && ! defined(AIRMODULE)
     log_i("only GS-Mode compiled");
-    setting.Mode = MODE_GROUND_STATION;
+    setting.Mode = eMode::GROUND_STATION;
   #endif
   #if defined(AIRMODULE) && ! defined(GSMODULE)
     log_i("only Air-Mode compiled");
-    setting.Mode = MODE_AIR_MODULE;
+    setting.Mode = eMode::AIR_MODULE;
   #endif
   status.gsm.bHasGSM = false;
   #ifdef GSM_MODULE
     status.gsm.bHasGSM = true;
   #endif
+
 
   //esp_wifi_stop();
   /*
@@ -1868,8 +1929,8 @@ void setup() {
   */
 
   #ifdef GSMODULE
-  if (setting.Mode == MODE_GROUND_STATION){
-    if ((reason2 == ESP_SLEEP_WAKEUP_TIMER) && (setting.gs.PowerSave == GS_POWER_SAFE)){
+  if (setting.Mode == eMode::GROUND_STATION){
+    if ((reason2 == ESP_SLEEP_WAKEUP_TIMER) && (setting.gs.PowerSave == eGsPower::GS_POWER_SAFE)){
       printLocalTime();
       if (isDayTime() == 0){
         log_i("not day --> enter deep-sleep");
@@ -1891,7 +1952,7 @@ void setup() {
   }
   #endif
   if ((setting.wifi.ssid.length() <= 0) || (setting.wifi.password.length() <= 0)){
-    setting.wifi.connect = WIFI_CONNECT_NONE; //if no pw or ssid given --> don't connecto to wifi
+    setting.wifi.connect = eWifiMode::CONNECT_NONE; //if no pw or ssid given --> don't connecto to wifi
   }
 
   //pinMode(BUTTON2, INPUT_PULLUP);
@@ -1910,10 +1971,11 @@ void setup() {
 
   switch (setting.boardType)
   {
-  case BOARD_T_BEAM: 
+  case eBoard::T_BEAM: 
     log_i("Board=T_BEAM");
     PinGPSRX = 34;
     PinGPSTX = 12;
+    PinPPS = 37;
 
     PinLoraRst = 23;
     PinLoraDI0 = 26;
@@ -1935,7 +1997,7 @@ void setup() {
     //V3.0.0 changed from PIN 0 to PIN 25
     PinBuzzer = 25;
 
-    if (setting.Mode == MODE_GROUND_STATION){
+    if (setting.Mode == eMode::GROUND_STATION){
       PinWindDir = 36;
       PinWindSpeed = 39;
     }else{
@@ -1957,10 +2019,11 @@ void setup() {
     //for new T-Beam output 4 is red led
 
     break;
-  case BOARD_T_BEAM_SX1262: 
+  case eBoard::T_BEAM_SX1262: 
     log_i("Board=T_BEAM SX1262");
     PinGPSRX = 34;
     PinGPSTX = 12;
+    PinPPS = 37;
     
     PinLoraRst = 23;
     if ((setting.displayType == EINK2_9) || (setting.displayType == EINK2_9_V2)){
@@ -1987,7 +2050,7 @@ void setup() {
     //V3.0.0 changed from PIN 0 to PIN 25
     PinBuzzer = 25;
 
-    if (setting.Mode == MODE_GROUND_STATION){
+    if (setting.Mode == eMode::GROUND_STATION){
       PinWindDir = 36;
       PinWindSpeed = 39;
     }else{
@@ -2008,7 +2071,7 @@ void setup() {
     //for new T-Beam output 4 is red led
 
     break;
-  case BOARD_T_BEAM_V07:
+  case eBoard::T_BEAM_V07:
     log_i("Board=T_BEAM_V07/TTGO_T3_V1_6");
     //PinGPSRX = 34;
     //PinGPSTX = 39;
@@ -2026,9 +2089,8 @@ void setup() {
     PinOledSDA = 21;
     PinOledSCL = 22;
 
-    // moving SCL SDA to different GPIO to avoid conflicts with mounted SD card on Lilygo T3 v2.1.1.6
-    PinBaroSDA = 3; //13 3;
-    PinBaroSCL = 4; //14 23;
+    PinBaroSDA = 13;
+    PinBaroSCL = 14;
     // set gpio 4 as INPUT
     pinMode(PinBaroSCL, INPUT_PULLUP);
     PinADCVoltage = 35;
@@ -2046,7 +2108,7 @@ void setup() {
     i2cOLED.begin(PinOledSDA, PinOledSCL);
     // voltage-divier 100kOhm and 100kOhm
     // vIn = (R1+R2)/R2 * VOut
-    adcVoltageMultiplier = 2.0f * 3.5f; // maybe also 3.4 or 3.45 .. TODO test
+    adcVoltageMultiplier = 2.12f;
     pinMode(PinADCVoltage, INPUT);
     break;
   /*
@@ -2073,11 +2135,11 @@ void setup() {
     i2cOLED.begin(PinOledSDA, PinOledSCL);
     // voltage-divier 100kOhm and 100kOhm
     // vIn = (R1+R2)/R2 * VOut
-    adcVoltageMultiplier = 2.0f * 3.76f; // not sure if it is ok ?? don't have this kind of board
+    adcVoltageMultiplier = 2.5f; // not sure if it is ok ?? don't have this kind of board
     pinMode(PinADCVoltage, INPUT);
     break;
   */
-  case BOARD_HELTEC_LORA:
+  case eBoard::HELTEC_LORA:
     log_i("Board=HELTEC_LORA");
     //PinGPSRX = 34;
     //PinGPSTX = 39;
@@ -2092,8 +2154,8 @@ void setup() {
     PinLora_MOSI = 27;
     PinLora_SCK = 5;
     PinGsmRst = 25;
-    PinGsmTx = 12;
-    PinGsmRx = 21;
+    PinGsmTx = 21;
+    PinGsmRx = 35;
 
     if (setting.displayType == OLED0_96){
       PinOledRst = 16;
@@ -2129,11 +2191,17 @@ void setup() {
     // voltage-divier 27kOhm and 100kOhm
     // vIn = (R1+R2)/R2 * VOut
     //1S LiPo
-    adcVoltageMultiplier = (100000.0f + 27000.0f) / 100000.0f * 3.3;
+    adcVoltageMultiplier = (100000.0f + 27000.0f) / 100000.0f;
     pinMode(PinADCVoltage, INPUT); //input-Voltage on GPIO34
     break;
-  case BOARD_HELTEC_WIRELESS_STICK_LITE:
+  case eBoard::HELTEC_WIRELESS_STICK_LITE:
     log_i("Board=Heltec Wireless Stick Lite");
+
+    PinBeaconLed = 25;
+
+    PinGPSRX = 9;
+    PinGPSTX = 10;
+    PinPPS = 23;
 
 
     PinLoraRst = 14;
@@ -2159,12 +2227,36 @@ void setup() {
     // voltage-divier 27kOhm and 100kOhm
     // vIn = (R1+R2)/R2 * VOut
     //1S LiPo
-    pinMode(21, OUTPUT); //we have to set pin 21 to measure voltage of Battery
-    digitalWrite(21,LOW); //set output to Low, so we can measure the voltage
-    adcVoltageMultiplier = (100000.0f + 220000.0f) / 100000.0f * 3.3;
+    PinExtPower = 21;
+    //adcVoltageMultiplier =  (100000.0f + 220000.0f) / 100000.0f;
+    adcVoltageMultiplier =  3.69f;
     pinMode(PinADCVoltage, INPUT); //input-Voltage on GPIO37
     break;
-  case BOARD_TTGO_TSIM_7000:
+  case eBoard::HELTEC_WIRELESS_STICK:
+    log_i("Board=HELTEC Wireless Stick");
+    PinBeaconLed = 25;
+
+    sButton[0].PinButton = 0; //pin for program-button
+    
+    //PinGPSRX = 34;
+    //PinGPSTX = 39;
+
+
+    PinLoraRst = 14;
+    PinLoraDI0 = 26;
+    PinLora_SS = 18;
+    PinLora_MISO = 19;
+    PinLora_MOSI = 27;
+    PinLora_SCK = 5;
+
+    PinOledRst = 16;
+    PinOledSDA = 4;
+    PinOledSCL = 15;
+    i2cOLED.begin(PinOledSDA, PinOledSCL);
+
+    PinExtPower = 21;
+    break;
+  case eBoard::TTGO_TSIM_7000:
     log_i("Board=TTGO_TSIM_7000");
 
     //E-Ink
@@ -2215,11 +2307,11 @@ void setup() {
 
     // voltage-divier 100kOhm and 100kOhm
     // vIn = (R1+R2)/R2 * VOut
-    adcVoltageMultiplier = 2.0f * 3.76f; // not sure if it is ok ?? don't have this kind of board
+    adcVoltageMultiplier = 2.2279f; // not sure if it is ok ?? don't have this kind of board
     pinMode(PinADCVoltage, INPUT);
 
     break;
-  case BOARD_TTGO_TCALL_800:
+  case eBoard::TTGO_TCALL_800:
 
     PinLoraRst = 12;
     PinLoraDI0 = 32;
@@ -2241,16 +2333,16 @@ void setup() {
 
     PinADCVoltage = 35;
     
-    adcVoltageMultiplier = 2.0f * 3.50f; // not sure if it is ok ?? don't have this kind of board
+    adcVoltageMultiplier = 2.12f; // not sure if it is ok ?? don't have this kind of board
     pinMode(PinADCVoltage, INPUT);
 
     break;
-  case BOARD_UNKNOWN:
+  case eBoard::UNKNOWN:
     log_e("unknown Board --> please correct");
     break;
   default:
     log_e("wrong-board-definition --> restart");
-    setting.boardType = BOARD_UNKNOWN;    
+    setting.boardType = eBoard::UNKNOWN;    
     write_configFile(&setting);
     delay(1000);
     esp_restart(); //we need to restart    break;
@@ -2278,6 +2370,10 @@ void setup() {
   buttonConfig->setClickDelay(500); //set click-delay to 200ms
 
 
+  if (PinBeaconLed >= 0) {
+    pinMode(PinBeaconLed, OUTPUT);
+    digitalWrite(PinBeaconLed,LOW); 
+  }
   if (PinUserLed >= 0){
     pinMode(PinUserLed, OUTPUT);
     digitalWrite(PinUserLed,HIGH); 
@@ -2286,11 +2382,15 @@ void setup() {
     pinMode(PinExtPowerOnOff, INPUT);
     log_i("ext power-state=%d",digitalRead(PinExtPowerOnOff));
   }
+  if (PinExtPower >= 0){
+    pinMode(PinExtPower, OUTPUT); //we have to set pin 21 to measure voltage of Battery
+    digitalWrite(PinExtPower,LOW); //set output to Low, so we can measure the voltage
+  }
 
   #ifdef GSMODULE
-  if (setting.Mode == MODE_GROUND_STATION){
-    //if ((reason2 == ESP_SLEEP_WAKEUP_TIMER) && (setting.gs.PowerSave == GS_POWER_BATT_LIFE)){
-      if ((setting.gs.PowerSave == GS_POWER_BATT_LIFE) || (setting.gs.PowerSave == GS_POWER_SAFE)){
+  if (setting.Mode == eMode::GROUND_STATION){
+    //if ((reason2 == ESP_SLEEP_WAKEUP_TIMER) && (setting.gs.PowerSave == eGsPower::GS_POWER_BATT_LIFE)){
+      if ((setting.gs.PowerSave == eGsPower::GS_POWER_BATT_LIFE) || (setting.gs.PowerSave == eGsPower::GS_POWER_SAFE)){
       printBattVoltage(millis()); //read Battery-level
       log_i("Batt %dV; %d%%",status.vBatt,status.BattPerc);
       if ((status.vBatt >= BATTPINOK) && (status.BattPerc < (setting.minBattPercent + setting.restartBattPercent)) && (status.BattPerc < 80)){
@@ -2328,7 +2428,7 @@ xOutputMutex = xSemaphoreCreateMutex();
   //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
 #ifdef AIRMODULE
 
-  if (setting.Mode == MODE_AIR_MODULE){
+  if (setting.Mode == eMode::AIR_MODULE){
 
     //adding logger task
     #ifdef LOGGER
@@ -2349,7 +2449,7 @@ xOutputMutex = xSemaphoreCreateMutex();
   xTaskCreatePinnedToCore(taskBluetooth, "taskBluetooth", 4096, NULL, 7, &xHandleBluetooth, ARDUINO_RUNNING_CORE1);
 
 #ifdef GSMODULE  
-  if (setting.Mode == MODE_GROUND_STATION){
+  if (setting.Mode == eMode::GROUND_STATION){
     //start weather-task
     xTaskCreatePinnedToCore(taskWeather, "taskWeather", 13000, NULL, 8, &xHandleWeather, ARDUINO_RUNNING_CORE1);
   }
@@ -2370,7 +2470,10 @@ bool connectGPRS(){
 
 bool connectModem(){
   log_i("Waiting for network...");
-  if (!modem.waitForNetwork(600000L)) return false;
+  if (!modem.waitForNetwork(600000L)){
+    log_e("no network");
+    return false;
+  } 
   status.gsm.SignalQuality = modem.getSignalQuality();
   //log_i("signal quality %d",status.gsm.SignalQuality);
   status.gsm.sOperator = modem.getOperator();
@@ -2401,11 +2504,17 @@ bool factoryResetModem(){
     delay(6000); //wait until modem is ok now
   }  
   log_i("test modem-connection");
-  if (!modem.testAT()) return false;
+  if (!modem.testAT()){
+    log_e("modem-connection not OK");
+    return false;
+  } 
   log_i("set factory-settings");
   modem.sendAT(GF("&F"));  // Factory settings
   modem.waitResponse();
-  if (!modem.testAT()) return false;
+  if (!modem.testAT()){
+    log_e("modem-connection not OK");
+    return false;
+  } 
   modem.sendAT(GF("&W"));  // Factory settings
   modem.waitResponse();
   return true;
@@ -2424,12 +2533,23 @@ bool initModem(){
     delay(6000); //wait until modem is ok now
   }  
   log_i("test modem-connection");
-  if (!modem.testAT()) return false;
+  if (!modem.testAT()){
+    log_e("modem-connection not OK");
+    return false;
+  }
   log_i("restarting modem...");  
-  if (!modem.restart()) return false;
+  if (!modem.restart()){
+    log_e("restarting modem failed");
+    return false; 
+  }
   #ifdef TINY_GSM_MODEM_SIM7000
   log_i("set NetworkMode to %d",setting.gsm.NetworkMode);
   modem.setNetworkMode(setting.gsm.NetworkMode); //set mode
+  if (setting.gsm.PreferredMode > 0){
+    delay(500);
+    log_i("set PreferredMode to %d",setting.gsm.PreferredMode);
+    modem.setPreferredMode(setting.gsm.PreferredMode); //set preferred mode
+  }
   #endif
   modem.sleepEnable(false); //set sleepmode off
   modem.sendAT(GF("+CMGF=1"));
@@ -2439,7 +2559,7 @@ bool initModem(){
 }
 
 void PowerOffModem(){
-  status.modemstatus = MODEM_DISCONNECTED;
+  status.modemstatus = eModemState::DISCONNECTED;
   xSemaphoreTake( xGsmMutex, portMAX_DELAY );
   
   log_i("stop gprs connection");
@@ -2514,7 +2634,7 @@ void taskGsm(void *pvParameters){
   factoryResetModem();
   initModem();
   xSemaphoreGive( xGsmMutex );
-  if (setting.wifi.connect != MODE_WIFI_DISABLED){
+  if (setting.wifi.connect != eWifiMode::CONNECT_NONE){
     log_i("stop task");
     xSemaphoreTake( xGsmMutex, portMAX_DELAY );
     PowerOffModem();  
@@ -2523,7 +2643,7 @@ void taskGsm(void *pvParameters){
     return;
   }
   xSemaphoreTake( xGsmMutex, portMAX_DELAY );
-  status.modemstatus = MODEM_CONNECTING;
+  status.modemstatus = eModemState::CONNECTING;
   connectModem(); //connect modem to network  
   /*
   if (modem.isNetworkConnected()){  
@@ -2566,7 +2686,7 @@ void taskGsm(void *pvParameters){
       xSemaphoreTake( xGsmMutex, portMAX_DELAY );
       //log_i("%d Check GSM-Connection",tCheckConn);
       if (modem.isGprsConnected()){
-        status.modemstatus = MODEM_CONNECTED;
+        status.modemstatus = eModemState::CONNECTED;
         //xLastWakeTime = xTaskGetTickCount (); //get actual tick-count
         tCheckConn = millis();
         status.gsm.SignalQuality = modem.getSignalQuality();
@@ -2582,7 +2702,7 @@ void taskGsm(void *pvParameters){
         }
         #endif
       }else{
-        status.modemstatus = MODEM_CONNECTING;
+        status.modemstatus = eModemState::CONNECTING;
         if (modem.isNetworkConnected()){  
           connectGPRS();
           status.myIP = modem.getLocalIP();
@@ -2608,8 +2728,8 @@ void taskGsm(void *pvParameters){
 
 #ifdef GSMODULE
 void taskWeather(void *pvParameters){
-  static uint32_t tUploadData =  0;
-  static uint32_t tSendData = millis() + 10000; //first sending is in 10 seconds
+  static uint32_t tUploadData; //first sending is in Sending-intervall to have steady-values
+  static uint32_t tSendData; //first sending is in FANET-Sending-intervall to have steady-values
   bool bDataOk = false;
   log_i("starting weather-task ");  
   Weather::weatherData wData;
@@ -2617,35 +2737,32 @@ void taskWeather(void *pvParameters){
   WeatherUnderground::wData wuData;
   Windy::wData wiData;
   weatherAvg avg[2];
-  bool bFirstWData = false;
-  TwoWire i2cWeather = TwoWire(0);
-  i2cWeather.begin(PinBaroSDA,PinBaroSCL,200000); //init i2cBaro for Baro
+  bool bFirstWData = false;  
+  //i2cZero.begin(PinBaroSDA,PinBaroSCL,200000u); //init i2c
+  Wire.begin(PinBaroSDA,PinBaroSCL,200000u); //init i2c
   Weather weather;
   weather.setTempOffset(setting.wd.tempOffset);
   weather.setWindDirOffset(setting.wd.windDirOffset);
-  if (weather.begin(&i2cWeather,setting.gs.alt,PinOneWire,PinWindDir,PinWindSpeed,PinRainGauge)){
-    status.vario.bHasBME = true; //we have a bme-sensor
+  //if (weather.begin(&i2cZero,setting.gs.alt,PinOneWire,PinWindDir,PinWindSpeed,PinRainGauge)){
+  if (!weather.begin(&Wire,setting.gs.alt,PinOneWire,PinWindDir,PinWindSpeed,PinRainGauge,setting.gs.Aneometer,setting.wd.mode.bits.hasBME)){
+  
   }
-  if ((setting.WUUpload.enable) && (!status.vario.bHasBME)){
+  if ((setting.WUUpload.enable) && (!setting.wd.mode.bits.enable)){
     status.bWUBroadCast = true;
     log_i("wu broadcast enabled");
   }
-  if ((!status.vario.bHasBME) && (!status.bWUBroadCast)){
+  if ((!setting.wd.mode.bits.enable) && (!status.bWUBroadCast)){
     log_i("stopping task");
     vTaskDelete(xHandleWeather);
     return;    
   }
   const TickType_t xDelay = 1000 / portTICK_PERIOD_MS;   //only every 1sek.
   TickType_t xLastWakeTime = xTaskGetTickCount (); //get actual tick-count
+  tUploadData = millis();
+  tSendData = millis();
   while (1){
     uint32_t tAct = millis();
-    if (tUploadData == 0){
-      //first time sending if we have internet and time is ok
-      if ((status.bInternetConnected) && (status.bTimeOk)){
-        tUploadData = tAct - setting.wd.WUUploadIntervall + 2000;
-      }
-    }
-    if (status.vario.bHasBME){
+    if (setting.wd.mode.bits.enable){
       //station has BME --> we are a weather-station
       weather.run();
       if (weather.getValues(&wData)){
@@ -2683,20 +2800,24 @@ void taskWeather(void *pvParameters){
           }
           avg[i].WindSpeed = calcExpAvgf(avg[i].WindSpeed,wData.WindSpeed,fAvg); 
           if (wData.WindSpeed > avg[i].WindGust) avg[i].WindGust = wData.WindSpeed;
-          avg[i].Humidity = calcExpAvgf(avg[i].Humidity,wData.Humidity,fAvg);
-          avg[i].Pressure = calcExpAvgf(avg[i].Pressure,wData.Pressure,fAvg);
-          avg[i].temp = calcExpAvgf(avg[i].temp,wData.temp,fAvg);
+          if (wData.bHumidity) avg[i].Humidity = calcExpAvgf(avg[i].Humidity,wData.Humidity,fAvg);
+          if (wData.bPressure) avg[i].Pressure = calcExpAvgf(avg[i].Pressure,wData.Pressure,fAvg);
+          if (wData.bTemp) avg[i].temp = calcExpAvgf(avg[i].temp,wData.temp,fAvg);
         }
         //log_i("wDir=%f,wDir0=%f,wDir1=%f",wData.WindDir,avg[0].Winddir,avg[1].Winddir);
-        if (setting.wd.RainSensor == 1){
+        status.weather.bRain = setting.wd.mode.bits.rainSensor;
+        if (setting.wd.mode.bits.rainSensor){
           status.weather.rain1h = wData.rain1h;
           status.weather.rain1d = wData.rain1d;
         }else{
           status.weather.rain1h = 0;
           status.weather.rain1d = 0;
         }
+        status.weather.bTemp = wData.bTemp;
         status.weather.temp = avg[0].temp;
+        status.weather.bHumidity = wData.bHumidity;
         status.weather.Humidity = avg[0].Humidity;
+        status.weather.bPressure = wData.bPressure;
         status.weather.Pressure = avg[0].Pressure;
         status.weather.WindDir = avg[0].Winddir;
         status.weather.WindSpeed = avg[0].WindSpeed; //we use the Fanet-Weather-Speed
@@ -2708,7 +2829,7 @@ void taskWeather(void *pvParameters){
           if (setting.WUUpload.enable){
             WeatherUnderground wu;
             #ifdef GSM_MODULE
-              if (setting.wifi.connect == MODE_WIFI_DISABLED){
+              if (setting.wifi.connect == eWifiMode::CONNECT_NONE){
                 wu.setClient(&GsmWUClient);
                 wu.setMutex(&xGsmMutex);
               }
@@ -2717,14 +2838,13 @@ void taskWeather(void *pvParameters){
             wuData.winddir = avg[1].Winddir;
             wuData.windspeed = avg[1].WindSpeed;
             wuData.windgust = avg[1].WindGust;
+            wuData.bHum = status.weather.bHumidity;
             wuData.humidity = avg[1].Humidity;
+            wuData.bTemp = status.weather.bTemp;
             wuData.temp = avg[1].temp;
+            wuData.bPress = status.weather.bPressure;
             wuData.pressure = avg[1].Pressure;
-            if (setting.wd.RainSensor == 1){
-              wuData.bRain = true;
-            }else{
-              wuData.bRain = false;
-            }
+            wuData.bRain = setting.wd.mode.bits.rainSensor;
             wuData.rain1h = wData.rain1h ;
             wuData.raindaily = wData.rain1d;
             //log_i("wuData:wDir=%f;wSpeed=%f,gust=%f,temp=%f,h=%f,p=%f",wuData.winddir,wuData.windspeed,wuData.windgust,wuData.temp,wuData.humidity,wuData.pressure);
@@ -2733,7 +2853,7 @@ void taskWeather(void *pvParameters){
           if (setting.WindyUpload.enable){
             Windy wi;
             #ifdef GSM_MODULE
-              if (setting.wifi.connect == MODE_WIFI_DISABLED){
+              if (setting.wifi.connect == eWifiMode::CONNECT_NONE){
                 wi.setClient(&GsmWUClient);
                 wi.setMutex(&xGsmMutex);
               }
@@ -2743,14 +2863,13 @@ void taskWeather(void *pvParameters){
             wiData.winddir = avg[1].Winddir;
             wiData.windspeed = avg[1].WindSpeed;
             wiData.windgust = avg[1].WindGust;
+            wiData.bHum = status.weather.bHumidity;
             wiData.humidity = avg[1].Humidity;
+            wiData.bTemp = status.weather.bTemp;
             wiData.temp = avg[1].temp;
+            wiData.bPress = status.weather.bPressure;
             wiData.pressure = avg[1].Pressure;
-            if (setting.wd.RainSensor == 1){
-              wiData.bRain = true;
-            }else{
-              wiData.bRain = false;
-            }
+            wiData.bRain = setting.wd.mode.bits.rainSensor;
             wiData.rain1h = wData.rain1h ;
             wiData.raindaily = wData.rain1d;
             wi.sendData(setting.WindyUpload.ID,setting.WindyUpload.KEY,&wiData);
@@ -2763,6 +2882,7 @@ void taskWeather(void *pvParameters){
       
       if (timeOver(tAct,tSendData,setting.wd.FanetUploadInterval)){
         //print weather-data to serial
+        //log_i("send Fanet-weatherData");
         if (timeStatus() == timeSet){
           StaticJsonDocument<500> doc;                      //Memory pool
           char buff[20];
@@ -2811,19 +2931,23 @@ void taskWeather(void *pvParameters){
           WeatherUnderground::wData wuData;
           WeatherUnderground wu;
           #ifdef GSM_MODULE
-            if (setting.wifi.connect == MODE_WIFI_DISABLED){
+            if (setting.wifi.connect == eWifiMode::CONNECT_NONE){
               wu.setClient(&GsmWUClient);
               wu.setMutex(&xGsmMutex);
             }
           #endif
           bDataOk = wu.getData(setting.WUUpload.ID,setting.WUUpload.KEY,&wuData);
           if (bDataOk){
+            status.weather.bTemp = wuData.bTemp;
             status.weather.temp = wuData.temp;
+            status.weather.bHumidity = wuData.bHum;
             status.weather.Humidity = wuData.humidity;
-            status.weather.Pressure = wuData.pressure;
+            status.weather.bPressure = wuData.bPress;
+            status.weather.Pressure = wuData.pressure;            
             status.weather.WindDir = wuData.winddir;
             status.weather.WindSpeed = wuData.windspeed;
             status.weather.WindGust = wuData.windgust;
+            status.weather.bRain = wuData.bRain;
             status.weather.rain1h = wuData.rain1h;
             status.weather.rain1d = wuData.raindaily;
             fanetWeatherData.lat = wuData.lat;
@@ -2874,6 +2998,7 @@ void taskBaro(void *pvParameters){
   //TickType_t xLastWakeTime;
   // Block for 500ms.
   //const TickType_t xDelay = 10 / portTICK_PERIOD_MS;  
+  status.vario.bHasVario = false;    
   status.vario.bHasMPU = false;
 
   ledcSetup(channel, freq, resolution);
@@ -2882,12 +3007,11 @@ void taskBaro(void *pvParameters){
     digitalWrite(PinBuzzer,LOW);
     ledcAttachPin(PinBuzzer, channel);
   }  
-  Wire.begin(PinBaroSDA,PinBaroSCL,400000);
-  //TwoWire i2cBaro = TwoWire(0);
-  //i2cBaro.begin(PinBaroSDA,PinBaroSCL,400000); //init i2cBaro for Baro
-  //if (baro.begin(&i2cBaro)){
+  Wire.begin(PinBaroSDA,PinBaroSCL,400000u);
+  //i2cZero.begin(PinBaroSDA,PinBaroSCL,400000u);  //init i2c for Baro 
   baro.useMPU(setting.vario.useMPU);
   uint8_t baroSensor = baro.begin(&Wire);
+  //uint8_t baroSensor = baro.begin(&i2cZero);
   baro.setKalmanSettings(setting.vario.sigmaP,setting.vario.sigmaA);
   if (baroSensor > 0){
     if (baroSensor == 2){
@@ -2900,7 +3024,6 @@ void taskBaro(void *pvParameters){
     //Beeper.setGlidingAlarmState(true);
   }else{
     log_i("no baro found --> end baro-task ");  
-    status.vario.bHasVario = false;    
   }
   //status.vario.bHasVario = false; //only for testing
   if (status.vario.bHasVario){
@@ -3003,12 +3126,12 @@ void taskMemory(void *pvParameters) {
 void taskBluetooth(void *pvParameters) {
   // BLEServer *pServer;
   //Put a 10 second delay before Seral BT start to allow settings to work.
-  if ((setting.outputMode == OUTPUT_BLUETOOTH)) delay(10000);
+  if ((setting.outputMode == eOutput::oBLUETOOTH)) delay(10000);
   //esp_coex_preference_set(ESP_COEX_PREFER_BT);
   while(host_name.length() == 0){
     delay(100); //wait until we have the devid
   }
-  if ((setting.outputMode == OUTPUT_BLE) || (setting.outputMode == OUTPUT_BLUETOOTH)){
+  if ((setting.outputMode == eOutput::oBLE) || (setting.outputMode == eOutput::oBLUETOOTH)){
 
   }else{
     //stop bluetooth-controller --> save some memory
@@ -3020,7 +3143,7 @@ void taskBluetooth(void *pvParameters) {
     return;    
   }
 
-  if (setting.outputMode == OUTPUT_BLE){
+  if (setting.outputMode == eOutput::oBLE){
     esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT);
     esp_bt_controller_enable(ESP_BT_MODE_BLE);    
     //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());    
@@ -3067,7 +3190,7 @@ void taskBluetooth(void *pvParameters) {
         break;
       } 
 	  }
-  }else if (setting.outputMode == OUTPUT_BLUETOOTH){
+  }else if (setting.outputMode == eOutput::oBLUETOOTH){
     status.bluetoothStat = 1; //client disconnected
     while (1)
     {
@@ -3096,6 +3219,9 @@ float readBattvoltage(){
   const byte NO_OF_SAMPLES = 5;
   uint32_t adc_reading = 0;
   float vBatt = 0.0;
+  if (PinADCVoltage < 0){
+    return 0.0; //not voltage-pin defined !!
+  }
 
   analogRead(PinADCVoltage); // First measurement has the biggest difference on my board, this line just skips the first measurement
   for (int i = 0; i < NO_OF_SAMPLES; i++) {
@@ -3104,13 +3230,13 @@ float readBattvoltage(){
   }
   adc_reading /= NO_OF_SAMPLES;
 
-  vBatt = (adcVoltageMultiplier * float(adc_reading) / 1023.0f) + setting.BattVoltOffs;
+  vBatt = (adcVoltageMultiplier * float(adc_reading) / 1023.0f * 3.3f) + setting.BattVoltOffs;
   //Serial.println(adc_reading);
-  //log_i("adc=%d, vBatt=%.3f",adc_reading,vBatt);
+  //log_i("adc=%d, vADC=%.3f, vBatt=%.3f",adc_reading,float(adc_reading) / 1023.0f * 3.3f,vBatt);
   return vBatt;
 }
 
-void printBattVoltage(uint32_t tAct){
+bool printBattVoltage(uint32_t tAct){
   static uint32_t tBatt = millis() - 5000;
   if ((tAct - tBatt) >= 5000){
     tBatt = tAct;
@@ -3141,6 +3267,9 @@ void printBattVoltage(uint32_t tAct){
         // }
     }
     */
+    return true; //bat-status readed
+  }else{
+    return false;
   }
 }
 
@@ -3228,7 +3357,7 @@ void printWeather(uint32_t tAct){
 
 void printScanning(uint32_t tAct){
   static uint8_t icon = 0;
-  if (setting.gs.SreenOption == SCREEN_ON_WHEN_TRAFFIC){
+  if (setting.gs.SreenOption == eScreenOption::ON_WHEN_TRAFFIC){
     oledPowerOff();
     return;
   }
@@ -3423,7 +3552,7 @@ void DrawAngleLine(int16_t x,int16_t y,int16_t length,float deg){
   //log_i("x=%i,y=%i,deg=%0.1f,X-Start=%i,Y-Start=%i,X-End=%i,Y-End=%i",x,y,deg,xStart,yStart,xEnd,yEnd);
 }
 
-void DrawRadarScreen(uint32_t tAct,uint8_t mode){
+void DrawRadarScreen(uint32_t tAct,eRadarDispMode mode){
   static uint8_t neighborIndex = 0;
   int index;
   int16_t xStart;
@@ -3457,7 +3586,7 @@ void DrawRadarScreen(uint32_t tAct,uint8_t mode){
   display.setCursor(42,0);
   switch (mode)
   {
-  case RADAR_CLOSEST:
+  case eRadarDispMode::CLOSEST:
     display.print("CLOSEST");
     if (status.GPS_Fix == 0){
       display.setCursor(60,16);
@@ -3470,7 +3599,7 @@ void DrawRadarScreen(uint32_t tAct,uint8_t mode){
     neighborIndex = index;
     DrawRadarPilot(neighborIndex);
     break;
-  case RADAR_LIST:
+  case eRadarDispMode::LIST:
     display.print("LIST");
     if (status.GPS_Fix == 0){
       display.setCursor(60,16);
@@ -3482,7 +3611,7 @@ void DrawRadarScreen(uint32_t tAct,uint8_t mode){
     neighborIndex = index;
     DrawRadarPilot(neighborIndex);
     break;
-  case RADAR_FRIENDS:
+  case eRadarDispMode::FRIENDS:
     display.print("FRIENDS");
     if (status.GPS_Fix == 0){
       display.setCursor(50,16);
@@ -3576,32 +3705,72 @@ void printGPSData(uint32_t tAct){
 void setWifi(bool on){
   if ((on) && (status.wifiStat == 0)){
     log_i("switch WIFI ACCESS-POINT ON");
+    if (setting.CPUFrequency <  80){ //set to min. 80Mhz, because of Wifi
+      setCpuFrequencyMhz(uint32_t(80));
+    }else{
+      setCpuFrequencyMhz(uint32_t(setting.CPUFrequency));
+    }
+    log_i("set CPU-Speed to %dMHz",getCpuFrequencyMhz());
+    delay(10); //wait 10ms
+    status.wifiStat=0;
     WiFi.disconnect(true,true);
-    WiFi.mode(WIFI_OFF);
+    WiFi.mode(WIFI_MODE_NULL);
     WiFi.persistent(false);
-    //WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE); // call is only a workaround for bug in WiFi class
-    WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE,INADDR_NONE,INADDR_NONE); // call is only a workaround for bug in WiFi class
-    //WiFi.config(local_IP, INADDR_NONE, subnet,INADDR_NONE,INADDR_NONE); // call is only a workaround for bug in WiFi class
+    //WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE,INADDR_NONE,INADDR_NONE); // call is only a workaround for bug in WiFi class
+    WiFi.config(IPADDR_ANY, IPADDR_ANY, IPADDR_ANY,IPADDR_ANY,IPADDR_ANY); // call is only a workaround for bug in WiFi class
+    WiFi.setHostname(host_name.c_str());
     WiFi.mode(WIFI_MODE_AP);
     WiFi.softAP(host_name.c_str(), setting.wifi.appw.c_str());
-    WiFi.softAPConfig(local_IP, gateway, subnet);
-    //WiFi.softAPConfig(local_IP, INADDR_NONE, subnet);
-    WiFi.setHostname(host_name.c_str());
+    WiFi.softAPConfig(local_IP, gateway, subnet);    
     Web_setup();
     status.wifiStat = 1;      
   }
   if ((!on) && (status.wifiStat != 0)){
     log_i("switch WIFI OFF");
-    Web_stop();
-    WiFi.softAPdisconnect(true);
-    WiFi.disconnect();
-    WiFi.mode(WIFI_MODE_NULL);
-    esp_wifi_set_mode(WIFI_MODE_NULL);
-    esp_wifi_stop();
     setting.wifi.tWifiStop=0;
     status.wifiStat=0;
+    Web_stop();
+    WiFi.softAPdisconnect(true);
+    //adc_power_off();
+    WiFi.disconnect(true);
+    //WiFi.mode(WIFI_MODE_NULL);
+    WiFi.mode(WIFI_MODE_NULL);
+    //esp_wifi_set_mode(WIFI_MODE_NULL);
+    esp_wifi_stop();
+    //if (setting.CPUFrequency < 80){
+    delay(10);//wait 10ms.
+    if ((setting.outputMode == eOutput::oBLE) && (setting.CPUFrequency <  80)){ //output over ble-connection and frequency < 80Mhz --> set to 80Mhz min.
+      setCpuFrequencyMhz(uint32_t(setting.CPUFrequency));      
+    }else{
+      setCpuFrequencyMhz(uint32_t(setting.CPUFrequency));
+    }
+    log_i("set CPU-Speed to %dMHz",getCpuFrequencyMhz());
+    //}
+    
   }
   wifiCMD = 0;
+}
+
+size_t getNextString(char *ch_str,char *pSearch,char *buffer, size_t sizeBuffer){
+  char *pChar = strstr(ch_str,pSearch);
+
+  if (pChar != NULL){
+    if (pChar > ch_str){
+      size_t count = pChar - ch_str;
+      if (count > sizeBuffer){
+        strncpy(buffer,ch_str,sizeBuffer-1);
+        buffer[sizeBuffer-1] = 0; //zero-termination
+      }else{
+        strncpy(buffer,ch_str,count);
+      }      
+      return count;
+    }else{
+      return 0;
+    }
+  }else{
+    return 0;
+  }
+  
 }
 
 void checkSystemCmd(char *ch_str){
@@ -3665,7 +3834,7 @@ void checkSystemCmd(char *ch_str){
     uint8_t u8 = atoi(sRet.c_str());
     u8 = constrain(u8,0,1);
     if (u8 != setting.fanetMode){
-      setting.fanetMode = u8;
+      setting.fanetMode = eFnMode(u8);
       write_AirMode();
     }
     add2OutputString("#SYC OK\r\n");
@@ -3699,7 +3868,7 @@ void checkSystemCmd(char *ch_str){
     u8 = constrain(u8,0,1);
     add2OutputString("#SYC OK\r\n");
     if (u8 != setting.Mode){
-      setting.Mode = u8;
+      setting.Mode = eMode(u8);
       write_Mode();
       delay(500); //we have to restart in case, the mode is changed
       log_e("ESP Restarting !");
@@ -3721,7 +3890,7 @@ void checkSystemCmd(char *ch_str){
     u8 = constrain(u8,0,3);
     add2OutputString("#SYC OK\r\n");
     if (u8 != setting.outputMode){
-      setting.outputMode = u8;
+      setting.outputMode = eOutput(u8);
       write_OutputMode();
       delay(500); //we have to restart in case, the mode is changed
       log_e("ESP Restarting !");
@@ -3745,24 +3914,9 @@ void checkSystemCmd(char *ch_str){
       esp_restart();
     }
   }
-  if (line.indexOf("#SYC FNTPWR?") >= 0){
-    //log_i("sending 2 client");
-    add2OutputString("#SYC FNTPWR=" + String(setting.LoraPower) + "\r\n");
-  }
   if (line.indexOf("#SYC DOUPDATE") >= 0){
     status.updateState = 50; //check for Update automatic
     add2OutputString("Check for update\r\n");
-  }
-  iPos = getStringValue(line,"#SYC FNTPWR=","\r",0,&sRet);
-  if (iPos >= 0){
-    uint8_t u8 = atoi(sRet.c_str());
-    u8 = constrain(u8,0,14);
-    add2OutputString("#SYC OK\r\n");
-    if (u8 != setting.LoraPower){
-      setting.LoraPower = u8;
-      //LoRa.setTxPower(setting.LoraPower);
-      write_LoraPower();
-    }
   }
 }
 
@@ -3777,30 +3931,25 @@ void checkReceivedLine(char *ch_str){
     checkSystemCmd(ch_str);
   }else if (!strncmp(ch_str,GPS_STATE,2)){
     //got GPS-Info
+    //log_i("GPS-Info:%s",ch_str);
     if (sNmeaIn.length() == 0){
       sNmeaIn = String(ch_str);
     }
-  }
-  /*
-  }else if(!strncmp(ch_str, "@", 1)){
-    char *ptr = strchr(ch_str, '\r');
-    if(ptr == nullptr)
-      ptr = strchr(ch_str, '\n');
-    if(ptr != nullptr)
-      *ptr = '\0';
-
-    char *p = (char *)ch_str + 1;
-    uint32_t devId = strtol(p, NULL, 16);
-    p = strchr(p, SEPARATOR)+1;
-    String msg = p;
-    //log_i("msg=%s",msg.c_str());
-    fanet.writeMsgType3(devId,msg);
-    //fanet.fanet_sendMsg(ch_str+1);
+  #ifndef GXTEST
+  }else if (!strncmp(ch_str,"$PPS",4)){
+    //received a PFLAG-Message --> start pps
+    //log_i("trigger pps");
+    status.bExtGps = true;
+    ppsTriggered = true;
+  #endif
+  }else if (!strncmp(ch_str,"$CL,",4)){
+    float climb = atof(&ch_str[4]);
+    status.vario.bHasVario = true;
+    status.ClimbRate = climb;
+    //log_i("Climb=%.1f",climb);
   }else{
-    log_i("broadcast-msg %s",ch_str);
-    String msg = ch_str;
-    fanet.writeMsgType3(0,msg);
-  }*/
+    log_i("unknown message=%s",ch_str);
+  }
 }
 
 char* readSerial(){
@@ -3857,7 +4006,7 @@ void readGPS(){
       sNmeaIn = ""; //we have a gps --> don't take data from external GPS
     }
   }
-  if ((setting.Mode == MODE_AIR_MODULE) || ((abs(setting.gs.lat) <= 0.1) && (abs(setting.gs.lon) <= 0.1))) {
+  if ((setting.Mode == eMode::AIR_MODULE) || ((abs(setting.gs.lat) <= 0.1) && (abs(setting.gs.lon) <= 0.1))) {
     //in Ground-Station-Mode you have to setup GPS-Position manually
     while(NMeaSerial.available()){
       if (recBufferIndex >= 255) recBufferIndex = 0; //Buffer overrun
@@ -3874,9 +4023,8 @@ void readGPS(){
         recBufferIndex = 0;
         tGpsOk = millis();
         if (!status.bHasGPS){
-          fanet.setGPS(true);
           status.bHasGPS = true;
-          log_i("GPS detected --> enable GPS");
+          fanet.setGPS(status.bHasGPS);          
         }
         
       }else{
@@ -3887,11 +4035,9 @@ void readGPS(){
     }  
   }
   if (timeOver(millis(),tGpsOk,10000)){
-    if (status.bHasGPS) {
-      fanet.setGPS(false);
+    if (status.bHasGPS) {      
       status.bHasGPS = false;
-      //no GPS for more then 10seconds --> set GPS to false
-      log_i("no GPS detected");
+      fanet.setGPS(status.bHasGPS);
     }
   }
 }
@@ -3965,7 +4111,7 @@ void sendLXPW(uint32_t tAct){
       pos += snprintf(&sOut[pos],MAXSTRING-pos,"%.01f",status.GPS_course);
     }
     pos += snprintf(&sOut[pos],MAXSTRING-pos,",,");
-    pos = flarm.addChecksum(sOut,MAXSTRING);
+    pos = flarmDataPort.addChecksum(sOut,MAXSTRING);
     sendData2Client(sOut,pos);
     /*
     String s = "$LXWP0,N,";
@@ -3981,60 +4127,41 @@ void sendLXPW(uint32_t tAct){
       s += String(status.GPS_course,1);
     }
     s +=  ",,";
-    s = flarm.addChecksum(s);
+    s = flarmDataPort.addChecksum(s);
     sendData2Client(s);
     */
     tOld = tAct;
   }
 }
 
+template<typename Tp>
+static inline
+Tp Clamp(Tp value, Tp min, Tp max) {
+  return std::min<Tp>(std::max<Tp>(value, min), max);
+}
+
 void sendLK8EX(uint32_t tAct){
   if (WebUpdateRunning) return;
-  static uint32_t tOld = millis();
-  if ((tAct - tOld) >= 100){
+  static uint32_t tSend = millis();
+  if ((timeOver(tAct,tSend,100) && status.vario.bHasVario) || //update every 100ms if baro exists
+     (timeOver(tAct,tSend,1000) && !status.vario.bHasVario)) { //update every 1 second of no baro exists (only battery-state)
+    //            $LK8EX1,pressure [1/100mbar],altVario [m],temp [°C],batt [percent],chksum crlf
     //String s = "$LK8EX1,101300,99999,99999,99,999,";
     char sOut[MAXSTRING];
     int pos = 0;
     pos += snprintf(&sOut[pos],MAXSTRING-pos,"$LK8EX1,");
     if (status.vario.bHasVario){
       pos += snprintf(&sOut[pos],MAXSTRING-pos,"%d,",(uint32_t)status.pressure);
-      if (status.GPS_Fix){
-        pos += snprintf(&sOut[pos],MAXSTRING-pos,"%.02f,",status.GPS_alt);
-      }else{
-        pos += snprintf(&sOut[pos],MAXSTRING-pos,"%.02f,",status.varioAlt);
-      }
-      pos += snprintf(&sOut[pos],MAXSTRING-pos,"%d,%.01f,",(int32_t)(status.ClimbRate * 100.0),status.varioTemp);
+      pos += snprintf(&sOut[pos],MAXSTRING-pos,"%.02f,",status.varioAlt);
+      pos += snprintf(&sOut[pos],MAXSTRING-pos,"%d,%.01f,",(int32_t)roundf(status.ClimbRate * 100.0),status.varioTemp);
     }else{
-      pos += snprintf(&sOut[pos],MAXSTRING-pos,"999999,%.02f,%d,99,",status.GPS_alt,(int32_t)(status.ClimbRate * 100.0));
+      // Don't send altitude nor baro data if baro sensor is not available.
+      pos += snprintf(&sOut[pos],MAXSTRING-pos,"999999,99999,9999,99,");      
     }
-    pos += snprintf(&sOut[pos],MAXSTRING-pos,"%.02f,",(float)status.vBatt / 1000.);
-    pos = flarm.addChecksum(sOut,MAXSTRING);
+    pos += snprintf(&sOut[pos],MAXSTRING-pos,"%u,", Clamp<uint32_t>(status.BattPerc, 0, 100) + 1000U);
+    pos = flarmDataPort.addChecksum(sOut,MAXSTRING);
     sendData2Client(sOut,pos);
-    /*
-    String s = "$LK8EX1,";
-
-    if (status.vario.bHasVario){
-      s += String(status.pressure,2) + ","; //raw pressure in hPascal: hPA*100 (example for 1013.25 becomes  101325) 
-      if (status.GPS_Fix){
-        s += String(status.GPS_alt,2) + ","; // altitude in meters, relative to QNH 1013.25
-      }else{
-        s += String(status.varioAlt,2) + ","; // altitude in meters, relative to QNH 1013.25
-      }
-      s += String((int32_t)(status.ClimbRate * 100.0)) + ","; //climbrate in cm/s
-      s += String(status.varioTemp,1) + ","; //temperature
-    }else{
-      s += "999999,"; //raw pressure in hPascal: hPA*100 (example for 1013.25 becomes  101325) 
-      s += String(status.GPS_alt,2) + ","; // altitude in meters, relative to QNH 1013.25
-      s += String((int32_t)(status.ClimbRate * 100.0)) + ","; //climbrate in cm/s
-      //s += String(status.) + ",";
-      s += "99,"; //temperature
-    }
-    
-    s += String((float)status.vBatt / 1000.,2) + ",";
-    s = flarm.addChecksum(s);
-    sendData2Client(s);
-    */
-    tOld = tAct;
+    tSend = tAct;
   }
 }
 
@@ -4103,9 +4230,12 @@ void taskStandard(void *pvParameters){
   static uint32_t tLastPPS = millis();
   static uint32_t tDisplay = millis();
   static uint32_t tMaxLoop = millis();
+  bool bBatPowerOk = false;
+  bool bShowBattPower = true;
   #ifdef TEST
   static uint32_t tSend = millis();
   #endif
+  userled.setUserLed(PinBeaconLed,true);
   char * pSerialLine = NULL;
   String sSerial = "";
   String s = "";
@@ -4141,14 +4271,31 @@ void taskStandard(void *pvParameters){
       NMeaSerial.read();
   }
   
-  if (status.bHasAXP192){  
+  if (PinPPS > 0){  
     //only on new boards we have an pps-pin
-    pinMode(PPSPIN, INPUT);
-    attachInterrupt(digitalPinToInterrupt(PPSPIN), ppsHandler, FALLING);
+    log_i("setup PPS-Pin for GPS");
+    pinMode(PinPPS, INPUT);
+    //attachInterrupt(digitalPinToInterrupt(PinPPS), ppsHandler, FALLING);
+    attachInterrupt(digitalPinToInterrupt(PinPPS), ppsHandler, RISING);
   }
+  #ifdef GXTEST
+    status.bExtGps = true;
+    fanet.setGPS(true);
+    //only on new boards we have an pps-pin
+    pinMode(PinPPS, INPUT);
+    //attachInterrupt(digitalPinToInterrupt(PinPPS), ppsHandler, FALLING);
+    attachInterrupt(digitalPinToInterrupt(PinPPS), ppsHandler, RISING);
   #endif
+  #endif
+  // create a binary semaphore for task synchronization
+  long frequency = FREQUENCY868;
+  fanet.setRFMode(setting.RFMode);
+  uint8_t radioChip = RADIO_SX1276;
+  if (setting.boardType == eBoard::T_BEAM_SX1262) radioChip = RADIO_SX1262;
+  fanet.begin(PinLora_SCK, PinLora_MISO, PinLora_MOSI, PinLora_SS,PinLoraRst, PinLoraDI0,PinLoraGPIO,frequency,14,radioChip);
+  fanet.setGPS(status.bHasGPS);
   #ifdef GSMODULE
-  if (setting.Mode == MODE_GROUND_STATION){
+  if (setting.Mode == eMode::GROUND_STATION){
     //mode ground-station
     status.GPS_Lat = setting.gs.lat;
     status.GPS_Lon = setting.gs.lon;  
@@ -4160,43 +4307,27 @@ void taskStandard(void *pvParameters){
     fanet.setMyTrackingData(&MyFanetData,setting.gs.geoidAlt,0); //set Data on fanet
   }
   #endif
-
-
-  // create a binary semaphore for task synchronization
-  long frequency = FREQUENCY868;
-  //bool begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset, int dio0,long frequency,uint8_t outputPower);
-  if (setting.band == BAND915)frequency = FREQUENCY915; 
-  //setting.RFM = 2; //send an receive legacy-data
-  fanet.setRFMode(setting.RFMode);
-  uint8_t radioChip = RADIO_SX1276;
-  if (setting.boardType == BOARD_T_BEAM_SX1262) radioChip = RADIO_SX1262;
-  fanet.begin(PinLora_SCK, PinLora_MISO, PinLora_MOSI, PinLora_SS,PinLoraRst, PinLoraDI0,PinLoraGPIO,frequency,setting.LoraPower,radioChip);
   fanet.setPilotname(setting.PilotName);
   fanet.setAircraftType(FanetLora::aircraft_t(setting.AircraftType));
   fanet.autoSendName = true;
-  if (setting.Mode == MODE_GROUND_STATION){
+  if (setting.Mode == eMode::GROUND_STATION){
     fanet.autobroadcast = false;
   }else{
     fanet.autobroadcast = true;
   }
-  //if (setting.Mode != MODE_DEVELOPER){ //
-    
-  //}else{
-  //  fanet.autobroadcast = false;
-  //}
   setting.myDevId = fanet.getMyDevId();
   host_name = APPNAME "-" + setting.myDevId; //String((ESP32_getChipId() & 0xFFFFFF), HEX);
   #ifdef AIRMODULE
-  if (setting.Mode == MODE_AIR_MODULE){
-    flarm.begin();
+  if (setting.Mode == eMode::AIR_MODULE){
+    flarmDataPort.begin();
   }
   #endif
   if (setting.OGNLiveTracking.mode > 0){
     #ifdef GSMODULE
-      if (setting.Mode == MODE_GROUND_STATION){
+      if (setting.Mode == eMode::GROUND_STATION){
         ogn.setAirMode(false); //set airmode
         #ifdef GSM_MODULE
-          if (setting.wifi.connect == MODE_WIFI_DISABLED){
+          if (setting.wifi.connect == eWifiMode::CONNECT_NONE){
             ogn.setClient(&GsmOGNClient);
             ogn.setMutex(&xGsmMutex);
           }
@@ -4210,7 +4341,7 @@ void taskStandard(void *pvParameters){
       }
     #endif
     #ifdef AIRMODULE
-      if (setting.Mode == MODE_AIR_MODULE){
+      if (setting.Mode == eMode::AIR_MODULE){
         ogn.setAirMode(true); //set airmode
         ogn.begin("FNB" + setting.myDevId,VERSION "." APPNAME);
       }
@@ -4226,17 +4357,26 @@ void taskStandard(void *pvParameters){
     display.print(setting.myDevId);
     display.display();
     delay(3000);
-    if (setting.gs.SreenOption == SCREEN_ALWAYS_OFF){
+    if (setting.gs.SreenOption == eScreenOption::ALWAYS_OFF){
       oledPowerOff();
     }
   }
 #endif
 
-  //udp.begin(UDPPORT);
   tLoop = micros();
   while(1){    
     // put your main code here, to run repeatedly:
     uint32_t tAct = millis();
+    if ((bShowBattPower) && (bBatPowerOk)){
+      //log_i("show batt-percent");
+      userled.setBattPower(status.BattPerc);
+      userled.setState(gxUserLed::showBattPower); //blink slow 1-5 times for batt-percent 0-100percent
+      bShowBattPower = false;
+    }else if (status.GPS_Fix){
+      userled.setBlinkFast(1); //blink fast 1 times
+    }else{
+      userled.setBlinkFast(2); //blink fast 2 times
+    }
     #ifdef TEST
     if (timeOver(tAct,tSend,1000)){
       tSend = tSend;
@@ -4278,6 +4418,7 @@ void taskStandard(void *pvParameters){
     if (sButton[0].state == ace_button::AceButton::kEventClicked){
       log_v("Short Press IRQ");
       setting.screenNumber ++;
+      bShowBattPower = true; //show battery-state again
       if (setting.screenNumber > MAXSCREENS) setting.screenNumber = 0;
       write_screenNumber(); //save screennumber in File
       tDisplay = tAct - DISPLAY_UPDATE_RATE;
@@ -4311,7 +4452,7 @@ void taskStandard(void *pvParameters){
     if (setting.OGNLiveTracking.mode > 0){
       if (status.vario.bHasVario){
         ogn.setStatusData(status.pressure ,status.varioTemp,NAN,(float)status.vBatt / 1000.,status.BattPerc);
-      }else if ((status.vario.bHasBME) || (status.bWUBroadCast)){
+      }else if ((setting.wd.mode.bits.enable) || (status.bWUBroadCast)){
         ogn.setStatusData(status.weather.Pressure ,status.weather.temp,status.weather.Humidity,(float)status.vBatt / 1000.,status.BattPerc);
       }else{
         ogn.setStatusData(NAN ,NAN, NAN, (float)status.vBatt / 1000.,status.BattPerc);
@@ -4319,7 +4460,9 @@ void taskStandard(void *pvParameters){
       ogn.run(status.bInternetConnected);
     } 
     checkFlyingState(tAct);
-    printBattVoltage(tAct);
+    if (printBattVoltage(tAct)){
+      bBatPowerOk = true;
+    }
     if (sOutputData.length() > 0){
       String s;
       xSemaphoreTake( xOutputMutex, portMAX_DELAY );
@@ -4343,7 +4486,7 @@ void taskStandard(void *pvParameters){
     }
 
     //#ifdef AIRMODULE
-    //if (setting.Mode == MODE_AIR_MODULE){
+    //if (setting.Mode == eMode::AIR_MODULE){
     readGPS();
     //}
     //#endif    
@@ -4351,10 +4494,10 @@ void taskStandard(void *pvParameters){
     #ifdef OLED
     if (status.displayType == OLED0_96){
     #ifdef GSMODULE
-      if (setting.Mode == MODE_GROUND_STATION){
-        if (setting.gs.SreenOption == SCREEN_WEATHER_DATA){
+      if (setting.Mode == eMode::GROUND_STATION){
+        if (setting.gs.SreenOption == eScreenOption::WEATHER_DATA){
           printWeather(tAct);
-        }else if (setting.gs.SreenOption != SCREEN_ALWAYS_OFF){
+        }else if (setting.gs.SreenOption != eScreenOption::ALWAYS_OFF){
           if (fanet.getNeighboursCount() == 0){
             if (timeOver(tAct,tDisplay,500)){
               tDisplay = tAct;
@@ -4370,7 +4513,7 @@ void taskStandard(void *pvParameters){
       }
     #endif
     #ifdef AIRMODULE
-      if (setting.Mode == MODE_AIR_MODULE){
+      if (setting.Mode == eMode::AIR_MODULE){
         switch (setting.screenNumber)
         {
         case 0: //main-Display
@@ -4382,13 +4525,13 @@ void taskStandard(void *pvParameters){
         case 1: //radar-screen with list
           if ((timeOver(tAct,tDisplay,DISPLAY_UPDATE_RATE2)) || (oldScreenNumber != setting.screenNumber)){
             tDisplay = tAct;              
-            DrawRadarScreen(tAct,RADAR_LIST);
+            DrawRadarScreen(tAct,eRadarDispMode::LIST);
           }
           break;
         case 2: //radar-screen with closest
           if ((timeOver(tAct,tDisplay,DISPLAY_UPDATE_RATE)) || (oldScreenNumber != setting.screenNumber)){
             tDisplay = tAct;
-            DrawRadarScreen(tAct,RADAR_CLOSEST);
+            DrawRadarScreen(tAct,eRadarDispMode::CLOSEST);
           }
           break;
         case 3: //list aircrafts
@@ -4431,25 +4574,21 @@ void taskStandard(void *pvParameters){
       sendFanetData = 0;
     }
     if (sendWeatherData){ //we have to send weatherdata
-      //log_i("sending weatherdata");
+      //log_i("sending weatherdata %d,%d,%d,%d,%d",fanetWeatherData.bTemp,fanetWeatherData.bHumidity,fanetWeatherData.bStateOfCharge,fanetWeatherData.bWind,fanetWeatherData.bBaro);
       fanet.writeMsgType4(&fanetWeatherData);
       if (setting.OGNLiveTracking.bits.sendWeather) {
         Ogn::weatherData wData;
         wData.devId = fanet.getMyDevId();
         wData.lat = status.GPS_Lat;
         wData.lon = status.GPS_Lon;
-        wData.bBaro = true;
+        wData.bBaro = status.weather.bPressure;
         wData.Baro = status.weather.Pressure;
-        wData.bHumidity = true;
+        wData.bHumidity = status.weather.bHumidity;
         wData.Humidity = status.weather.Humidity;
-        if (setting.wd.RainSensor == 1){
-          wData.bRain = true;
-        }else{
-          wData.bRain = false;
-        }
+        wData.bRain = setting.wd.mode.bits.rainSensor;
         wData.rain1h = status.weather.rain1h;
         wData.rain24h = status.weather.rain1d;
-        wData.bTemp = true;
+        wData.bTemp = status.weather.bTemp;
         wData.temp = status.weather.temp;
         wData.bWind = true;
         wData.wHeading = status.weather.WindDir;
@@ -4464,14 +4603,15 @@ void taskStandard(void *pvParameters){
     if (pSerialLine != NULL){
       checkReceivedLine(pSerialLine);
     }
-    if ((setting.fanetMode == FN_AIR_TRACKING) || (status.flying)){
+    if ((setting.fanetMode == eFnMode::FN_AIR_TRACKING) || (status.flying)){
       fanet.onGround = false; //online-tracking
     }else{
       fanet.onGround = true; //ground-tracking
     }
     if (!WebUpdateRunning){
       fanet.run();
-    }    
+    }
+    userled.run();
     //status.fanetRx = fanet.rxCount;
     //status.fanetTx = fanet.txCount;
     fanet.getRxTxCount(&status.fanetRx,&status.fanetTx,&status.legRx,&status.legTx);
@@ -4511,6 +4651,19 @@ void taskStandard(void *pvParameters){
     }
     FanetLora::weatherData weatherData;
     if (fanet.getWeatherData(&weatherData)){
+      //check if we forward the weather-data to WU
+      for (int i = 0; i < MAXFNTUPLOADSTATIONS;i++){
+        if (setting.FntWuUpload[i].FanetId == weatherData.devId){
+          sendFanetWeatherData2WU(&weatherData,i);
+        }
+      }
+      //check if we forward the weather-data to Windy
+      for (int i = 0; i < MAXFNTUPLOADSTATIONS;i++){
+        if (setting.FntWiUpload[i].FanetId == weatherData.devId){
+          sendFanetWeatherData2WI(&weatherData,i);
+        }
+      }
+      
       if (setting.OGNLiveTracking.bits.fwdWeather){
         Ogn::weatherData wData;
         wData.devId = fanet.getDevId(weatherData.devId);
@@ -4546,26 +4699,16 @@ void taskStandard(void *pvParameters){
         sendTraccarTrackingdata(&tFanetData);
       }else if (tFanetData.type >= 0x70){ //ground-tracking
         if (setting.OGNLiveTracking.bits.liveTracking){
-          ogn.sendGroundTrackingData(tFanetData.timestamp,tFanetData.lat,tFanetData.lon,fanet.getDevId(tFanetData.devId),tFanetData.type,tFanetData.addressType,(float)tFanetData.snr);
+          ogn.sendGroundTrackingData(tFanetData.timestamp,tFanetData.lat,tFanetData.lon,tFanetData.altitude,fanet.getDevId(tFanetData.devId),tFanetData.type,tFanetData.addressType,(float)tFanetData.snr);
         } 
       }
-      #ifdef SENDFLARMDIRECT
-      FlarmtrackingData myFlarmData;
-      FlarmtrackingData PilotFlarmData;
-      Fanet2FlarmData(&fanet._myData,&myFlarmData);
-      Fanet2FlarmData(&tFanetData,&PilotFlarmData);
-      char sOut[MAXSTRING];
-      int pos = flarm.writeFlarmData(sOut,MAXSTRING,&myFlarmData,&PilotFlarmData);
-      sendData2Client(sOut,pos);
-      flarmCount++;
-      #endif
     }    
-    flarm.run();
-    if (setting.outputModeVario == OVARIO_LK8EX1) sendLK8EX(tAct);
-    if (setting.outputModeVario == OVARIO_LXPW) sendLXPW(tAct); //not output 
+    flarmDataPort.run();
+    if (setting.outputModeVario == eOutputVario::OVARIO_LK8EX1) sendLK8EX(tAct);
+    if (setting.outputModeVario == eOutputVario::OVARIO_LXPW) sendLXPW(tAct); //not output 
     #ifdef AIRMODULE
-    if ((setting.Mode == MODE_AIR_MODULE) || ((abs(setting.gs.lat) <= 0.1) && (abs(setting.gs.lon) <= 0.1))){ //in GS-Mode we use the GPS, if in settings disabled
-      if (!status.bHasAXP192){
+    if ((setting.Mode == eMode::AIR_MODULE) || ((abs(setting.gs.lat) <= 0.1) && (abs(setting.gs.lon) <= 0.1))){ //in GS-Mode we use the GPS, if in settings disabled
+      if ((PinPPS < 0) && (!status.bExtGps)){
         if ((tAct - tOldPPS) >= 1000){
           ppsMillis = millis();
           ppsTriggered = true;
@@ -4575,14 +4718,18 @@ void taskStandard(void *pvParameters){
         ppsTriggered = false;
         tLastPPS = tAct;
         //log_i("PPS-Triggered t=%d",status.tGPSCycle);
-        //log_e("GPS-FixTime=%s",nmea.getFixTime().c_str());
+        //log_i("lat=%d;lon=%d",nmea.getLatitude(),nmea.getLongitude());
+        //long alt2 = 0;
+        //nmea.getAltitude(alt2);
+        //log_i("alt=%d,speed=%d,course=%d",alt2,nmea.getSpeed(),nmea.getCourse());
+        //log_i("GPS-FixTime=%s",nmea.getFixTime().c_str());
         status.tGPSCycle = tAct - tOldPPS;
         if (nmea.isValid()){
           //log_i("nmea is valid");
           long alt = 0;
           nmea.getAltitude(alt);
           #ifdef AIRMODULE
-          if (setting.Mode == MODE_AIR_MODULE){
+          if (setting.Mode == eMode::AIR_MODULE){
             status.GPS_NumSat = nmea.getNumSatellites();
           }
           #endif
@@ -4637,6 +4784,7 @@ void taskStandard(void *pvParameters){
           }
           long geoidalt = 0;
           nmea.getGeoIdAltitude(geoidalt);
+          //log_i("latlon=%d,%d",nmea.getLatitude(),nmea.getLongitude());
           status.GPS_Lat = nmea.getLatitude() / 1000000.;
           status.GPS_Lon = nmea.getLongitude() / 1000000.;  
           status.GPS_alt = alt/1000.;
@@ -4673,11 +4821,11 @@ void taskStandard(void *pvParameters){
             MyFanetData.heading = status.GPS_course;
           }
           MyFanetData.aircraftType = fanet.getAircraftType();        
-          if (setting.Mode == MODE_AIR_MODULE){
+          if (setting.Mode == eMode::AIR_MODULE){
             if (setting.OGNLiveTracking.bits.liveTracking){
               ogn.setGPS(status.GPS_Lat,status.GPS_Lon,status.GPS_alt,status.GPS_speed,MyFanetData.heading);
               if (fanet.onGround){
-                ogn.sendGroundTrackingData(now(),status.GPS_Lat,status.GPS_Lon,fanet.getDevId(tFanetData.devId),fanet.state,MyFanetData.addressType,0.0);
+                ogn.sendGroundTrackingData(now(),status.GPS_Lat,status.GPS_Lon,status.GPS_alt,fanet.getDevId(tFanetData.devId),fanet.state,MyFanetData.addressType,0.0);
               }else{
                 ogn.sendTrackingData(now(),status.GPS_Lat,status.GPS_Lon,status.GPS_alt,status.GPS_speed,MyFanetData.heading,status.ClimbRate,fanet.getMyDevId() ,(Ogn::aircraft_t)fanet.getFlarmAircraftType(&MyFanetData),MyFanetData.addressType,fanet.doOnlineTracking,0.0);
               }
@@ -4713,7 +4861,7 @@ void taskStandard(void *pvParameters){
         status.GPS_NumSat = 0;
       }
     }else{
-      if (!status.bHasGPS){
+      if ((PinPPS < 0) && (!status.bExtGps)){
         if ((tAct - tOldPPS) >= 1000){
           ppsMillis = millis();
           ppsTriggered = true;
@@ -4738,7 +4886,7 @@ void taskStandard(void *pvParameters){
     #endif
 
     #ifdef GSMODULE
-    if (setting.Mode == MODE_GROUND_STATION){
+    if (setting.Mode == eMode::GROUND_STATION){
       sendAWGroundStationdata(tAct); //send ground-station-data    
     }
     #endif
@@ -4863,6 +5011,13 @@ void powerOff(){
   if (PinBuzzer >= 0){
     digitalWrite(PinBuzzer,LOW);     
   }  
+  if (PinBeaconLed >= 0){
+    digitalWrite(PinBeaconLed,LOW);    
+  }
+  if (PinExtPower >= 0){
+    digitalWrite(PinExtPower,HIGH);
+    //pinMode(PinExtPower,INPUT); //set ext-power-pin to input (if low --> ext-power is enabled)  
+  }
   
   log_i("switch power-supply off");  
   delay(100);
@@ -4882,8 +5037,15 @@ void powerOff(){
     
     delay(20);
     esp_sleep_enable_ext0_wakeup((gpio_num_t) AXP_IRQ, 0); // 1 = High, 0 = Low
+  }else if ((sButton[0].PinButton >= 0) && (PinExtPowerOnOff < 0)){
+    while (!digitalRead(sButton[0].PinButton)){
+      log_i("wait until power-button is released");
+      delay(500); //wait 500ms
+    }
+    uint64_t mask = uint64_t(1) << uint64_t(sButton[0].PinButton); //prg-Button has a pull-up-resistor --> Pin has to go low, if pressed
+    esp_sleep_enable_ext1_wakeup(mask,ESP_EXT1_WAKEUP_ALL_LOW); //wait until power is back again
   }
-  if (PinExtPowerOnOff > 0){
+  if (PinExtPowerOnOff >= 0){
     if (!digitalRead(PinExtPowerOnOff)){
       //pin has to be low, if not, somebody switched off with button !!
       uint64_t mask = uint64_t(1) << uint64_t(PinExtPowerOnOff);
@@ -4891,6 +5053,8 @@ void powerOff(){
       esp_sleep_enable_ext1_wakeup(mask,ESP_EXT1_WAKEUP_ANY_HIGH); //wait until power is back again
     }
   }
+  
+
   //Serial.end();
   esp_wifi_stop();
   esp_bluedroid_disable();
@@ -4898,9 +5062,14 @@ void powerOff(){
   esp_bt_controller_disable();
   esp_bt_controller_deinit();
   esp_bt_mem_release(ESP_BT_MODE_BTDM);
-  //adc_power_off();
-  //adc_power_release();
+  if (PinLora_SCK >= 0) pinMode(PinLora_SCK,INPUT);
+  if (PinLoraRst >= 0) pinMode(PinLoraRst,INPUT);
+  if (PinLora_MISO >= 0) pinMode(PinLora_MISO,INPUT);
+  if (PinLora_MOSI>= 0) pinMode(PinLora_MOSI,INPUT);
+  if (PinLora_SS >= 0) pinMode(PinLora_SS,INPUT);
+  if (PinLoraDI0 >= 0) pinMode(PinLoraDI0,INPUT);
   esp_deep_sleep_start();
+  
 
 }
 
@@ -4974,10 +5143,18 @@ void checkExtPowerOff(uint32_t tAct){
 }
 
 void handleUpdate(uint32_t tAct){
+  static uint32_t tStartAutoUpdate = millis();
   if (status.tRestart != 0){
     if (timeOver(tAct,status.tRestart,5000)){
       esp_restart();
     }
+  }
+  if ((setting.bAutoupdate) && (status.bInternetConnected)){
+    if ((status.updateState == 0) && (timeOver(tAct,tStartAutoUpdate,10000))){
+      status.updateState = 50; //auto-update
+    }
+  }else{
+    tStartAutoUpdate = tAct;
   }
   if (status.updateState == 1){
     status.updateState = 2;      
@@ -4987,7 +5164,7 @@ void handleUpdate(uint32_t tAct){
         status.updateState = 10; //we can update --> newer Version
       }
     }
-  }else if (status.updateState == 50){ //autoupdate via FANET !!
+  }else if (status.updateState == 50){ //autoupdate
     if (updater.checkVersion()){
       status.sNewVersion = updater.getVersion();
       if (updater.checkVersionNewer()){
@@ -4996,20 +5173,20 @@ void handleUpdate(uint32_t tAct){
         delay(500); //wait 1 second until tasks are stopped
         if (updater.updateVersion()){ //update to newest version  
           add2OutputString("update complete\r\n");
-          status.updateState = 60;
+          status.updateState = 200;
           status.tRestart = millis();
         }else{
           add2OutputString("update failed\r\n");
-          status.updateState = 60;
+          status.updateState = 254;
           status.tRestart = millis();
         }
       }else{
         add2OutputString("no new Version avaiable\r\n");
-        status.updateState = 60;
+        status.updateState = 253;
       }
     }else{
       add2OutputString("no connection to server\r\n");
-      status.updateState = 60;
+      status.updateState = 252;
     }
   }else if (status.updateState == 100){
     status.updateState = 110;
@@ -5111,8 +5288,7 @@ void readSMS(){
 
 void taskBackGround(void *pvParameters){
   static uint32_t tWifiCheck = millis();
-  static uint32_t warning_time=0;
-  static uint8_t ntpOk = 0;
+  //static uint32_t warning_time=0;
   static uint32_t tGetTime = millis();
   uint32_t tBattEmpty = millis();
   uint32_t tRuntime = millis();
@@ -5129,7 +5305,7 @@ void taskBackGround(void *pvParameters){
   if (setting.mqtt.mode.bits.enable){
     pMqtt = new(GxMqtt);
     #ifdef GSM_MODULE
-    if (setting.wifi.connect == MODE_WIFI_DISABLED){
+    if (setting.wifi.connect == eWifiMode::CONNECT_NONE){
       pMqtt->begin(&xGsmMutex,&GsmMqttClient);
     }else{
       pMqtt->begin();
@@ -5142,7 +5318,7 @@ void taskBackGround(void *pvParameters){
 
   setupWifi();
   #ifdef GSM_MODULE
-    if (setting.wifi.connect == MODE_WIFI_DISABLED){      
+    if (setting.wifi.connect == eWifiMode::CONNECT_NONE){      
       updater.setClient(&GsmUpdaterClient);
       updater.setMutex(&xGsmMutex);
     }
@@ -5151,7 +5327,7 @@ void taskBackGround(void *pvParameters){
   tBattEmpty = millis();
   while (1){
     uint32_t tAct = millis();
-    if  (status.wifiStat){
+    if  (status.wifiStat != 0){
       Web_loop();
     }
     handleUpdate(tAct);
@@ -5173,7 +5349,7 @@ void taskBackGround(void *pvParameters){
       }
     } 
     #ifdef GSMODULE    
-    if (setting.Mode == MODE_GROUND_STATION){
+    if (setting.Mode == eMode::GROUND_STATION){
       if (status.bTimeOk == true){
         struct tm now;
         getLocalTime(&now,0);
@@ -5190,7 +5366,7 @@ void taskBackGround(void *pvParameters){
           actDay = day();
         }
       }
-      if (setting.gs.PowerSave == GS_POWER_SAFE){
+      if (setting.gs.PowerSave == eGsPower::GS_POWER_SAFE){
         if (timeOver(tAct,tRuntime,180000)) bPowersaveOk = true; //after 3min. esp is allowed to go to sleep, so that anybody has a chance to change settings
         //bPowersaveOk = true; //after 3min. esp is allowed to go to sleep, so that anybody has a chance to change settings
         if (status.bTimeOk == true){
@@ -5226,7 +5402,7 @@ void taskBackGround(void *pvParameters){
       }
     }
     #endif
-    if ((WiFi.status() == WL_CONNECTED) || ((status.modemstatus == MODEM_CONNECTED) && (setting.wifi.connect == MODE_WIFI_DISABLED))){
+    if (((WiFi.status() == WL_CONNECTED) && (status.wifiStat == 2)) || ((status.modemstatus == eModemState::CONNECTED) && (setting.wifi.connect == eWifiMode::CONNECT_NONE))){
       status.bInternetConnected = true;
     }else{
       status.bInternetConnected = false;
@@ -5237,29 +5413,38 @@ void taskBackGround(void *pvParameters){
       //log_i("wifi-strength=%d",status.wifiRssi);
     }
     if (WiFi.status() == WL_CONNECTED){
-      if ((!ntpOk) && (timeOver(tAct,tGetTime,5000))){
+      if (timeOver(tAct,tGetTime,GETNTPINTERVALL)){
+        tGetTime = tAct;
         log_i("get ntp-time");
+        uint32_t tStart = millis();
+        uint32_t tBeforeNtp = now();
         configTime(0, 0, "pool.ntp.org");
         adjustTime(0);
         struct tm timeinfo;
         if(getLocalTime(&timeinfo)){
+          uint32_t tEnd = millis();
           log_i("h=%d,min=%d,sec=%d,day=%d,month=%d,year=%d",timeinfo.tm_hour,timeinfo.tm_min, timeinfo.tm_sec, timeinfo.tm_mday,timeinfo.tm_mon+1, timeinfo.tm_year + 1900);
           setAllTime(timeinfo);
-          struct tm now;
-          getLocalTime(&now,0);
-          if (now.tm_year >= 117) Serial.println(&now, "%B %d %Y %H:%M:%S (%A)");
-
-
-        }
-        tGetTime = tAct;
-        if (printLocalTime() == true){
-          ntpOk = 1;
-          status.bTimeOk = true;
-        } 
+          uint32_t tAfterNtp = now(); 
+          tBeforeNtp += ((tEnd - tStart) / 1000);
+          uint32_t tDist = tAfterNtp - tBeforeNtp;          
+          if (tDist > 1){
+            log_e("%ds delay timediff to big --> try again in 5 seconds");
+            tGetTime = tAct - GETNTPINTERVALL + 5000; //try again in 5 second
+          }else{
+            log_i("get ntp-time OK",tDist);
+            if (printLocalTime() == true){
+              status.bTimeOk = true;
+            } 
+          }
+        }else{
+          log_e("failed to get time from NTP-Server --> try again in 5 seconds");
+          tGetTime = tAct - GETNTPINTERVALL + 5000; //try again in 5 second
+        }        
       }
     #ifdef GSM_MODULE
-    }else if ((status.modemstatus == MODEM_CONNECTED) && (setting.wifi.connect == MODE_WIFI_DISABLED)){
-      if ((!ntpOk) && (timeOver(tAct,tGetTime,5000))){
+    }else if ((status.modemstatus == eModemState::CONNECTED) && (setting.wifi.connect == eWifiMode::CONNECT_NONE)){
+      if (timeOver(tAct,tGetTime,GETNTPINTERVALL)){
         log_i("get ntp-time");
         byte ret = -1;
         xSemaphoreTake( xGsmMutex, portMAX_DELAY );
@@ -5298,28 +5483,30 @@ void taskBackGround(void *pvParameters){
         tGetTime = tAct;
         //log_i("print time");        
         if (printLocalTime() == true){
-          ntpOk = 1;
           status.bTimeOk = true;
         } 
       }
     #endif
     }else{
-      ntpOk = 0;
-      tGetTime = tAct;
+      tGetTime = tAct - (GETNTPINTERVALL - 5000); //we refresh NTP-Time 5 sec. after internet is connected
     }
-    if ((setting.wifi.connect == WIFI_CONNECT_ALWAYS) && (WiFi.status() != WL_CONNECTED) && (status.wifiStat)){
-      if (timeOver(tAct,tWifiCheck,WIFI_RECONNECT_TIME)){
-        tWifiCheck = tAct;
-        log_i("WiFi not connected. Try to reconnect");
-        WiFi.disconnect(true,true);
-        WiFi.mode(WIFI_OFF);
-        WiFi.persistent(false);
-        //WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE); // call is only a workaround for bug in WiFi class
-        WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE,INADDR_NONE,INADDR_NONE); // call is only a workaround for bug in WiFi class
-        WiFi.mode(WIFI_MODE_APSTA);
-        esp_wifi_set_ps (WIFI_PS_NONE);
-        WiFi.begin(setting.wifi.ssid.c_str(), setting.wifi.password.c_str()); 
-        WiFi.setHostname(host_name.c_str());
+    if (timeOver(tAct,tWifiCheck,WIFI_RECONNECT_TIME)){
+      tWifiCheck = tAct;
+      if (setting.wifi.connect == eWifiMode::CONNECT_ALWAYS){
+        log_i("check Wifi-status %d ",status.wifiStat);
+        if (((WiFi.status() != WL_CONNECTED) && (status.wifiStat != 0)) || (status.wifiStat == 1)){
+          log_i("WiFi not connected. Try to reconnect");
+          WiFi.disconnect(true,true);
+          WiFi.mode(WIFI_MODE_NULL);
+          WiFi.persistent(false);
+          WiFi.config(IPADDR_ANY, IPADDR_ANY, IPADDR_ANY,IPADDR_ANY,IPADDR_ANY); // call is only a workaround for bug in WiFi class
+          //WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE,INADDR_NONE,INADDR_NONE); // call is only a workaround for bug in WiFi class
+          WiFi.setHostname(host_name.c_str()); //set hostname
+          WiFi.mode(WIFI_MODE_APSTA);
+          esp_wifi_set_ps (WIFI_PS_NONE);
+          WiFi.begin(setting.wifi.ssid.c_str(), setting.wifi.password.c_str()); 
+          
+        }
       }
     }
     uint32_t actFreeHeap = xPortGetFreeHeapSize();
@@ -5333,10 +5520,10 @@ void taskBackGround(void *pvParameters){
       }
     }
     */
-    if (minFreeHeap<20000)
+    if (minFreeHeap<10000)
     {
       log_e( "*****LOOP current free heap: %d, minimum ever free heap: %d ******", actFreeHeap, minFreeHeap);
-      log_e("System Low on Memory - xPortGetMinimumEverFreeHeapSize < 20KB");
+      log_e("System Low on Memory - xPortGetMinimumEverFreeHeapSize < 10KB");
       log_e("ESP Restarting !");
       esp_restart();
     }
@@ -5353,7 +5540,7 @@ void taskBackGround(void *pvParameters){
       powerOff(); //power off, when battery is empty !!
     }
     //if ((status.BattPerc < setting.minBattPercent) && (status.vBatt >= BATTPINOK)) { // if Batt-voltage is below 1V, maybe the resistor is missing.
-    if ((setting.gs.PowerSave == GS_POWER_BATT_LIFE) || (setting.gs.PowerSave == GS_POWER_SAFE)){
+    if ((setting.gs.PowerSave == eGsPower::GS_POWER_BATT_LIFE) || (setting.gs.PowerSave == eGsPower::GS_POWER_SAFE)){
       if ((status.BattPerc <= setting.minBattPercent) && (status.vBatt >= BATTPINOK)){
         if (timeOver(tAct,tBattEmpty,60000)){ //min 60sek. below
           log_i("Batt empty voltage=%d.%dV",status.vBatt/1000,status.vBatt%1000);

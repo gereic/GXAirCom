@@ -119,7 +119,7 @@ bool Adafruit_BME280::init() {
   // init I2C or SPI sensor interface
   if (_cs == -1) {
     // I2C
-    _wire->begin();
+    //_wire->begin(); //gereic 23.05.2022
   } else {
     digitalWrite(_cs, HIGH);
     pinMode(_cs, OUTPUT);

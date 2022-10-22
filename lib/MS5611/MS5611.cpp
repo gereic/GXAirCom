@@ -18,11 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#if ARDUINO >= 100
 #include "Arduino.h"
-#else
-#include "WProgram.h"
-#endif
 
 #include <math.h>
 
@@ -39,8 +35,7 @@ bool MS5611::begin(TwoWire *pi2c,ms5611_osr_t osr)
     uint8_t error = pWire->endTransmission();
     if (error != 0){
         return false; //sensor not existing
-    }
-
+    }    
     reset();
 
     setOversampling(osr);
@@ -91,13 +86,7 @@ ms5611_osr_t MS5611::getOversampling(void)
 void MS5611::reset(void)
 {
     pWire->beginTransmission(MS5611_ADDRESS);
-
-    #if ARDUINO >= 100
 	pWire->write(MS5611_CMD_RESET);
-    #else
-	pWire->send(MS5611_CMD_RESET);
-    #endif
-
     pWire->endTransmission();
 }
 
@@ -111,13 +100,7 @@ void MS5611::readPROM(void)
 
 void MS5611::startReadTemp(void){
     pWire->beginTransmission(MS5611_ADDRESS);
-
-    #if ARDUINO >= 100
 	pWire->write(MS5611_CMD_CONV_D2 + uosr);
-    #else
-	pWire->send(MS5611_CMD_CONV_D2 + uosr);
-    #endif
-
     pWire->endTransmission();
 }
 
@@ -127,13 +110,7 @@ void MS5611::finishReadTemp(void){
 
 void MS5611::startReadPressure(void){
     pWire->beginTransmission(MS5611_ADDRESS);
-
-    #if ARDUINO >= 100
 	pWire->write(MS5611_CMD_CONV_D1 + uosr);
-    #else
-	pWire->send(MS5611_CMD_CONV_D1 + uosr);
-    #endif
-
     pWire->endTransmission();
 
 }
@@ -180,13 +157,7 @@ bool MS5611::convFinished(void){
 uint32_t MS5611::readRawTemperature(void)
 {
     pWire->beginTransmission(MS5611_ADDRESS);
-
-    #if ARDUINO >= 100
 	pWire->write(MS5611_CMD_CONV_D2 + uosr);
-    #else
-	pWire->send(MS5611_CMD_CONV_D2 + uosr);
-    #endif
-
     pWire->endTransmission();
 
     delay(ct);
@@ -197,13 +168,7 @@ uint32_t MS5611::readRawTemperature(void)
 uint32_t MS5611::readRawPressure(void)
 {
     pWire->beginTransmission(MS5611_ADDRESS);
-
-    #if ARDUINO >= 100
 	pWire->write(MS5611_CMD_CONV_D1 + uosr);
-    #else
-	pWire->send(MS5611_CMD_CONV_D1 + uosr);
-    #endif
-
     pWire->endTransmission();
 
     delay(ct);
@@ -299,25 +264,13 @@ uint16_t MS5611::readRegister16(uint8_t reg)
 {
     uint16_t value;
     pWire->beginTransmission(MS5611_ADDRESS);
-    #if ARDUINO >= 100
-        pWire->write(reg);
-    #else
-        pWire->send(reg);
-    #endif
+    pWire->write(reg);
     pWire->endTransmission();
 
-    pWire->beginTransmission(MS5611_ADDRESS);
     pWire->requestFrom(MS5611_ADDRESS, 2);
     while(!pWire->available()) {};
-    #if ARDUINO >= 100
         uint8_t vha = pWire->read();
         uint8_t vla = pWire->read();
-    #else
-        uint8_t vha = pWire->receive();
-        uint8_t vla = pWire->receive();
-    #endif
-    pWire->endTransmission();
-
     value = vha << 8 | vla;
 
     return value;
@@ -328,26 +281,14 @@ uint32_t MS5611::readRegister24(uint8_t reg)
 {
     uint32_t value;
     pWire->beginTransmission(MS5611_ADDRESS);
-    #if ARDUINO >= 100
-        pWire->write(reg);
-    #else
-        pWire->send(reg);
-    #endif
+    pWire->write(reg);
     pWire->endTransmission();
 
-    pWire->beginTransmission(MS5611_ADDRESS);
     pWire->requestFrom(MS5611_ADDRESS, 3);
     while(!pWire->available()) {};
-    #if ARDUINO >= 100
         uint8_t vxa = pWire->read();
         uint8_t vha = pWire->read();
         uint8_t vla = pWire->read();
-    #else
-        uint8_t vxa = pWire->receive();
-        uint8_t vha = pWire->receive();
-        uint8_t vla = pWire->receive();
-    #endif
-    pWire->endTransmission();
 
     value = ((int32_t)vxa << 16) | ((int32_t)vha << 8) | vla;
 

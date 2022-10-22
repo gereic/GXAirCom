@@ -25,17 +25,20 @@
 class WeatherUnderground {
 public:
   typedef struct {
-    bool bWind;
+    bool bWind = false;
     float lat;
     float lon;
     float height;
     float winddir;
     float windspeed;
     float windgust;
+    bool bHum = false;
     float humidity;
+    bool bTemp = false;
     float temp;
+    bool bPress = false;
     float pressure;
-    bool bRain;
+    bool bRain = false;
     float rain1h;
     float raindaily;
   } wData;

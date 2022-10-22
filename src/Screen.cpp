@@ -75,7 +75,7 @@ void Screen::run(void){
   if (!bInit){
     doInitScreen();
   }else{
-    if (setting.Mode == MODE_GROUND_STATION){
+    if (setting.Mode == eMode::GROUND_STATION){
       drawWeatherScreen();
     }else{
       drawMainScreen();
