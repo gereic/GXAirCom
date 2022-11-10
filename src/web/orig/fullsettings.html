@@ -92,6 +92,16 @@ function setVis(){
       if (wsMode & wsModeBme){
         document.getElementById("VisWDBme").style.display='';  /*enable temp-correction for BME*/
       }
+      if (document.getElementById("wdAneo").value == 2){
+        document.getElementById("VisADS1015").style.display=''; //enable ADS1015 settings
+      } else {
+        document.getElementById("VisADS1015").style.display='none'; //set ADS1015 settings invisible
+      }
+      if ((document.getElementById("wdAneo").value == 2) && (document.getElementById("setView").value > 100)){
+        document.getElementById("VisADS1015Exp").style.display='';
+      } else {
+        document.getElementById("VisADS1015Exp").style.display='none';
+      }
     }else{
       document.getElementById("tWu").innerHTML='Broadcast weather-underground data to FANET';
       document.getElementById("tWu2").innerHTML='enable sending wu-data to FANET';
@@ -451,11 +461,29 @@ function sendValues(){
   gsGeoAlt : Number(document.getElementById("gsGeoAlt").value),
   gsScr : Number(document.getElementById("gsScr").value),
   gsPs : Number(document.getElementById("gsPs").value),
-  gsAneo : Number(document.getElementById("gsAneo").value),
+  
   MinBatPerc : Number(document.getElementById("MinBatPerc").value),
   restartBattPerc : Number(document.getElementById("restartBattPerc").value),
   save : 1
   };
+  doSend(JSON.stringify(obj));
+
+  var obj = {
+  wdAneo : Number(document.getElementById("wdAneo").value),
+  wdAneoAdsGain : Number(document.getElementById("wdAneoAdsGain").value),
+  wdAneometerAdsWSpeedMinVoltage : Number(document.getElementById("wdAneometerAdsWSpeedMinVoltage").value),
+  wdAneometerAdsWSpeedMaxVoltage : Number(document.getElementById("wdAneometerAdsWSpeedMaxVoltage").value),
+  wdAneometerAdsWDirMinVoltage : Number(document.getElementById("wdAneometerAdsWDirMinVoltage").value),
+  wdAneometerAdsWDirMaxVoltage : Number(document.getElementById("wdAneometerAdsWDirMaxVoltage").value),
+  wdAneometerAdsWSpeedMinSpeed : Number(document.getElementById("wdAneometerAdsWSpeedMinSpeed").value),
+  wdAneometerAdsWSpeedMaxSpeed : Number(document.getElementById("wdAneometerAdsWSpeedMaxSpeed").value),
+  wdAneometerAdsWDirMinDir : Number(document.getElementById("wdAneometerAdsWDirMinDir").value),
+  wdAneometerAdsWDirMaxDir : Number(document.getElementById("wdAneometerAdsWDirMaxDir").value),
+  wdAneometerAdsVref : Number(document.getElementById("wdAneometerAdsVref").value),
+  wdAneometerAdsVDivR1 : Number(document.getElementById("wdAneometerAdsVDivR1").value),
+  wdAneometerAdsVDivR2 : Number(document.getElementById("wdAneometerAdsVDivR2").value),
+  save : 1
+  }
   doSend(JSON.stringify(obj));
 
   var obj = {};
@@ -1055,9 +1083,10 @@ function onMessage(evt) {
         <tbody>
           <tr>
             <th>Aneometer</th>
-            <td><select id="gsAneo">
+            <td><select id="wdAneo">
               <option value="0">DAVIS 6410</option>
               <option value="1">Technoline TX20</option>
+              <option value="2">ADS1015</option>
             </select></td>
           </tr>
           <tr>
@@ -1082,6 +1111,66 @@ function onMessage(evt) {
           </tr>
         </tbody>      
       </table>
+      <fieldset id="VisADS1015">
+        <legend><b>ADS1015 related settings.</b> Set min/max Voltage to the same value to disable sensor.</legend>
+        <table style="width:100&#37;">
+          <tbody>
+            <tr>
+              <th>ADS1015 Gain</th>
+              <td><select id="wdAneoAdsGain">
+                <option value="0">0</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="4">4</option>
+                <option value="8">8</option>
+                <option value="16">16</option>
+              </select></td>
+            </tr>
+          </tbody>
+        </table>
+        
+        <table style="width:100&#37;">
+          <tbody>
+            <tr>
+              <th></th>
+              <th>min</th>
+              <th>max</th>
+            </tr>
+            <tr>
+              <td>Wind Speed Voltage</td>
+              <td><input type="number" id="wdAneometerAdsWSpeedMinVoltage"></td>
+              <td><input type="number" id="wdAneometerAdsWSpeedMaxVoltage"></td>
+            </tr>
+            <tr>
+              <td>Wind Speed km/h</td>
+              <td><input type="number" id="wdAneometerAdsWSpeedMinSpeed"></td>
+              <td><input type="number" id="wdAneometerAdsWSpeedMaxSpeed"></td>
+            </tr>
+            <tr>
+              <td>Wind Direction Voltage</td>
+              <td><input type="number" id="wdAneometerAdsWDirMinVoltage"></td>
+              <td><input type="number" id="wdAneometerAdsWDirMaxVoltage"></td>
+            </tr>
+            <tr>
+              <td>Wind Direction Degrees</td>
+              <td><input type="number" id="wdAneometerAdsWDirMinDir"></td>
+              <td><input type="number" id="wdAneometerAdsWDirMaxDir"></td>
+            </tr>
+          </tbody>
+        </table>
+      </fieldset>
+      <fieldset id="VisADS1015Exp">
+        <table style="width:100&#37;">
+          <tbody>
+            <tr>
+              <th>ADS1015 expert settings</th>
+              <td>ADS Reference voltage</td><input type="number" id="wdAneometerAdsVref"><td></td>
+              <td>Voltage Divider R1 (Ohm)</td><td><input type="number" id="wdAneometerAdsVDivR1"></td>
+              <td>Voltage Divider R2 (Ohm)</td><td><input type="number" id="wdAneometerAdsVDivR2"></td>
+            </tr>
+          </tbody>
+        </table>
+      </fieldset>
     </fieldset>
     <p></p>
     <p></p>

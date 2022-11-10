@@ -23,7 +23,8 @@ enum eBoard {
 /* aneometer */
 enum eAneometer {
     DAVIS = 0,
-    TX20 = 1
+    TX20 = 1,
+    ADS_A1015 = 2 // don't use ADS1015 or things will break.
 };
 
 /* Mode of operation */
@@ -125,6 +126,9 @@ enum eRadarDispMode{
 };
 
 
-
+enum eAdsAneometerPin{
+  ADS_WINDSPEED_PIN = 0,
+  ADS_WINDDIR_PIN = 1
+};
 
 #endif

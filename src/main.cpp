@@ -113,6 +113,8 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &i2cOLED);
 
 #endif
 
+
+
 #ifdef AIRMODULE
 #include <MicroNMEA.h>
 //Libraries for Vario
@@ -1852,7 +1854,7 @@ void setup() {
   }
   log_i("SPIFFS total=%d used=%d free=%d",SPIFFS.totalBytes(),SPIFFS.usedBytes(),SPIFFS.totalBytes()-SPIFFS.usedBytes());
 
-  //listSpiffsFiles();
+  listSpiffsFiles();
   load_configFile(&setting); //load configuration
   //setting.wifi.connect = eWifiMode::CONNECT_NONE;
   if (setting.CPUFrequency <  80){
@@ -2725,8 +2727,7 @@ void taskWeather(void *pvParameters){
   Weather weather;
   weather.setTempOffset(setting.wd.tempOffset);
   weather.setWindDirOffset(setting.wd.windDirOffset);
-  //if (weather.begin(&i2cZero,setting.gs.alt,PinOneWire,PinWindDir,PinWindSpeed,PinRainGauge)){
-  if (!weather.begin(&Wire,setting.gs.alt,PinOneWire,PinWindDir,PinWindSpeed,PinRainGauge,setting.gs.Aneometer,setting.wd.mode.bits.hasBME)){
+  if (!weather.begin(&Wire,setting,PinOneWire,PinWindDir,PinWindSpeed,PinRainGauge)){
   
   }
   if ((setting.WUUpload.enable) && (!setting.wd.mode.bits.enable)){

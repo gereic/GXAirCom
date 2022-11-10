@@ -19,6 +19,8 @@
 #include <TimeLib.h>
 #include <ctime>
 #include "Tx20.h"
+#include "main.h"
+#include <ADS1X15.h>
 
 #define DEG2RAD M_PI / 180.0
 #define RAD2DEG 180.0 / M_PI
@@ -52,7 +54,7 @@ public:
     Weather(); //constructor
     void setTempOffset(float tempOffset);
     void setWindDirOffset(int16_t winddirOffset);
-    bool begin(TwoWire *pi2c, float height,int8_t oneWirePin, int8_t windDirPin, int8_t windSpeedPin,int8_t rainPin,uint8_t aneoType,bool bHasBME);
+    bool begin(TwoWire *pi2c, SettingsData &setting, int8_t oneWirePin, int8_t windDirPin, int8_t windSpeedPin,int8_t rainPin);
     void run(void);
     bool getValues(weatherData *weather);
     void resetWindGust(void);
@@ -60,12 +62,12 @@ public:
 protected:
 private:
     TwoWire *pI2c;
+    bool checkI2Caddr(uint8_t);
     bool initBME280(void);
     float calcPressure(float p, float t, float h);    
     void checkAneometer(void);
     void checkRainSensor(void);
     float calcWindspeed(void);
-    uint8_t sensorAdr;
     Adafruit_BME280 bme;
     //uint16_t avgFactor; //factor for avg-factor
     float _tempOffset = 0;
@@ -96,5 +98,12 @@ private:
     uint8_t actDay = 0;
     uint8_t aneometerType = 0;
     bool _bHasBME = false;
+    ADS1015 _ADS1015;
+    bool initADS(AneometerSettings &anSettings);
+    bool _bHasADS = false;
+    AneometerSettings anSettings;
+    void checkAdsAneometer(void);
+    float getAdsVoltage(uint8_t pin);
+    float calcAdsMeasurement(float measurement, float minVoltage, float maxVoltage, float minRange, float maxRange);
 };
 #endif

@@ -230,7 +230,12 @@ void onWebSocketEvent(uint8_t client_num,
           doc["gsGeoAlt"] = setting.gs.geoidAlt;
           doc["gsScr"] = setting.gs.SreenOption;
           doc["gsPs"] = setting.gs.PowerSave;
-          doc["gsAneo"] = setting.gs.Aneometer;
+          doc["wdAneo"] = setting.wd.aneometer.AneometerType;
+          doc["wdAneoAdsGain"] = setting.wd.aneometer.AneometerAdsGain;
+          doc["wdAneometerAdsWSpeedMinVoltage"] = setting.wd.aneometer.AneometerAdsWSpeedMinVoltage;
+          doc["wdAneometerAdsWSpeedMaxVoltage"] = setting.wd.aneometer.AneometerAdsWSpeedMaxVoltage;
+          doc["wdAneometerAdsWDirMinVoltage"] = setting.wd.aneometer.AneometerAdsWDirMinVoltage;
+          doc["wdAneometerAdsWDirMaxVoltage"] = setting.wd.aneometer.AneometerAdsWDirMaxVoltage;
           doc["MinBatPerc"] = setting.minBattPercent;
           doc["restartBattPerc"] = setting.restartBattPercent;
           serializeJson(doc, msg_buf);
@@ -405,7 +410,21 @@ void onWebSocketEvent(uint8_t client_num,
         if (root.containsKey("gsGeoAlt")) newSetting.gs.geoidAlt = doc["gsGeoAlt"].as<float>();
         if (root.containsKey("gsScr")) newSetting.gs.SreenOption = eScreenOption(doc["gsScr"].as<uint8_t>());
         if (root.containsKey("gsPs")) newSetting.gs.PowerSave = eGsPower(doc["gsPs"].as<uint8_t>());
-        if (root.containsKey("gsAneo")) newSetting.gs.Aneometer = eAneometer(doc["gsAneo"].as<uint8_t>());
+        //aneometer settings
+        if (root.containsKey("wdAneo")) newSetting.wd.aneometer.AneometerType = eAneometer(doc["wdAneo"].as<uint8_t>());
+        if (root.containsKey("wdAneoAdsGain")) newSetting.wd.aneometer.AneometerAdsGain = eAneometer(doc["wdAneoAdsGain"].as<uint8_t>());
+        if (root.containsKey("wdAneometerAdsWSpeedMinVoltage")) newSetting.wd.aneometer.AneometerAdsWSpeedMinVoltage = doc["wdAneometerAdsWSpeedMinVoltage"].as<float>();
+        if (root.containsKey("wdAneometerAdsWSpeedMaxVoltage")) newSetting.wd.aneometer.AneometerAdsWSpeedMaxVoltage = doc["wdAneometerAdsWSpeedMaxVoltage"].as<float>();
+        if (root.containsKey("wdAneometerAdsWDirMinVoltage")) newSetting.wd.aneometer.AneometerAdsWDirMinVoltage = doc["wdAneometerAdsWDirMinVoltage"].as<float>();
+        if (root.containsKey("wdAneometerAdsWDirMaxVoltage")) newSetting.wd.aneometer.AneometerAdsWDirMaxVoltage = doc["wdAneometerAdsWDirMaxVoltage"].as<float>();
+        if (root.containsKey("wdAneometerAdsWSpeedMinSpeed")) newSetting.wd.aneometer.AneometerAdsWSpeedMinSpeed = doc["wdAneometerAdsWSpeedMinSpeed"].as<float>();
+        if (root.containsKey("wdAneometerAdsWSpeedMaxSpeed")) newSetting.wd.aneometer.AneometerAdsWSpeedMaxSpeed = doc["wdAneometerAdsWSpeedMaxSpeed"].as<float>();
+        if (root.containsKey("wdAneometerAdsWDirMinDir")) newSetting.wd.aneometer.AneometerAdsWDirMinDir = doc["wdAneometerAdsWDirMinSpeed"].as<float>();
+        if (root.containsKey("wdAneometerAdsWDirMaxDir")) newSetting.wd.aneometer.AneometerAdsWDirMaxDir = doc["wdAneometerAdsWDirMaxSpeed"].as<float>();
+        if (root.containsKey("wdAneometerAdsVref")) newSetting.wd.aneometer.AneometerAdsVref = doc["wdAneometerAdsVref"].as<float>();
+        if (root.containsKey("wdAneometerAdsVDivR1")) newSetting.wd.aneometer.AneometerAdsVDivR1 = doc["wdAneometerAdsVDivR1"].as<float>();
+        if (root.containsKey("wdAneometerAdsVDivR2")) newSetting.wd.aneometer.AneometerAdsVDivR2 = doc["wdAneometerAdsVDivR2"].as<float>();
+
         if (root.containsKey("MinBatPerc")) newSetting.minBattPercent = doc["MinBatPerc"].as<uint8_t>();
         if (root.containsKey("restartBattPerc")) newSetting.restartBattPercent = doc["restartBattPerc"].as<uint8_t>();
         for(int i = 0; i < MAXFNTUPLOADSTATIONS;i++){ //Fanet-Upload to WU and Windy

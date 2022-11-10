@@ -225,6 +225,7 @@ SCL 14
 
 #define GETNTPINTERVALL 1800000 //refresh timer from NTP every 30min.
 
+
 struct weatherupload{
   bool enable;
   String ID;
@@ -287,6 +288,22 @@ struct VarioSettings{
 	};
 
 
+struct AneometerSettings {
+  eAneometer AneometerType; //Aneometer
+  uint8_t AneometerAdsGain;
+  float AneometerAdsWSpeedMinVoltage;
+  float AneometerAdsWSpeedMaxVoltage;
+  float AneometerAdsWDirMinVoltage;
+  float AneometerAdsWDirMaxVoltage;
+  float AneometerAdsWSpeedMinSpeed;
+  float AneometerAdsWSpeedMaxSpeed;
+  float AneometerAdsWDirMinDir;
+  float AneometerAdsWDirMaxDir;
+  float AneometerAdsVref;
+  float AneometerAdsVDivR1;
+  float AneometerAdsVDivR2;
+};
+
 struct MqttSettings{
   uMqttMode mode;
   String server = "";
@@ -309,12 +326,12 @@ struct GSSettings{
   float geoidAlt; //geoidaltitude for Legacy
   eScreenOption SreenOption; //energy-option for display
   eGsPower PowerSave; //powersave-option
-  eAneometer Aneometer; //Aneometer
 };
 
 struct WeatherSettings{
   
   uWeatherStationMode mode;
+  AneometerSettings aneometer;
   float tempOffset;
   int16_t windDirOffset;
   uint8_t sendFanet;  
