@@ -87,8 +87,12 @@ bool Weather::initADS(AneometerSettings &anSettings) {
 
   if (!ret) return false;
   log_i("found ADS1015 on adr 0x%X",adsAddr);
+  _ADS1015.setMode(1);
+  _ADS1015.readADC(0);
   _ADS1015.setGain(anSettings.AneometerAdsGain);
+  _ADS1015.readADC(0);
   _ADS1015.setDataRate(4);  // 7 is fastest, but more noise
+  _ADS1015.readADC(0);
   return true;
 }
 
@@ -151,6 +155,7 @@ bool Weather::begin(TwoWire *pi2c, SettingsData &setting, int8_t oneWirePin, int
       _weather.bWindSpeed = anSettings.AneometerAdsWSpeedMaxVoltage != anSettings.AneometerAdsWSpeedMinVoltage;
       _bHasADS = true;
     }else{
+      _bHasADS = false;
       log_i("no ADS1015 found");
     }
   
@@ -241,8 +246,10 @@ float Weather::getAdsVoltage(uint8_t pin) {
   vdiv_r1 = anSettings.AneometerAdsVDivR1;
   vdiv_r2 = anSettings.AneometerAdsVDivR2;
   voltage = _ADS1015.toVoltage(_ADS1015.readADC(pin));
+  voltage -= vref; // voltage divider is between in and vref
   voltage = voltage * ((vdiv_r1 + vdiv_r2) / vdiv_r2);
-  voltage += vref;
+  voltage += vref; // add reference voltage again
+  log_e("measured_voltage: %f",voltage);
   return voltage;
 }
 
@@ -262,7 +269,7 @@ float Weather::calcAdsMeasurement(float measurement, float minVoltage, float max
 
 void Weather::checkAdsAneometer(void) {
   uint8_t speed_pin = (uint8_t) eAdsAneometerPin::ADS_WINDSPEED_PIN;
-  uint8_t dir_pin = (uint8_t) eAdsAneometerPin::ADS_WINDSPEED_PIN;
+  uint8_t dir_pin = (uint8_t) eAdsAneometerPin::ADS_WINDDIR_PIN;
   float measurement;
   if (_weather.bWindSpeed){
     measurement = getAdsVoltage(speed_pin);
@@ -362,7 +369,7 @@ void Weather::run(void){
         log_e("error reading oneWire");
       }
     }
-    if (aneometerType == 1){
+    if (aneometerType == eAneometer::TX20){
       uint8_t Dir;
       uint16_t Speed;
       uint8_t ret = tx20getNewData(&Dir,&Speed);
@@ -371,10 +378,8 @@ void Weather::run(void){
         _weather.WindSpeed = float(Speed) / 10.0 * 3.6; //[1/10m/s] --> [km/h]
         if (_weather.WindSpeed > _weather.WindGust) _weather.WindGust = _weather.WindSpeed; 
       }
-    } else if (aneometerType == 2 && _bHasADS) {
-      //oid ADS1X15::requestADC(uint8_t pin)
-      
-      log_i("implement me");
+    } else if (aneometerType == eAneometer::ADS_A1015 && _bHasADS) {
+      checkAdsAneometer();
     }else{
       checkAneometer();
     }
