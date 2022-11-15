@@ -232,10 +232,18 @@ void onWebSocketEvent(uint8_t client_num,
           doc["gsPs"] = setting.gs.PowerSave;
           doc["wdAneo"] = setting.wd.aneometer.AneometerType;
           doc["wdAneoAdsGain"] = setting.wd.aneometer.AneometerAdsGain;
-          doc["wdAneometerAdsWSpeedMinVoltage"] = setting.wd.aneometer.AneometerAdsWSpeedMinVoltage;
-          doc["wdAneometerAdsWSpeedMaxVoltage"] = setting.wd.aneometer.AneometerAdsWSpeedMaxVoltage;
-          doc["wdAneometerAdsWDirMinVoltage"] = setting.wd.aneometer.AneometerAdsWDirMinVoltage;
-          doc["wdAneometerAdsWDirMaxVoltage"] = setting.wd.aneometer.AneometerAdsWDirMaxVoltage;
+          doc["wdAneoAdsWSpeedMinVoltage"] = setting.wd.aneometer.AneometerAdsWSpeedMinVoltage;
+          doc["wdAneoAdsWSpeedMaxVoltage"] = setting.wd.aneometer.AneometerAdsWSpeedMaxVoltage;
+          doc["wdAneoAdsWDirMinVoltage"] = setting.wd.aneometer.AneometerAdsWDirMinVoltage;
+          doc["wdAneoAdsWDirMaxVoltage"] = setting.wd.aneometer.AneometerAdsWDirMaxVoltage;
+          doc["wdAneoAdsWSpeedMinSpeed"] = setting.wd.aneometer.AneometerAdsWSpeedMinSpeed;
+          doc["wdAneoAdsWSpeedMaxSpeed"] = setting.wd.aneometer.AneometerAdsWSpeedMaxSpeed;
+          doc["wdAneoAdsWDirMinDir"] = setting.wd.aneometer.AneometerAdsWDirMinDir;
+          doc["wdAneoAdsWDirMaxDir"] = setting.wd.aneometer.AneometerAdsWDirMaxDir;
+          doc["wdAneoAdsVref"] = setting.wd.aneometer.AneometerAdsVref;
+          doc["wdAneoAdsVDivR1"] = setting.wd.aneometer.AneometerAdsVDivR1;
+          doc["wdAneoAdsVDivR2"] = setting.wd.aneometer.AneometerAdsVDivR2;
+
           doc["MinBatPerc"] = setting.minBattPercent;
           doc["restartBattPerc"] = setting.restartBattPercent;
           serializeJson(doc, msg_buf);
@@ -413,17 +421,17 @@ void onWebSocketEvent(uint8_t client_num,
         //aneometer settings
         if (root.containsKey("wdAneo")) newSetting.wd.aneometer.AneometerType = eAneometer(doc["wdAneo"].as<uint8_t>());
         if (root.containsKey("wdAneoAdsGain")) newSetting.wd.aneometer.AneometerAdsGain = eAneometer(doc["wdAneoAdsGain"].as<uint8_t>());
-        if (root.containsKey("wdAneometerAdsWSpeedMinVoltage")) newSetting.wd.aneometer.AneometerAdsWSpeedMinVoltage = doc["wdAneometerAdsWSpeedMinVoltage"].as<float>();
-        if (root.containsKey("wdAneometerAdsWSpeedMaxVoltage")) newSetting.wd.aneometer.AneometerAdsWSpeedMaxVoltage = doc["wdAneometerAdsWSpeedMaxVoltage"].as<float>();
-        if (root.containsKey("wdAneometerAdsWDirMinVoltage")) newSetting.wd.aneometer.AneometerAdsWDirMinVoltage = doc["wdAneometerAdsWDirMinVoltage"].as<float>();
-        if (root.containsKey("wdAneometerAdsWDirMaxVoltage")) newSetting.wd.aneometer.AneometerAdsWDirMaxVoltage = doc["wdAneometerAdsWDirMaxVoltage"].as<float>();
-        if (root.containsKey("wdAneometerAdsWSpeedMinSpeed")) newSetting.wd.aneometer.AneometerAdsWSpeedMinSpeed = doc["wdAneometerAdsWSpeedMinSpeed"].as<float>();
-        if (root.containsKey("wdAneometerAdsWSpeedMaxSpeed")) newSetting.wd.aneometer.AneometerAdsWSpeedMaxSpeed = doc["wdAneometerAdsWSpeedMaxSpeed"].as<float>();
-        if (root.containsKey("wdAneometerAdsWDirMinDir")) newSetting.wd.aneometer.AneometerAdsWDirMinDir = doc["wdAneometerAdsWDirMinSpeed"].as<float>();
-        if (root.containsKey("wdAneometerAdsWDirMaxDir")) newSetting.wd.aneometer.AneometerAdsWDirMaxDir = doc["wdAneometerAdsWDirMaxSpeed"].as<float>();
-        if (root.containsKey("wdAneometerAdsVref")) newSetting.wd.aneometer.AneometerAdsVref = doc["wdAneometerAdsVref"].as<float>();
-        if (root.containsKey("wdAneometerAdsVDivR1")) newSetting.wd.aneometer.AneometerAdsVDivR1 = doc["wdAneometerAdsVDivR1"].as<float>();
-        if (root.containsKey("wdAneometerAdsVDivR2")) newSetting.wd.aneometer.AneometerAdsVDivR2 = doc["wdAneometerAdsVDivR2"].as<float>();
+        if (root.containsKey("wdAneoAdsWSpeedMinVoltage")) newSetting.wd.aneometer.AneometerAdsWSpeedMinVoltage = doc["wdAneoAdsWSpeedMinVoltage"].as<float>();
+        if (root.containsKey("wdAneoAdsWSpeedMaxVoltage")) newSetting.wd.aneometer.AneometerAdsWSpeedMaxVoltage = doc["wdAneoAdsWSpeedMaxVoltage"].as<float>();
+        if (root.containsKey("wdAneoAdsWDirMinVoltage")) newSetting.wd.aneometer.AneometerAdsWDirMinVoltage = doc["wdAneoAdsWDirMinVoltage"].as<float>();
+        if (root.containsKey("wdAneoAdsWDirMaxVoltage")) newSetting.wd.aneometer.AneometerAdsWDirMaxVoltage = doc["wdAneoAdsWDirMaxVoltage"].as<float>();
+        if (root.containsKey("wdAneoAdsWSpeedMinSpeed")) newSetting.wd.aneometer.AneometerAdsWSpeedMinSpeed = doc["wdAneoAdsWSpeedMinSpeed"].as<float>();
+        if (root.containsKey("wdAneoAdsWSpeedMaxSpeed")) newSetting.wd.aneometer.AneometerAdsWSpeedMaxSpeed = doc["wdAneoAdsWSpeedMaxSpeed"].as<float>();
+        if (root.containsKey("wdAneoAdsWDirMinDir")) newSetting.wd.aneometer.AneometerAdsWDirMinDir = doc["wdAneoAdsWDirMinDir"].as<float>();
+        if (root.containsKey("wdAneoAdsWDirMaxDir")) newSetting.wd.aneometer.AneometerAdsWDirMaxDir = doc["wdAneoAdsWDirMaxDir"].as<float>();
+        if (root.containsKey("wdAneoAdsVref")) newSetting.wd.aneometer.AneometerAdsVref = doc["wdAneoAdsVref"].as<float>();
+        if (root.containsKey("wdAneoAdsVDivR1")) newSetting.wd.aneometer.AneometerAdsVDivR1 = doc["wdAneoAdsVDivR1"].as<float>();
+        if (root.containsKey("wdAneoAdsVDivR2")) newSetting.wd.aneometer.AneometerAdsVDivR2 = doc["wdAneoAdsVDivR2"].as<float>();
 
         if (root.containsKey("MinBatPerc")) newSetting.minBattPercent = doc["MinBatPerc"].as<uint8_t>();
         if (root.containsKey("restartBattPerc")) newSetting.restartBattPercent = doc["restartBattPerc"].as<uint8_t>();

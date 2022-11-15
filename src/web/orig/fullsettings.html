@@ -435,56 +435,63 @@ function sendValues(){
     return;
   }
   
-  
-  var obj = {
-  setView : Number(document.getElementById("setView").value),
-  board : Number(document.getElementById("board").value),
-  Frequ : Number(document.getElementById("Frequ").value),
-  disp : Number(document.getElementById("disp").value),
-  dispRot : Number(document.getElementById("dispRot").value),
-  country : Number(document.getElementById("country").value),
-  type : Number(document.getElementById("type").value),
-  mode : Number(document.getElementById("mode").value),
-  fntMode : Number(document.getElementById("fntMode").value),
-  fntPin : Number(document.getElementById("fntPin").value),
-  PilotName : document.getElementById("PilotName").value,
-  expwsw : Number(document.getElementById("expwsw").checked),
-  AUTOUPDATE : Number(document.getElementById("AUTOUPDATE").checked),
-  save : 1
-  };
-  doSend(JSON.stringify(obj));
-  
-  var obj = {
-  gslat : Number(document.getElementById("gslat").value),
-  gslon : Number(document.getElementById("gslon").value),
-  gsalt : Number(document.getElementById("gsalt").value),
-  gsGeoAlt : Number(document.getElementById("gsGeoAlt").value),
-  gsScr : Number(document.getElementById("gsScr").value),
-  gsPs : Number(document.getElementById("gsPs").value),
-  
-  MinBatPerc : Number(document.getElementById("MinBatPerc").value),
-  restartBattPerc : Number(document.getElementById("restartBattPerc").value),
-  save : 1
-  };
-  doSend(JSON.stringify(obj));
-
-  var obj = {
-  wdAneo : Number(document.getElementById("wdAneo").value),
-  wdAneoAdsGain : Number(document.getElementById("wdAneoAdsGain").value),
-  wdAneometerAdsWSpeedMinVoltage : Number(document.getElementById("wdAneometerAdsWSpeedMinVoltage").value),
-  wdAneometerAdsWSpeedMaxVoltage : Number(document.getElementById("wdAneometerAdsWSpeedMaxVoltage").value),
-  wdAneometerAdsWDirMinVoltage : Number(document.getElementById("wdAneometerAdsWDirMinVoltage").value),
-  wdAneometerAdsWDirMaxVoltage : Number(document.getElementById("wdAneometerAdsWDirMaxVoltage").value),
-  wdAneometerAdsWSpeedMinSpeed : Number(document.getElementById("wdAneometerAdsWSpeedMinSpeed").value),
-  wdAneometerAdsWSpeedMaxSpeed : Number(document.getElementById("wdAneometerAdsWSpeedMaxSpeed").value),
-  wdAneometerAdsWDirMinDir : Number(document.getElementById("wdAneometerAdsWDirMinDir").value),
-  wdAneometerAdsWDirMaxDir : Number(document.getElementById("wdAneometerAdsWDirMaxDir").value),
-  wdAneometerAdsVref : Number(document.getElementById("wdAneometerAdsVref").value),
-  wdAneometerAdsVDivR1 : Number(document.getElementById("wdAneometerAdsVDivR1").value),
-  wdAneometerAdsVDivR2 : Number(document.getElementById("wdAneometerAdsVDivR2").value),
-  save : 1
+  function doSendNumbers(elements, save, f=Number) {
+    var obj = { save: save };
+    elements.forEach(element => {
+      obj[element] = f(document.getElementById(element).value);
+    });
+    doSend(JSON.stringify(obj));
   }
-  doSend(JSON.stringify(obj));
+  
+  doSendNumbers(
+    [
+    "setView",
+    "board",
+    "Frequ",
+    "disp",
+    "dispRot",
+    "country",
+    "type",
+    "mode",
+    "fntMode",
+    "fntPin",
+    "PilotName",
+    ], 1
+  );
+
+  doSendNumbers(
+    [
+    "gslat",
+    "gslon",
+    "gsalt",
+    "gsGeoAlt",
+    "gsScr",
+    "gsPs",
+    "MinBatPerc",
+    "restartBattPerc"
+    ],
+    1
+  );
+  
+  doSendNumbers(
+    [
+    "wdAneo",
+    "wdAneoAdsGain",
+    "wdAneoAdsWSpeedMinVoltage",
+    "wdAneoAdsWSpeedMaxVoltage",
+    "wdAneoAdsWDirMinVoltage",
+    "wdAneoAdsWDirMaxVoltage",
+    "wdAneoAdsWSpeedMinSpeed",
+    "wdAneoAdsWSpeedMaxSpeed",
+    "wdAneoAdsWDirMinDir",
+    "wdAneoAdsWDirMaxDir",
+    "wdAneoAdsVref",
+    "wdAneoAdsVDivR1",
+    "wdAneoAdsVDivR2"
+    ],
+    1
+  );
+
 
   var obj = {};
   obj['F2WuF'] = [ FntIdHex2Dec(document.getElementById("F2WuF0").value).toString(),
@@ -522,6 +529,8 @@ function sendValues(){
 
 
   var obj = {
+  expwsw : Number(document.getElementById("expwsw").checked),
+  AUTOUPDATE : Number(document.getElementById("AUTOUPDATE").checked),
   appw : document.getElementById("appw").value,
   wificonnect : Number(document.getElementById("wificonnect").value),
   ssid : document.getElementById("ssid").value,
@@ -1138,23 +1147,23 @@ function onMessage(evt) {
             </tr>
             <tr>
               <td>Wind Speed Voltage</td>
-              <td><input type="number" id="wdAneometerAdsWSpeedMinVoltage"></td>
-              <td><input type="number" id="wdAneometerAdsWSpeedMaxVoltage"></td>
+              <td><input type="number" id="wdAneoAdsWSpeedMinVoltage"></td>
+              <td><input type="number" id="wdAneoAdsWSpeedMaxVoltage"></td>
             </tr>
             <tr>
               <td>Wind Speed km/h</td>
-              <td><input type="number" id="wdAneometerAdsWSpeedMinSpeed"></td>
-              <td><input type="number" id="wdAneometerAdsWSpeedMaxSpeed"></td>
+              <td><input type="number" id="wdAneoAdsWSpeedMinSpeed"></td>
+              <td><input type="number" id="wdAneoAdsWSpeedMaxSpeed"></td>
             </tr>
             <tr>
               <td>Wind Direction Voltage</td>
-              <td><input type="number" id="wdAneometerAdsWDirMinVoltage"></td>
-              <td><input type="number" id="wdAneometerAdsWDirMaxVoltage"></td>
+              <td><input type="number" id="wdAneoAdsWDirMinVoltage"></td>
+              <td><input type="number" id="wdAneoAdsWDirMaxVoltage"></td>
             </tr>
             <tr>
               <td>Wind Direction Degrees</td>
-              <td><input type="number" id="wdAneometerAdsWDirMinDir"></td>
-              <td><input type="number" id="wdAneometerAdsWDirMaxDir"></td>
+              <td><input type="number" id="wdAneoAdsWDirMinDir"></td>
+              <td><input type="number" id="wdAneoAdsWDirMaxDir"></td>
             </tr>
           </tbody>
         </table>
@@ -1164,9 +1173,15 @@ function onMessage(evt) {
           <tbody>
             <tr>
               <th>ADS1015 expert settings</th>
-              <td>ADS Reference voltage</td><input type="number" id="wdAneometerAdsVref"><td></td>
-              <td>Voltage Divider R1 (Ohm)</td><td><input type="number" id="wdAneometerAdsVDivR1"></td>
-              <td>Voltage Divider R2 (Ohm)</td><td><input type="number" id="wdAneometerAdsVDivR2"></td>
+            </tr>
+            <tr>
+              <td>ADS Reference voltage</td><input type="number" id="wdAneoAdsVref"><td></td>
+            </tr>
+            <tr>
+              <td>Voltage Divider R1 (Ohm)</td><td><input type="number" id="wdAneoAdsVDivR1"></td>
+            </tr>
+            <tr>
+              <td>Voltage Divider R2 (Ohm)</td><td><input type="number" id="wdAneoAdsVDivR2"></td>
             </tr>
           </tbody>
         </table>
