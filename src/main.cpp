@@ -197,12 +197,12 @@ const char* airwhere_web_ip = "37.128.187.9";
 
 
 
- unsigned long ble_low_heap_timer=0;
- //String ble_data="";
- char bleData[MAXSIZEBLE+1]; //
- uint16_t bleSize = 0;
- bool ble_mutex=false;
-
+unsigned long ble_low_heap_timer=0;
+struct ble_data {
+  char data[MAXSIZEBLE];
+  uint16_t size;
+};
+SemaphoreHandle_t ble_queue = nullptr;
 
 uint32_t psRamSize = 0;
 
@@ -1342,38 +1342,22 @@ void sendData2Client(char *buffer,int iLen){
     Serial.write(buffer,iLen);
   }
   if (setting.outputMode == eOutput::oBLE){ //output over ble-connection
-    if (xHandleBluetooth){
-      if ((bleSize + iLen) < MAXSIZEBLE){
-        while(ble_mutex){
-          delay(1);
-        };
-        bleSize += snprintf(&bleData[bleSize],MAXSIZEBLE-bleSize,buffer);
-        //log_i("BLE-DATA=%s",bleData);
-      }else{
-        if (!ble_mutex){
-          bleSize = 0;
+    if (xHandleBluetooth && ble_queue){
+      if (iLen < MAXSIZEBLE){
+        ble_data data;
+        std::copy_n(buffer,iLen,std::begin(data.data));
+        data.size=iLen;
+        BaseType_t status = xQueueSendToBack(ble_queue,&data,pdMS_TO_TICKS(100));
+        if (status != pdTRUE){
+          log_w("ble_queue full -> reset queue");
+          xQueueReset(ble_queue);
         }
       }
-      /*
-      if ((ble_data.length() + iLen) <MAXSIZEBLE){
-        while(ble_mutex){
-          delay(1);
-        };
-        ble_data=ble_data+buffer;
-      }else{
-        if (!ble_mutex){
-          ble_data="";
-        }
+      else{
+        log_w("ble msg too long");
       }
-      */
-    }else{
-      bleSize = 0;
-      bleData[0] = 0;
-      //ble_data = "";
-      ble_mutex = false;
     }
   }
-
 }
 
 
@@ -1832,9 +1816,7 @@ void setup() {
   fanet.setGPS(false);
   status.tRestart = 0;
   sMqttState[0] = 0; //zero-Termination of String !!
-  bleData[0] = 0; //clear ble-string
-  bleSize = 0;
-
+  
   log_i("SDK-Version=%s",ESP.getSdkVersion());
   log_i("CPU-Speed=%dMHz",getCpuFrequencyMhz());
   log_i("XTAL-Freq=%dMHz",getXtalFrequencyMhz());
@@ -3147,49 +3129,35 @@ void taskBluetooth(void *pvParameters) {
     esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT);
     esp_bt_controller_enable(ESP_BT_MODE_BLE);    
     //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());    
+
+    ble_queue = xQueueCreate(3, sizeof(ble_data));
+
     start_ble(host_name+"-LE");
     status.bluetoothStat = 1;
     while (1)
     {
-	    // only send if we have more than 31k free heap space.
-	    if (xPortGetFreeHeapSize()>BLE_LOW_HEAP){
-		    BleRun(); //run ble-task
+      // only send if we have more than 31k free heap space.
+      if (xPortGetFreeHeapSize()>BLE_LOW_HEAP){
+        BleRun(); //run ble-task
         ble_low_heap_timer = millis();
-        if (bleSize > 0){
-          ble_mutex=true;
-          BLESendChunks(&bleData[0],bleSize);
-          bleSize = 0;
-          bleData[0] = 0;
-          ble_mutex=false;
+        ble_data data;
+        BaseType_t status = xQueueReceive(ble_queue, &data, pdMS_TO_TICKS(50));
+        if (status == pdTRUE) {
+          BLESendChunks(data.data, data.size);
         }
-        /*
-        if (ble_data.length()>0)
-            {
-          ble_mutex=true;
-          BLESendChunks(ble_data);
-          ble_data="";
-          ble_mutex=false;
-            }
-        */
       }
-	    else
-	    {
-		    log_d( " BLE congested - Waiting - Current free heap: %d, minimum ever free heap: %d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
-		    ble_mutex=true;
-		    log_d("CLEARING BLEOUT");
-		    //ble_data="";
-        bleSize = 0;
-        bleData[0] = 0;
-
-		    ble_mutex=false;
-	    }
-      delay(1);
-      //vTaskDelay(100);
-	    if ((WebUpdateRunning) || (bPowerOff)){
+      else
+      {
+        log_w( " BLE congested - Waiting - Current free heap: %d, minimum ever free heap: %d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
+        log_w("CLEARING ble_queue");
+        xQueueReset(ble_queue);
+        delay(1);
+      }
+      if ((WebUpdateRunning) || (bPowerOff)){
         stop_ble();
         break;
       } 
-	  }
+    }
   }else if (setting.outputMode == eOutput::oBLUETOOTH){
     status.bluetoothStat = 1; //client disconnected
     while (1)
@@ -4148,8 +4116,7 @@ void sendLK8EX(uint32_t tAct){
     //            $LK8EX1,pressure [1/100mbar],altVario [m],temp [°C],batt [percent],chksum crlf
     //String s = "$LK8EX1,101300,99999,99999,99,999,";
     char sOut[MAXSTRING];
-    int pos = 0;
-    pos += snprintf(&sOut[pos],MAXSTRING-pos,"$LK8EX1,");
+    int pos = snprintf(sOut,MAXSTRING,"$LK8EX1,");
     if (status.vario.bHasVario){
       pos += snprintf(&sOut[pos],MAXSTRING-pos,"%d,",(uint32_t)status.pressure);
       pos += snprintf(&sOut[pos],MAXSTRING-pos,"%.02f,",status.varioAlt);

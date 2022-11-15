@@ -6,7 +6,7 @@
 #define __MAIN_H__
 
 #define MAXSTRING 255
-#define MAXSIZEBLE 512
+#define MAXSIZEBLE 256 // same as local mtu
 
 #define MAXFNTUPLOADSTATIONS 5
 

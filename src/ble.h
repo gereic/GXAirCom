@@ -117,15 +117,15 @@ void BLESendChunks(char *buffer,int iLen)
 		const uint8_t* end = reinterpret_cast<uint8_t*>(buffer + iLen);
 
 		while (std::distance(begin, end) > maxMtu) {
-			//log_i("chunk : %s", std::string(begin, std::next(begin, maxMtu)).c_str());
+			//log_i("ble chunk : %s", std::string(begin, std::next(begin, maxMtu)).c_str());
 			pCharacteristic->notify(begin, maxMtu, true);
 			std::advance(begin, maxMtu);
-			vTaskDelay(1);
+			taskYIELD();
 		}
 		if(begin < end) {
-			//log_i("chunk : %s", std::string(begin, end).c_str());
+			//log_i("ble chunk : %s", std::string(begin, end).c_str());
 			pCharacteristic->notify(begin, std::distance(begin, end), true);
-			vTaskDelay(1);
+			taskYIELD();
 		}
 	}
 }
