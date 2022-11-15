@@ -130,19 +130,6 @@ void BLESendChunks(char *buffer,int iLen)
 	}
 }
 
-void BLESendChunks(String str)
-{
-	if (status.bluetoothStat == 2){ //we have a connection
-		for (int k = 0; k < str.length(); k += _min(str.length(), 20)) {
-			String substr = str.substring(k, k + _min(str.length() - k, 20));
-			pCharacteristic->notify(std::string(substr.c_str()));			
-		}
-	}else{
-		str = "";
-	}
-	//vTaskDelay(20);
-}
-
 void NEMEA_Checksum(String *sentence)
 {
 
