@@ -27,7 +27,6 @@ extern struct statusData status;
 extern void checkReceivedLine(char *ch_str);
 
 NimBLECharacteristic *pCharacteristic;
-NimBLEServer *pServer;
 uint16_t maxMtu = 0xFFFF;
 
 
@@ -44,20 +43,39 @@ const char *SERVICE_UUID = "0000FFE0-0000-1000-8000-00805F9B34FB";
 
 class MyServerCallbacks : public NimBLEServerCallbacks {
 
-	void onConnect(NimBLEServer* pServer) {
+	static void updateMtu(NimBLEServer* pServer) {
+		uint16_t newMtu = 0xFFFF;
+		for (uint16_t conn_id : pServer->getPeerDevices()){
+			// remove OP-Code (1 Byte) and Attribute Handle (2 Byte)
+			uint16_t mtu = pServer->getPeerMTU(conn_id) - 3;
+			newMtu = std::min<uint16_t>(newMtu, mtu);
+		}
+		if (newMtu != maxMtu && newMtu < 0xFFFF){
+			maxMtu = newMtu;
+			log_i("new mtu-size=%u",maxMtu);
+		}
+	}
+
+	void onConnect(NimBLEServer* pServer) override {
   		//log_d("***************************** BLE CONNECTED *****************");
+		updateMtu(pServer);
 		status.bluetoothStat = 2; //we have a connected client
 		NimBLEDevice::startAdvertising();
 	};
 
-	void onDisconnect(NimBLEServer* pServer) {
+	void onDisconnect(NimBLEServer* pServer) override {
 		//log_d("***************************** BLE DISCONNECTED *****************");
-		status.bluetoothStat = 1; //client disconnected
-		//delay(1000);
-		//	pServer->
+		updateMtu(pServer);
+		if (pServer->getConnectedCount() == 0) {
+			status.bluetoothStat = 1; //client disconnected
+		}
 		NimBLEDevice::startAdvertising();
 	}
 
+	void onMTUChange(uint16_t MTU, ble_gap_conn_desc* desc) override {
+		NimBLEServer* server = NimBLEDevice::getServer();
+		updateMtu(server);
+	}
 };
 
 
@@ -89,25 +107,6 @@ class MyCallbacks : public NimBLECharacteristicCallbacks {
 	}
 
 };
-
-void BleRun(){
-	static uint32_t tCheckMTU = millis();
-	uint32_t tAct = millis();
-	if (timeOver(tAct,tCheckMTU,5000)){
-		//start checking min. MTU-Size
-		tCheckMTU = tAct;
-		size_t count = pServer->getConnectedCount();
-		uint16_t actMtu = maxMtu;
-		maxMtu = 0xFFFF;
-		for (int i = 0;i < count;i++){
-			uint16_t peerMTU = pServer->getPeerMTU(i) - 3;
-			if (peerMTU < maxMtu) maxMtu = peerMTU; //set minMTU to peerMTU
-		}
-		if ((actMtu != maxMtu) && (maxMtu < 0xFFFF)){
-			log_i("new mtu-size=%d",maxMtu);
-		}
-	}
-}
 
 void BLESendChunks(char *buffer,int iLen)
 {
@@ -156,7 +155,7 @@ void start_ble (String bleId)
 	esp_coex_preference_set(ESP_COEX_PREFER_BT);
   NimBLEDevice::init(bleId.c_str());
 	NimBLEDevice::setMTU(256); //set MTU-Size to 256 Byte
-	pServer = NimBLEDevice::createServer();
+	NimBLEServer* pServer = NimBLEDevice::createServer();
 	pServer->setCallbacks(new MyServerCallbacks());
 	NimBLEService *pService = pServer->createService(NimBLEUUID((uint16_t)0xFFE0));
 	// Create a BLE Characteristic
@@ -167,12 +166,13 @@ void start_ble (String bleId)
 	log_i("Starting BLE");
 	// Start the service
 	pService->start();
-	pServer->getAdvertising()->addServiceUUID(NimBLEUUID((uint16_t)0xFFE0));
+
 	// Start advertising
-	pServer->getAdvertising()->start();
+	NimBLEAdvertising* pAdvertising = pServer->getAdvertising();
+	pAdvertising->addServiceUUID(pService->getUUID());
+	pAdvertising->start();
 
 	log_i("Waiting a client connection to notify...");
-
 }
 
 void stop_ble ()

@@ -195,9 +195,6 @@ volatile float BattCurrent = 0.0;
 #define AIRWHERE_UDP_PORT 5555
 const char* airwhere_web_ip = "37.128.187.9";
 
-
-
-unsigned long ble_low_heap_timer=0;
 struct ble_data {
   char data[MAXSIZEBLE];
   uint16_t size;
@@ -3138,8 +3135,6 @@ void taskBluetooth(void *pvParameters) {
     {
       // only send if we have more than 31k free heap space.
       if (xPortGetFreeHeapSize()>BLE_LOW_HEAP){
-        BleRun(); //run ble-task
-        ble_low_heap_timer = millis();
         ble_data data;
         BaseType_t status = xQueueReceive(ble_queue, &data, pdMS_TO_TICKS(50));
         if (status == pdTRUE) {
