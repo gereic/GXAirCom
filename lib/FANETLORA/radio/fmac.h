@@ -144,8 +144,6 @@ public:
 class Fapp
 {
 public:
-	Fapp() { }
-	virtual ~Fapp() { }
 
 	/* device -> air */
 	virtual bool is_broadcast_ready(int num_neighbors) = 0;
