@@ -27,7 +27,6 @@ extern struct statusData status;
 extern void checkReceivedLine(char *ch_str);
 
 NimBLECharacteristic *pCharacteristic;
-NimBLEServer *pServer;
 uint16_t maxMtu = 0xFFFF;
 
 
@@ -44,20 +43,39 @@ const char *SERVICE_UUID = "0000FFE0-0000-1000-8000-00805F9B34FB";
 
 class MyServerCallbacks : public NimBLEServerCallbacks {
 
-	void onConnect(NimBLEServer* pServer) {
+	static void updateMtu(NimBLEServer* pServer) {
+		uint16_t newMtu = 0xFFFF;
+		for (uint16_t conn_id : pServer->getPeerDevices()){
+			// remove OP-Code (1 Byte) and Attribute Handle (2 Byte)
+			uint16_t mtu = pServer->getPeerMTU(conn_id) - 3;
+			newMtu = std::min<uint16_t>(newMtu, mtu);
+		}
+		if (newMtu != maxMtu && newMtu < 0xFFFF){
+			maxMtu = newMtu;
+			log_i("new mtu-size=%u",maxMtu);
+		}
+	}
+
+	void onConnect(NimBLEServer* pServer) override {
   		//log_d("***************************** BLE CONNECTED *****************");
+		updateMtu(pServer);
 		status.bluetoothStat = 2; //we have a connected client
 		NimBLEDevice::startAdvertising();
 	};
 
-	void onDisconnect(NimBLEServer* pServer) {
+	void onDisconnect(NimBLEServer* pServer) override {
 		//log_d("***************************** BLE DISCONNECTED *****************");
-		status.bluetoothStat = 1; //client disconnected
-		//delay(1000);
-		//	pServer->
+		updateMtu(pServer);
+		if (pServer->getConnectedCount() == 0) {
+			status.bluetoothStat = 1; //client disconnected
+		}
 		NimBLEDevice::startAdvertising();
 	}
 
+	void onMTUChange(uint16_t MTU, ble_gap_conn_desc* desc) override {
+		NimBLEServer* server = NimBLEDevice::getServer();
+		updateMtu(server);
+	}
 };
 
 
@@ -90,69 +108,25 @@ class MyCallbacks : public NimBLECharacteristicCallbacks {
 
 };
 
-void BleRun(){
-	static uint32_t tCheckMTU = millis();
-	uint32_t tAct = millis();
-	if (timeOver(tAct,tCheckMTU,5000)){
-		//start checking min. MTU-Size
-		tCheckMTU = tAct;
-		size_t count = pServer->getConnectedCount();
-		uint16_t actMtu = maxMtu;
-		maxMtu = 0xFFFF;
-		for (int i = 0;i < count;i++){
-			uint16_t peerMTU = pServer->getPeerMTU(i) - 3;
-			if (peerMTU < maxMtu) maxMtu = peerMTU; //set minMTU to peerMTU
-		}
-		if ((actMtu != maxMtu) && (maxMtu < 0xFFFF)) log_i("new mtu-size=%d",maxMtu);
-	}
-}
-
 void BLESendChunks(char *buffer,int iLen)
 {
 	if ((status.bluetoothStat == 2) && (iLen > 0) && (maxMtu < 0xFFFF)){ //we have a connection
-		int startOffset = 0;
-		int iActLen = 0;
-		//log_i("offs=%d,l=%d,%s",startOffset,iLen,buffer);
-		for (int k = 0; k <= iLen;k++){					
-			iActLen = k-startOffset+1;
-			if (buffer[k+1] == 0){ //check next char is zero-termination
-				pCharacteristic->sNotify.assign(&buffer[startOffset],iActLen);
-				//log_i("sOffs=%d,l=%d,k=%d,%s",startOffset,iActLen,k,pCharacteristic->sNotify.c_str());
-				pCharacteristic->notify();
-				vTaskDelay(5);
-				break;
-			}else if (buffer[k] == '\n'){ //new-line --> send chunk		
-				pCharacteristic->sNotify.assign(&buffer[startOffset],iActLen);
-				//log_i("sOffs=%d,l=%d,k=%d,%s",startOffset,iActLen,k,pCharacteristic->sNotify.c_str());
-				startOffset += iActLen;
-				pCharacteristic->notify();
-				vTaskDelay(5);
-			}else if (iActLen >= (maxMtu-1)){ //maxMtu -1, because of zero-termination of String						
-				pCharacteristic->sNotify.assign(&buffer[startOffset],iActLen);
-				//log_i("sOffs=%d,l=%d,k=%d,%s",startOffset,iActLen,k,pCharacteristic->sNotify.c_str());
-				startOffset += iActLen;
-				pCharacteristic->notify();
-				vTaskDelay(5);
-			}
-		}
-	}
-}
 
-void BLESendChunks(String str)
-{
-	if (status.bluetoothStat == 2){ //we have a connection
-		String substr;
-		for (int k = 0; k < str.length(); k += _min(str.length(), 20)) {
-			substr = str.substring(k, k + _min(str.length() - k, 20));
-			//pCharacteristic->setValue(substr.c_str());
-			pCharacteristic->sNotify = std::string(substr.c_str());
-			pCharacteristic->notify();			
-			vTaskDelay(5);
+		const uint8_t* begin = reinterpret_cast<uint8_t*>(buffer);
+		const uint8_t* end = reinterpret_cast<uint8_t*>(buffer + iLen);
+
+		while (std::distance(begin, end) > maxMtu) {
+			//log_i("ble chunk : %s", std::string(begin, std::next(begin, maxMtu)).c_str());
+			pCharacteristic->notify(begin, maxMtu, true);
+			std::advance(begin, maxMtu);
+			taskYIELD();
 		}
-	}else{
-		str = "";
+		if(begin < end) {
+			//log_i("ble chunk : %s", std::string(begin, end).c_str());
+			pCharacteristic->notify(begin, std::distance(begin, end), true);
+			taskYIELD();
+		}
 	}
-	//vTaskDelay(20);
 }
 
 void NEMEA_Checksum(String *sentence)
@@ -181,7 +155,7 @@ void start_ble (String bleId)
 	esp_coex_preference_set(ESP_COEX_PREFER_BT);
   NimBLEDevice::init(bleId.c_str());
 	NimBLEDevice::setMTU(256); //set MTU-Size to 256 Byte
-	pServer = NimBLEDevice::createServer();
+	NimBLEServer* pServer = NimBLEDevice::createServer();
 	pServer->setCallbacks(new MyServerCallbacks());
 	NimBLEService *pService = pServer->createService(NimBLEUUID((uint16_t)0xFFE0));
 	// Create a BLE Characteristic
@@ -192,12 +166,13 @@ void start_ble (String bleId)
 	log_i("Starting BLE");
 	// Start the service
 	pService->start();
-	pServer->getAdvertising()->addServiceUUID(NimBLEUUID((uint16_t)0xFFE0));
+
 	// Start advertising
-	pServer->getAdvertising()->start();
+	NimBLEAdvertising* pAdvertising = pServer->getAdvertising();
+	pAdvertising->addServiceUUID(pService->getUUID());
+	pAdvertising->start();
 
 	log_i("Waiting a client connection to notify...");
-
 }
 
 void stop_ble ()

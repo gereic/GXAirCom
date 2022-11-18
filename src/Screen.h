@@ -53,7 +53,7 @@ private:
   void drawMainScreen(void);
   void drawWeatherScreen(void);
   void drawFlightTime(int16_t x, int16_t y, int16_t width, int16_t height,uint32_t tTime);
-  void drawValue(int16_t x, int16_t y, int16_t width, int16_t height,float value,uint8_t decimals);
+  void drawValue(int16_t x, int16_t y, int16_t width, int16_t height,float value,unsigned int decimals);
   void drawCompass(int16_t x, int16_t y, int16_t width, int16_t height,float value);
   void drawBatt(int16_t x, int16_t y, int16_t width, int16_t height,uint8_t value);
   void drawSatCount(int16_t x, int16_t y, int16_t width, int16_t height,uint8_t value);

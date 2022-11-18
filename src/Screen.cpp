@@ -224,7 +224,7 @@ void Screen::drawCompass(int16_t x, int16_t y, int16_t width, int16_t height,flo
   pEInk->print(sText.c_str());
 }
 
-void Screen::drawValue(int16_t x, int16_t y, int16_t width, int16_t height,float value,uint8_t decimals){
+void Screen::drawValue(int16_t x, int16_t y, int16_t width, int16_t height,float value,unsigned int decimals){
   String sText = String(value,decimals);
   //log_i("%.2f = %s",value,sText.c_str());
   int16_t tbx, tby, posx, posy; uint16_t tbw, tbh;
