@@ -80,7 +80,6 @@ void load_configFile(SettingsData* pSetting){
   pSetting->wd.aneometer.AneometerAdsWSpeedMaxSpeed = preferences.getFloat("WDANEOADSWSMAXS",120.0);
   pSetting->wd.aneometer.AneometerAdsWDirMinDir = preferences.getFloat("WDANEOADSWDMIND",0.0);
   pSetting->wd.aneometer.AneometerAdsWDirMaxDir = preferences.getFloat("WDANEOADSWDMAXD",360.0);
-  pSetting->wd.aneometer.AneometerAdsVref = preferences.getFloat("WDANEOADSVREF",1.241);
   pSetting->wd.aneometer.AneometerAdsVDivR1 = preferences.getFloat("WDANEOADSVDIVR1",8060000.0);
   pSetting->wd.aneometer.AneometerAdsVDivR2 = preferences.getFloat("WDANEOADSVDIVR2",402000.0);
   pSetting->BattVoltOffs = preferences.getFloat("BATOFFS",0.0);
@@ -199,7 +198,6 @@ void write_configFile(SettingsData* pSetting){
   preferences.putUChar("GSPS",pSetting->gs.PowerSave);
   preferences.putUChar("GSANEO",pSetting->wd.aneometer.AneometerType);
   preferences.putUChar("WDANEOADSGAIN",pSetting->wd.aneometer.AneometerAdsGain);
-  preferences.putUChar("WDANEOADSVREF",pSetting->wd.aneometer.AneometerAdsVref);
   preferences.putUChar("WDANEOADSVDIVR1",pSetting->wd.aneometer.AneometerAdsVDivR1);
   preferences.putUChar("WDANEOADSVDIVR2",pSetting->wd.aneometer.AneometerAdsVDivR2);
 

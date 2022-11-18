@@ -240,9 +240,8 @@ void Weather::checkAneometer(void){
   }
 }
 
-float Weather::getAdsVoltage(uint8_t pin) {
-  float voltage, vref, vdiv_r1, vdiv_r2;
-  vref = anSettings.AneometerAdsVref;
+float Weather::getAdsVoltage(uint8_t pin, float vref) {
+  float voltage, vdiv_r1, vdiv_r2;
   vdiv_r1 = anSettings.AneometerAdsVDivR1;
   vdiv_r2 = anSettings.AneometerAdsVDivR2;
   voltage = _ADS1015.toVoltage(_ADS1015.readADC(pin));
@@ -255,7 +254,11 @@ float Weather::getAdsVoltage(uint8_t pin) {
 
 float Weather::calcAdsMeasurement(float measurement, float minVoltage, float maxVoltage, float minRange, float maxRange) {
   // use mV
-  if ((measurement < minVoltage) || (measurement > maxVoltage)) {
+  if ((measurement < minVoltage)) {
+    return 0.0;
+  }
+  if (minVoltage == maxVoltage) {
+    // avoid division by zero.
     return 0.0;
   }
   float minVoltageMV = 1000 * minVoltage;
@@ -270,9 +273,11 @@ float Weather::calcAdsMeasurement(float measurement, float minVoltage, float max
 void Weather::checkAdsAneometer(void) {
   uint8_t speed_pin = (uint8_t) eAdsAneometerPin::ADS_WINDSPEED_PIN;
   uint8_t dir_pin = (uint8_t) eAdsAneometerPin::ADS_WINDDIR_PIN;
+  uint8_t vref_pin = (uint8_t) eAdsAneometerPin::ADS_VREF_PIN;
+  float vref = _ADS1015.toVoltage(_ADS1015.readADC(vref_pin));
   float measurement;
   if (_weather.bWindSpeed){
-    measurement = getAdsVoltage(speed_pin);
+    measurement = getAdsVoltage(speed_pin, vref);
     measurement = calcAdsMeasurement(
       measurement,
       anSettings.AneometerAdsWSpeedMinVoltage,
@@ -283,7 +288,7 @@ void Weather::checkAdsAneometer(void) {
     _weather.WindSpeed = measurement;
   }
   if (_weather.bWindDir){
-    measurement = getAdsVoltage(dir_pin);
+    measurement = getAdsVoltage(dir_pin, vref);
     measurement = calcAdsMeasurement(
       measurement,
       anSettings.AneometerAdsWDirMinVoltage,
@@ -291,6 +296,10 @@ void Weather::checkAdsAneometer(void) {
       anSettings.AneometerAdsWDirMinDir,
       anSettings.AneometerAdsWDirMaxDir
     );
+    measurement += _winddirOffset;
+    // don't use fmod for a smaller footprint
+    while (measurement < 0) { measurement += 360.0; }
+    while (measurement > 360) { measurement -= 360.0; }
     _weather.WindDir = measurement;
   }
 }

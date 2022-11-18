@@ -409,6 +409,14 @@ function sendUbloxConfig(){
   doSend(JSON.stringify(obj));
 }
 
+function doSendNumbers(elements, save, f=Number) {
+  var obj = { save: save };
+  elements.forEach(element => {
+    obj[element] = f(document.getElementById(element).value);
+  });
+  doSend(JSON.stringify(obj));
+}
+
 function onlyLetters(str) {
    return str.match("^[A-Za-z0-9]+$");
  }
@@ -435,13 +443,6 @@ function sendValues(){
     return;
   }
   
-  function doSendNumbers(elements, save, f=Number) {
-    var obj = { save: save };
-    elements.forEach(element => {
-      obj[element] = f(document.getElementById(element).value);
-    });
-    doSend(JSON.stringify(obj));
-  }
   
   doSendNumbers(
     [
@@ -485,7 +486,6 @@ function sendValues(){
     "wdAneoAdsWSpeedMaxSpeed",
     "wdAneoAdsWDirMinDir",
     "wdAneoAdsWDirMaxDir",
-    "wdAneoAdsVref",
     "wdAneoAdsVDivR1",
     "wdAneoAdsVDivR2"
     ],
@@ -1173,9 +1173,6 @@ function onMessage(evt) {
           <tbody>
             <tr>
               <th>ADS1015 expert settings</th>
-            </tr>
-            <tr>
-              <td>ADS Reference voltage</td><input type="number" id="wdAneoAdsVref"><td></td>
             </tr>
             <tr>
               <td>Voltage Divider R1 (Ohm)</td><td><input type="number" id="wdAneoAdsVDivR1"></td>

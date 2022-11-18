@@ -299,7 +299,6 @@ struct AneometerSettings {
   float AneometerAdsWSpeedMaxSpeed;
   float AneometerAdsWDirMinDir;
   float AneometerAdsWDirMaxDir;
-  float AneometerAdsVref;
   float AneometerAdsVDivR1;
   float AneometerAdsVDivR2;
 };

@@ -103,7 +103,7 @@ private:
     bool _bHasADS = false;
     AneometerSettings anSettings;
     void checkAdsAneometer(void);
-    float getAdsVoltage(uint8_t pin);
+    float getAdsVoltage(uint8_t pin, float vref);
     float calcAdsMeasurement(float measurement, float minVoltage, float maxVoltage, float minRange, float maxRange);
 };
 #endif

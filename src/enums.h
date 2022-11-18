@@ -128,7 +128,8 @@ enum eRadarDispMode{
 
 enum eAdsAneometerPin{
   ADS_WINDSPEED_PIN = 0,
-  ADS_WINDDIR_PIN = 1
+  ADS_WINDDIR_PIN = 1,
+  ADS_VREF_PIN = 3
 };
 
 #endif

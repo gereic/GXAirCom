@@ -240,7 +240,6 @@ void onWebSocketEvent(uint8_t client_num,
           doc["wdAneoAdsWSpeedMaxSpeed"] = setting.wd.aneometer.AneometerAdsWSpeedMaxSpeed;
           doc["wdAneoAdsWDirMinDir"] = setting.wd.aneometer.AneometerAdsWDirMinDir;
           doc["wdAneoAdsWDirMaxDir"] = setting.wd.aneometer.AneometerAdsWDirMaxDir;
-          doc["wdAneoAdsVref"] = setting.wd.aneometer.AneometerAdsVref;
           doc["wdAneoAdsVDivR1"] = setting.wd.aneometer.AneometerAdsVDivR1;
           doc["wdAneoAdsVDivR2"] = setting.wd.aneometer.AneometerAdsVDivR2;
 
@@ -429,7 +428,6 @@ void onWebSocketEvent(uint8_t client_num,
         if (root.containsKey("wdAneoAdsWSpeedMaxSpeed")) newSetting.wd.aneometer.AneometerAdsWSpeedMaxSpeed = doc["wdAneoAdsWSpeedMaxSpeed"].as<float>();
         if (root.containsKey("wdAneoAdsWDirMinDir")) newSetting.wd.aneometer.AneometerAdsWDirMinDir = doc["wdAneoAdsWDirMinDir"].as<float>();
         if (root.containsKey("wdAneoAdsWDirMaxDir")) newSetting.wd.aneometer.AneometerAdsWDirMaxDir = doc["wdAneoAdsWDirMaxDir"].as<float>();
-        if (root.containsKey("wdAneoAdsVref")) newSetting.wd.aneometer.AneometerAdsVref = doc["wdAneoAdsVref"].as<float>();
         if (root.containsKey("wdAneoAdsVDivR1")) newSetting.wd.aneometer.AneometerAdsVDivR1 = doc["wdAneoAdsVDivR1"].as<float>();
         if (root.containsKey("wdAneoAdsVDivR2")) newSetting.wd.aneometer.AneometerAdsVDivR2 = doc["wdAneoAdsVDivR2"].as<float>();
 
