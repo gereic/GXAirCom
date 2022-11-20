@@ -1854,7 +1854,7 @@ void setup() {
   }
   log_i("SPIFFS total=%d used=%d free=%d",SPIFFS.totalBytes(),SPIFFS.usedBytes(),SPIFFS.totalBytes()-SPIFFS.usedBytes());
 
-  listSpiffsFiles();
+  //listSpiffsFiles();
   load_configFile(&setting); //load configuration
   //setting.wifi.connect = eWifiMode::CONNECT_NONE;
   if (setting.CPUFrequency <  80){
