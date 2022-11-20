@@ -1424,6 +1424,7 @@ void WiFiEvent(WiFiEvent_t event){
     case SYSTEM_EVENT_STA_DISCONNECTED:
       log_i("station lost connection to AP");      
       //will automatically reconnect in 60 seconds
+      /*
       if (status.wifiStat > 0){
         status.wifiStat=1;
         status.bInternetConnected = false; //no more connected to Internet
@@ -1432,6 +1433,7 @@ void WiFiEvent(WiFiEvent_t event){
         WiFi.persistent(false);
         WiFi.config(IPADDR_ANY, IPADDR_ANY, IPADDR_ANY,IPADDR_ANY,IPADDR_ANY); // call is only a workaround for bug in WiFi class
       }
+      */
       break;  
     case SYSTEM_EVENT_STA_GOT_IP:
       status.myIP = WiFi.localIP().toString();
@@ -1852,6 +1854,7 @@ void setup() {
 
   //listSpiffsFiles();
   load_configFile(&setting); //load configuration
+  //setting.wifi.connect = eWifiMode::CONNECT_NONE;
   if (setting.CPUFrequency <  80){
     setCpuFrequencyMhz(uint32_t(80));
   }else{
