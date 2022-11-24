@@ -409,12 +409,20 @@ function sendUbloxConfig(){
   doSend(JSON.stringify(obj));
 }
 
-function doSendNumbers(elements, save, f=Number) {
+function doSendData(elements, save, f=Number, checked=false) {
   var obj = { save: save };
   elements.forEach(element => {
-    obj[element] = f(document.getElementById(element).value);
+    if (checked) {
+        obj[element] = f(document.getElementById(element).checked);
+    } else {
+        obj[element] = f(document.getElementById(element).value);
+    }
   });
   doSend(JSON.stringify(obj));
+}
+
+function noType(element) {
+    return element;
 }
 
 function onlyLetters(str) {
@@ -438,13 +446,19 @@ function checkValues(){
   return true;
 }
 
+function _value(element_id) {
+    return document.getElementById(element_id).value;
+}
+
+//this function sends all values
 function sendValues(){  
   if (!checkValues()){
     return;
   }
+
+
   
-  
-  doSendNumbers(
+  doSendData(
     [
     "setView",
     "board",
@@ -460,7 +474,7 @@ function sendValues(){
     ], 1
   );
 
-  doSendNumbers(
+  doSendData(
     [
     "gslat",
     "gslon",
@@ -474,7 +488,7 @@ function sendValues(){
     1
   );
   
-  doSendNumbers(
+  doSendData(
     [
     "wdAneo",
     "wdAneoAdsGain",
@@ -494,142 +508,170 @@ function sendValues(){
 
 
   var obj = {};
-  obj['F2WuF'] = [ FntIdHex2Dec(document.getElementById("F2WuF0").value).toString(),
-            FntIdHex2Dec(document.getElementById("F2WuF1").value).toString(),
-            FntIdHex2Dec(document.getElementById("F2WuF2").value).toString(),
-            FntIdHex2Dec(document.getElementById("F2WuF3").value).toString(),
-            FntIdHex2Dec(document.getElementById("F2WuF4").value).toString()];
-  obj['F2WuI'] = [ document.getElementById("F2WuI0").value,
-            document.getElementById("F2WuI1").value,
-            document.getElementById("F2WuI2").value,
-            document.getElementById("F2WuI3").value,
-            document.getElementById("F2WuI4").value];
-  obj['F2WuK'] = [ document.getElementById("F2WuK0").value,
-            document.getElementById("F2WuK1").value,
-            document.getElementById("F2WuK2").value,
-            document.getElementById("F2WuK3").value,
-            document.getElementById("F2WuK4").value];
-  obj['F2WiF'] = [ FntIdHex2Dec(document.getElementById("F2WiF0").value).toString(),
-            FntIdHex2Dec(document.getElementById("F2WiF1").value).toString(),
-            FntIdHex2Dec(document.getElementById("F2WiF2").value).toString(),
-            FntIdHex2Dec(document.getElementById("F2WiF3").value).toString(),
-            FntIdHex2Dec(document.getElementById("F2WiF4").value).toString()];
-  obj['F2WiI'] = [ document.getElementById("F2WiI0").value,
-            document.getElementById("F2WiI1").value,
-            document.getElementById("F2WiI2").value,
-            document.getElementById("F2WiI3").value,
-            document.getElementById("F2WiI4").value];
-  obj['F2WiK'] = [ document.getElementById("F2WiK0").value,
-            document.getElementById("F2WiK1").value,
-            document.getElementById("F2WiK2").value,
-            document.getElementById("F2WiK3").value,
-            document.getElementById("F2WiK4").value];
+  obj['F2WuF'] = [ FntIdHex2Dec(_value("F2WuF0")).toString(),
+            FntIdHex2Dec(_value("F2WuF1")).toString(),
+            FntIdHex2Dec(_value("F2WuF2")).toString(),
+            FntIdHex2Dec(_value("F2WuF3")).toString(),
+            FntIdHex2Dec(_value("F2WuF4")).toString()];
+  obj['F2WuI'] = [ _value("F2WuI0"),
+            _value("F2WuI1"),
+            _value("F2WuI2"),
+            _value("F2WuI3"),
+            _value("F2WuI4")];
+  obj['F2WuK'] = [ _value("F2WuK0"),
+            _value("F2WuK1"),
+            _value("F2WuK2"),
+            _value("F2WuK3"),
+            _value("F2WuK4")];
+  obj['F2WiF'] = [ FntIdHex2Dec(_value("F2WiF0")).toString(),
+            FntIdHex2Dec(_value("F2WiF1")).toString(),
+            FntIdHex2Dec(_value("F2WiF2")).toString(),
+            FntIdHex2Dec(_value("F2WiF3")).toString(),
+            FntIdHex2Dec(_value("F2WiF4")).toString()];
+  obj['F2WiI'] = [ _value("F2WiI0"),
+            _value("F2WiI1"),
+            _value("F2WiI2"),
+            _value("F2WiI3"),
+            _value("F2WiI4")];
+  obj['F2WiK'] = [ _value("F2WiK0"),
+            _value("F2WiK1"),
+            _value("F2WiK2"),
+            _value("F2WiK3"),
+            _value("F2WiK4")];
   obj['save'] = 1;
   doSend(JSON.stringify(obj));
 
 
-  var obj = {
-  expwsw : Number(document.getElementById("expwsw").checked),
-  AUTOUPDATE : Number(document.getElementById("AUTOUPDATE").checked),
-  appw : document.getElementById("appw").value,
-  wificonnect : Number(document.getElementById("wificonnect").value),
-  ssid : document.getElementById("ssid").value,
-  password : document.getElementById("password").value,
-  wifioff : Number(document.getElementById("wifioff").value),
-  save : 1
-  };
-  doSend(JSON.stringify(obj));
+  doSendData(
+    [
+    "expwsw",
+    "wificonnect",
+    "wifioff",
+    "UDPSendPort",
+    "output",
+    "oVario"
+    ],
+    1
+  );
   
-  var obj = {  
-  output : Number(document.getElementById("output").value),
-  oSERIAL : Number(document.getElementById("oSERIAL").checked),
-  oGPS : Number(document.getElementById("oGPS").checked),
-  oFlarm : Number(document.getElementById("oFlarm").checked),
-  oFanet : Number(document.getElementById("oFanet").checked),
-  oVario : Number(document.getElementById("oVario").value),
-  awlive : Number(document.getElementById("awlive").checked),
-  UDPServerIP : document.getElementById("UDPServerIP").value,
-  UDPSendPort : Number(document.getElementById("UDPSendPort").value),
-  save : 1
-  };
-  doSend(JSON.stringify(obj));
+  doSendData(
+    [
+    "appw",
+    "ssid",
+    "password",
+    "UDPServerIP",
+    "traccarsrv"
+    ],
+    1,
+    noType
+  );
+
+  doSendData(
+    [
+    "AUTOUPDATE",
+    "oSERIAL",
+    "oGPS",
+    "oFlarm",
+    "oFanet",
+    "awlive",
+    "useMPU",
+    "vBeepFly",
+    "traccar_live"
+    ],
+    1,
+    Number,
+    true
+  );
   
+  doSendData(
+    [
+    "sigmaP",
+    "sigmaA",
+    "vSinkTh",
+    "vClimbTh",
+    "vNClimbSens",
+    "vTOffs",
+    "t[0]",
+    "z[0]"
+    ],
+    1,
+    parseFloat
+  );
+
+  doSendData(
+    [
+    "vVol",
+    "axOffset",
+    "ayOffset",
+    "azOffset",
+    "gxOffset",
+    "gyOffset",
+    "gzOffset"
+    ],
+    1,
+  );
+
+  doSendData(
+    [
+    "fuelSensor",
+    "sFWD",
+    "WUUlEnable",
+    "WIUlEnable"
+    ],
+    1,
+    Number,
+    true
+  );
+
+
+  doSendData(
+    [
+    "wdTempOffset",
+    "wdWDirOffset",
+    "WFFNT",
+    "WIFNT",
+    "WFWU",
+    "WIWU",
+    "MqttPort"
+    ],
+    1,
+  );
+
+  
+  doSendData(
+    [
+    "WUUlID",
+    "WUUlKEY",
+    "WIUlID",
+    "WIUlKEY",
+    "MqttServer",
+    "MqttPw",
+    ],
+    1,
+    noType
+  );
+
+
   var obj = {  
-  ognlive : getOGNMode(),
-  traccar_live : Number(document.getElementById("traccar_live").checked),
-  traccarsrv : document.getElementById("traccarsrv").value,
   RFM : getRfMode(),
-  sigmaP : parseFloat(document.getElementById("sigmaP").value),
-  sigmaA : parseFloat(document.getElementById("sigmaA").value),
-  vSinkTh : parseFloat(document.getElementById("vSinkTh").value),
-  vClimbTh : parseFloat(document.getElementById("vClimbTh").value),
-  vNClimbSens : parseFloat(document.getElementById("vNClimbSens").value),
-  vVol : Number(document.getElementById("vVol").value),
-  vBeepFly : Number(document.getElementById("vBeepFly").checked),
-  useMPU : Number(document.getElementById("useMPU").checked),
-  vTOffs : parseFloat(document.getElementById("vTOffs").value),
-  save : 1
-	};
-  doSend(JSON.stringify(obj));
-
-  var obj = {  
-  axOffset : Number(document.getElementById("axOffset").value),
-  ayOffset : Number(document.getElementById("ayOffset").value),
-  azOffset : Number(document.getElementById("azOffset").value),
-  gxOffset : Number(document.getElementById("gxOffset").value),
-  gyOffset : Number(document.getElementById("gyOffset").value),
-  gzOffset : Number(document.getElementById("gzOffset").value),
-  "t[0]" : parseFloat(document.getElementById("t[0]").value),
-  "z[0]" : parseFloat(document.getElementById("z[0]").value),
-  save : 1
-	};
-  doSend(JSON.stringify(obj));
-
-  var obj = {  
-  fuelSensor : Number(document.getElementById("fuelSensor").checked),
-  save : 1
-	};
-  doSend(JSON.stringify(obj));
-
-
-  var obj = {  
+  ognlive : getOGNMode(),
   WsMode : getWsMode(),
-  sFWD : Number(document.getElementById("sFWD").checked),
-  wdTempOffset : Number(document.getElementById("wdTempOffset").value),  
-  wdWDirOffset : Number(document.getElementById("wdWDirOffset").value),  
-
-  WUUlEnable : Number(document.getElementById("WUUlEnable").checked),
-  WUUlID : document.getElementById("WUUlID").value,  
-  WUUlKEY : document.getElementById("WUUlKEY").value,
-  WIUlEnable : Number(document.getElementById("WIUlEnable").checked),
-  WIUlID : document.getElementById("WIUlID").value,  
-  WIUlKEY : document.getElementById("WIUlKEY").value,
-  WFFNT : Number(document.getElementById("WFFNT").value),
-  WIFNT : Number(document.getElementById("WIFNT").value),
-  WFWU : Number(document.getElementById("WFWU").value),
-  WIWU : Number(document.getElementById("WIWU").value),
-  save : 1
-	};
-  doSend(JSON.stringify(obj));
-
-  var obj = {  
   MqttMode : getMQTTMode(),
-  MqttServer : document.getElementById("MqttServer").value,  
-  MqttPort : Number(document.getElementById("MqttPort").value),
-  MqttPw : document.getElementById("MqttPw").value,  
   save : 1
 	};
   doSend(JSON.stringify(obj));
 
-  var obj = {  
-  GSMAPN : document.getElementById("GSMAPN").value,  
-  GSMUSER : document.getElementById("GSMUSER").value,  
-  GSMPWD : document.getElementById("GSMPWD").value,    
-  GSMMODE : document.getElementById("GSMMODE").value,
-  GSMPREF : document.getElementById("GSMPREF").value,
-  save : 2
-	};
-  doSend(JSON.stringify(obj));
+  doSendData(
+    [
+    "GSMAPN",
+    "GSMUSER",
+    "GSMPWD",
+    "GSMMODE",
+    "GSMPREF",
+    ],
+    2,
+    noType
+  );
 
   document.getElementById("btnsave").innerText  = "rebooting ...";
   var delay = 10000;
