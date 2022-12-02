@@ -8,15 +8,31 @@ char msg_buf[500];
 #define MAXCLIENTS 10
 uint8_t clientPages[MAXCLIENTS];
 
-String DevelopMenue = "<table style=\"width:100&#37;\"><tr><td style=\"width:100&#37;\"><button onClick=\"location.href='/developmenue.html'\">developer menue</button></td></tr></table><p></p><p></p>";
-String IGCMenue = "<table style=\"width:100&#37;\"><tr><td style=\"width:100&#37;\"><button onClick=\"location.href='/igclogs.html'\">Track Logs IGC</button></td></tr></table><p></p><p></p>";
-
 Logger logger;
 /***********************************************************
  * Functions
  */
 
 void sendPage(uint8_t pageNr);
+void sendPageHeader(uint8_t client_num);
+
+void sendPageHeader(uint8_t client_num){
+  StaticJsonDocument<400> doc;
+  doc.clear();
+  doc["myDevId"] = setting.myDevId;
+  doc["appname"] = String(APPNAME "-" VERSION);
+  doc["buildDate"] = "build-date: " + String(compile_date);
+  if (setting.Mode == eMode::GROUND_STATION){
+    doc["pilot"] = "station: " + setting.PilotName;
+  }else{
+    doc["pilot"] = "pilot: " + setting.PilotName;
+  }
+  doc["myIP"] = status.myIP;
+  serializeJson(doc, msg_buf);
+  webSocket.sendTXT(client_num, msg_buf);
+}
+
+
 
 // Callback: receiving any WebSocket message
 void onWebSocketEvent(uint8_t client_num,
@@ -61,8 +77,17 @@ void onWebSocketEvent(uint8_t client_num,
         value = doc["page"];                    //Get value of sensor measurement
         if (client_num < MAXCLIENTS) clientPages[client_num] = value;
         log_i("page=%d",value);
+        sendPageHeader(client_num);
         doc.clear();
-        if (clientPages[client_num] == 1){ //info
+        if (clientPages[client_num] == 1){ //index.html
+          #ifdef LOGGER
+          doc["igcMenue"] = 1;
+          #endif
+          doc["developer"] = (setting.Mode == eMode::DEVELOPER) ? 1 : 0 ;
+          serializeJson(doc, msg_buf);
+          webSocket.sendTXT(client_num, msg_buf);
+
+        }else if (clientPages[client_num] == 2){ //info
           doc["myDevId"] = setting.myDevId;
           doc["compiledate"] = String(compile_date);
           doc["bHasVario"] = (uint8_t)status.vario.bHasVario;       
@@ -142,7 +167,7 @@ void onWebSocketEvent(uint8_t client_num,
 
 
 
-        }else if (clientPages[client_num] == 2){ //sendmessage
+        }else if (clientPages[client_num] == 3){ //sendmessage
           doc.clear();
           doc["setView"] = setting.settingsView;
           doc["FNTMSGIN"] = status.lastFanetMsg;
@@ -150,13 +175,11 @@ void onWebSocketEvent(uint8_t client_num,
           webSocket.sendTXT(client_num, msg_buf);
 
         }else if (clientPages[client_num] == 5){ //FW-Update
-          doc.clear();
           doc["updateState"] = status.updateState;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
 
         }else if (clientPages[client_num] == 10){ //full settings
-          doc.clear();
           doc["setView"] = setting.settingsView;                  
           doc["board"] = setting.boardType;
           doc["Frequ"] = setting.CPUFrequency;
@@ -563,17 +586,7 @@ void SD_file_download(AsyncWebServerRequest *request){
 String processor(const String& var){
   String sRet = "";
   //log_i("%s",var.c_str());
-  if(var == "SOCKETIP"){
-    return status.myIP;
-  }else if (var == "APPNAME"){
-    return APPNAME;
-  }else if (var == "PILOT"){
-    return setting.PilotName;
-  }else if (var == "VERSION"){
-    return VERSION;
-  }else if (var == "BUILD"){
-    return String(compile_date);
-  }else if (var == "IGCFILELIST"){
+  if (var == "IGCFILELIST"){
     // TODO list all igc files and create link to download
     logger.listFiles(SD_MMC,"/");
     sRet = "";
@@ -595,18 +608,6 @@ String processor(const String& var){
     }
     sRet += "</tbody></table>";
     return sRet;
-  }else if (var == "DEVELOPER"){
-    if (setting.Mode == eMode::DEVELOPER){
-      return DevelopMenue;
-    }else{
-      return "";
-    }
-  }else if (var == "IGCMENUE"){
-    #ifdef LOGGER
-      return IGCMenue;
-    #else
-      return "";
-    #endif    
   }else if (var == "NEIGHBOURS"){
     sRet = "";
     //sRet += "<option value=\"08AF88\">mytest 08AF88</option>\r\n";
@@ -686,7 +687,11 @@ void Web_setup(void){
   for (int i = 0;i < MAXCLIENTS;i++) clientPages[i] = 0;
   // On HTTP request for root, provide index.html file
   server.on("/fwupdate", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(SPIFFS, request->url() + ".html", "text/html",false,processor);
+    //request->send(SPIFFS, request->url() + ".html", "text/html",false,processor);
+    const char* dataType = "text/html";
+    AsyncWebServerResponse *response = request->beginResponse_P(200, dataType,fwupdate_html_gz, fwupdate_html_gz_len);
+    response->addHeader("Content-Encoding", "gzip");
+    request->send(response); 
   });
   // handler for the /update form POST (once file upload finishes)
   server.on("/fwupdate", HTTP_POST, [](AsyncWebServerRequest *request){
@@ -696,7 +701,11 @@ void Web_setup(void){
     request->send(SPIFFS, request->url(), "text/html",false,processor);
   });
   server.on("/fullsettings.html", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(SPIFFS, request->url(), "text/html",false,processor);
+    //request->send(SPIFFS, request->url(), "text/html",false,processor);
+    const char* dataType = "text/html";
+    AsyncWebServerResponse *response = request->beginResponse_P(200, dataType,fullsettings_html_gz, fullsettings_html_gz_len);
+    response->addHeader("Content-Encoding", "gzip");
+    request->send(response); 
   });
   server.on("/setgeneral.html", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, request->url(), "text/html",false,processor);
@@ -714,13 +723,21 @@ void Web_setup(void){
     request->send(SPIFFS, request->url(), "text/html",false,processor);
   });
   server.on("/index.html", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(SPIFFS, request->url(), "text/html",false,processor);
+    //request->send(SPIFFS, request->url(), "text/html",false,processor);
+    const char* dataType = "text/html";
+    AsyncWebServerResponse *response = request->beginResponse_P(200, dataType,index_html_gz, index_html_gz_len);
+    response->addHeader("Content-Encoding", "gzip");
+    request->send(response); 
   });
   server.on("/sendmessage.html", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, request->url(), "text/html",false,processor);
   });
   server.on("/neighbours.html", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(SPIFFS, request->url(), "text/html",false,processor);
+    //request->send(SPIFFS, request->url(), "text/html",false,processor);
+    const char* dataType = "text/html";
+    AsyncWebServerResponse *response = request->beginResponse_P(200, dataType,neighbours_html_gz, neighbours_html_gz_len);
+    response->addHeader("Content-Encoding", "gzip");
+    request->send(response);     
   });
   // new igc track logger page
   server.on("/igclogs.html", HTTP_GET, [](AsyncWebServerRequest *request){
@@ -735,10 +752,18 @@ void Web_setup(void){
   });
 
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(SPIFFS, "/index.html", "text/html",false,processor);
+    //request->send(SPIFFS, "/index.html", "text/html",false,processor);
+    const char* dataType = "text/html";
+    AsyncWebServerResponse *response = request->beginResponse_P(200, dataType,index_html_gz, index_html_gz_len);
+    response->addHeader("Content-Encoding", "gzip");
+    request->send(response); 
   });
   server.on("/info.html", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(SPIFFS, request->url(), "text/html",false,processor);
+    //request->send(SPIFFS, request->url(), "text/html",false,processor);
+    const char* dataType = "text/html";
+    AsyncWebServerResponse *response = request->beginResponse_P(200, dataType,info_html_gz, info_html_gz_len);
+    response->addHeader("Content-Encoding", "gzip");
+    request->send(response); 
   });
   server.on("/msgtype1.html", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, request->url(), "text/html",false,processor);
@@ -759,13 +784,26 @@ void Web_setup(void){
     request->send(SPIFFS, request->url(), "text/html",false,processor);
   });
   server.on("/weather.html", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(SPIFFS, request->url(), "text/html",false,processor);
-  });
-  
+    //request->send(SPIFFS, request->url(), "text/html",false,processor);
+    const char* dataType = "text/html";
+    AsyncWebServerResponse *response = request->beginResponse_P(200, dataType,weather_html_gz, weather_html_gz_len);
+    response->addHeader("Content-Encoding", "gzip");
+    request->send(response); 
+  });  
   server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(SPIFFS, request->url(), "text/css");
+    //request->send(SPIFFS, request->url(), "text/css");
+    const char* dataType = "text/css";
+    AsyncWebServerResponse *response = request->beginResponse_P(200, dataType,style_css_gz, style_css_gz_len);
+    response->addHeader("Content-Encoding", "gzip");
+    request->send(response); 
   });
-
+  server.on("/scripts.js", HTTP_GET, [](AsyncWebServerRequest *request){
+    //request->send(SPIFFS, request->url(), "text/css");
+    const char* dataType = "text/javascript";
+    AsyncWebServerResponse *response = request->beginResponse_P(200, dataType,scripts_js_gz, scripts_js_gz_len);
+    response->addHeader("Content-Encoding", "gzip");
+    request->send(response); 
+  });
   server.on("/communicator.html", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, request->url(), "text/html",false,processor);
   });
@@ -800,7 +838,7 @@ void sendPage(uint8_t pageNr){
   static uint32_t tCount20 = millis();
   static uint32_t tCount30 = millis();
   switch (pageNr) {
-    case 1:
+    case 2:
       //page info.html
       //vario
       if (status.vario.bHasVario){
@@ -841,7 +879,7 @@ void sendPage(uint8_t pageNr){
         if (bSend){
           serializeJson(doc, msg_buf);
           for (int i = 0;i <MAXCLIENTS;i++){
-            if (clientPages[i] == 1){
+            if (clientPages[i] == pageNr){
               //log_d("Sending to [%u]: %s", i, msg_buf);
               webSocket.sendTXT(i, msg_buf);
             }
@@ -974,7 +1012,7 @@ void sendPage(uint8_t pageNr){
       if (bSend){
         serializeJson(doc, msg_buf);
         for (int i = 0;i <MAXCLIENTS;i++){
-          if (clientPages[i] == 1){
+          if (clientPages[i] == pageNr){
             //log_d("Sending to [%u]: %s", i, msg_buf);
             webSocket.sendTXT(i, msg_buf);
           }
@@ -1013,7 +1051,7 @@ void sendPage(uint8_t pageNr){
       if (bSend){
         serializeJson(doc, msg_buf);
         for (int i = 0;i <MAXCLIENTS;i++){
-          if (clientPages[i] == 1){
+          if (clientPages[i] == pageNr){
             //log_d("Sending to [%u]: %s", i, msg_buf);
             webSocket.sendTXT(i, msg_buf);
           }
@@ -1031,7 +1069,7 @@ void sendPage(uint8_t pageNr){
         if (bSend){
           serializeJson(doc, msg_buf);
           for (int i = 0;i <MAXCLIENTS;i++){
-            if (clientPages[i] == 1){
+            if (clientPages[i] == pageNr){
               //log_d("Sending to [%u]: %s", i, msg_buf);
               webSocket.sendTXT(i, msg_buf);
             }
@@ -1088,7 +1126,7 @@ void sendPage(uint8_t pageNr){
         if (bSend){
           serializeJson(doc, msg_buf);
           for (int i = 0;i <MAXCLIENTS;i++){
-            if (clientPages[i] == 1){
+            if (clientPages[i] == pageNr){
               //log_d("Sending to [%u]: %s", i, msg_buf);
               webSocket.sendTXT(i, msg_buf);
             }
@@ -1097,7 +1135,7 @@ void sendPage(uint8_t pageNr){
       }
       #endif
       break;
-    case 2:
+    case 3:
       //page send-messages
       doc.clear();
       bSend = false;
@@ -1109,7 +1147,7 @@ void sendPage(uint8_t pageNr){
       if (bSend){
         serializeJson(doc, msg_buf);
         for (int i = 0;i <MAXCLIENTS;i++){
-          if (clientPages[i] == 2){
+          if (clientPages[i] == pageNr){
             //log_d("Sending to [%u]: %s", i, msg_buf);
             webSocket.sendTXT(i, msg_buf);
           }
@@ -1131,7 +1169,7 @@ void sendPage(uint8_t pageNr){
       if (bSend){
         serializeJson(doc, msg_buf);
         for (int i = 0;i <MAXCLIENTS;i++){
-          if (clientPages[i] == 5){
+          if (clientPages[i] == pageNr){
             //log_d("Sending to [%u]: %s", i, msg_buf);
             webSocket.sendTXT(i, msg_buf);
           }
@@ -1175,7 +1213,7 @@ void sendPage(uint8_t pageNr){
       if (bSend){
         serializeJson(doc, msg_buf);
         for (int i = 0;i <MAXCLIENTS;i++){
-          if (clientPages[i] == 10){
+          if (clientPages[i] == pageNr){
             //log_d("Sending to [%u]: %s", i, msg_buf);
             webSocket.sendTXT(i, msg_buf);
           }
@@ -1330,43 +1368,11 @@ void Web_loop(void){
     tLife = tAct;
     //site update
     for (int i = 0;i <MAXCLIENTS;i++){
-      if (clientPages[i] == 1){
-        sendPage(1);
+      if (clientPages[i] > 0){
+        sendPage(clientPages[i]);
         break;
       }
     }
-    for (int i = 0;i <MAXCLIENTS;i++){
-      if (clientPages[i] == 2){
-        sendPage(2);
-        break;
-      }
-    }
-    for (int i = 0;i <MAXCLIENTS;i++){
-      if (clientPages[i] == 5){
-        sendPage(5);
-        break;
-      }
-    }
-    for (int i = 0;i <MAXCLIENTS;i++){
-      if (clientPages[i] == 10){
-        sendPage(10);
-        break;
-      }
-    }
-    for (int i = 0;i <MAXCLIENTS;i++){
-      if (clientPages[i] == 20){
-        sendPage(20);
-        break;
-      }
-    }
-    for (int i = 0;i <MAXCLIENTS;i++){
-      if (clientPages[i] == 30){
-        sendPage(30);
-        break;
-      }
-    }
-    
-
   }
   if (restartNow){
     if ((tAct - tRestart) >= 1000){
