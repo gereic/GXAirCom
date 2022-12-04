@@ -14,6 +14,7 @@
 #define SX1276_MODE_TX 0b00000011
 #define SX1276_MODE_FS_MODE_RX 0b00000100
 #define SX1276_MODE_RX_CONTINUOUS 0b00000101
+#define SX1276_MODE_CAD 0b00000111
 #define SX127X_CRYSTAL_FREQ 32.0
 
 #define GX_MODULE_DEBUG
@@ -40,6 +41,9 @@
 /*!
   \brief Internal only.
 */
+#define	ERR_TX_TX_ONGOING                   					1
+#define	ERR_TX_RX_ONGOING					                    2
+#define	ERR_TX_FSK_ONGOING					                  3
 #define ERR_NONE                                      0
 #define ERR_UNKNOWN                                   -1
 #define ERR_CHIP_NOT_FOUND                            -2

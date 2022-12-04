@@ -149,6 +149,22 @@
 #define SX127X_FLAG_PREAMBLE_DETECT                   0b00000010  //  1     1     valid preamble was detected
 #define SX127X_FLAG_SYNC_ADDRESS_MATCH                0b00000001  //  0     0     sync address matched
 
+//SX127X_IRQ FLAGS Lora
+#define SX127X_IRQ_RX_TIMEOUT					0x80
+#define SX127X_IRQ_RX_DONE					0x40
+#define SX127X_IRQ_PAYLOAD_CRC_ERROR				0x20
+#define SX127X_IRQ_VALID_HEADER				0x10
+#define SX127X_IRQ_TX_DONE					0x08
+#define SX127X_IRQ_CAD_DONE					0x04
+#define SX127X_IRQ_FHSS_CHANGE_CHANNEL				0x02
+#define SX127X_IRQ_CAD_DETECTED				0x01
+
+#define	SX127X_LORA_SLEEP_MODE					0x80
+#define SX127X_LORA_TX_MODE					0x83
+#define SX127X_LORA_RXCONT_MODE				0x85
+#define SX127X_LORA_RXSINGLE_MODE				0x86
+#define SX127X_LORA_MODE_MASK 0x87
+
 #include "GxModule.h"
 
 #define LORAMAXSTRING 500
@@ -250,6 +266,9 @@ private:
   int16_t sx1262SetDioIrqParams(uint16_t irqMask, uint16_t dio1Mask, uint16_t dio2Mask = SX126X_IRQ_NONE, uint16_t dio3Mask = SX126X_IRQ_NONE);
   int16_t sx1262SetBufferBaseAddress(uint8_t txBaseAddress = 0x00, uint8_t rxBaseAddress = 0x00);
   int16_t sx1262ReadData(uint8_t* buffer, size_t len);
+  uint16_t sx1262ReadIrQ();
+  void sx1262SetCmdTx();  
+  void sx1262SetCmdRx();  
   int16_t writeRegister(uint16_t addr, uint8_t* data, uint8_t numBytes);
   int16_t readRegister(uint16_t addr, uint8_t* data, uint8_t numBytes);
   int16_t SPIwriteCommand(uint8_t cmd, uint8_t* data, uint8_t numBytes, bool waitForBusy = true);
@@ -258,6 +277,7 @@ private:
   int16_t SPIreadCommand(uint8_t* cmd, uint8_t cmdLen, uint8_t* data, uint8_t numBytes, bool waitForBusy = true);
   int16_t SPItransfer(uint8_t* cmd, uint8_t cmdLen, bool write, uint8_t* dataOut, uint8_t* dataIn, uint8_t numBytes, bool waitForBusy, uint32_t timeout = 5000);
   void checkRet(int16_t value);
+  int sx_channel_free4tx();
 
 };
 #endif

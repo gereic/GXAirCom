@@ -48,7 +48,7 @@ Frame* MacFifo::frame_in_list(Frame *frm)
 		Frame *frm_list = fifo.get(i);
 		if (*frm_list == *frm)
 		{
-			interrupts();
+			//interrupts();
 			return frm_list;
 		}
 	}
@@ -76,7 +76,7 @@ int MacFifo::add(Frame *frm)
 	/* note: ACKs will always fit */
 	if (fifo.size() >= MAC_FIFO_SIZE && frm->type != FRM_TYPE_ACK)
 	{
-		interrupts();
+		//interrupts();
 		return -1;
 	}
 
@@ -90,7 +90,7 @@ int MacFifo::add(Frame *frm)
 			Frame *ffrm = fifo.get(i);
 			if (ffrm->ack_requested && ffrm->src == fmac.myAddr && ffrm->dest == frm->dest)
 			{
-				interrupts();
+				//interrupts();
 				return -2;
 			}
 		}
@@ -1137,8 +1137,19 @@ void FanetMac::handleTx()
 	//int tx_ret = LoRa.sendFrame(buffer, blength, neighbors.size() < MAC_CODING48_THRESHOLD ? 8 : 5);
 	int tx_ret=TX_OK;
 	if (state != ERR_NONE){
-		log_e("error TX state=%d",state);
-		tx_ret = TX_ERROR;
+		if (state == ERR_TX_TX_ONGOING){
+			tx_ret = TX_RX_ONGOING;
+			//log_e("error TX_RX_ONGOING");
+		}else if (state == ERR_TX_RX_ONGOING){
+			tx_ret = TX_RX_ONGOING;
+			//log_e("error TX_RX_ONGOING");
+		}else if (state == ERR_TX_FSK_ONGOING){
+			tx_ret = TX_FSK_ONGOING;
+			//log_e("error TX_FSK_ONGOING");
+		}else{
+			log_e("error TX state=%d",state);
+			tx_ret = TX_ERROR;
+		} 
 	}else{
 		//log_i("TX OK");
 		txFntCount++;
