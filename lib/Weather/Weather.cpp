@@ -112,7 +112,8 @@ bool Weather::begin(TwoWire *pi2c, float height,int8_t oneWirePin, int8_t windDi
   }
   //avgFactor = 128; //factor for avg-factor 
   bFirst = false;
-
+  _weather.bWindDir = false; 
+  _weather.bWindSpeed = false;
   if (aneometerType == 1){
     _weather.bWindSpeed = true;
     _weather.bWindDir = true;

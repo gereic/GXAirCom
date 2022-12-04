@@ -36,7 +36,7 @@ function onOpen(evt) {
     console.log("Connected");
     
     // write page-number --> then we get all values for page
-    doSend(JSON.stringify({ page : 2 })); //send page
+    doSend(JSON.stringify({ page : 3 })); //send page
 }
  
 // Called when the WebSocket connection is closed
@@ -135,9 +135,10 @@ window.addEventListener("load", init, false);
   <div style="text-align:left;display:inline-block;color:#eaeaea;min-width:340px;">
     <div style='text-align:center;color:#eaeaea;'>
       <noscript>JavaScript aktivieren um GXAirCom benutzen zu können<br></noscript>
-      <h1>%APPNAME%-%VERSION%</h1>
-      <h3>build-date: %BUILD%</h3>
-      <h3>%PILOT%</h3>      
+      <h1 id="appname"></h1>
+      <h3 id="buildDate"></h3>
+      <h3 id="pilot"></h3>
+      <h3 id="myIP"></h3>
     </div>    
     <fieldset>
       <legend><b>send message to device</b></legend>    
@@ -146,7 +147,7 @@ window.addEventListener("load", init, false);
           <tr>
             <th>receiver</th>
             <td><select name="receiver" id="receiver">
-              %NEIGHBOURS%
+              <!--%NEIGHBOURS%-->
               <!--<option value="08C3CC">T-Beam 08C3CC</option>-->
               <option value="000000">Send to All</option>
               <!--<option value="000000">broadcast to all</option>-->

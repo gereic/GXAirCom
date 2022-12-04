@@ -6,87 +6,34 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
 <title>GXAirCom</title>
 <script language="javascript" type="text/javascript">
- 
- var url = "ws://" + window.location.hostname + ":1337/";
+ var pageNumber = 10;
  var bHasVario = 0;
  var calibBtnState = 0;
  var wsMode = 0;
- 
  const wsModeEn = 1;
  const wsModeBme = 2;
  const wsModeRain = 4;
-
-
-
-// This is called when the page finishes loading
-function init() {
- 
-    // Connect to WebSocket server
-    wsConnect(url);
-}
- 
-// Call this to connect to the WebSocket server
-function wsConnect(url) {
-    
-    // Connect to WebSocket server
-    //console.log("try to connect to " + url);    
-    //document.getElementById("TxtConn").innerHTML ="try to connect to " + url;
-    websocket = new WebSocket(url);
-    
-    // Assign callbacks
-    websocket.onopen = function(evt) { onOpen(evt) };
-    websocket.onclose = function(evt) { onClose(evt) };
-    websocket.onmessage = function(evt) { onMessage(evt) };
-    websocket.onerror = function(evt) { onError(evt) };
-}
- 
-// Called when a WebSocket connection is established with the server
-function onOpen(evt) {
- 
-    // Log connection state
-    console.log("Connected");
-    //document.getElementById("TxtConn").innerHTML ="connected";
-    // write page-number --> then we get all values for page
-    doSend(JSON.stringify({ page : 10 }));//send page-number
-}
- 
-// Called when the WebSocket connection is closed
-function onClose(evt) {
- 
-    // Log disconnection state
-    console.log("Disconnected");
-    //document.getElementById("TxtConn").innerHTML ="disconnected";
-    // Try to reconnect after a few seconds
-    setTimeout(function() { wsConnect(url) }, 2000);
-}
-
-function callMainPage(){
-  window.location="/index.html"
-}
-
-//this function sets visible depending on actual option
+/*this function sets visible depending on actual option*/
 function setFts(){
       document.getElementById("traccarsrv").value="http://tracking.fivl.it:5055/";
 }
-
-//this function sets visible depending on actual option
+/*this function sets visible depending on actual option*/
 function setVis(){
-  //console.log("visible=" + document.getElementById("mode").style.display)
   if (calibBtnState == 0){
-    document.getElementById("accCalib1").style.display='none'; //set calibration of ACC to invisible
-    document.getElementById("accCalib2").style.display='none'; //set calibration of ACC to invisible
-    document.getElementById("accCalib3").style.display='none'; //set calibration of ACC to invisible
-    document.getElementById("accCalib4").style.display='none'; //set calibration of ACC to invisible
+    document.getElementById("accCalib1").style.display='none'; /*set calibration of ACC to invisible*/
+    document.getElementById("accCalib2").style.display='none'; /*set calibration of ACC to invisible*/
+    document.getElementById("accCalib3").style.display='none'; /*set calibration of ACC to invisible*/
+    document.getElementById("accCalib4").style.display='none'; /*set calibration of ACC to invisible*/
   }else{
-    document.getElementById("accCalib1").style.display=''; //set calibration of ACC visible
-    document.getElementById("accCalib2").style.display=''; //set calibration of ACC visible
-    document.getElementById("accCalib3").style.display=''; //set calibration of ACC visible
-    document.getElementById("accCalib4").style.display=''; //set calibration of ACC visible
+    document.getElementById("accCalib1").style.display=''; /*set calibration of ACC to invisible*/
+    document.getElementById("accCalib2").style.display=''; /*set calibration of ACC to invisible*/
+    document.getElementById("accCalib3").style.display=''; /*set calibration of ACC to invisible*/
+    document.getElementById("accCalib4").style.display=''; /*set calibration of ACC to invisible*/
   }
-  document.getElementById("VisFrequ").style.display='none'; //set Frequency-settings invisible
-  document.getElementById("VisAWUS").style.display='none'; //set advanced weahter upload settings invisible    
-  document.getElementById("VisAWFFNT").style.display='none'; //set advanced weahter upload settings invisible      
-  document.getElementById("VisWD").style.display='none'; //set weather-data invisible
+  document.getElementById("VisFrequ").style.display='none'; /*set Frequency-settings invisible*/
+  document.getElementById("VisAWUS").style.display='none'; /*set advanced weahter upload settings invisible    */
+  document.getElementById("VisAWFFNT").style.display='none'; /*set advanced weahter upload settings invisible   */   
+  document.getElementById("VisWD").style.display='none'; /*set weather-data invisible*/
   document.getElementById("visAxOffset").style.display='none';
   document.getElementById("visAyOffset").style.display='none';
   document.getElementById("visAzOffset").style.display='none';
@@ -97,14 +44,13 @@ function setVis(){
   document.getElementById("visAccTemp2").style.display='none';  
   document.getElementById("visSigmaP").style.display='none';  
   document.getElementById("visSigmaA").style.display='none';  
-  document.getElementById("VisFuelSensor").style.display='none'; //set FuelSensor invisible
-  document.getElementById("VisMqtt").style.display='none';  //disable Mqtt settings
-  document.getElementById("VisOwnWs").style.display='none';  //disable Own weather-station  
-  document.getElementById("VisWDBme").style.display='none';  //disable temp-correction for BME
-  document.getElementById("VisAutoUpdate").style.display='none';  //disable autoupdate
-  if (document.getElementById("setView").value > 100){ //we are expert user
-          document.getElementById("VisFrequ").style.display=''; //set Frequency-settings visible
-          //document.getElementById("VisAutoUpdate").style.display='';  //set autoupdate visible
+  document.getElementById("VisFuelSensor").style.display='none'; /*set FuelSensor invisible*/
+  document.getElementById("VisMqtt").style.display='none';  /*disable Mqtt settings*/
+  document.getElementById("VisOwnWs").style.display='none';  /*disable Own weather-station  */
+  document.getElementById("VisWDBme").style.display='none';  /*disable temp-correction for BME*/
+  document.getElementById("VisAutoUpdate").style.display='none';  /*disable autoupdate*/
+  if (document.getElementById("setView").value > 100){ /*we are expert user*/
+    document.getElementById("VisFrequ").style.display=''; /*set Frequency-settings visible*/
   }
   if (document.getElementById("useMPU").checked){
     document.getElementById("KfP").innerHTML='Kalman filter pressure-value (default 0.3)';
@@ -113,11 +59,11 @@ function setVis(){
     document.getElementById("KfP").innerHTML='Kalman filter pressure-value (default 0.1)';
     document.getElementById("KfA").innerHTML='Kalman filter accelerator-value (default 0.6)';
   }
-  if (document.getElementById("setView").value > 0){ //we are advanced user
+  if (document.getElementById("setView").value > 0){ /*we are advanced user*/
     document.getElementById("visSigmaP").style.display='';  
     document.getElementById("visSigmaA").style.display='';  
   }
-  if (document.getElementById("setView").value > 100){ //we are expert
+  if (document.getElementById("setView").value > 100){ /*we are expert*/
     document.getElementById("visAxOffset").style.display='';
     document.getElementById("visAyOffset").style.display='';
     document.getElementById("visAzOffset").style.display='';
@@ -127,54 +73,53 @@ function setVis(){
     document.getElementById("visAccTemp1").style.display='';
     document.getElementById("visAccTemp2").style.display='';
   }    
-  if (document.getElementById("mode").value == 1){ //mode ground-station
-    document.getElementById("VisOwnWs").style.display='';  //enable Own weather-station  
+  if (document.getElementById("mode").value == 1){ /*mode ground-station*/
+    document.getElementById("VisOwnWs").style.display='';  /*enable Own weather-station  */
     if (wsMode & wsModeEn){
-      document.getElementById("VisWD").style.display=''; //set weather-data invisible
+      document.getElementById("VisWD").style.display=''; /*set weather-data invisible*/
       document.getElementById("tWu").innerHTML='Weather Underground Upload';
       document.getElementById("tWu2").innerHTML='enable sending weather-data to WU';
-      document.getElementById("VisWU").style.display=''; //set weather-underground upload invisible
+      document.getElementById("VisWU").style.display=''; /*set weather-underground upload invisible*/
       document.getElementById("tWi").innerHTML='windy Upload';
       document.getElementById("tWi2").innerHTML='enable sending weather-data to windy';
-      document.getElementById("VisWI").style.display=''; //set windy upload invisible
-      if (document.getElementById("setView").value > 0){ //we are advanced or expert
-        document.getElementById("VisAWUS").style.display=''; //set advanced weather upload settings visible  
-        if (document.getElementById("setView").value > 100){ //we are expert user
-          document.getElementById("VisAWFFNT").style.display=''; //set advanced weather settings visible    
+      document.getElementById("VisWI").style.display=''; /*set windy upload invisible*/
+      if (document.getElementById("setView").value > 0){ /*we are advanced or expert*/
+        document.getElementById("VisAWUS").style.display=''; /*set advanced weather upload settings visible  */
+        if (document.getElementById("setView").value > 100){ /*we are expert user*/
+          document.getElementById("VisAWFFNT").style.display=''; /*set advanced weather settings visible    */
         }
       }
       if (wsMode & wsModeBme){
-        document.getElementById("VisWDBme").style.display='';  //enable temp-correction for BME
+        document.getElementById("VisWDBme").style.display='';  /*enable temp-correction for BME*/
       }
     }else{
       document.getElementById("tWu").innerHTML='Broadcast weather-underground data to FANET';
       document.getElementById("tWu2").innerHTML='enable sending wu-data to FANET';
-      document.getElementById("VisWU").style.display=''; //set weather-underground visible
-      document.getElementById("VisWI").style.display='none'; //set windy upload invisible
+      document.getElementById("VisWU").style.display=''; /*set weather-underground visible*/
+      document.getElementById("VisWI").style.display='none'; /*set windy upload invisible*/
     }
-    document.getElementById("VisMqtt").style.display='';  //enable Mqtt settings
+    document.getElementById("VisMqtt").style.display='';  /*enable Mqtt settings*/
     document.getElementById("VisAirCraftType").style.display='none';    
     document.getElementById("tName").innerHTML='Ground Station name';
-    document.getElementById("VisGS").style.display=''; //set GS visible
-    document.getElementById("VisGSUpload1").style.display=''; //set GS visible
-    document.getElementById("VisGSUpload2").style.display=''; //set GS visible
+    document.getElementById("VisGS").style.display=''; /*set GS visible*/
+    document.getElementById("VisGSUpload1").style.display=''; /*set GS visible*/
+    document.getElementById("VisGSUpload2").style.display=''; /*set GS visible*/
     document.getElementById("VisVario").style.display='none';
-    document.getElementById("VisFanetTracking").style.display='none'; //fanet-tracking mode in ground-station is important 
-    //document.getElementById("VisOutputSettings").style.display='none'; //output-settings are not usefull in ground-station
+    document.getElementById("VisFanetTracking").style.display='none'; /*fanet-tracking mode in ground-station is important */
   }else{
     document.getElementById("VisAirCraftType").style.display='';
     document.getElementById("tName").innerHTML='Pilot name';
-    document.getElementById("VisGS").style.display='none'; //set GS invisible
-    document.getElementById("VisGSUpload1").style.display='none'; //set GS invisible
-    document.getElementById("VisGSUpload2").style.display='none'; //set GS invisible
-    document.getElementById("VisWU").style.display='none'; //set weather-underground upload invisible
-    document.getElementById("VisWI").style.display='none'; //set windy upload invisible
+    document.getElementById("VisGS").style.display='none'; /*set GS invisible*/
+    document.getElementById("VisGSUpload1").style.display='none'; /*set GS invisible*/
+    document.getElementById("VisGSUpload2").style.display='none'; /*set GS invisible*/
+    document.getElementById("VisWU").style.display='none'; /*set weather-underground upload invisible*/
+    document.getElementById("VisWI").style.display='none'; /*set windy upload invisible*/
     if (bHasVario == 0){
       document.getElementById("VisVario").style.display='none';
     }else{
       document.getElementById("VisVario").style.display='';
     }
-    document.getElementById("VisFuelSensor").style.display=''; //set FuelSensor visible
+    document.getElementById("VisFuelSensor").style.display=''; /*set FuelSensor visible*/
   }
   if (document.getElementById("output").value == 1){
     document.getElementById("VisUdpIp").style.display='';
@@ -234,7 +179,6 @@ function getRfMode(){
 }
 
 function setRfMode(mode){
-  //document.getElementById("FntRx");
   console.log("RF-Mode=" + mode);
   e = document.getElementById("FntRx");
   if (mode & 1){
@@ -270,7 +214,6 @@ function getMQTTMode(){
 }
 
 function setMQTTMode(mode){
-  //document.getElementById("FntRx");
   console.log("setMQTTMode-Mode=" + mode);
   e = document.getElementById("MqttEn");
   if (mode & 1){
@@ -299,7 +242,6 @@ function getOGNMode(){
 }
 
 function setOGNMode(mode){
-  //document.getElementById("FntRx");
   console.log("OGN-Mode=" + mode);
   e = document.getElementById("ognlive");
   if (mode & 1){
@@ -338,9 +280,9 @@ function setBtnCalib(BtnId,state){
       break;
     case 2:
       e.innerText = "calibration ready --> Board will reboot";
-      document.getElementById("btnsave").innerText  = "rebooting ..."
+      document.getElementById("btnsave").innerText  = "rebooting ...";
       var delay = 5000;
-      setTimeout( callMainPage, delay )
+      setTimeout( callMainPage, delay );
       break;
     case 10:
       e.innerText = "press when done";
@@ -356,7 +298,6 @@ function setBtnCalib(BtnId,state){
   }
 }
 
-//send calibGyro
 function calibGyro(){  
   setBtnCalib("btnCalibGyro",1);
   var obj = {
@@ -373,7 +314,6 @@ function setBattVoltOffs(){
 
 }
 
-//send calibcalibAcc
 function calibAcc(){  
   var value = 1;
   if (calibBtnState == 10){
@@ -401,9 +341,9 @@ function setBtnGPS(state){
       break;
     case 2:
       e.innerText = "GPS ready --> Board will reboot";
-      document.getElementById("btnsave").innerText  = "rebooting ..."
+      document.getElementById("btnsave").innerText  = "rebooting ...";
       var delay = 5000;
-      setTimeout( callMainPage, delay )
+      setTimeout( callMainPage, delay );
       break;
     case 255:
       e.innerText = "error configure GPS";
@@ -429,9 +369,9 @@ function setBtnGetGpsPos(state){
       break;
     case 3:
       e.innerText = "GPS fix OK --> Board will reboot";
-      document.getElementById("btnsave").innerText  = "rebooting ..."
+      document.getElementById("btnsave").innerText  = "rebooting ...";
       var delay = 5000;
-      setTimeout( callMainPage, delay )
+      setTimeout( callMainPage, delay );
       break;
     case 255:
       e.innerText = "error configure GPS";
@@ -464,13 +404,13 @@ function onlyLetters(str) {
  }
 
 function openGeoidCalc(){
-  var url = "https://geographiclib.sourceforge.io/cgi-bin/GeoidEval?input=" + document.getElementById("gslat").value + "+" + document.getElementById("gslon").value + "&option=Submit"
+  var url = "https://geographiclib.sourceforge.io/cgi-bin/GeoidEval?input=" + document.getElementById("gslat").value + "+" + document.getElementById("gslon").value + "&option=Submit";
   var win = window.open(url, '_blank');
   win.focus();
 }
 
 function checkValues(){
-  if (document.getElementById("mode").value == 1){ //mode ground-station
+  if (document.getElementById("mode").value == 1){ /*mode ground-station*/
    var gsname =  document.getElementById("PilotName").value;
    if ((gsname.length < 3) || (gsname.length > 9) || (!onlyLetters(gsname))){
     window.alert("Error Ground Station name\r\nMinimum length for name is 3 characters\r\nMaximum length for name is 9 characters\r\nUse chars and numbers only (A-Z, a-z and 0-9)");
@@ -480,7 +420,6 @@ function checkValues(){
   return true;
 }
 
-//this function sends all values
 function sendValues(){  
   if (!checkValues()){
     return;
@@ -582,7 +521,6 @@ function sendValues(){
   ognlive : getOGNMode(),
   traccar_live : Number(document.getElementById("traccar_live").checked),
   traccarsrv : document.getElementById("traccarsrv").value,
-  //RFM : Number(document.getElementById("RFM").value),
   RFM : getRfMode(),
   sigmaP : parseFloat(document.getElementById("sigmaP").value),
   sigmaA : parseFloat(document.getElementById("sigmaA").value),
@@ -656,42 +594,21 @@ function sendValues(){
 	};
   doSend(JSON.stringify(obj));
 
-  document.getElementById("btnsave").innerText  = "rebooting ..."
+  document.getElementById("btnsave").innerText  = "rebooting ...";
   var delay = 10000;
-  setTimeout( callMainPage, delay )
+  setTimeout( callMainPage, delay );
 }
 
-function FntIdDec2Hex(value){
-  var retVal = "";
-  if (value != 0){
-    retVal = (value).toString(16).toUpperCase().padStart(2, '0')
-    console.log("value="+value+",l="+retVal.length+"retval=" + retVal);
-    while (retVal.length < 6){
-      retVal = "0" + retVal;
-    };
-  }
-  return retVal;
-}
- 
-function FntIdHex2Dec(value){
-  var retVal = parseInt(value,16);
-  if (!retVal){
-    retVal = 0;
-  }
-  console.log("value="+value+"retval=" + retVal);
-  return retVal;
-}
- 
-// Called when a message is received from the server
+/* Called when a message is received from the server*/
 function onMessage(evt) {
  
-    // Print out our received message
+    /* Print out our received message*/
     console.log("Received: " + evt.data);
     
-    // Update circle graphic with LED state
+    /* Update circle graphic with LED state*/
     var myObj = JSON.parse(evt.data);
     for (var key of Object.keys(myObj)) {
-        console.log(key + " -> " + myObj[key])
+        console.log(key + " -> " + myObj[key]);
         let isArray = Array.isArray(myObj[key]);
         if (Array.isArray(myObj[key])){
           var i = 0;
@@ -751,12 +668,12 @@ function onMessage(evt) {
           if (myObj[key] == 0){
             document.getElementById("VisMPU").style.display='none';
           }
-          //continue;          
         }
         var e = document.getElementById(key);
-        if (e instanceof HTMLSelectElement) {     // <select>
+        if (e == null) continue;
+        if (e instanceof HTMLSelectElement) {     /* <select>*/
           document.getElementById(key).value = myObj[key];
-        }else if ((e instanceof HTMLInputElement ) && (e.getAttribute('type') == 'checkbox')){     // <input checkbox>
+        }else if ((e instanceof HTMLInputElement ) && (e.getAttribute('type') == 'checkbox')){     /* <input checkbox>*/
           if (myObj[key] == 1){
             document.getElementById(key).checked = true;
           }else{
@@ -768,33 +685,20 @@ function onMessage(evt) {
           document.getElementById(key).value = myObj[key];
         }
     }
-    setVis(); //now set visibility
+    setVis(); /*now set visibility*/
 }
- 
-// Called when a WebSocket error occurs
-function onError(evt) {
-    console.log("ERROR: " + evt.data);
-    //document.getElementById("TxtConn").innerHTML ="error: " + evt.data;
-}
- 
-// Sends a message to the server (and prints it to the console)
-function doSend(message) {
-    console.log("Sending: " + message);
-    websocket.send(message);
-}
- 
-// Call the init function as soon as the page loads
-window.addEventListener("load", init, false);
  
 </script>
+<script type="text/javascript" src="scripts.js"></script>
 </head>
 <body>
 <div style="text-align:left;display:inline-block;color:#eaeaea;min-width:340px;">
 <div style='text-align:center;color:#eaeaea;'>
 <noscript>JavaScript aktivieren um GXAirCom benutzen zu können<br></noscript>
-<h1>%APPNAME%-%VERSION%</h1>
-<h3>build-date: %BUILD%</h3>
-<h3>%PILOT%</h3>            
+<h1 id="appname"></h1>
+<h3 id="buildDate"></h3>
+<h3 id="pilot"></h3>
+<h3 id="myIP"></h3>
 </div>
 <fieldset>
 <legend><b>General settings</b></legend>

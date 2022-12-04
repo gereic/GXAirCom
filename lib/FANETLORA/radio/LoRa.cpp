@@ -482,13 +482,18 @@ int16_t LoRaClass::sx1262ClearIrqStatus(){
   return (SPIwriteCommand(0x02, data, 2));
 }
 
+uint16_t LoRaClass::sx1262ReadIrQ(){
+  uint8_t data[] = { 0x00, 0x00 };
+  SPIreadCommand(0x12, data, 2);
+  uint16_t irq = ((uint16_t)(data[0]) << 8) | data[1];
+  return irq;
+}
+
 int16_t LoRaClass::sx1262ReadData(uint8_t* buffer, size_t len){
   int16_t ret = 0;
   sx1262_standby(0x01);
 
-  uint8_t data[] = { 0x00, 0x00 };
-  SPIreadCommand(0x12, data, 2);
-  uint16_t irq = ((uint16_t)(data[0]) << 8) | data[1];
+  uint16_t irq = sx1262ReadIrQ();
   if((irq & SX126X_IRQ_CRC_ERR) || (irq & SX126X_IRQ_HEADER_ERR)) {
     ret = -1;
   }
@@ -605,14 +610,14 @@ float LoRaClass::getRSSI(){
 int16_t LoRaClass::sx1276setOpMode(uint8_t mode){
   int16_t ret = 0;
   if (mode == SX1276_MODE_RX_CONTINUOUS){
-    ret = pGxModule->SPIsetRegValue(0x01, mode, 2, 0, 200); //set Register wait max. 200ms
+    ret = pGxModule->SPIsetRegValue(SX127X_REG_OP_MODE, mode, 2, 0, 200); //set Register wait max. 200ms
   }else{
-    ret = pGxModule->SPIsetRegValue(0x01, mode, 2, 0, 10); //RegOpMode --> set op-mode wait max. 10ms
+    ret = pGxModule->SPIsetRegValue(SX127X_REG_OP_MODE, mode, 2, 0, 10); //RegOpMode --> set op-mode wait max. 10ms
   }
   if (ret) log_e("sx1276 mode=%d error=%d",mode,ret);
   /*
   for (int i = 0; i < 3; i++){
-    ret = pGxModule->SPIsetRegValue(0x01, mode, 2, 0, 200); //RegOpMode --> set op-mode
+    ret = pGxModule->SPIsetRegValue(SX127X_REG_OP_MODE, mode, 2, 0, 200); //RegOpMode --> set op-mode
     if (ret == 0) break;
   } 
   */
@@ -759,11 +764,11 @@ int16_t LoRaClass::switchFSK(float frequency){
       }
     case RADIO_SX1276:
       sx1276setOpMode(SX1276_MODE_SLEEP); //RegOpMode --> set Module to sleep      
-      ret = pGxModule->SPIsetRegValue(0x01, 0b00000000, 6, 5, 200); //set modulation to FSK
+      ret = pGxModule->SPIsetRegValue(SX127X_REG_OP_MODE, 0b00000000, 6, 5, 200); //set modulation to FSK
       if (ret) log_e("sx1276 error set OP-Mode 1 %d",ret);
-      ret = pGxModule->SPIsetRegValue(0x01, 0b00000000, 3, 3, 200); //clear low frequency-mode
+      ret = pGxModule->SPIsetRegValue(SX127X_REG_OP_MODE, 0b00000000, 3, 3, 200); //clear low frequency-mode
       if (ret) log_e("sx1276 error set OP-Mode 2 %d",ret);
-      ret = pGxModule->SPIsetRegValue(0x01, 0b00000000, 7, 7, 200); //RegOpMode --> set modem to FSK
+      ret = pGxModule->SPIsetRegValue(SX127X_REG_OP_MODE, 0b00000000, 7, 7, 200); //RegOpMode --> set modem to FSK
       if (ret) log_e("sx1276 error set OP-Mode 3 %d",ret);
 
       sx1276setOpMode(SX1276_MODE_STANDBY); //RegOpMode --> set Module to standby   
@@ -937,7 +942,7 @@ int16_t LoRaClass::switchLORA(float frequency){
       SPIwriteCommand(0x8C, data, 9);
 
       //set IRQ to RX-Done
-      sx1262SetDioIrqParams(SX126X_IRQ_RX_DONE | SX126X_IRQ_TIMEOUT | SX126X_IRQ_CRC_ERR | SX126X_IRQ_HEADER_ERR, SX126X_IRQ_RX_DONE);
+      sx1262SetDioIrqParams(SX126X_IRQ_RX_DONE | SX126X_IRQ_TIMEOUT | SX126X_IRQ_CRC_ERR | SX126X_IRQ_HEADER_ERR | SX126X_IRQ_HEADER_VALID | SX126X_IRQ_SYNC_WORD_VALID | SX126X_IRQ_PREAMBLE_DETECTED, SX126X_IRQ_RX_DONE);
 
       //Sync Word
       data[0] = 0xF4;
@@ -952,11 +957,11 @@ int16_t LoRaClass::switchLORA(float frequency){
       }
     case RADIO_SX1276:
       sx1276setOpMode(SX1276_MODE_SLEEP); //RegOpMode --> set Module to sleep
-      ret = pGxModule->SPIsetRegValue(0x01, 0b00000000, 6, 6, 200); //AccessSharedReg
+      ret = pGxModule->SPIsetRegValue(SX127X_REG_OP_MODE, 0b00000000, 6, 6, 200); //AccessSharedReg
       if (ret) log_e("sx1276 error set OP-Mode 1 %d",ret);
-      ret = pGxModule->SPIsetRegValue(0x01, 0b00000000, 3, 3, 200); //clear low frequency-mode
+      ret = pGxModule->SPIsetRegValue(SX127X_REG_OP_MODE, 0b00000000, 3, 3, 200); //clear low frequency-mode
       if (ret) log_e("sx1276 error set OP-Mode 2 %d",ret);
-      ret = pGxModule->SPIsetRegValue(0x01, 0b10000000, 7, 7, 5); //RegOpMode --> set modem to LORA
+      ret = pGxModule->SPIsetRegValue(SX127X_REG_OP_MODE, 0b10000000, 7, 7, 5); //RegOpMode --> set modem to LORA
       if (ret) log_e("sx1276 error set OP-Mode 3 %d",ret);
       //calculate register values
       uint32_t FRF = (_freq * (uint32_t(1) << 19)) / 32.0;
@@ -1085,7 +1090,7 @@ int16_t LoRaClass::startReceive(){
     case RADIO_SX1262:
       {
       //set IRQ to RX-Done
-      sx1262SetDioIrqParams(SX126X_IRQ_RX_DONE | SX126X_IRQ_TIMEOUT | SX126X_IRQ_CRC_ERR | SX126X_IRQ_HEADER_ERR, SX126X_IRQ_RX_DONE);
+      sx1262SetDioIrqParams(SX126X_IRQ_RX_DONE | SX126X_IRQ_TIMEOUT | SX126X_IRQ_CRC_ERR | SX126X_IRQ_HEADER_ERR | SX126X_IRQ_HEADER_VALID | SX126X_IRQ_SYNC_WORD_VALID | SX126X_IRQ_PREAMBLE_DETECTED, SX126X_IRQ_RX_DONE);
 
       sx1262SetBufferBaseAddress();
 
@@ -1096,13 +1101,7 @@ int16_t LoRaClass::startReceive(){
       receivedFlag = false;
       enableInterrupt = true;
       //start RX
-      //uint8_t data[] = { 0xFF,0xFF,0xFF };
-      uint8_t data[3];
-      data[0] = 0xFF;
-      data[1] = 0xFF;
-      data[2] = 0xFF;
-      SPIwriteCommand(0x82, data, 3);
-      //sx1262GetStatus();
+      sx1262SetCmdRx();
 
       break;
       }
@@ -1275,10 +1274,19 @@ uint32_t LoRaClass::sx1262GetTimeOnAir(size_t len) {
 uint8_t LoRaClass::sx1262GetStatus() {
   uint8_t data = 0;
   SPIreadCommand(0xC0, &data, 1);
-  log_i("Status = 0X%02X",data);
+  //log_i("Status = 0X%02X",data);
   return(data);
 }
 
+void LoRaClass::sx1262SetCmdTx(){
+  uint8_t data[] = { 0x00,0x00,0x00 };
+  SPIwriteCommand(SX126X_CMD_SET_TX, data, 3);  
+}
+
+void LoRaClass::sx1262SetCmdRx(){
+  uint8_t data[] = { 0xFF,0xFF,0xFF };
+  SPIwriteCommand(SX126X_CMD_SET_RX, data, 3);  
+}
 
 int16_t LoRaClass::sx1262Transmit(uint8_t* buffer, size_t len, uint8_t addr){
   int16_t state = 0;
@@ -1344,10 +1352,7 @@ int16_t LoRaClass::sx1262Transmit(uint8_t* buffer, size_t len, uint8_t addr){
   pGxModule->setRfSwitchState(LOW, HIGH);
 
   // start transmission
-  data[0] = 0x00;
-  data[1] = 0x00;
-  data[2] = 0x00;
-  SPIwriteCommand(0x83, data, 3);  
+  sx1262SetCmdTx();
 
   // wait for BUSY to go low (= PA ramp up done)
   while(GxModule::digitalRead(pGxModule->getGpio())) {
@@ -1375,8 +1380,113 @@ int16_t LoRaClass::sx1262Transmit(uint8_t* buffer, size_t len, uint8_t addr){
   return(state);
 }
 
+int LoRaClass::sx_channel_free4tx(){
+	/* in case of receiving, is it ongoing? */
+  uint8_t mode = 0;
+  uint16_t irq = 0;
+  uint8_t sx1262Cmd = 0;
+  uint8_t chipMode = 0;
+  if (_fskMode){ //todo --> check also in FSK-Mode
+    return ERR_NONE;
+  }
+  switch (radioType){
+    case RADIO_SX1262:
+      mode = sx1262GetStatus(); //get Status
+      /* are we transmitting anyway? */
+      chipMode = mode & 0xF0; //we neee the chip-mode
+      if ((chipMode != SX126X_STATUS_MODE_RX) && (chipMode != SX126X_STATUS_MODE_STDBY_XOSC)){
+        log_i("ChipMode=0X%02X",chipMode);
+      }      
+      if(chipMode == SX126X_STATUS_MODE_TX)
+        return ERR_TX_TX_ONGOING;
+
+      /* in case of receiving, is it ongoing? */
+      for(uint16_t i=0; i<4 && (chipMode == SX126X_STATUS_MODE_RX); i++){
+        irq = sx1262ReadIrQ();
+        if((irq & SX126X_IRQ_PREAMBLE_DETECTED) || (irq & SX126X_IRQ_SYNC_WORD_VALID || (irq & SX126X_IRQ_HEADER_VALID))) {
+          return ERR_TX_RX_ONGOING;
+        }
+        delay(1);
+      }
+      break;
+    case RADIO_SX1276:
+      mode = pGxModule->SPIreadRegister(SX127X_REG_OP_MODE); //read OP-Mode
+      mode &= SX127X_LORA_MODE_MASK;
+      /* are we transmitting anyway? */
+      if(mode == SX127X_LORA_TX_MODE)
+        return ERR_TX_TX_ONGOING;
+      /* in case of receiving, is it ongoing? */
+      for(uint16_t i=0; i<4 && (mode == SX127X_LORA_RXCONT_MODE || mode == SX127X_LORA_RXSINGLE_MODE); i++){
+        if(pGxModule->SPIreadRegister(SX127X_REG_MODEM_STAT) & 0x0B)
+          return ERR_TX_RX_ONGOING;
+        delay(1);
+      }
+      break;
+  }
+  /* CAD not required */
+  if(_fskMode)
+    return ERR_NONE;
+
+	/*
+	 * CAD
+	 */
+
+  switch (radioType){
+    case RADIO_SX1262:
+      sx1262_standby(); //set Module to Standby
+      //set IRQ to RX-Done
+      sx1262SetDioIrqParams(SX126X_IRQ_CAD_DETECTED | SX126X_IRQ_CAD_DONE, SX126X_IRQ_NONE);
+      pGxModule->SPIwriteRegister(SX127X_REG_IRQ_FLAGS,SX127X_IRQ_CAD_DETECTED | SX127X_IRQ_CAD_DONE);	// clearing flags
+      // clear IRQ
+      sx1262ClearIrqStatus();
+      // set RF switch (if present)
+      pGxModule->setRfSwitchState(HIGH, LOW);
+      SPIwriteCommand(SX126X_CMD_SET_CAD, &sx1262Cmd, 0, false); //set to CAD-Mode
+
+      // wait for CAD completion
+      for(uint16_t i = 0; i<10 && ((irq=sx1262ReadIrQ()) & SX126X_IRQ_CAD_DONE) == 0; i++)
+        delay(1);
+      if(irq & SX126X_IRQ_CAD_DETECTED)
+      {
+        // re-establish old mode
+        if(chipMode == SX126X_STATUS_MODE_RX){
+          sx1262SetCmdRx();
+        }else if (chipMode == SX126X_STATUS_MODE_STDBY_XOSC){
+          sx1262_standby(); //set Module to Standby
+        }
+          
+        return ERR_TX_RX_ONGOING;
+      }
+      break;
+    case RADIO_SX1276:
+      sx1276setOpMode(SX1276_MODE_STANDBY);
+      pGxModule->SPIwriteRegister(SX127X_REG_IRQ_FLAGS,SX127X_IRQ_CAD_DETECTED | SX127X_IRQ_CAD_DONE);	// clearing flags
+      sx1276setOpMode(SX1276_MODE_CAD);
+
+      // wait for CAD completion
+      uint8_t iflags;
+      for(uint16_t i = 0; i<10 && ((iflags=pGxModule->SPIreadRegister(SX127X_REG_IRQ_FLAGS)) & SX127X_IRQ_CAD_DONE) == 0; i++)
+        delay(1);
+      if(iflags & SX127X_IRQ_CAD_DETECTED)
+      {
+        // re-establish old mode
+        if(mode == SX127X_LORA_RXCONT_MODE || mode == SX127X_LORA_RXSINGLE_MODE || mode == SX127X_LORA_SLEEP_MODE)
+          sx1276setOpMode(mode);
+
+        return ERR_TX_RX_ONGOING;
+      }
+      break;
+  }
+	return ERR_NONE;
+}
+
 int16_t LoRaClass::transmit(uint8_t* data, size_t len){
   //log_i("transmit l=%d",len);
+	/* channel accessible? */
+  int state = sx_channel_free4tx();
+	if(state != ERR_NONE)
+    return state;
+
   int16_t ret = 0;
   enableInterrupt = false;
   receivedFlag = false;
