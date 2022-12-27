@@ -1,0 +1,44 @@
+name: PlatformIO CI
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Cache pip
+      uses: actions/cache@v2
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    - name: Cache PlatformIO
+      uses: actions/cache@v2
+      with:
+        path: ~/.platformio
+        key: ${{ runner.os }}-${{ hashFiles('**/lockfiles') }}
+    - name: Set up Python
+      uses: actions/setup-python@v2
+    - name: Install PlatformIO
+      run: |
+        python -m pip install --upgrade pip
+        pip install --upgrade platformio
+    - name: Build psRam
+      run: pio run -e psRam
+    - name: Build nopsRam
+      run: pio run -e nopsRam
+    - name: Build sim7000_psRam
+      run: pio run -e sim7000_psRam
+    - name: Build sim800_nopsRam
+      run: pio run -e sim800_nopsRam
+    - name: Build sim800_nopsRam
+      run: pio run -e sim800_nopsRam
+    - name: Build ttgo-lora32-v1_SD_CARD
+      run: pio run -e ttgo-lora32-v1_SD_CARD
+
+
+
