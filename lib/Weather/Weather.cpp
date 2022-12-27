@@ -34,16 +34,20 @@ void IRAM_ATTR onTimer() {
 Weather::Weather(){
 }
 
-bool Weather::initBME280(void){
+bool Weather::checkI2Caddr(uint8_t i2cAddr) {
   uint8_t error;
-  sensorAdr = 0x76;
+  log_i("check device at address 0x%X !",i2cAddr);
+  pI2c->beginTransmission(i2cAddr);
+  error = pI2c->endTransmission();
+  return (error == 0);
+}
+
+bool Weather::initBME280(void){
+  uint8_t sensorAdr = 0x76;
   bool ret = false;
   for (sensorAdr = 0x76; sensorAdr <= 0x77; sensorAdr++)
   {
-    //log_i("check device at address 0x%X !",sensorAdr);
-    pI2c->beginTransmission(sensorAdr);
-    error = pI2c->endTransmission();
-    if (error == 0){
+    if (checkI2Caddr(sensorAdr)){
       //log_i("I2C device found at address 0x%X !",sensorAdr);
       ret = bme.begin(sensorAdr,pI2c);
       //log_i("check sensor on adr 0x%X ret=%d",sensorAdr,ret);
@@ -70,18 +74,40 @@ bool Weather::initBME280(void){
   return true;
 }
 
+bool Weather::initADS(AneometerSettings &anSettings) {
+  uint8_t adsAddr = 0x48;
+  bool ret = false;
+  for (adsAddr = 0x48; adsAddr <= 0x49; adsAddr++) {
+    if (checkI2Caddr(adsAddr)) {
+      _ADS1015 = ADS1015(adsAddr, pI2c);
+      ret = _ADS1015.isConnected();
+      if (ret) { break; }
+    }
+  }
+  if (!ret) return false;
+  log_i("found ADS1015 on adr 0x%X",adsAddr);
+  _ADS1015.setMode(1);
+  _ADS1015.readADC(0);
+  _ADS1015.setGain(anSettings.AneometerAdsGain);
+  _ADS1015.readADC(0);
+  _ADS1015.setDataRate(4);  // 7 is fastest, but more noise
+  _ADS1015.readADC(0);
+  return true;
+}
 
-bool Weather::begin(TwoWire *pi2c, float height,int8_t oneWirePin, int8_t windDirPin, int8_t windSpeedPin,int8_t rainPin,uint8_t aneoType,bool bHasBME){
+bool Weather::begin(TwoWire *pi2c, SettingsData &setting, int8_t oneWirePin, int8_t windDirPin, int8_t windSpeedPin,int8_t rainPin){
   bool bRet = true;
   pI2c = pi2c;
-  _height = height;
+  _height = setting.gs.alt;
   hasTempSensor = false;
   aneometerpulsecount = 0;
   bNewWeather = false;
   actHour = 0;
   actDay = 0;
-  aneometerType = aneoType;
-  _bHasBME = bHasBME;
+  _bHasBME = setting.wd.mode.bits.hasBME;
+  anSettings = setting.wd.aneometer;
+  aneometerType = anSettings.AneometerType;
+
   //log_i("onewire pin=%d",oneWirePin);
   if (oneWirePin >= 0){
     oneWire.begin(oneWirePin);
@@ -118,6 +144,15 @@ bool Weather::begin(TwoWire *pi2c, float height,int8_t oneWirePin, int8_t windDi
     _weather.bWindSpeed = true;
     _weather.bWindDir = true;
     tx20_init(windSpeedPin);
+  } else if (aneometerType == 2){
+    if (initADS(anSettings)) {
+      _weather.bWindDir = anSettings.AneometerAdsWDirMaxVoltage != anSettings.AneometerAdsWDirMinVoltage;
+      _weather.bWindSpeed = anSettings.AneometerAdsWSpeedMaxVoltage != anSettings.AneometerAdsWSpeedMinVoltage;
+      _bHasADS = true;
+    }else{
+      _bHasADS = false;
+      log_i("no ADS1015 found");
+    }
   }else{
     //init-code for aneometer DAVIS6410
     _windDirPin = windDirPin;
@@ -198,6 +233,70 @@ void Weather::checkAneometer(void){
   }
 }
 
+float Weather::getAdsVoltage(uint8_t pin, float vref) {
+  float voltage, vdiv_r1, vdiv_r2;
+  vdiv_r1 = anSettings.AneometerAdsVDivR1;
+  vdiv_r2 = anSettings.AneometerAdsVDivR2;
+  voltage = _ADS1015.toVoltage(_ADS1015.readADC(pin));
+  voltage -= vref; // voltage divider is between in and vref
+  voltage = voltage * ((vdiv_r1 + vdiv_r2) / vdiv_r2);
+  voltage += vref; // add reference voltage again
+  log_e("measured_voltage: %f",voltage);
+  return voltage;
+}
+
+float Weather::calcAdsMeasurement(float measurement, float minVoltage, float maxVoltage, float minRange, float maxRange) {
+  // use mV
+  if ((measurement < minVoltage)) {
+    return 0.0;
+  }
+  if (minVoltage == maxVoltage) {
+    // avoid division by zero.
+    return 0.0;
+  }
+  float minVoltageMV = 1000 * minVoltage;
+  float maxVoltageMV = 1000 * maxVoltage;
+  float measurementMV = 1000 * measurement;
+  float range = maxRange - minRange;
+  float rangePart = range / (maxVoltageMV - minVoltageMV);
+
+  return (minRange + (rangePart * (measurementMV - minVoltageMV))); 
+}
+
+void Weather::checkAdsAneometer(void) {
+  uint8_t speed_pin = (uint8_t) eAdsAneometerPin::ADS_WINDSPEED_PIN;
+  uint8_t dir_pin = (uint8_t) eAdsAneometerPin::ADS_WINDDIR_PIN;
+  uint8_t vref_pin = (uint8_t) eAdsAneometerPin::ADS_VREF_PIN;
+  float vref = _ADS1015.toVoltage(_ADS1015.readADC(vref_pin));
+  float measurement;
+  if (_weather.bWindSpeed){
+    measurement = getAdsVoltage(speed_pin, vref);
+    measurement = calcAdsMeasurement(
+      measurement,
+      anSettings.AneometerAdsWSpeedMinVoltage,
+      anSettings.AneometerAdsWSpeedMaxVoltage,
+      anSettings.AneometerAdsWSpeedMinSpeed,
+      anSettings.AneometerAdsWSpeedMaxSpeed
+    );
+    _weather.WindSpeed = measurement;
+  }
+  if (_weather.bWindDir){
+    measurement = getAdsVoltage(dir_pin, vref);
+    measurement = calcAdsMeasurement(
+      measurement,
+      anSettings.AneometerAdsWDirMinVoltage,
+      anSettings.AneometerAdsWDirMaxVoltage,
+      anSettings.AneometerAdsWDirMinDir,
+      anSettings.AneometerAdsWDirMaxDir
+    );
+    measurement += _winddirOffset;
+    // don't use fmod for a smaller footprint
+    while (measurement < 0) { measurement += 360.0; }
+    while (measurement > 360) { measurement -= 360.0; }
+    _weather.WindDir = measurement;
+  }
+}
+
 void Weather::checkRainSensor(void){
   time_t now;
   std::time(&now);
@@ -272,7 +371,7 @@ void Weather::run(void){
         log_e("error reading oneWire");
       }
     }
-    if (aneometerType == 1){
+    if (aneometerType == eAneometer::TX20){
       uint8_t Dir;
       uint16_t Speed;
       uint8_t ret = tx20getNewData(&Dir,&Speed);
@@ -281,6 +380,8 @@ void Weather::run(void){
         _weather.WindSpeed = float(Speed) / 10.0 * 3.6; //[1/10m/s] --> [km/h]
         if (_weather.WindSpeed > _weather.WindGust) _weather.WindGust = _weather.WindSpeed; 
       }
+    } else if (aneometerType == eAneometer::ADS_A1015 && _bHasADS) {
+      checkAdsAneometer();
     }else{
       checkAneometer();
     }

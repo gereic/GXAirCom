@@ -63,7 +63,7 @@ function FntIdHex2Dec(value){
   if (!retVal){
     retVal = 0;
   }
-  console.log("value="+value+"retval=" + retVal);
+  //console.log("value="+value+"retval=" + retVal);
   return retVal;
 }
  
@@ -81,4 +81,37 @@ function doSend(message) {
 
 // Call the init function as soon as the page loads
 window.addEventListener("load", init, false);
+
+
+function doSendData(elements, save) {
+  var obj = { save: save };
+  elements.forEach(element => {
+    var e = document.getElementById(element);
+    //console.log("type=" + e.tagName);
+    if (e.tagName == 'select-one'){
+      //console.log("select " + element);
+      obj[element] = NUMBER(e.checked);
+    }else if (e.getAttribute('type') == 'checkbox') {
+      //console.log("checkbox " + element);  
+      obj[element] = Number(e.checked);
+    } else if (e.getAttribute('type') == 'number'){
+      //console.log("number " + element);  
+      obj[element] = Number(e.value);
+    } else {
+      //console.log("string " + element);  
+      obj[element] = e.value;
+    }
+  });
+  doSend(JSON.stringify(obj));
+}
+
+
+function noType(element) {
+    return element;
+}
+
+//get value of element
+function _value(element_id) {
+  return document.getElementById(element_id).value;
+}
  

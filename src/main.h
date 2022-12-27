@@ -286,6 +286,20 @@ struct VarioSettings{
 			uint8_t mode;
 	};
 
+struct AneometerSettings {
+  eAneometer AneometerType; //Aneometer
+  uint8_t AneometerAdsGain;
+  float AneometerAdsWSpeedMinVoltage;
+  float AneometerAdsWSpeedMaxVoltage;
+  float AneometerAdsWDirMinVoltage;
+  float AneometerAdsWDirMaxVoltage;
+  float AneometerAdsWSpeedMinSpeed;
+  float AneometerAdsWSpeedMaxSpeed;
+  float AneometerAdsWDirMinDir;
+  float AneometerAdsWDirMaxDir;
+  float AneometerAdsVDivR1;
+  float AneometerAdsVDivR2;
+};
 
 struct MqttSettings{
   uMqttMode mode;
@@ -309,12 +323,12 @@ struct GSSettings{
   float geoidAlt; //geoidaltitude for Legacy
   eScreenOption SreenOption; //energy-option for display
   eGsPower PowerSave; //powersave-option
-  eAneometer Aneometer; //Aneometer
 };
 
 struct WeatherSettings{
   
   uWeatherStationMode mode;
+  AneometerSettings aneometer;
   float tempOffset;
   int16_t windDirOffset;
   uint8_t sendFanet;  

@@ -2725,8 +2725,7 @@ void taskWeather(void *pvParameters){
   Weather weather;
   weather.setTempOffset(setting.wd.tempOffset);
   weather.setWindDirOffset(setting.wd.windDirOffset);
-  //if (weather.begin(&i2cZero,setting.gs.alt,PinOneWire,PinWindDir,PinWindSpeed,PinRainGauge)){
-  if (!weather.begin(&Wire,setting.gs.alt,PinOneWire,PinWindDir,PinWindSpeed,PinRainGauge,setting.gs.Aneometer,setting.wd.mode.bits.hasBME)){
+  if (!weather.begin(&Wire,setting,PinOneWire,PinWindDir,PinWindSpeed,PinRainGauge)){    
   
   }
   if ((setting.WUUpload.enable) && (!setting.wd.mode.bits.enable)){

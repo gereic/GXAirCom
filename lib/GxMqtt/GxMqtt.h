@@ -14,7 +14,7 @@
 #include <PubSubClient.h>
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
-#include "../../src/main.h"
+#include "main.h"
 
 #define GXMQTTMAXSTRING 255
 
