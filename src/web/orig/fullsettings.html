@@ -94,10 +94,10 @@ function setVis(){
       if (wsMode & wsModeBme){
         document.getElementById("VisWDBme").style.display='';  /*enable temp-correction for BME*/
       }
-      if (document.getElementById("wdAneo").value == 2){
+      if (document.getElementById("wdAnemo").value == 2){
         document.getElementById("VisADS1015").style.display=''; //enable ADS1015 settings
       }
-      if ((document.getElementById("wdAneo").value == 2) && (document.getElementById("setView").value > 100)){
+      if ((document.getElementById("wdAnemo").value == 2) && (document.getElementById("setView").value > 100)){
         document.getElementById("VisADS1015Exp").style.display=''; //enable ADS1015 expert-settings
       }    
     }else{
@@ -466,18 +466,18 @@ function sendValues(){
 
   doSendData(
     [
-    "wdAneo",
-    "wdAneoAdsGain",
-    "wdAneoAdsWSpeedMinVoltage",
-    "wdAneoAdsWSpeedMaxVoltage",
-    "wdAneoAdsWDirMinVoltage",
-    "wdAneoAdsWDirMaxVoltage",
-    "wdAneoAdsWSpeedMinSpeed",
-    "wdAneoAdsWSpeedMaxSpeed",
-    "wdAneoAdsWDirMinDir",
-    "wdAneoAdsWDirMaxDir",
-    "wdAneoAdsVDivR1",
-    "wdAneoAdsVDivR2"
+    "wdAnemo",
+    "wdAnemoAdsGain",
+    "wdAnemoAdsWSpeedMinVoltage",
+    "wdAnemoAdsWSpeedMaxVoltage",
+    "wdAnemoAdsWDirMinVoltage",
+    "wdAnemoAdsWDirMaxVoltage",
+    "wdAnemoAdsWSpeedMinSpeed",
+    "wdAnemoAdsWSpeedMaxSpeed",
+    "wdAnemoAdsWDirMinDir",
+    "wdAnemoAdsWDirMaxDir",
+    "wdAnemoAdsVDivR1",
+    "wdAnemoAdsVDivR2"
     ],
     1
   );
@@ -1080,11 +1080,12 @@ function onMessage(evt) {
       <table style="width:100&#37;">
         <tbody>
           <tr>
-            <th>Aneometer</th>
-            <td><select id="wdAneo" onchange="setVis()">
+            <th>Anemometer</th>
+            <td><select id="wdAnemo" onchange="setVis()">
               <option value="0">DAVIS 6410</option>
               <option value="1">Technoline TX20</option>
               <option value="2">ADS1015</option>
+              <option value="3">PEETBROS</option>
             </select></td>
           </tr>
           <tr>
@@ -1118,7 +1119,7 @@ function onMessage(evt) {
         <tbody>
           <tr>
             <th>ADS1015 Gain</th>
-            <td><select id="wdAneoAdsGain">
+            <td><select id="wdAnemoAdsGain">
               <option value="0">0</option>
               <option value="1">1</option>
               <option value="2">2</option>
@@ -1139,23 +1140,23 @@ function onMessage(evt) {
           </tr>
           <tr>
             <td>Wind Speed Voltage</td>
-            <td><input type="number" id="wdAneoAdsWSpeedMinVoltage"></td>
-            <td><input type="number" id="wdAneoAdsWSpeedMaxVoltage"></td>
+            <td><input type="number" id="wdAnemoAdsWSpeedMinVoltage"></td>
+            <td><input type="number" id="wdAnemoAdsWSpeedMaxVoltage"></td>
           </tr>
           <tr>
             <td>Wind Speed km/h</td>
-            <td><input type="number" id="wdAneoAdsWSpeedMinSpeed"></td>
-            <td><input type="number" id="wdAneoAdsWSpeedMaxSpeed"></td>
+            <td><input type="number" id="wdAnemoAdsWSpeedMinSpeed"></td>
+            <td><input type="number" id="wdAnemoAdsWSpeedMaxSpeed"></td>
           </tr>
           <tr>
             <td>Wind Direction Voltage</td>
-            <td><input type="number" id="wdAneoAdsWDirMinVoltage"></td>
-            <td><input type="number" id="wdAneoAdsWDirMaxVoltage"></td>
+            <td><input type="number" id="wdAnemoAdsWDirMinVoltage"></td>
+            <td><input type="number" id="wdAnemoAdsWDirMaxVoltage"></td>
           </tr>
           <tr>
             <td>Wind Direction Degrees</td>
-            <td><input type="number" id="wdAneoAdsWDirMinDir"></td>
-            <td><input type="number" id="wdAneoAdsWDirMaxDir"></td>
+            <td><input type="number" id="wdAnemoAdsWDirMinDir"></td>
+            <td><input type="number" id="wdAnemoAdsWDirMaxDir"></td>
           </tr>
         </tbody>
       </table>
@@ -1167,10 +1168,10 @@ function onMessage(evt) {
             <th>ADS1015 expert settings</th>
           </tr>
           <tr>
-            <td>Voltage Divider R1 (Ohm)</td><td><input type="number" id="wdAneoAdsVDivR1"></td>
+            <td>Voltage Divider R1 (Ohm)</td><td><input type="number" id="wdAnemoAdsVDivR1"></td>
           </tr>
           <tr>
-            <td>Voltage Divider R2 (Ohm)</td><td><input type="number" id="wdAneoAdsVDivR2"></td>
+            <td>Voltage Divider R2 (Ohm)</td><td><input type="number" id="wdAnemoAdsVDivR2"></td>
           </tr>
         </tbody>
       </table>

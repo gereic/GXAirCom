@@ -21,10 +21,11 @@ enum eBoard {
 };
 
 /* aneometer */
-enum eAneometer {
+enum eAnemometer {
     DAVIS = 0,
     TX20 = 1,
-    ADS_A1015 = 2 // don't use ADS1015 or things will break.
+    ADS_A1015 = 2, // don't use ADS1015 or things will break.
+    PEETBROS = 3
 };
 
 /* Mode of operation */

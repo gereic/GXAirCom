@@ -286,19 +286,19 @@ struct VarioSettings{
 			uint8_t mode;
 	};
 
-struct AneometerSettings {
-  eAneometer AneometerType; //Aneometer
-  uint8_t AneometerAdsGain;
-  float AneometerAdsWSpeedMinVoltage;
-  float AneometerAdsWSpeedMaxVoltage;
-  float AneometerAdsWDirMinVoltage;
-  float AneometerAdsWDirMaxVoltage;
-  float AneometerAdsWSpeedMinSpeed;
-  float AneometerAdsWSpeedMaxSpeed;
-  float AneometerAdsWDirMinDir;
-  float AneometerAdsWDirMaxDir;
-  float AneometerAdsVDivR1;
-  float AneometerAdsVDivR2;
+struct AnemometerSettings {
+  eAnemometer AnemometerType; //Anemometer
+  uint8_t AnemometerAdsGain;
+  float AnemometerAdsWSpeedMinVoltage;
+  float AnemometerAdsWSpeedMaxVoltage;
+  float AnemometerAdsWDirMinVoltage;
+  float AnemometerAdsWDirMaxVoltage;
+  float AnemometerAdsWSpeedMinSpeed;
+  float AnemometerAdsWSpeedMaxSpeed;
+  float AnemometerAdsWDirMinDir;
+  float AnemometerAdsWDirMaxDir;
+  float AnemometerAdsVDivR1;
+  float AnemometerAdsVDivR2;
 };
 
 struct MqttSettings{
@@ -328,7 +328,7 @@ struct GSSettings{
 struct WeatherSettings{
   
   uWeatherStationMode mode;
-  AneometerSettings aneometer;
+  AnemometerSettings anemometer;
   float tempOffset;
   int16_t windDirOffset;
   uint8_t sendFanet;  

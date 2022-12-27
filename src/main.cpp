@@ -262,7 +262,7 @@ int8_t PinBuzzer = -1;
 //ONE-WIRE
 int8_t PinOneWire = -1;
 
-//aneometer
+//anemometer
 int8_t PinWindDir = -1;
 int8_t PinWindSpeed = -1;
 int8_t PinRainGauge = -1;
@@ -2712,6 +2712,7 @@ void taskGsm(void *pvParameters){
 void taskWeather(void *pvParameters){
   static uint32_t tUploadData; //first sending is in Sending-intervall to have steady-values
   static uint32_t tSendData; //first sending is in FANET-Sending-intervall to have steady-values
+  static uint32_t tLastWindSpeed; //
   bool bDataOk = false;
   log_i("starting weather-task ");  
   Weather::weatherData wData;
@@ -2748,6 +2749,9 @@ void taskWeather(void *pvParameters){
       weather.run();
       if (weather.getValues(&wData)){
         //log_i("wdata:wDir=%f;wSpeed=%f,temp=%f,h=%f,p=%f",wData.WindDir,wData.WindSpeed,wData.temp,wData.Humidity,wData.Pressure);
+        if (wData.WindSpeed > 0.01){
+          tLastWindSpeed = tAct;
+        }
         if (!bFirstWData){
           for (int i = 0;i <2; i++){
             avg[i].sinWinddir = sin(wData.WindDir * DEG2RAD);
@@ -2758,6 +2762,9 @@ void taskWeather(void *pvParameters){
             avg[i].temp = wData.temp;
           }
           bFirstWData = true;
+        }
+        if ((tAct - tLastWindSpeed) > 10000){
+          bFirstWData = false; //when we have not wind for at least 10 seconds, we initialize the average
         }
         //wuData.winddir calcExpAvgf
         float fAvg = 0;

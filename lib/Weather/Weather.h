@@ -21,6 +21,7 @@
 #include "Tx20.h"
 #include "main.h"
 #include <ADS1X15.h>
+#include <PeetBros.h>
 
 #define DEG2RAD M_PI / 180.0
 #define RAD2DEG 180.0 / M_PI
@@ -99,9 +100,9 @@ private:
     uint8_t aneometerType = 0;
     bool _bHasBME = false;
     ADS1015 _ADS1015;
-    bool initADS(AneometerSettings &anSettings);
+    bool initADS(AnemometerSettings &anSettings);
     bool _bHasADS = false;
-    AneometerSettings anSettings;
+    AnemometerSettings anSettings;
     void checkAdsAneometer(void);
     float getAdsVoltage(uint8_t pin, float vref);
     float calcAdsMeasurement(float measurement, float minVoltage, float maxVoltage, float minRange, float maxRange);
