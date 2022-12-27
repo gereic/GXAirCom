@@ -618,7 +618,7 @@ void FanetMac::stateWrapper()
 						//log_i("actPPsDiff=%d",actPPsDiff);
 						ppsMillis = fmac._ppsMillis;
 						ppsCount = fmac._ppsCount;
-						fmac.switchMode(MODE_FSK_8682); //start now with FSK8682
+						fmac.switchMode(MODE_FSK_8682); //start now with FSK868200
 						#if RX_DEBUG > 5
 						log_i("**** %d start FSK 868.2 %d %d",millis(),millis() - ppsMillis,fmac._ppsCount);
 						#endif
@@ -626,7 +626,7 @@ void FanetMac::stateWrapper()
 				}
 			}else if (fmac._actMode == MODE_FSK_8682){
 				if ((millis() - ppsMillis) >= (LEGACY_8684_BEGIN - LEGACY_RANGE)){
-					fmac.switchMode(MODE_FSK_8684); //start now with FSK8682
+					fmac.switchMode(MODE_FSK_8684); //start now with FSK868400
 					#if RX_DEBUG > 5
 					log_i("**** %d start FSK 868.4 %d %d",millis(),millis() - ppsMillis,fmac._ppsCount);
 					#endif

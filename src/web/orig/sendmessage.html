@@ -6,50 +6,10 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
 <title>GXAirCom</title>
 <script language="javascript" type="text/javascript">
- 
- var url = "ws://" + window.location.hostname + ":1337/";
+ var pageNumber = 3;
  var settingsView = 0;
-// This is called when the page finishes loading
-function init() {
- 
-    // Connect to WebSocket server
-    wsConnect(url);
-}
- 
-// Call this to connect to the WebSocket server
-function wsConnect(url) {
-    
-    // Connect to WebSocket server
-    websocket = new WebSocket(url);
-    
-    // Assign callbacks
-    websocket.onopen = function(evt) { onOpen(evt) };
-    websocket.onclose = function(evt) { onClose(evt) };
-    websocket.onmessage = function(evt) { onMessage(evt) };
-    websocket.onerror = function(evt) { onError(evt) };
-}
- 
-// Called when a WebSocket connection is established with the server
-function onOpen(evt) {
- 
-    // Log connection state
-    console.log("Connected");
-    
-    // write page-number --> then we get all values for page
-    doSend(JSON.stringify({ page : 3 })); //send page
-}
- 
-// Called when the WebSocket connection is closed
-function onClose(evt) {
- 
-    // Log disconnection state
-    console.log("Disconnected");
-    
-    // Try to reconnect after a few seconds
-    setTimeout(function() { wsConnect(url) }, 2000);
-}
 
-function sendSystemCmd(){
+ function sendSystemCmd(){
   document.getElementById("FNTMSGIN").value = ""; //clear msg
 
   var sMsg =  "P" + document.getElementById("fanetId").value + document.getElementById("syscmd").value;
@@ -93,22 +53,30 @@ function onMessage(evt) {
     // Update circle graphic with LED state
     var myObj = JSON.parse(evt.data);
     for (var key of Object.keys(myObj)) {
-        console.log(key + " -> " + myObj[key])
+        console.log(key + " -> " + myObj[key]);
         if (key == "setView"){
           settingsView = myObj[key];
           continue;
         }        
-        document.getElementById(key).textContent = myObj[key];
-        document.getElementById(key).value = myObj[key];
+        var e = document.getElementById(key);
+        if (e == null) continue;
+        if (e instanceof HTMLSelectElement) {     /* <select>*/
+          document.getElementById(key).value = myObj[key];
+        }else if ((e instanceof HTMLInputElement ) && (e.getAttribute('type') == 'checkbox')){     /* <input checkbox>*/
+          if (myObj[key] == 1){
+            document.getElementById(key).checked = true;
+          }else{
+            document.getElementById(key).checked = false;
+          }
+          
+        }else{
+          document.getElementById(key).textContent = myObj[key];
+          document.getElementById(key).value = myObj[key];
+        }
     }
     setVis(); //now set visibility
 }
  
-// Called when a WebSocket error occurs
-function onError(evt) {
-    console.log("ERROR: " + evt.data);
-}
-
 //this function sets visible depending on actual option
 function setVis(){
   //console.log("visible=" + document.getElementById("mode").style.display)
@@ -125,11 +93,8 @@ function doSend(message) {
     console.log("Sending: " + message);
     websocket.send(message);
 }
- 
-// Call the init function as soon as the page loads
-window.addEventListener("load", init, false);
- 
 </script>
+<script type="text/javascript" src="scripts.js"></script>
 </head>
 <body>
   <div style="text-align:left;display:inline-block;color:#eaeaea;min-width:340px;">
@@ -204,6 +169,7 @@ window.addEventListener("load", init, false);
               <option value="#SYC RFMODE?">check rf-mode</option>
               <option value="#SYC FNTPWR?">check fanet-power</option>
               <option value="#SYC RESTART">do restart</option>
+              <option value="#SYC DOUPDATE">update station</option>
             </select></td>
           </tr>
         </tbody>      

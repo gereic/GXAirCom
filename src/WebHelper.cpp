@@ -730,7 +730,11 @@ void Web_setup(void){
     request->send(response); 
   });
   server.on("/sendmessage.html", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(SPIFFS, request->url(), "text/html",false,processor);
+    //request->send(SPIFFS, request->url(), "text/html",false,processor);
+    const char* dataType = "text/html";
+    AsyncWebServerResponse *response = request->beginResponse_P(200, dataType,sendmessage_html_gz, sendmessage_html_gz_len);
+    response->addHeader("Content-Encoding", "gzip");
+    request->send(response); 
   });
   server.on("/neighbours.html", HTTP_GET, [](AsyncWebServerRequest *request){
     //request->send(SPIFFS, request->url(), "text/html",false,processor);
