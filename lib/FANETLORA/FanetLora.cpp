@@ -40,7 +40,6 @@ bool FanetLora::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int8_t res
   _myData.lat = 0.0;
   _myData.lon = 0.0;
   Fapp * fa = this;
-  //_myData.devId = getDevIdFromMac(fmac.myAddr);
   
   _PilotName = "";  
   _myData.aircraftType = FanetLora::aircraft_t::paraglider; //default Paraglider
@@ -532,12 +531,12 @@ int8_t FanetLora::getWeatherinfo(uint8_t *buffer,uint16_t length){
   uint8_t header = buffer[index];
   uint8_t expectedpacketLength = 7; //1 Byte Header + 3 Byte Lon + 3 Byte Lat
   //log_i("header=%d",header);
-  if (header & 1) expectedpacketLength += 1; //extended Header expected
-  if (header & 2) expectedpacketLength += 1; //State of Charge  (+1byte 
-  if (header & 8) expectedpacketLength += 2; //Barometric pressure normailized (+2byte
-  if (header & 16) expectedpacketLength += 1; //Humidity (+1byte:
-  if (header & 32) expectedpacketLength += 3; //Wind (+3byte 
-  if (header & 64) expectedpacketLength += 1; //Temperature (+1byte
+  if (header & 0x01) expectedpacketLength += 1; //extended Header expected
+  if (header & 0x02) expectedpacketLength += 1; //State of Charge  (+1byte 
+  if (header & 0x08) expectedpacketLength += 2; //Barometric pressure normailized (+2byte
+  if (header & 0x10) expectedpacketLength += 1; //Humidity (+1byte:
+  if (header & 0x20) expectedpacketLength += 3; //Wind (+3byte 
+  if (header & 0x40) expectedpacketLength += 1; //Temperature (+1byte
 
   if (expectedpacketLength != length){
     //log_e("length of Frame wrong %d!=%d",expectedpacketLength,length);
@@ -724,10 +723,9 @@ void FanetLora::handle_frame(Frame *frm){
   //log_i("new msg");
 
 	bool bFrameOk = true;
-  uint32_t devId = getDevIdFromMac(&frm->src);
   if (frm->type == 1){
     //online-tracking
-    actTrackingData.devId = ((uint32_t)frm->src.manufacturer << 16) + (uint32_t)frm->src.id;
+    actTrackingData.devId = getDevIdFromMac(&frm->src);
     actTrackingData.rssi = frm->rssi;
     actTrackingData.snr = frm->snr;
     actTrackingData.type = 0x11;
@@ -747,13 +745,13 @@ void FanetLora::handle_frame(Frame *frm){
       {
         msg2 += (char)frm->payload[i];
       }  
-      lastNameData.devId = ((uint32_t)frm->src.manufacturer << 16) + (uint32_t)frm->src.id;
+      lastNameData.devId = getDevIdFromMac(&frm->src);
       lastNameData.rssi = frm->rssi;
       lastNameData.snr = frm->snr;
       lastNameData.name = msg2;
       newName = true;
-      insertNameToWeather(devId,msg2); //insert name in weather-list
-      insertNameToNeighbour(devId,msg2); //insert name in neighbour-list
+      insertNameToWeather(lastNameData.devId,msg2); //insert name in weather-list
+      insertNameToNeighbour(lastNameData.devId,msg2); //insert name in neighbour-list
     }else{
       //log_e("length of Frame type:%d to long %d",frm->type,frm->payload_length);
       bFrameOk = false;
@@ -762,8 +760,8 @@ void FanetLora::handle_frame(Frame *frm){
     if (frm->payload_length <= 66){
       lastMsgData.rssi = frm->rssi;
       lastMsgData.snr = frm->snr;
-      lastMsgData.srcDevId = ((uint32_t)frm->src.manufacturer << 16) + (uint32_t)frm->src.id;
-      lastMsgData.dstDevId = ((uint32_t)frm->dest.manufacturer << 16) + (uint32_t)frm->dest.id;
+      lastMsgData.srcDevId = getDevIdFromMac(&frm->src);
+      lastMsgData.dstDevId = getDevIdFromMac(&frm->dest);
       lastMsgData.msg = "";
       for(int i=1; i<frm->payload_length; i++)
       {
@@ -776,18 +774,18 @@ void FanetLora::handle_frame(Frame *frm){
 
   }else if (frm->type == 4){   
     //weather-data   
-      lastWeatherData.devId = ((uint32_t)frm->src.manufacturer << 16) + (uint32_t)frm->src.id;
+      lastWeatherData.devId = getDevIdFromMac(&frm->src);
       lastWeatherData.rssi = frm->rssi;
       lastWeatherData.snr = frm->snr;
       if (getWeatherinfo(frm->payload,frm->payload_length) == 0){
-        insertDataToWeatherStation(devId,&lastWeatherData);
+        insertDataToWeatherStation(lastWeatherData.devId,&lastWeatherData);
       }else{
         bFrameOk = false;
       }
       
   }else if (frm->type == 7){      
     //ground-tracking
-    actTrackingData.devId = ((uint32_t)frm->src.manufacturer << 16) + (uint32_t)frm->src.id;
+    actTrackingData.devId = getDevIdFromMac(&frm->src);
     actTrackingData.rssi = frm->rssi;
     actTrackingData.snr = frm->snr;
     actTrackingData.addressType = frm->AddressType;
@@ -811,7 +809,6 @@ void FanetLora::handle_frame(Frame *frm){
     String msg = CreateFNFMSG(frm);
     add2ActMsg(msg);
   }
-
   //log_i("%s",msg.c_str());
 }
 

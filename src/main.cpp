@@ -4615,16 +4615,18 @@ void taskStandard(void *pvParameters){
     }
     FanetLora::weatherData weatherData;
     if (fanet.getWeatherData(&weatherData)){
-      //check if we forward the weather-data to WU
-      for (int i = 0; i < MAXFNTUPLOADSTATIONS;i++){
-        if (setting.FntWuUpload[i].FanetId == weatherData.devId){
-          sendFanetWeatherData2WU(&weatherData,i);
+      if (setting.Mode == eMode::GROUND_STATION){
+        //check if we forward the weather-data to WU
+        for (int i = 0; i < MAXFNTUPLOADSTATIONS;i++){
+          if (setting.FntWuUpload[i].FanetId == weatherData.devId){
+            sendFanetWeatherData2WU(&weatherData,i);
+          }
         }
-      }
-      //check if we forward the weather-data to Windy
-      for (int i = 0; i < MAXFNTUPLOADSTATIONS;i++){
-        if (setting.FntWiUpload[i].FanetId == weatherData.devId){
-          sendFanetWeatherData2WI(&weatherData,i);
+        //check if we forward the weather-data to Windy
+        for (int i = 0; i < MAXFNTUPLOADSTATIONS;i++){
+          if (setting.FntWiUpload[i].FanetId == weatherData.devId){
+            sendFanetWeatherData2WI(&weatherData,i);
+          }
         }
       }
       
