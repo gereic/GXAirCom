@@ -349,7 +349,7 @@ void Weather::run(void){
           break; //ready with reading
         }
         delay(500);
-        //log_e("error reading bme280 %d",i);
+        log_e("error reading bme280 %d",i);
       }
       if (!bReadOk){
         log_e("error reading bme280 ret=%d",bmeRet);

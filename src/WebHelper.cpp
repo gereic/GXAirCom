@@ -926,15 +926,23 @@ void sendPage(uint8_t pageNr){
         time(&now);
         gmtime_r(&now, &timeinfo);
         strftime(strftime_buf, sizeof(strftime_buf), "%F %T", &timeinfo);   
+        doc["time"] = strftime_buf;
         //log_i("actual time %s",strftime_buf);
+        /*
+        if (setting.Mode == eMode::AIR_MODULE){
+          if ((status.GPS_Time) && (status.GPS_Date)){
+              doc["GPSTime"] = String(status.GPS_Date) + "-" + String(status.GPS_Time);
+          }
+        }
         if (status.GPS_Time){
-          char gpstime[128];
+          char gpstime[40];
+          snprintf (gpstime,sizeof(gpstime)-1,"GPS: 20%.2s-%.2s-%.2s - %.2s:%.2s:%.2s",&status.GPS_Date[4],&status.GPS_Date[2],&status.GPS_Date[0],&status.GPS_Time[0],&status.GPS_Time[2],&status.GPS_Time[4]);
           char hh[4]; 
           char mm[4];
           char ss[4];
-          String(status.GPS_Time).substring(0,2).toCharArray(hh,4,0);
-          String(status.GPS_Time).substring(2,4).toCharArray(mm,4,0);
-          String(status.GPS_Time).substring(4,6).toCharArray(ss,4,0);
+          String(status.GPS_Time).substring(0,2).toCharArray(hh,sizeof(hh),0);
+          String(status.GPS_Time).substring(2,4).toCharArray(mm,sizeof(mm),0);
+          String(status.GPS_Time).substring(4,6).toCharArray(ss,sizeof(ss),0);
           strcpy(gpstime,status.GPS_Date);
           strcat(gpstime," - ");
           strcat(gpstime,hh);
@@ -942,11 +950,11 @@ void sendPage(uint8_t pageNr){
           strcat(gpstime,mm);
           strcat(gpstime,":");
           strcat(gpstime,ss);
-
           doc["time"] = gpstime;
         }else{
           doc["time"] = strftime_buf;
         }
+        */
 
         doc["freeHeap"] = xPortGetFreeHeapSize();
         doc["fHeapMin"] = xPortGetMinimumEverFreeHeapSize();
@@ -965,6 +973,14 @@ void sendPage(uint8_t pageNr){
       }          
       #ifdef AIRMODULE
       if (setting.Mode == eMode::AIR_MODULE){
+        if ((status.GPS_Time) && (status.GPS_Date)){
+          if ((strcmp(&status.GPS_Date[0],&mStatus.GPS_Date[0])) || (strcmp(&status.GPS_Time[0],&mStatus.GPS_Time[0]))){
+            memcpy(&mStatus.GPS_Time[0],&status.GPS_Time[0],sizeof(status.GPS_Time));
+            memcpy(&mStatus.GPS_Date[0],&status.GPS_Date[0],sizeof(status.GPS_Time));
+            doc["GPSTime"] = String(status.GPS_Date) + "-" + String(status.GPS_Time);
+          }          
+        }
+ 
         if (mStatus.GPS_Fix != status.GPS_Fix){
           bSend = true;
           mStatus.GPS_Fix = status.GPS_Fix;

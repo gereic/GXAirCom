@@ -27,6 +27,7 @@ function setVis(){
   document.getElementById("VisAirCraftType").style.display='none';
   document.getElementById("VisgpsFix").style.display='none';
   document.getElementById("VisgpsNumSat").style.display='none';
+  document.getElementById("VisgpsTime").style.display='none';  
   document.getElementById("VisgpsSpeed").style.display='none';
   document.getElementById("VisgpsCourse").style.display='none';    
   if (document.getElementById("mode").value == 1){ /*mode ground-station*/
@@ -43,6 +44,7 @@ function setVis(){
     document.getElementById("VisAirCraftType").style.display='';
     document.getElementById("VisgpsFix").style.display='';
     document.getElementById("VisgpsNumSat").style.display='';
+    document.getElementById("VisgpsTime").style.display='';  
     document.getElementById("VisgpsSpeed").style.display='';
     document.getElementById("VisgpsCourse").style.display='';
   }
@@ -308,6 +310,10 @@ function onMessage(evt) {
           <tr id="VisgpsNumSat">
             <th>sat count</th>
             <td><input type="text" id="gpsNumSat" disabled></td>
+          </tr>
+          <tr id="VisgpsTime">
+            <th>GPS-DateTime DDMMYY-HHMMSS</th>
+            <td><input type="text" id="GPSTime" disabled></td>
           </tr>
           <tr>
             <th>GPS-LAT [DD.dddddd]</th>

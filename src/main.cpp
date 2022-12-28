@@ -1815,6 +1815,8 @@ void setup() {
   fanet.setGPS(false);
   status.tRestart = 0;
   sMqttState[0] = 0; //zero-Termination of String !!
+  status.GPS_Date[0] = 0; //clear string
+  status.GPS_Time[0] = 0; //clear string
   
   log_i("SDK-Version=%s",ESP.getSdkVersion());
   log_i("CPU-Speed=%dMHz",getCpuFrequencyMhz());
@@ -2742,6 +2744,7 @@ void taskWeather(void *pvParameters){
   TickType_t xLastWakeTime = xTaskGetTickCount (); //get actual tick-count
   tUploadData = millis();
   tSendData = millis();
+  tLastWindSpeed = millis();
   while (1){
     uint32_t tAct = millis();
     if (setting.wd.mode.bits.enable){
@@ -2873,10 +2876,10 @@ void taskWeather(void *pvParameters){
         //log_i("send Fanet-weatherData");
         if (timeStatus() == timeSet){
           StaticJsonDocument<500> doc;                      //Memory pool
-          char buff[20];
+          char buff[30];
           static char msg_buf[500];
           pWd = &msg_buf[0];
-          sprintf (buff,"%04d-%02d-%02dT%02d:%02d:%02d+00:00",year(),month(),day(),hour(),minute(),second()); // ISO 8601
+          snprintf (buff,sizeof(buff)-1,"%04d-%02d-%02dT%02d:%02d:%02d+00:00",year(),month(),day(),hour(),minute(),second()); // ISO 8601
           doc["DT"] = buff;
           doc["wDir"] = String(avg[0].Winddir,2);
           doc["wSpeed"] = String(avg[0].WindSpeed,2);
@@ -4716,43 +4719,10 @@ void taskStandard(void *pvParameters){
 
           // create a global variable for logger igc file name based on GPS datetime
             //set today date
-            static char fullDate[36];
-            static char fullTime[8];
-            strcpy(fullDate,"");
-            strcpy(fullTime,"");
             // if got a correct date i.e. with year
             if (nmea.getYear()>0){
-              char day[2];
-              itoa(nmea.getDay(), day, 10);
-              if (nmea.getDay()<10) strcat(fullDate,"0");
-              strcat(fullDate, day);
-
-              char month[2];
-              itoa(nmea.getMonth(), month, 10);
-              if (nmea.getMonth()<10) strcat(fullDate,"0");
-              strcat(fullDate, month);
-
-              char year[2];
-              itoa(nmea.getYear() - 2000, year, 10);
-              strcat(fullDate, year);
-
-              char hour[2];
-              itoa(nmea.getHour(), hour, 10);
-              if(nmea.getHour()<10) strcat(fullTime,"0");
-              strcat(fullTime, hour);
-
-              char minute[2];
-              itoa(nmea.getMinute(), minute, 10);
-              if(nmea.getMinute()<10) strcat(fullTime,"0");
-              strcat(fullTime, minute);
-
-              char seconds[2];
-              itoa(nmea.getSecond(), seconds, 10);
-              if(nmea.getSecond()<10) strcat(fullTime,"0");
-              strcat(fullTime, seconds);
-
-              status.GPS_Date = fullDate;
-              status.GPS_Time = fullTime;
+              snprintf (status.GPS_Date,sizeof(status.GPS_Date)-1,"%02d%02d%02d",nmea.getDay(),nmea.getMonth(),nmea.getYear() - 2000);
+              snprintf (status.GPS_Time,sizeof(status.GPS_Time)-1,"%02d%02d%02d",nmea.getHour(),nmea.getMinute(),nmea.getSecond());
             }
           }
           long geoidalt = 0;
@@ -5466,7 +5436,7 @@ void taskBackGround(void *pvParameters){
     if (timeOver(tAct,tWifiCheck,WIFI_RECONNECT_TIME)){
       tWifiCheck = tAct;
       if (setting.wifi.connect == eWifiMode::CONNECT_ALWAYS){
-        log_i("check Wifi-status %d ",status.wifiStat);
+        //log_i("check Wifi-status %d ",status.wifiStat);
         if (((WiFi.status() != WL_CONNECTED) && (status.wifiStat != 0)) || (status.wifiStat == 1)){
           log_i("WiFi not connected. Try to reconnect");
           WiFi.disconnect(true,true);
