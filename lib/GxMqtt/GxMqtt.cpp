@@ -30,6 +30,7 @@ void GxMqtt::callback(char* topic, byte* payload, unsigned int length) {
 
 bool GxMqtt::begin(SemaphoreHandle_t *_xMutex,Client *_client){
   log_i("begin MQTT");
+  lastCmd[0] = 0; //clear lastCmd
   if (_xMutex == NULL){ //create new Mutex
     log_i("create Mutex");
     xMutex = new SemaphoreHandle_t();

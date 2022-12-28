@@ -366,6 +366,6 @@ When BME280 can't be read or has faulty data, only wind will be sent to FANET or
 
 v5.2.0
 added support for ADS1015 and Peet Bros weather-station
-set MQTT timestamp to ISO8601
+set MQTT timestamp to ISO860
 send MQTT weather-data according to existing sensors
 
