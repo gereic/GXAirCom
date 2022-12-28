@@ -2876,14 +2876,14 @@ void taskWeather(void *pvParameters){
           char buff[20];
           static char msg_buf[500];
           pWd = &msg_buf[0];
-          sprintf (buff,"%04d-%02d-%02d %02d:%02d:%02d",year(),month(),day(),hour(),minute(),second());
+          sprintf (buff,"%04d-%02d-%02dT%02d:%02d:%02d+00:00",year(),month(),day(),hour(),minute(),second()); // ISO 8601
           doc["DT"] = buff;
           doc["wDir"] = String(avg[0].Winddir,2);
           doc["wSpeed"] = String(avg[0].WindSpeed,2);
           doc["wGust"] = String(avg[0].WindGust,2);
-          doc["temp"] = String(avg[0].temp,2);
-          doc["hum"] = String(avg[0].Humidity,2);
-          doc["press"] = String(avg[0].Pressure,2);
+          if (wData.bTemp) doc["temp"] = String(avg[0].temp,2);
+          if (wData.bHumidity) doc["hum"] = String(avg[0].Humidity,2);
+          if (wData.bPressure) doc["press"] = String(avg[0].Pressure,2);
           serializeJson(doc, msg_buf);
           //Serial.print("WD=");Serial.println(pWd);
           wdCount++;
@@ -4610,7 +4610,7 @@ void taskStandard(void *pvParameters){
         String sRet = "";
         int pos = getStringValue(msgData.msg,"P","#",0,&sRet);
         if (pos >= 0){
-          if (atoi(sRet.c_str()) == setting.fanetpin){
+          if ((atoi(sRet.c_str()) == setting.fanetpin) && (setting.fanetpin != 0)){
             fanetDstId = msgData.srcDevId; //we have to store the sender, to send back the value !!
             log_i("got fanet-cmd from %s:%s",fanet.getDevId(fanetDstId),msgData.msg.c_str()); 
             //log_i("msg=%s",msgData.msg.substring(pos).c_str());

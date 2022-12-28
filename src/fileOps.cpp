@@ -29,7 +29,7 @@ void load_configFile(SettingsData* pSetting){
   pSetting->outputMode = eOutput(preferences.getUChar("OutputMode",eOutput::oBLE)); //output-mode default ble
   pSetting->Mode = eMode(preferences.getUChar("Mode",eMode::AIR_MODULE));
   pSetting->fanetMode = eFnMode(preferences.getUChar("fntMode",eFnMode::FN_GROUNT_AIR_TRACKING));  
-  pSetting->fanetpin = preferences.getUInt("fntPin",1234);
+  pSetting->fanetpin = preferences.getUInt("fntPin",0000);
   pSetting->bAutoupdate = preferences.getUChar("AUTOUPDATE",1); //auto-update
   
   //gs settings

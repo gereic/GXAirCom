@@ -197,6 +197,7 @@ automatic-board-detection implemented.
 #SYC MODE=1 set mode of operation to ground-station 0...Air-Module 1...Ground-station
 #SYC OUTMODE? get output-mode
 #SYC OUTMODE=3 set output-mode to bluetooth 0...Serial, 1...UDP, 3...bluetooth
+#SYC DOUPDATE trigger a version-check and update to new firmware, if avaiable
 
 V4.1.0
 added support for update module directly without download firmware and spiffs on firmware update-page
@@ -363,4 +364,8 @@ If Ground-station should be a weatherstation, parameter has to be switched on.
 Also it is possible, to set optional BME280 and rain-sensor for weather-station, so a weather-station can be only with wind-sensor
 When BME280 can't be read or has faulty data, only wind will be sent to FANET or WU/WI.
 
+v5.2.0
+added support for ADS1015 and Peet Bros weather-station
+set MQTT timestamp to ISO8601
+send MQTT weather-data according to existing sensors
 
