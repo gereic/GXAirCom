@@ -369,3 +369,8 @@ added support for ADS1015 and Peet Bros weather-station
 set MQTT timestamp to ISO860
 send MQTT weather-data according to existing sensors
 
+v5.3.0
+added worldwide FANET-frequencys
+added worldwide Flarm-frequencys
+Flarm outside europe is only working with GPS (and PPS-Signal like TTGO T-Beam),
+ because of frequency-hoping (not well tested yed (outside europe))
