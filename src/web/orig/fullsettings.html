@@ -440,7 +440,6 @@ function sendValues(){
     "Frequ",
     "disp",
     "dispRot",
-    "country",
     "type",
     "mode",
     "fntMode",
@@ -837,13 +836,6 @@ function onMessage(evt) {
       <table style="width:100&#37;">
         <tbody>
           <tr>
-            <th>Radio Frequency</th>
-            <td><select id="country">
-              <!--<option value="0">AUTO</option>-->
-              <option value="1">EU (868.2/868.4 Mhz)</option>
-            </select></td>
-          </tr>
-          <tr>
             <th>FANET RX (receiving Fanet-MSG)</th>
             <td><input type="checkbox" id="FntRx"></td>
           </tr>
@@ -1025,14 +1017,14 @@ function onMessage(evt) {
         <tbody>
           <tr>
             <th>lat [DD.dddddd] (ground-station)</th>
-            <td><input type="number" id="gslat"></td>
+            <td><input type="number" min="-90.0" max="90.0" id="gslat"></td>
             <td>   
               <button type="button"  onclick="getGpsPos()"  id="btnGetGpsPos" class="button byel" style="line-height: 1.7rem;">Get GPS-Position</button>
             </td>
           </tr>
           <tr>
             <th>lon [DD.dddddd] (ground-station)</th>
-            <td><input type="number" id="gslon"></td>
+            <td><input type="number" min="-180.0" max="180.0" id="gslon"></td>
           </tr>
           <tr>
             <th>alt [m] (ground-station)</th>

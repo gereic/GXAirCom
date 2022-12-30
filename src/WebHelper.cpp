@@ -96,7 +96,6 @@ void onWebSocketEvent(uint8_t client_num,
           doc["board"] = setting.boardType;
           doc["Frequ"] = setting.CPUFrequency;
           doc["disp"] = setting.displayType;
-          doc["country"] = setting.country;
           doc["mode"] = setting.Mode;
           doc["type"] = (uint8_t)setting.AircraftType;
           doc["bHasGSM"] = (uint8_t)status.gsm.bHasGSM;
@@ -185,7 +184,6 @@ void onWebSocketEvent(uint8_t client_num,
           doc["Frequ"] = setting.CPUFrequency;
           doc["disp"] = setting.displayType;
           doc["dispRot"] = setting.displayRotation;
-          doc["country"] = setting.country;
           doc["expwsw"] = setting.bHasExtPowerSw;
           doc["mode"] = setting.Mode;
           doc["type"] = (uint8_t)setting.AircraftType;
@@ -394,7 +392,6 @@ void onWebSocketEvent(uint8_t client_num,
         if (root.containsKey("board")) newSetting.CPUFrequency = eBoard(doc["Frequ"].as<uint8_t>());          
         if (root.containsKey("disp")) newSetting.displayType = eDisplay(doc["disp"].as<uint8_t>());          
         if (root.containsKey("dispRot")) newSetting.displayRotation = doc["dispRot"].as<uint8_t>();          
-        if (root.containsKey("country")) newSetting.country = eCountry(doc["country"].as<uint8_t>());          
         if (root.containsKey("expwsw")) newSetting.bHasExtPowerSw = doc["expwsw"].as<uint8_t>();
         if (root.containsKey("type")) newSetting.AircraftType = (FanetLora::aircraft_t)doc["type"].as<uint8_t>();
         if (root.containsKey("PilotName")) newSetting.PilotName = doc["PilotName"].as<String>();

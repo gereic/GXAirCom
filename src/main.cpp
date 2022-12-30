@@ -37,6 +37,7 @@
 
 
 //#define GXTEST
+//#define FLARMTEST
 
 #define TINY_GSM_RX_BUFFER 1024
 
@@ -1599,10 +1600,6 @@ void printSettings(){
   log_i("Display-Type=%d",setting.displayType);
   log_i("Display-Rotation=%d",setting.displayRotation);
   log_i("AXP192=%d",uint8_t(status.bHasAXP192));
-  if (setting.country == eCountry::EU){
-    log_i("COUNTRY=EU (868mhz)");
-  }
-  log_i("COUNTRY=%d",uint8_t(setting.country));
   log_i("Mode=%d",setting.Mode);
   log_i("Fanet-Mode=%d",setting.fanetMode);
   log_i("Fanet-Pin=%d",setting.fanetpin);
@@ -4730,6 +4727,10 @@ void taskStandard(void *pvParameters){
           //log_i("latlon=%d,%d",nmea.getLatitude(),nmea.getLongitude());
           status.GPS_Lat = nmea.getLatitude() / 1000000.;
           status.GPS_Lon = nmea.getLongitude() / 1000000.;  
+          #ifdef FLARMTEST
+            status.GPS_Lat = setting.gs.lat;
+            status.GPS_Lon = setting.gs.lon;
+          #endif
           status.GPS_alt = alt/1000.;
           status.GPS_geoidAlt = geoidalt/1000.;
           //setTime(nmea.getHour(), nmea.getMinute(), nmea.getSecond(), nmea.getDay(), nmea.getMonth(), nmea.getYear());

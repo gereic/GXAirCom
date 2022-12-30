@@ -1,12 +1,6 @@
 #ifndef __ENUMS_H__
 #define __ENUMS_H__
 
-/* regions */
-enum eCountry {
-    AUTO = 0,
-    EU = 1,
-};
-
 /* Boards */
 enum eBoard {
     T_BEAM = 0,

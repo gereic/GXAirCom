@@ -207,7 +207,7 @@ public:
   int16_t transmit(uint8_t* data, size_t len);
   bool isRxMessage();
   int16_t switchFSK(float frequency);
-  int16_t switchLORA(float frequency);
+  int16_t switchLORA(float frequency,uint16_t loraBandwidth);
   float get_airlimit(void);
   
   //int16_t setFrequency(float frequency);

@@ -295,11 +295,7 @@ void FanetMac::frameReceived(int length)
       strftime(strftime_buf, sizeof(strftime_buf), "%F %T", &timeinfo);   
 			len += sprintf(Buffer+len,"%s;",strftime_buf);
 			//log_i("l=%d,%s",len,Buffer);
-			if (_actMode == MODE_FSK_8684){
-				len += sprintf(Buffer+len,"F=868.4;");
-			}else{
-				len += sprintf(Buffer+len,"F=868.2;");
-			}
+			len += sprintf(Buffer+len,"F=%.1f;",fmac.actflarmFreq);
 			len += sprintf(Buffer+len,"Rx=%d;rssi=%d;", num_received, rssi);
 
 			for(int i=0; i<num_received; i++)
@@ -538,18 +534,13 @@ bool FanetMac::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int8_t rese
 		return 0;
   }
 	// start listening for LoRa packets
+	/*	
 	if (_RfMode.bits.FntRx){
 		switchMode(MODE_LORA);
-		/*
-		state = radio.startReceive();
-		if (state != ERR_NONE) {
-				log_i("startReceive failed, code %d",state);
-				return 0;
-		}	
-		*/
 	}else{
 		switchMode(MODE_FSK_8682);
 	}
+	*/
 	log_i("LoRa Initialization OK!");
 
 
@@ -561,32 +552,60 @@ bool FanetMac::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int8_t rese
 }
 
 void FanetMac::switchMode(uint8_t mode,bool bStartReceive){
-  #if RX_DEBUG > 1
+  time_t tUnix = 0;
+	uint32_t channel = 0;
+	#if RX_DEBUG > 1
 	uint32_t tBegin = micros();
+	bool bChanged = false;
 	#endif
 	if (mode == MODE_LORA){
-		radio.switchLORA(868.2);
+		radio.switchLORA(loraFrequency,loraBandwidth);
+		actflarmFreq = 0.0;
 	}else if (mode == MODE_FSK_8682){
-		radio.switchFSK(868.2);
+		actflarmFreq = 868.2;
+		radio.switchFSK(actflarmFreq);
 	}else if (mode == MODE_FSK_8684){
-		radio.switchFSK(868.4);
+		actflarmFreq = 868.4;
+		radio.switchFSK(actflarmFreq);
+	}else if (mode == MODE_FSK){		
+		time(&tUnix);
+		channel = flarm_calculate_freq_channel(tUnix,(uint32_t)flarmChannels);
+		float frequ = 0.0;
+		frequ = flarmFrequency + (float(channel * 400) / 1000.0);
+		if (actflarmFreq != frequ){
+			#if RX_DEBUG > 1
+			bChanged = true;
+			#endif
+			actflarmFreq = frequ;
+			radio.switchFSK(actflarmFreq);
+		}
 	}
 	if (bStartReceive) radio.startReceive();	
+	#if RX_DEBUG > 1
+	if (_actMode != mode){
+		bChanged = true;
+	}
+	#endif
 	_actMode = mode;
 	#if RX_DEBUG > 1
-	char Buffer[500];
-	int len = 0;
-	len += sprintf(Buffer+len,"%d switch to mode ",millis());
-	if (mode == MODE_LORA){
-		len += sprintf(Buffer+len,"LORA ");
-	}else if (mode == MODE_FSK_8682){
-		len += sprintf(Buffer+len,"FSK868.2 ");
-	}else if (mode == MODE_FSK_8684){
-		len += sprintf(Buffer+len,"FSK868.4 ");
+	if (bChanged){
+		char Buffer[500];
+		int len = 0;
+		len += sprintf(Buffer+len,"%d switch to mode ",millis());
+		if (mode == MODE_LORA){
+			len += sprintf(Buffer+len,"LORA ");
+		}else if (mode == MODE_FSK_8682){
+			len += sprintf(Buffer+len,"FSK%0.1f ",actflarmFreq);
+		}else if (mode == MODE_FSK_8684){
+			len += sprintf(Buffer+len,"FSK%0.1f ",actflarmFreq);
+		}else if (mode == MODE_FSK){
+			len += sprintf(Buffer+len,"FSK c=%d,f=%0.2f,t=%d",channel,actflarmFreq,tUnix);
+			//log_i("channel=%d,frequ=%.2f,time=%d",channel,frequ,tUnix);
+		}
+		len += sprintf(Buffer+len,"in %dus pps=%d\n",int(micros()-tBegin),int(millis() - _ppsMillis));
+		//log_i("%d switch to mode %d in %dus pps=%d",millis(),mode,micros()-tBegin,_ppsMillis);
+		Serial.print(Buffer);
 	}
-	len += sprintf(Buffer+len,"in %dus pps=%d\n",int(micros()-tBegin),int(millis() - _ppsMillis));
-	//log_i("%d switch to mode %d in %dus pps=%d",millis(),mode,micros()-tBegin,_ppsMillis);
-	Serial.print(Buffer);
 	#endif
 }
 
@@ -597,6 +616,7 @@ void FanetMac::stateWrapper()
 	static uint32_t tSwitch = millis();
 	//static uint32_t tMsg = millis();
 	static uint8_t ppsCount = 0;
+	static uint8_t ppsCountFlarm = 0;
 	static uint32_t ppsMillis = 0;
 	static uint8_t actPPsDiff = 3; 
 	uint32_t tAct = millis();
@@ -612,16 +632,26 @@ void FanetMac::stateWrapper()
 		if (fmac._RfMode.bits.FntRx && fmac._RfMode.bits.LegRx){
 			if (fmac._actMode == MODE_LORA){
 				if ((ppsDiff) > actPPsDiff){
-					if ((millis() - fmac._ppsMillis) >= (LEGACY_8682_BEGIN - LEGACY_RANGE)){
-						actPPsDiff ++; //we count from 3 to 5 with pps-diff, so we are never in same cylce and will receive more Lora
-						if (actPPsDiff > 5) actPPsDiff = 3;
-						//log_i("actPPsDiff=%d",actPPsDiff);
-						ppsMillis = fmac._ppsMillis;
-						ppsCount = fmac._ppsCount;
-						fmac.switchMode(MODE_FSK_8682); //start now with FSK868200
-						#if RX_DEBUG > 5
-						log_i("**** %d start FSK 868.2 %d %d",millis(),millis() - ppsMillis,fmac._ppsCount);
-						#endif
+					if (fmac.flarmZone == 1){
+						if ((millis() - fmac._ppsMillis) >= (LEGACY_8682_BEGIN - LEGACY_RANGE)){
+							actPPsDiff ++; //we count from 3 to 5 with pps-diff, so we are never in same cylce and will receive more Lora
+							if (actPPsDiff > 5) actPPsDiff = 3;
+							//log_i("actPPsDiff=%d",actPPsDiff);
+							ppsMillis = fmac._ppsMillis;
+							ppsCount = fmac._ppsCount;
+							fmac.switchMode(MODE_FSK_8682); //start now with FSK868200
+							#if RX_DEBUG > 5
+							log_i("**** %d start FSK 868.2 %d %d",millis(),millis() - ppsMillis,fmac._ppsCount);
+							#endif
+						}
+					}else if (fmac.flarmZone > 0){
+							actPPsDiff ++; //we count from 3 to 5 with pps-diff, so we are never in same cylce and will receive more Lora
+							if (actPPsDiff > 5) actPPsDiff = 3;
+							//log_i("actPPsDiff=%d",actPPsDiff);
+							ppsMillis = fmac._ppsMillis;
+							ppsCount = fmac._ppsCount;
+							ppsCountFlarm = fmac._ppsCount;
+							fmac.switchMode(MODE_FSK); //start now with FSK
 					}
 				}
 			}else if (fmac._actMode == MODE_FSK_8682){
@@ -639,64 +669,84 @@ void FanetMac::stateWrapper()
 					#endif
 					ppsCount = fmac._ppsCount;
 				}
+			}else if (fmac._actMode == MODE_FSK){
+				if (ppsDiff >= 2){
+					fmac.switchMode(MODE_LORA); //Back to Lora again
+					ppsCount = fmac._ppsCount;
+				}else{
+					if (ppsCountFlarm != fmac._ppsCount){
+						ppsCountFlarm = fmac._ppsCount;
+						fmac.switchMode(MODE_FSK); //start now with FSK //switch to right channel !!
+					}
+				}
 			}
 		}else if (!fmac._RfMode.bits.FntRx && fmac._RfMode.bits.LegRx){
 			//only Legacy and we have a GPS-Sensor (PPS-Signal)
-			if (fmac._actMode != MODE_FSK_8682){
-					if ((millis() - fmac._ppsMillis) >= (LEGACY_8682_BEGIN - LEGACY_RANGE) && ((ppsDiff) >= 1)){
-						ppsMillis = fmac._ppsMillis;
-						ppsCount = fmac._ppsCount;
-						if (fmac._actMode != MODE_FSK_8682){
-							fmac.switchMode(MODE_FSK_8682); //start now with FSK8682
+			if (fmac.flarmZone == 1){ //zone 1: f0=868.2, f1=868.4
+				if (fmac._actMode != MODE_FSK_8682){
+						if ((millis() - fmac._ppsMillis) >= (LEGACY_8682_BEGIN - LEGACY_RANGE) && ((ppsDiff) >= 1)){
+							ppsMillis = fmac._ppsMillis;
+							ppsCount = fmac._ppsCount;
+							if (fmac._actMode != MODE_FSK_8682){
+								fmac.switchMode(MODE_FSK_8682); //start now with FSK8682
+							}
+							#if RX_DEBUG > 5
+							log_i("**** %d start FSK 868.2 %d %d",millis(),millis() - ppsMillis,fmac._ppsCount);
+							#endif
 						}
+				}else{
+					if ((millis() - ppsMillis) >= (LEGACY_8684_BEGIN - LEGACY_RANGE)){
+						if (fmac._actMode != MODE_FSK_8684){
+							fmac.switchMode(MODE_FSK_8684); //start now with FSK8684
+						}	
 						#if RX_DEBUG > 5
-						log_i("**** %d start FSK 868.2 %d %d",millis(),millis() - ppsMillis,fmac._ppsCount);
+						log_i("**** %d start FSK 868.4 %d %d",millis(),millis() - ppsMillis,fmac._ppsCount);
 						#endif
 					}
-			}else{
-				if ((millis() - ppsMillis) >= (LEGACY_8684_BEGIN - LEGACY_RANGE)){
-					if (fmac._actMode != MODE_FSK_8684){
-						fmac.switchMode(MODE_FSK_8684); //start now with FSK8684
-					}	
-					#if RX_DEBUG > 5
-					log_i("**** %d start FSK 868.4 %d %d",millis(),millis() - ppsMillis,fmac._ppsCount);
-					#endif
+				}				
+			}else if (fmac.flarmZone > 0){
+				if (ppsCount !=fmac._ppsCount){
+					ppsCount =fmac._ppsCount;
+					fmac.switchMode(MODE_FSK); //start now with FSK //switch to right channel !!
 				}
 			}
 		} 
 	}else{
-		if (fmac._RfMode.bits.FntRx && fmac._RfMode.bits.LegRx){
-			//no GPS-Sensor but Legacy and Fanet-RX --> 4sec. for Fanet 1sec. Legacy 868.2 1sec. Legacy 868.4
-			if (fmac._actMode == MODE_LORA){
-				if ((tAct - tSwitch) >= 5300){
-					fmac.switchMode(MODE_FSK_8682);
-					tSwitch = millis();
-				}
-			}else if (fmac._actMode == MODE_FSK_8682){
-				if ((tAct - tSwitch) >= 2300){					
-					fmac.switchMode(MODE_FSK_8684);
-					tSwitch = millis();
-				}
-			}else{
-				if ((tAct - tSwitch) >= 2300){					
-					fmac.switchMode(MODE_LORA);
-					tSwitch = millis();
-				}
-			}
-		}else if (!fmac._RfMode.bits.FntRx && fmac._RfMode.bits.LegRx){
-			//only Legacy-Receive --> 1sec. 868.2 1sec. 868.4
-			if ((tAct - tSwitch) >= 1000){ //switch every 1sec.
-				if (fmac._actMode != MODE_FSK_8682){
-					fmac.switchMode(MODE_FSK_8682);
+		if (fmac.flarmZone == 1){
+			if (fmac._RfMode.bits.FntRx && fmac._RfMode.bits.LegRx){
+				//no GPS-Sensor but Flarm and Fanet-RX --> 5.3sec. for Fanet, 2.3sec. Legacy 868.2, 2.3sec. Legacy 868.4
+				if (fmac._actMode == MODE_LORA){
+					if ((tAct - tSwitch) >= 5300){
+						fmac.switchMode(MODE_FSK_8682);
+						tSwitch = millis();
+					}
+				}else if (fmac._actMode == MODE_FSK_8682){
+					if ((tAct - tSwitch) >= 2300){					
+						fmac.switchMode(MODE_FSK_8684);
+						tSwitch = millis();
+					}
 				}else{
-					fmac.switchMode(MODE_FSK_8684);
+					if ((tAct - tSwitch) >= 2300){					
+						fmac.switchMode(MODE_LORA);
+						tSwitch = millis();
+					}
 				}
-				tSwitch = tAct;
+			}else if (!fmac._RfMode.bits.FntRx && fmac._RfMode.bits.LegRx){			
+				//only Legacy-Receive --> 1sec. 868.2 1sec. 868.4
+				//only in zone 1
+				if ((tAct - tSwitch) >= 1000){ //switch every 1sec.
+					if (fmac._actMode != MODE_FSK_8682){
+						fmac.switchMode(MODE_FSK_8682);
+					}else{
+						fmac.switchMode(MODE_FSK_8684);
+					}
+					tSwitch = tAct;
+				}
 			}
 		}
 	}
   fmac.handleRx();
-	if ((fmac._RfMode.bits.FntTx) && (!fmac._RfMode.bits.FntRx)){
+	if ((fmac._RfMode.bits.FntTx) && (!fmac._RfMode.bits.FntRx) && (fmac.eLoraRegion != NONE)){
 		if (millis() >= fmac.csma_next_tx){
 			if ((fmac.tx_fifo.size() > 0) || (fmac.myApp->is_broadcast_ready(fmac.neighbors.size()))){
 				uint8_t oldMode = fmac._actMode;
@@ -713,7 +763,7 @@ void FanetMac::stateWrapper()
 			}
 		}
 	}
-	if ((fmac._actMode == MODE_LORA) && (fmac._RfMode.bits.FntTx)){  	
+	if ((fmac._actMode == MODE_LORA) && (fmac._RfMode.bits.FntTx) && (fmac.eLoraRegion != NONE)){  	
     fmac.handleTx();
   }
 	fmac.handleTxLegacy();	
@@ -760,7 +810,9 @@ void FanetMac::handleIRQ(){
 	if (radio.isRxMessage()) {	
 		
 		int16_t packetSize = radio.getPacketLength();
-		//log_i("new package arrived %d",packetSize);
+		#if RX_DEBUG > 1
+		log_i("new package arrived %d",packetSize);
+		#endif
 		if (packetSize > 0){
 			//log_i("packet receive %d",packetSize);			
 			fmac.frameReceived(packetSize);
@@ -916,6 +968,63 @@ void FanetMac::setRfMode(uint8_t mode){
     _RfMode.mode = mode;
 }
 
+void FanetMac::setRegion(float lat, float lon){
+	bool bstartRec = false;
+	//find out LoRa regions for Fanet
+	if (eLoraRegion == NONE){
+		if (-169.0f < lon && lon < -30.0f){
+			eLoraRegion = US920;
+			loraFrequency = 920.8;
+			loraBandwidth = 500;
+			log_i("set Lora-Region to US920");
+		}	else if (110.0f < lon && lon < 179.0f && -48.0f < lat && lat < 10.0f){
+			eLoraRegion = AU920;
+			loraFrequency = 920.8;
+			loraBandwidth = 500;
+			log_i("set Lora-Region to AU920");
+		} else if (69.0f < lon && lon < 89.0f && 5.0f < lat && lat < 40.0f){
+			eLoraRegion = IN866;
+			loraFrequency = 866.2;
+			loraBandwidth = 250;
+			log_i("set Lora-Region to IN866");
+		} else if (124.0f < lon && lon < 130.0f && 34.0f < lat && lat < 39.0f){
+			eLoraRegion = KR923;
+			loraFrequency = 923.2;
+			loraBandwidth = 125;
+			log_i("set Lora-Region to KR923");
+		} else if (89.0f < lon && lon < 146.0f && 21.0f < lat && lat < 47.0f){
+			eLoraRegion = AS920;
+			loraFrequency = 923.2;
+			loraBandwidth = 125;
+			log_i("set Lora-Region to AS920");
+		} else if (34.0f < lon && lon < 36.0f && 29.0f < lat && lat < 34.0f){
+			eLoraRegion = IL918;
+			loraFrequency = 918.5;
+			loraBandwidth = 125;
+			log_i("set Lora-Region to IL918");
+		} else{
+			eLoraRegion = EU868;
+			log_i("set Lora-Region to EU868");
+			loraFrequency = 868.2;
+			loraBandwidth = 250;
+		} 
+		bstartRec = true;
+	}
+	if (flarmZone == 0){
+		flarmZone = flarm_get_zone(lat,lon);		
+		flarm_getFrequencyChannels(flarmZone,&flarmFrequency,&flarmChannels);
+		log_i("zone=%d,freq=%.1f,channels=%d",flarmZone,flarmFrequency,flarmChannels);		
+		bstartRec = true;
+	}
+	if (bstartRec){
+		if (_RfMode.bits.FntRx){
+			switchMode(MODE_LORA);
+		}else{
+			switchMode(MODE_FSK_8682);
+		}
+	}
+}
+
 void FanetMac::setPps(uint32_t *ppsMillis){
 	_ppsMillis = *ppsMillis;
 	_ppsCount++;
@@ -927,33 +1036,44 @@ void FanetMac::handleTxLegacy()
 	static uint32_t tMillis = 0;
 	static bool bSend8682 = false;
 	static uint8_t ppsCount = 0;
-	if (!_RfMode.bits.LegTx){
-		return; //Flarm disabled
+	if ((!_RfMode.bits.LegTx) || (flarmZone < 1)){
+		return; //Flarm disabled or no active zone
 	} 
 	if (!fmac.bHasGPS){
 		return; //no Flarm when no GPS
 	}
 	if (legacy_next_tx == 0){
-		if (_RfMode.bits.FntTx){
-			//send only on 868.4 if Fanet is enabled
-			if (((millis() - _ppsMillis) >= LEGACY_8684_BEGIN-LEGACY_RANGE) && (ppsCount != _ppsCount)){
+		if (flarmZone == 1){
+			if (_RfMode.bits.FntTx){
+				//send only on 868.4 if Fanet is enabled
+				if (((millis() - _ppsMillis) >= LEGACY_8684_BEGIN-LEGACY_RANGE) && (ppsCount != _ppsCount)){
+					tMillis = _ppsMillis;		
+					ppsCount = _ppsCount;		
+					if (myApp->createLegacy(LegacyBuffer)){
+						//send flarm 868.4 Mhz
+						legacy_next_tx = tMillis + uint32_t(random(LEGACY_8684_BEGIN,LEGACY_8684_END - LEGACY_SEND_TIME));
+						bSend8682 = false;
+					}
+				}
+			}else{
+				//send on 868.2 and 868.4 (PowerFlarm)
+				if (((millis() - _ppsMillis) >= LEGACY_8682_BEGIN-LEGACY_RANGE) && (ppsCount != _ppsCount)){
+					tMillis = _ppsMillis;	
+					ppsCount = _ppsCount;			
+					if (myApp->createLegacy(LegacyBuffer)){
+						//send flarm 868.2 Mhz
+						legacy_next_tx = tMillis + uint32_t(random(LEGACY_8682_BEGIN,LEGACY_8682_END - LEGACY_SEND_TIME));
+						bSend8682 = true;
+					}
+				}
+			}
+		}else{ //not in Flarm-zone 1
+			if (((millis() - _ppsMillis) >= 200) && (ppsCount != _ppsCount)){
 				tMillis = _ppsMillis;		
 				ppsCount = _ppsCount;		
 				if (myApp->createLegacy(LegacyBuffer)){
-					//send flarm 868.4 Mhz
-					legacy_next_tx = tMillis + uint32_t(random(LEGACY_8684_BEGIN,LEGACY_8684_END - LEGACY_SEND_TIME));
+					legacy_next_tx = tMillis + uint32_t(random(200,800));
 					bSend8682 = false;
-				}
-			}
-		}else{
-			//send on 868.2 and 868.4 (PowerFlarm)
-			if (((millis() - _ppsMillis) >= LEGACY_8682_BEGIN-LEGACY_RANGE) && (ppsCount != _ppsCount)){
-				tMillis = _ppsMillis;	
-				ppsCount = _ppsCount;			
-				if (myApp->createLegacy(LegacyBuffer)){
-					//send flarm 868.2 Mhz
-					legacy_next_tx = tMillis + uint32_t(random(LEGACY_8682_BEGIN,LEGACY_8682_END - LEGACY_SEND_TIME));
-					bSend8682 = true;
 				}
 			}
 		}
@@ -993,8 +1113,12 @@ void FanetMac::handleTxLegacy()
 			}
 		}else{
 			//log_i("sending legacy 868.4 %d",millis() - tMillis);
-			if (_actMode != MODE_FSK_8684){				
-				fmac.switchMode(MODE_FSK_8684,false);
+			if (flarmZone == 1){
+				if (_actMode != MODE_FSK_8684){				
+					fmac.switchMode(MODE_FSK_8684,false);
+				}
+			}else{
+				fmac.switchMode(MODE_FSK,false);
 			}
 		}
 		//radio.isReceiving(); //check radio is receiving

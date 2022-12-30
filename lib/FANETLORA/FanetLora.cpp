@@ -1328,6 +1328,7 @@ void FanetLora::setMyTrackingData(trackingData *tData,float geoidAlt,uint32_t pp
     fmac.geoidAlt = geoidAlt;
     fmac.bPPS = true;
     _ppsMillis = ppsMillis;
+    fmac.setRegion(_myData.lat,_myData.lon);
     fmac.setPps(&_ppsMillis); 
     _geoIdAltitude = geoidAlt;
     valid_until = millis() + FANET_LORA_VALID_STATE_MS;

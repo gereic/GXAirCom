@@ -905,9 +905,12 @@ int16_t LoRaClass::sx1262SetDioIrqParams(uint16_t irqMask, uint16_t dio1Mask, ui
   return(SPIwriteCommand(0x08, data, 8));
 }
 
-int16_t LoRaClass::switchLORA(float frequency){
+int16_t LoRaClass::switchLORA(float frequency,uint16_t loraBandwidth){
   _freq = frequency;
+  _bw = float(loraBandwidth);
+  //log_i("frequ=%.1f,bw=%d",frequency,loraBandwidth);
   int16_t ret = -1;
+  uint8_t regData = 0x00;
   //log_i("switchLora %d frequ=%.2f",millis(),_freq);
   switch (radioType){
     case RADIO_SX1262:
@@ -924,7 +927,17 @@ int16_t LoRaClass::switchLORA(float frequency){
 
       //modulation-params
       data[0] = _sf; //<spreadingFact:SF=7>
-      data[1] = 0x05; //<bw:5=250kHz>
+      switch (loraBandwidth){
+        case 125:
+          data[1] = 0x04; //<bw:4=125kHz>
+          break;
+        case 250:
+          data[1] = 0x05; //<bw:5=250kHz>
+          break;
+        case 500:
+          data[1] = 0x06; //<bw:6=500kHz>
+          break;
+      }
       data[2] = _cr - 4; //<cr=4/8>
       data[3] = 0x00; //<lowDrOpt=off>
       SPIwriteCommand(0x8B, data, 4);
@@ -981,7 +994,19 @@ int16_t LoRaClass::switchLORA(float frequency){
       pGxModule->SPIwriteRegister(0x0E,0x00); //RegFifoTxBaseAddr
       pGxModule->SPIwriteRegister(0x0F,0x00); //RegFifoRxBaseAddr
       pGxModule->SPIwriteRegister(0x11,0x00); //RegIrqFlags
-      pGxModule->SPIwriteRegister(0x1D,0x88); //RegModemConfig1 Explicit Header, CR 4/8, BW 250kHz
+      regData = 0x08; //RegModemConfig1 Explicit Header, CR 4/8
+      switch (loraBandwidth){
+        case 125:
+          regData += 0x70; //<bw 125kHz>
+          break;
+        case 250:
+          regData += 0x80; //<bw 250kHz>
+          break;
+        case 500:
+          regData += 0x90; //<bw 500kHz>
+          break;
+      }
+      pGxModule->SPIwriteRegister(0x1D,regData); //RegModemConfig1 Explicit Header, CR 4/8, BW 250kHz
       pGxModule->SPIwriteRegister(0x1E,0x74); //RegModemConfig2 CRC enabled, 128 chips / symbol
       pGxModule->SPIwriteRegister(0x1F,0x64); //RegSymbTimeoutLsb
       pGxModule->SPIwriteRegister(0x20,0x00); //RegPreambleMsb
@@ -1315,8 +1340,13 @@ int16_t LoRaClass::sx1262Transmit(uint8_t* buffer, size_t len, uint8_t addr){
     // Modulation Quality with 500 kHz LoRa® Bandwidth
     uint8_t value = 0;
     readRegister(0x0889, &value, 1);
-    // set Bit 2
-    value |= 0x04;
+    if (_bw == 500.0){
+      // set Bit 2    
+      value |= 0x04;
+    }else{
+      // set Bit 2    
+      value &= 0xFD; //clear bit 2
+    }
     writeRegister(0x0889, &value, 1);  
 
     data[0] = 0x00; // 12-symbol Präambel, expliziter header

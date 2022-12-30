@@ -6,15 +6,70 @@
 
 #include "FlarmRadio.h"
 
+uint8_t flarm_get_zone(float lat, float lon){
+/*
+- Zone 1: Europe, Africa, Russia, China (30W to 110E, excl. zone 5)
+- Zone 2: North America (west of 30W, north of 10N)
+- Zone 3: New Zealand (east of 160E)
+- Zone 4: Australia (110E to 160E)
+- Zone 5: Israel (34E to 54E and 29.25N to 33.5N)
+- Zone 6: South America (west of 30W, south of 10N)
+*/
+
+  if (34.0f <= lon && lon <= 54.0f && 29.25f <= lat && lat <= 33.5f){
+    log_i("Zone 5: Israel (34E to 54E and 29.25N to 33.5N)");
+    return 5; //Zone 5: Israel (34E to 54E and 29.25N to 33.5N)
+  }	else if (-30.0f <= lon && lon <= 110.0f){
+    log_i("Zone 1: Europe, Africa, Russia, China (30W to 110E, excl. zone 5)");
+    return 1; //Zone 1: Europe, Africa, Russia, China (30W to 110E, excl. zone 5)
+  }	else if (lon < -30.0f && 10.0f < lat){
+    log_i("Zone 2: North America (west of 30W, north of 10N)");
+    return 2; //Zone 2: North America (west of 30W, north of 10N)
+  }	else if (160.0f < lon){
+    log_i("Zone 3: New Zealand (east of 160E)");
+    return 3; //Zone 3: New Zealand (east of 160E)
+  }	else if (110.0f <= lon && lon <= 160.0f){
+    log_i("Zone 4: Australia (110E to 160E)");
+    return 4; //Zone 4: Australia (110E to 160E)
+  }	else if (lon < -30.0f && lat < 10.0f){
+    log_i("Zone 6: South America (west of 30W, south of 10N)");
+    return 6; //Zone 6: South America (west of 30W, south of 10N)
+  } 
+  log_i("Zone not detected lat=%.6f, lon=%.6f",lat,lon);
+  return 0; //not defined
+}
+
+void flarm_getFrequencyChannels(uint8_t zone,float *frequency, uint8_t *channels){
+  if ((zone < 1) || (zone > 6)) return; //zone not defined
+/*
+- Zone 1: f0=868.2, f1=868.4
+- Zone 2, 3, 5, 6: f0=902.2, nch=65
+- Zone 4: f0=917.0, nch=24
+*/
+  if (zone == 1){
+    //Zone 1: f0=868.2, f1=868.4
+    *frequency = 868.2;
+    *channels = 0;
+  }else if (zone == 4){
+    //Zone 4: f0=917.0, nch=24
+    *frequency = 917.0;
+    *channels = 24;
+  }else{
+    //Zone 2, 3, 5, 6: f0=902.2, nch=65
+    *frequency = 902.2;
+    *channels = 65;
+  }
+}
 
 uint32_t flarm_calculate_freq_channel(uint32_t timestamp, uint32_t nch) {
   uint32_t nts = ~timestamp;
-  uint32_t ts16 = timestamp * 32768 + nts;
+  uint32_t ts16 = timestamp * uint32_t(32768) + nts;
   uint32_t v4096 = (ts16 >> 12) ^ ts16;
-  uint32_t v5 = 5 * v4096;
-  uint32_t v16 = (v5 >> 4) ^ v5;
-  uint32_t v2057 = 2057 * v16;
-  uint32_t v9 = (v2057 >> 16) ^ v2057;
+  uint32_t v5 = uint32_t(5) * v4096;
+  uint32_t v16 = (v5 >> uint32_t(4)) ^ v5;
+  uint32_t v2057 = uint32_t(2057) * v16;
+  uint32_t v9 = (v2057 >> uint32_t(16)) ^ v2057;
+  //log_i("%04X,%04X,%04X,%04X,%04X,%04X,%04X,%04X",timestamp,nts,ts16,v4096,v5,v16,v2057,v9);
   return v9 % nch;
 }
 

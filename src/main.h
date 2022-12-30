@@ -376,7 +376,6 @@ struct SettingsData{
   uint8_t minBattPercent;
   uint8_t restartBattPercent;
   String myDevId; //my device-ID
-  eCountry country;
   eOutputVario outputModeVario;
   uint8_t outputFLARM;
   uint8_t outputGPS;
