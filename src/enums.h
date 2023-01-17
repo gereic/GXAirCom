@@ -6,6 +6,7 @@ enum eBoard {
     T_BEAM = 0,
     HELTEC_LORA = 1,
     T_BEAM_V07 = 2,
+    TTGO_T3_V2 = 3,
     TTGO_TSIM_7000 = 4,
     T_BEAM_SX1262 = 5,
     TTGO_TCALL_800 = 6,

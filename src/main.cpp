@@ -956,21 +956,23 @@ void drawflying(int16_t x, int16_t y, bool flying){
 
 
 void drawBatt(int16_t x, int16_t y,uint8_t value){
-    /*
-    display.setTextSize(1);
-    display.setCursor(x-15,y+9);
-    display.print(status.vBatt/1000);
-    display.print(".");
-    if(status.vBatt%1000/10<10){
-      display.print("0");
-    }
-    display.print((status.vBatt%1000)/10);
-    display.print("V");
+    #ifdef BDETAIL
+      display.setTextSize(1);
+      display.setCursor(x-15,y+9);
+      display.print(status.vBatt/1000);
+      display.print(".");
+      if(status.vBatt%1000/10<10){
+        display.print("0");
+      }
+      display.print((status.vBatt%1000)/10);
+      display.print("V");
+      if (status.vario.bHasVario){
+        display.setCursor(x-5,y+18);
+        display.print(String(status.varioTemp,0));
+        display.print("C");    
+      }
+    #endif
 
-    display.setCursor(x-5,y+18);
-    display.print(String(status.varioTemp,0));
-    display.print("C");
-    */
     static uint8_t DrawValue = 0;
     if (value == 255){
         DrawValue = (DrawValue + 1) %5; 
@@ -1950,6 +1952,11 @@ void setup() {
   testLegacy();
   #endif
 
+  #ifdef BTT3V2
+    setting.boardType = eBoard::TTGO_T3_V2;
+    log_i("Board is forced by platformio.ini env to TTGO T3 v2.1.1.6");
+  #endif
+
   switch (setting.boardType)
   {
   case eBoard::T_BEAM: 
@@ -2053,9 +2060,7 @@ void setup() {
 
     break;
   case eBoard::T_BEAM_V07:
-    log_i("Board=T_BEAM_V07/TTGO_T3_V1_6");
-    //PinGPSRX = 34;
-    //PinGPSTX = 39;
+    log_i("Board=T_BEAM_V07");
     PinGPSRX = 12; //T-Beam V07
     PinGPSTX = 15;
 
@@ -2092,9 +2097,11 @@ void setup() {
     adcVoltageMultiplier = 2.12f;
     pinMode(PinADCVoltage, INPUT);
     break;
-  /*
-  case BOARD_TTGO_T3_V1_6:
-    log_i("Board=TTGO_T3_V1_6");
+  case eBoard::TTGO_T3_V2:
+    log_i("Board=TTGO_T3_V2_1_1_6");
+    PinGPSRX = 34;
+    PinGPSTX = 39;
+
     PinLoraRst = 23;
     PinLoraDI0 = 26;
     PinLora_SS = 18;
@@ -2106,20 +2113,27 @@ void setup() {
     PinOledSDA = 21;
     PinOledSCL = 22;
 
-    PinBaroSDA = 13;
-    PinBaroSCL = 14;
+    // moving SCL SDA to different GPIO to avoid conflicts with mounted SD card on Lilygo T3 v2.1.1.6
+    PinBaroSDA = 3; //13;
+    PinBaroSCL = 4; //14;
 
+    // set gpio 4 as INPUT
+    pinMode(PinBaroSCL, INPUT_PULLUP);
     PinADCVoltage = 35;
 
-    PinBuzzer = 0;
+    // no PinFuelSensor for this board, pin not available 39
+
+    PinBuzzer = 25;
+
+    // Lilygo T3 v2.1.1.6 extra button on 0
+    sButton[1].PinButton = 0;
 
     i2cOLED.begin(PinOledSDA, PinOledSCL);
     // voltage-divier 100kOhm and 100kOhm
     // vIn = (R1+R2)/R2 * VOut
-    adcVoltageMultiplier = 2.5f; // not sure if it is ok ?? don't have this kind of board
+    adcVoltageMultiplier = 2.12f;
     pinMode(PinADCVoltage, INPUT);
     break;
-  */
   case eBoard::HELTEC_LORA:
     log_i("Board=HELTEC_LORA");
     //PinGPSRX = 34;
