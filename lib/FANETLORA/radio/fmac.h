@@ -13,13 +13,12 @@
 #include <math.h>
 #include <Arduino.h>
 #include "LoRa.h"
-
-//#include "../Legacy/Legacy.h"
+#include "../FLARM/FlarmRadio.h"
 
 /* Debug */
 #define MAC_debug_mode				0
 //#define MAC_debug_mode				100
-#define RX_DEBUG 1
+#define RX_DEBUG 0
 #define TX_DEBUG 0
 
 
@@ -119,6 +118,7 @@
 #define MODE_LORA 1
 #define MODE_FSK_8682 2
 #define MODE_FSK_8684 3
+#define MODE_FSK 4
 
 
 //#include "main.h"
@@ -180,6 +180,18 @@ public:
 class FanetMac
 {
 private:
+	/* lora region */
+	enum eLoraRegion {
+			NONE = 0,
+			US920 = 1,
+			AU920 = 2,
+			IN866 = 3,
+			KR923 = 4,
+			AS920 = 5,
+			IL918 = 6,
+			EU868 = 7
+	};
+
 	struct rfModeBits
 	{
 			unsigned FntRx:1, FntTx:1, LegRx:1, LegTx:1, b4:1, b5:1, b6:1, b7:1;
@@ -233,6 +245,13 @@ private:
 	uint8_t LegacyBuffer [26];
 	uint32_t _ppsMillis = 0;
 	uint8_t _ppsCount = 0;
+	eLoraRegion eLoraRegion = NONE;
+	uint8_t flarmZone = 0;
+	float loraFrequency = 0.0;
+	uint16_t loraBandwidth = 0;
+	float flarmFrequency = 0.0;
+	uint8_t flarmChannels = 0;
+	float actflarmFreq = 0.0;
 
 public:
 
@@ -241,7 +260,7 @@ public:
   float lon = 0;
   float geoidAlt = 0;
   bool bPPS = false;
-	bool bHasGPS = true;
+	bool bHasGPS = false;
 	uRfMode _RfMode;	
 	uint16_t txFntCount = 0;
 	uint16_t rxFntCount = 0;
@@ -251,7 +270,7 @@ public:
 	FanetMac() : myTimer(MAC_SLOT_MS, stateWrapper), myAddr(_myAddr) { }
 	~FanetMac() { }
 
-	bool begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset, int dio0,Fapp &app,long frequency,uint8_t level,uint8_t radioChip);
+	bool begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int8_t reset, int8_t dio0,int8_t gpio,Fapp &app,long frequency,uint8_t level,uint8_t radioChip);
 	void end();
 	void handle() { radio.run(); myTimer.Update();  }
 
@@ -262,6 +281,7 @@ public:
 	uint16_t numNeighbors(void) { return neighbors.size(); }
 	uint16_t numTrackingNeighbors(void);
 	void setRfMode(uint8_t mode);
+	void setRegion(float lat, float lon);
 	void setPps(uint32_t *ppsMillis);
 	/* Addr */
 	const MacAddr &myAddr;

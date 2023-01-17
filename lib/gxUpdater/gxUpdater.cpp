@@ -152,6 +152,10 @@ bool gxUpdater::doUpdate(bool spiffs){
       sFilename += "_sim800.bin";
     }else if (FWTYPE == 4){
       sFilename += "_sim7000_psRam.bin";
+    }else if (FWTYPE == 5){
+      sFilename += "_sim800_nopsRam.bin";
+    }else if (FWTYPE == 6){
+      sFilename += "_ttgo-lora32-v1.bin";
     }
     log_i("updating firmwawre:%s",sFilename.c_str());
     command = U_FLASH;

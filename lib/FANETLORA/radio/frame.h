@@ -74,6 +74,7 @@ public:
 	/* Received stuff */
 	int rssi = 0;
 	int snr = 0;
+	float altitude = 0.0;
 	uint8_t legacyAircraftType = 0;
 	uint8_t AddressType = 0; //address-Type of Flarm
 	uint32_t timeStamp = 0; //unix-Timestamp from Legacy-Msg

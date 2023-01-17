@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" href="style.css">
+<meta charset='utf-8'>
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>GXAirCom</title>
+<script language="javascript" type="text/javascript">
+ var pageNumber = 3;
+ var settingsView = 0;
+
+ function sendSystemCmd(){
+  document.getElementById("FNTMSGIN").value = ""; //clear msg
+
+  var sMsg =  "P" + document.getElementById("fanetId").value + document.getElementById("syscmd").value;
+  var sManuId = document.getElementById("manuId").value;
+  var sReceiver = "";
+  if (sManuId.length > 0){
+    sReceiver = sManuId;
+  }else{
+    sReceiver = document.getElementById("receiver").value;
+  }
+  var obj = {receiver : sReceiver,
+            msg : sMsg,
+            sendfanet : 3 };
+  doSend(JSON.stringify(obj));
+}
+
+function sendValues(){  
+  
+  
+  document.getElementById("FNTMSGIN").value = ""; //clear msg
+  var sMsg = document.getElementById("msg").value;
+  var sManuId = document.getElementById("manuId").value;
+  var sReceiver = "";
+  if (sManuId.length > 0){
+    sReceiver = sManuId;
+  }else{
+    sReceiver = document.getElementById("receiver").value;
+  }
+  var obj = {receiver : sReceiver,
+            msg : sMsg,
+            sendfanet : 3 };
+  doSend(JSON.stringify(obj));
+}
+ 
+// Called when a message is received from the server
+function onMessage(evt) {
+ 
+    // Print out our received message
+    console.log("Received: " + evt.data);
+    
+    // Update circle graphic with LED state
+    var myObj = JSON.parse(evt.data);
+    for (var key of Object.keys(myObj)) {
+        console.log(key + " -> " + myObj[key]);
+        if (key == "setView"){
+          settingsView = myObj[key];
+          continue;
+        }        
+        var e = document.getElementById(key);
+        if (e == null) continue;
+        if (e instanceof HTMLSelectElement) {     /* <select>*/
+          document.getElementById(key).value = myObj[key];
+        }else if ((e instanceof HTMLInputElement ) && (e.getAttribute('type') == 'checkbox')){     /* <input checkbox>*/
+          if (myObj[key] == 1){
+            document.getElementById(key).checked = true;
+          }else{
+            document.getElementById(key).checked = false;
+          }
+          
+        }else{
+          document.getElementById(key).textContent = myObj[key];
+          document.getElementById(key).value = myObj[key];
+        }
+    }
+    setVis(); //now set visibility
+}
+ 
+//this function sets visible depending on actual option
+function setVis(){
+  //console.log("visible=" + document.getElementById("mode").style.display)
+  document.getElementById("visSendSystemCmd").style.display='none'; //set advanced weahter upload settings invisible    
+  if (settingsView > 100){
+    document.getElementById("visSendSystemCmd").style.display='';  //we are expert
+  }
+  
+}
+
+ 
+// Sends a message to the server (and prints it to the console)
+function doSend(message) {
+    console.log("Sending: " + message);
+    websocket.send(message);
+}
+</script>
+<script type="text/javascript" src="scripts.js"></script>
+</head>
+<body>
+  <div style="text-align:left;display:inline-block;color:#eaeaea;min-width:340px;">
+    <div style='text-align:center;color:#eaeaea;'>
+      <noscript>JavaScript aktivieren um GXAirCom benutzen zu können<br></noscript>
+      <h1 id="appname"></h1>
+      <h3 id="buildDate"></h3>
+      <h3 id="pilot"></h3>
+      <h3 id="myIP"></h3>
+    </div>    
+    <fieldset>
+      <legend><b>send message to device</b></legend>    
+      <table style="width:100&#37;">
+        <tbody>
+          <tr>
+            <th>receiver</th>
+            <td><select name="receiver" id="receiver">
+              <!--%NEIGHBOURS%-->
+              <!--<option value="08C3CC">T-Beam 08C3CC</option>-->
+              <option value="000000">Send to All</option>
+              <!--<option value="000000">broadcast to all</option>-->
+            </select></td>
+          </tr>          
+          <tr>
+            <th>manual id (only if id is not in list)</th>
+            <td><input type="text" id="manuId" name="manuId" maxlength="6"></td>
+          </tr>                    
+          <tr>
+            <th>message</th>
+            <td><input type="text" id="msg" name="msg" maxlength="66"></td>
+          </tr>
+        </tbody>      
+      </table>
+      <br>
+      * Limited to 66 characters max
+      <br>
+      <br>
+      <button id="btnsend" name="btnsend" onClick="sendValues()" class="button bgrn">send</button>
+    </fieldset>
+    <p></p>
+    <p></p>
+    <fieldset>
+      <legend><b>last received MSG</b></legend>    
+      <table style="width:100&#37;">
+        <tbody>
+          <tr>
+            <td><input type="text" id="FNTMSGIN" disabled></td>
+          </tr>
+        </tbody>      
+      </table>
+    </fieldset>
+    <p></p>
+    <p></p>
+    <fieldset id=visSendSystemCmd>
+      <legend><b>send System command</b></legend>    
+      <table style="width:100&#37;">
+        <tbody>
+          <tr>
+            <th>FANET PIN</th>
+            <td><input type="number" id="fanetId" min="0000" max="9999" step="1"></td>
+          </tr>                    
+          <tr>
+            <th>command</th>
+            <td><select id="syscmd">
+              <option value="#SYC VER?">check version</option>
+              <option value="#SYC NAME?">check name</option>
+              <option value="#SYC TYPE?">check aircrafttype</option>
+              <option value="#SYC AIRMODE?">check airmode</option>
+              <option value="#SYC FUEL_SENSOR?">check fuelsensor</option>
+              <option value="#SYC MODE?">check mode</option>
+              <option value="#SYC OUTMODE?">check outpout-mode</option>
+              <option value="#SYC RFMODE?">check rf-mode</option>
+              <option value="#SYC FNTPWR?">check fanet-power</option>
+              <option value="#SYC RESTART">do restart</option>
+              <option value="#SYC DOUPDATE">update station</option>
+            </select></td>
+          </tr>
+        </tbody>      
+      </table>
+      <button onClick="sendSystemCmd()" class="button bgrn">send command</button>
+    </fieldset>
+    <p></p>
+    <p></p>
+    <table style="width:100&#37;">
+      <tr>
+        <td style="width:100&#37;">
+          <button onClick="location.href='/index.html'">main menu</button>
+        </td>
+      </tr>
+    </table>
+    <p></p>
+    <div style='text-align:right;font-size:11px;'><hr><a href='https://www.getronix.at' target='_blank' style='color:#aaa;'>GXAirCom by Gerald Eichler</a>
+    </div>
+  </div>
+</body>
+</html>

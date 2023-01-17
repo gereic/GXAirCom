@@ -50,6 +50,11 @@ void kalmanvert::update(double mp, double ma, unsigned long timestamp) {
   unsigned long deltaTime = timestamp - t;
   double dt = ((double)deltaTime)/1000.0;
   t = timestamp;
+  /*
+  if (deltaTime >= 50){
+    return; //tooks too long --> possible, we got wrong values
+  }
+  */
 
   /**************/
   /* prediction */

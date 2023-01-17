@@ -197,6 +197,7 @@ automatic-board-detection implemented.
 #SYC MODE=1 set mode of operation to ground-station 0...Air-Module 1...Ground-station
 #SYC OUTMODE? get output-mode
 #SYC OUTMODE=3 set output-mode to bluetooth 0...Serial, 1...UDP, 3...bluetooth
+#SYC DOUPDATE trigger a version-check and update to new firmware, if avaiable
 
 V4.1.0
 added support for update module directly without download firmware and spiffs on firmware update-page
@@ -328,3 +329,48 @@ added battery-life-power-option (going to deep-sleep if battery-capacity is belo
 added rotation for E-Ink
 added batter-percent to info-page
 added support for TTGO T-Call (still in process)
+
+v4.13.0
+changed button for Volume-control on TTGo T3 to PIN 2
+New Code for SX1276 and SX1262 --> improved time to switch between Modes
+E-Ink for T-Beam SX1262 is now supported (but only in Air-Mode). (some Pins need to be changed)
+Updated E-Ink-Lib for supporting Waveshare 2.9 V2-Modules
+
+V4.14.0
+added support for MQTT for Ground-Station (change settings, ....)
+bugfix receiving legacy of GXAirCom-Devices (OGN-Devices) was blocked
+bugfix receiving legacy of GXAirCom-Devices time was not set by GPS
+bugfix receiving FANET (CRC was not checked)
+
+V4.15.0
+Using GPS for Ground-Station (only active, when lat and lon in settings 0)
+Added GPS-Output for Ground-Station
+changed calibration-routine (added much better solution)
+BLE improvements
+
+V4.16.0
+Bugfix Aircrafttype Burnair
+Sending altitude also in ground-tracking.
+  when Flarm-receive, altitude is ok
+  when Fanet-receive, no altitude given
+Bugfix on T-Beam V07 for Baro-SDL and SCL --> Changed Pins back to 13,14
+
+V5.0.0
+new Flarm-integration for sending compatible Flarm-packages
+added upload fanet-weatherstation to weather-underground and windy (up to 5)
+added support for Technoline TX20-Aneometer
+ATTENTION new parameter for weatherstation.
+If Ground-station should be a weatherstation, parameter has to be switched on.
+Also it is possible, to set optional BME280 and rain-sensor for weather-station, so a weather-station can be only with wind-sensor
+When BME280 can't be read or has faulty data, only wind will be sent to FANET or WU/WI.
+
+v5.2.0
+added support for ADS1015 and Peet Bros weather-station
+set MQTT timestamp to ISO860
+send MQTT weather-data according to existing sensors
+
+v5.3.0
+added worldwide FANET-frequencys
+added worldwide Flarm-frequencys
+Flarm outside europe is only working with GPS (and PPS-Signal like TTGO T-Beam),
+ because of frequency-hoping (not well tested yed (outside europe))

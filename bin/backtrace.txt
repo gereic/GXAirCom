@@ -1,0 +1,15 @@
+2022-07-15 15:49:49,089 #FNF 11,3E12,1,0,1,B,3484446E070B2991297CB5
+2022-07-15 15:49:49,090 113E12;tracking;lat=48.1760;lon=15.5097;alt=297.0;climb=-0.4;speed=20.5;onine=1;aircraft=Paraglider;https://maps.google.com/?q=48.1760,15.5097
+2022-07-15 15:49:49,097 Guru Meditation Error: Core  1 panic'ed (LoadProhibited). Exception was unhandled.
+2022-07-15 15:49:49,099 Core 1 register dump:
+2022-07-15 15:49:49,107 PC      : 0x400feccc  PS      : 0x00060530  A0      : 0x800eaf54  A1      : 0x3ffd2690  
+2022-07-15 15:49:49,114 A2      : 0x3ffc5220  A3      : 0x51eb851f  A4      : 0x00000420  A5      : 0x00002940  
+2022-07-15 15:49:49,123 A6      : 0x3ffc543c  A7      : 0x00000000  A8      : 0x00000087  A9      : 0x66666667  
+2022-07-15 15:49:49,130 A10     : 0x000007a5  A11     : 0x00007775  A12     : 0xffffff82  A13     : 0x00000001  
+2022-07-15 15:49:49,138 A14     : 0x00000000  A15     : 0x00000003  SAR     : 0x00000004  EXCCAUSE: 0x0000001c  
+2022-07-15 15:49:49,146 EXCVADDR: 0x00000000  LBEG    : 0x400014fd  LEND    : 0x4000150d  LCOUNT  : 0xffffffff  
+2022-07-15 15:49:49,147 
+2022-07-15 15:49:49,150 ELF file SHA256: 0000000000000000
+2022-07-15 15:49:49,151 
+2022-07-15 15:49:49,156 Backtrace: 0x400feccc:0x3ffd2690 0x400eaf51:0x3ffd2860 0x40091bea:0x3ffd2b90
+2022-07-15 15:49:49,157 

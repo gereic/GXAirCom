@@ -17,6 +17,11 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #include <TimeLib.h>
+#include <ctime>
+#include "Tx20.h"
+#include "main.h"
+#include <ADS1X15.h>
+#include <PeetBros.h>
 
 #define DEG2RAD M_PI / 180.0
 #define RAD2DEG 180.0 / M_PI
@@ -50,7 +55,7 @@ public:
     Weather(); //constructor
     void setTempOffset(float tempOffset);
     void setWindDirOffset(int16_t winddirOffset);
-    bool begin(TwoWire *pi2c, float height,int8_t oneWirePin, int8_t windDirPin, int8_t windSpeedPin,int8_t rainPin);
+    bool begin(TwoWire *pi2c, SettingsData &setting, int8_t oneWirePin, int8_t windDirPin, int8_t windSpeedPin,int8_t rainPin);
     void run(void);
     bool getValues(weatherData *weather);
     void resetWindGust(void);
@@ -58,21 +63,16 @@ public:
 protected:
 private:
     TwoWire *pI2c;
+    bool checkI2Caddr(uint8_t);
     bool initBME280(void);
-    void runBME280(uint32_t tAct);
     float calcPressure(float p, float t, float h);    
-    void copyValues(void);
     void checkAneometer(void);
     void checkRainSensor(void);
     float calcWindspeed(void);
-    uint8_t sensorAdr;
     Adafruit_BME280 bme;
     //uint16_t avgFactor; //factor for avg-factor
     float _tempOffset = 0;
     int16_t _winddirOffset = 0;
-    float dTemp = 0;
-    float dHumidity = 0;
-    float dPressure = 0;
     float _height = 0;
     uint8_t _windDirPin;
     bool bFirst;
@@ -97,5 +97,14 @@ private:
     uint32_t rainTipCount1d = 0;
     uint8_t actHour = 0;
     uint8_t actDay = 0;
+    uint8_t aneometerType = 0;
+    bool _bHasBME = false;
+    ADS1015 _ADS1015;
+    bool initADS(AnemometerSettings &anSettings);
+    bool _bHasADS = false;
+    AnemometerSettings anSettings;
+    void checkAdsAneometer(void);
+    float getAdsVoltage(uint8_t pin, float vref);
+    float calcAdsMeasurement(float measurement, float minVoltage, float maxVoltage, float minRange, float maxRange);
 };
 #endif

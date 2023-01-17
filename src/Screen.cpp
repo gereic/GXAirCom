@@ -18,7 +18,8 @@ bool Screen::begin(uint8_t type,int8_t cs,int8_t dc,int8_t rst,int8_t busy,int8_
   bInit = false;
   log_i("starting E-Ink type=%d;cs=%d,dc=%d,rst=%d,busy=%d,clk=%d,din=%d",type,cs,dc,rst,busy,clk,din);
   if (type == 1){
-    GxEPD2_BW<GxEPD2_290_T94, GxEPD2_290_T94::HEIGHT> *e_ink = new GxEPD2_BW<GxEPD2_290_T94, GxEPD2_290_T94::HEIGHT>(GxEPD2_290_T94(cs, dc, rst, busy));
+    //GxEPD2_BW<GxEPD2_290_T94, GxEPD2_290_T94::HEIGHT> *e_ink = new GxEPD2_BW<GxEPD2_290_T94, GxEPD2_290_T94::HEIGHT>(GxEPD2_290_T94(cs, dc, rst, busy));
+    GxEPD2_BW<GxEPD2_290_T94_V2, GxEPD2_290_T94_V2::HEIGHT> *e_ink = new GxEPD2_BW<GxEPD2_290_T94_V2, GxEPD2_290_T94_V2::HEIGHT>(GxEPD2_290_T94_V2(cs, dc, rst, busy));
     e_ink->epd2.init(clk, din, 0, true, false); // define or replace SW_SCK, SW_MOSI)
     e_ink->init(0);
     pEInk = e_ink;
@@ -74,7 +75,7 @@ void Screen::run(void){
   if (!bInit){
     doInitScreen();
   }else{
-    if (setting.Mode == MODE_GROUND_STATION){
+    if (setting.Mode == eMode::GROUND_STATION){
       drawWeatherScreen();
     }else{
       drawMainScreen();
@@ -223,7 +224,7 @@ void Screen::drawCompass(int16_t x, int16_t y, int16_t width, int16_t height,flo
   pEInk->print(sText.c_str());
 }
 
-void Screen::drawValue(int16_t x, int16_t y, int16_t width, int16_t height,float value,uint8_t decimals){
+void Screen::drawValue(int16_t x, int16_t y, int16_t width, int16_t height,float value,unsigned int decimals){
   String sText = String(value,decimals);
   //log_i("%.2f = %s",value,sText.c_str());
   int16_t tbx, tby, posx, posy; uint16_t tbw, tbh;

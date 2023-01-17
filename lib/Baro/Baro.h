@@ -25,6 +25,8 @@
 #include "helper_3dmath.h"
 #include "InterpolationLib.h"
 
+//#define newBaro
+
 //#define BARO_DEBUG
 #define BARO_DEBUG_IP "192.168.0.178"
 #define BARO_DEBUG_PORT 5010
@@ -58,6 +60,9 @@ class Baro {
     int16_t mz;
     uint8_t newData;
     uint8_t baroCount;
+    float pressmeasure;    
+    float vAcc;
+    float vOffset;
     uint8_t mpuCount;
     int16_t accel[3];
     int16_t gyro[3];
@@ -80,7 +85,7 @@ public:
     bool calibGyro(void);
     bool calibAcc(void);
     bool calibration(void);
-    bool calibrate(bool bInit,uint8_t step);
+    bool calibrate(bool bInit,uint8_t* calibstate);
 
 protected:
 private:
@@ -92,10 +97,12 @@ private:
     void runMS5611(uint32_t tAct);
     void runBME280(uint32_t tAct);
     bool mpuDrdy(void);
-    float getGravityCompensatedAccel(void);
-    void scaleAccel(VectorInt16 *accel);
+    float getGravityCompensatedAccel(float temp);
+    void scaleAccel(VectorInt16 *accel,float temp);
     void meansensors(void);
     float getMpuTemp(void);
+    uint32_t get2of3(uint32_t *press, uint32_t newPress);
+    uint32_t arPress[3]; 
     uint8_t sensorType;
     uint8_t sensorAdr;
     bool bNewValues;

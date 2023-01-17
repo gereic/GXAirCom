@@ -16,6 +16,7 @@
 //#include "app.h"
 #include "./radio/LoRa.h"
 #include "CalcTools.h"
+#include "FlarmRadio.h"
 
 
 
@@ -28,6 +29,7 @@
 #define FANET_LORA_TYPE1OR7_AIRTIME_MS			40		//actually 20-30ms
 #define	FANET_LORA_TYPE1OR7_MINTAU_MS			250
 #define	FANET_LORA_TYPE1OR7_TAU_MS			5000
+//#define	FANET_LORA_TYPE1OR7_TAU_MS			500
 
 #define SEPARATOR			','
 
@@ -237,7 +239,7 @@ public:
   } weatherData;
 
   FanetLora(); //constructor
-  bool begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int reset, int dio0,long frequency,uint8_t outputPower,uint8_t radio);
+  bool begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int8_t reset, int8_t dio0, int8_t gpio,long frequency,uint8_t outputPower,uint8_t radio);
   void end(void);
   String getMyDevId(void);
   String getDevId(uint32_t devId);
@@ -270,6 +272,7 @@ public:
   void sendMSG(String msg);
   void coord2payload_absolut(float lat, float lon, uint8_t *buf);
   uint8_t getFlarmAircraftType(trackingData *tData);
+  uint8_t getFlarmAircraftType(aircraft_t aircraftType);
   void getRxTxCount(uint16_t *pFntRx,uint16_t *pFntTx,uint16_t *pLegRx,uint16_t *pLegTx);
   neighbour neighbours[MAXNEIGHBOURS];
   weatherData weatherDatas[MAXWEATHERDATAS];
@@ -299,6 +302,9 @@ public:
 
 protected:
 private:  
+  AircraftState flarmAircraftState;
+  AircraftConfig flarmAircraftConfig;
+  GpsData flarmGpsData;
   uint8_t _RfMode;
   String _PilotName;  
   uint32_t valid_until;
@@ -316,10 +322,13 @@ private:
   bool newName = false;
   weatherData lastWeatherData;
   bool newWData = false;
-  void getTrackingInfo(String line,Frame *frm);
-  void getGroundTrackingInfo(uint8_t *buffer,uint16_t length);  
-  void getWeatherinfo(uint8_t *buffer,uint16_t length);  
+  int8_t getTrackingInfo(Frame *frm);
+  int8_t getGroundTrackingInfo(uint8_t *buffer,uint16_t length);  
+  int8_t getWeatherinfo(uint8_t *buffer,uint16_t length);  
   float getSpeedFromByte(uint8_t speed);
+  int32_t getLatLonFromBuffer(uint8_t *buffer);
+  float getLatFromBuffer(uint8_t *buffer);
+  float getLonFromBuffer(uint8_t *buffer);
   void printAircraftType(aircraft_t type);
   String CreateFNFMSG(Frame *frm);
   int16_t getneighbourIndex(uint32_t devId,bool getEmptyEntry);

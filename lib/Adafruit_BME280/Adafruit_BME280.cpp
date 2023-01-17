@@ -119,7 +119,7 @@ bool Adafruit_BME280::init() {
   // init I2C or SPI sensor interface
   if (_cs == -1) {
     // I2C
-    _wire->begin();
+    //_wire->begin(); //gereic 23.05.2022
   } else {
     digitalWrite(_cs, HIGH);
     pinMode(_cs, OUTPUT);
@@ -197,7 +197,9 @@ void Adafruit_BME280::setSampling(sensor_mode mode,
   // you must make sure to also set REGISTER_CONTROL after setting the
   // CONTROLHUMID register, otherwise the values won't be applied (see
   // DS 5.4.3)
-  write8(BME280_REGISTER_CONTROLHUMID, _humReg.get());
+  if (isBME280){
+    write8(BME280_REGISTER_CONTROLHUMID, _humReg.get());
+  }
   write8(BME280_REGISTER_CONFIG, _configReg.get());
   write8(BME280_REGISTER_CONTROL, _measReg.get());
 }

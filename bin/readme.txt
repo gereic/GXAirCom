@@ -1,4 +1,4 @@
-************* Pins for TTGO-TBeam V1.0 ***************
+************* Pins for TTGO-TBeam V1.0/V1.1 ***************
 ******* LORA ********
 SCK 5
 MISO 19
@@ -39,9 +39,17 @@ FUEL-SENSO 39
 ******** external Power Switch (only for direct use with kobo to switch on an off automatically) *********
 PinExtPowerOnOff 36
 
-******** Aneometer (Davis 6410) *********
+******** Anemometer (Davis 6410) *********
 WINDDIR_PIN 36
-WINDSPEED_PIN 39
+WINDSPEED_PIN 39  (use external Pull)
+
+******** Anemometer (TX20) *********
+DATA_PIN 39
+
+******** Anemometer (Peet Bros) *********
+WINDDIR_PIN 36  (use external Pull 10K)
+WINDSPEED_PIN 39  (use external Pull 10K)
+
 
 
 
@@ -117,9 +125,18 @@ BATT_VOLT_PIN 34   ---|____|----|----|____|-----
 ******** Temperature-sensor DS18B20 for Ground-station *********
 TEMP_PIN 22
 
-******** Aneometer (Davis 6410) *********
+******** Anemometer (Davis 6410) *********
 WINDDIR_PIN 36
-WINDSPEED_PIN 37
+WINDSPEED_PIN 37  (use external Pull)
+
+******** Anemometer (TX20) *********
+DATA_PIN 37
+
+******** Anemometer (Peet Bros) *********
+WINDDIR_PIN 36  (use external Pull 10K)
+WINDSPEED_PIN 37  (use external Pull 10K)
+
+
 
 ******** RAIN-Sensor VENTUS W174 *********
 RAIN_PIN 38   (need 10K Pull-Up-Resistor) Bucket-Size 0.5l
@@ -195,9 +212,17 @@ SCL 22
 ******** Temperature-sensor DS18B20 for Ground-station *********
 TEMP_PIN 25  (if e-ink is selected, no ds18b20 is supported)
 
-******** Aneometer (Davis 6410) *********
+******** Anemometer (Davis 6410) *********
 WINDDIR_PIN 33
-WINDSPEED_PIN 34
+WINDSPEED_PIN 34  (use external Pull)
+
+******** Anemometer (TX20) *********
+DATA_PIN 34
+
+******** Anemometer (Peet Bros) *********
+WINDDIR_PIN 33  (use external Pull 10K)
+WINDSPEED_PIN 34  (use external Pull 10K)
+
 
 ******** RAIN-Sensor VENTUS W174 *********
 RAIN_PIN 39   (need 10K Pull-Up-Resistor) Bucket-Size 0.5l

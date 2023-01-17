@@ -67,7 +67,7 @@ public:
   void setAirMode(bool _AirMode); //sets the mode (for sending heading and speed only if Air-Module)
   void setGPS(float lat,float lon,float alt,float speed,float heading);
   void sendTrackingData(time_t timestamp,float lat,float lon,float alt,float speed,float heading,float climb,String devId,aircraft_t aircraftType,uint8_t adressType,bool Onlinetracking,float snr);
-  void sendGroundTrackingData(time_t timestamp,float lat,float lon,String devId,uint8_t state,uint8_t adressType,float snr);
+  void sendGroundTrackingData(time_t timestamp,float lat,float lon,float alt,String devId,uint8_t state,uint8_t adressType,float snr);
   void sendNameData(String devId,String name,float snr);
   void sendWeatherData(weatherData *wData);
   void setClient(Client *_client);
@@ -89,6 +89,7 @@ private:
     String getActTimeString(time_t timestamp);
     uint8_t getSenderDetails(bool onlinetracking,aircraft_t aircraftType,uint8_t addressType);
     String getOrigin(uint8_t addressType);
+    uint8_t getFANETAircraftType(aircraft_t aircraftType);
     #ifdef OGNTEST
       void sendTestMsg(uint32_t tAct);
     #endif

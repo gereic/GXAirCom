@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" href="style.css">
+<meta charset='utf-8'>
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>GXAirCom</title>
+<script src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>
+<script language="javascript" type="text/javascript">
+var pageNumber=5;
+var UpdState = 0;
+var newVersion = "";
+/* Called when a message is received from the server */
+function onMessage(evt) {
+ 
+ /* Print out our received message*/
+ console.log("Received: " + evt.data);
+ 
+ /* Update circle graphic with LED state*/
+ var myObj = JSON.parse(evt.data);
+ for (var key of Object.keys(myObj)) {
+    console.log(key + " -> " + myObj[key]);
+    if (key == "updateState"){
+      UpdState = myObj[key];
+      continue;
+    }else if (key == "nVers"){
+      newVersion = myObj[key];
+      continue;
+    }
+    var e = document.getElementById(key);
+    if (e == null) continue;
+    if (e instanceof HTMLSelectElement) {     /* <select>*/
+      document.getElementById(key).value = myObj[key];
+    }else if ((e instanceof HTMLInputElement ) && (e.getAttribute('type') == 'checkbox')){     /* <input checkbox>*/
+      if (myObj[key] == 1){
+        document.getElementById(key).checked = true;
+      }else{
+        document.getElementById(key).checked = false;
+      }
+    }else{
+      document.getElementById(key).textContent = myObj[key];
+      document.getElementById(key).value = myObj[key];
+    }
+  }
+  setUpdateState();
+}
+
+function setUpdateState(){
+  e = document.getElementById("updstate");
+  switch(UpdState){
+    case 0:
+      e.value = "";
+      break;
+    case 1:
+      e.value = "checking for new Version";
+      break;
+    case 2:
+      e.value = "no new Version avaiable.";
+      break;
+    case 10:
+      document.getElementById("btnOnlineUpdate").innerText = "update";
+      e.value = "new Version: " + newVersion;
+      break;
+    case 200:
+      document.getElementById("btnOnlineUpdate").innerText = "ready";
+      e.value = "update completed";
+      document.getElementById("btnUpdate").innerText  = "rebooting ...";
+      var delay = 5000; /*wait 5 seconds until reconnect*/
+      setTimeout( callMainPage, delay );
+      break;
+    case 255:
+      document.getElementById("btnOnlineUpdate").innerText = "Check for new Version";
+      e.value = "update error";
+      document.getElementById("btnUpdate").innerText  = "rebooting ...";
+      var delay = 5000; /*wait 5 seconds until reconnect*/
+      setTimeout( callMainPage, delay );
+      break;
+    default:
+      break;
+  }
+}
+
+function btnUpdClick(){
+  if (UpdState == 10){
+    UpdState = 100; /*we want to update version*/
+    document.getElementById("updstate").value = "update is running, please wait";
+    document.getElementById("btnOnlineUpdate").innerText = "updating";
+  }else{
+    UpdState = 1;
+  }
+  var obj = {
+  updateState : UpdState
+  };
+  doSend(JSON.stringify(obj));
+  setUpdateState();
+
+}
+
+</script>
+<script type="text/javascript" src="scripts.js"></script>
+ </head>
+<body>
+  <div style="text-align:left;display:inline-block;color:#eaeaea;min-width:340px;">
+    <div style='text-align:center;color:#eaeaea;'>
+      <noscript>JavaScript aktivieren um GXAirCom benutzen zu können<br></noscript>
+      <h1 id="appname"></h1>
+      <h3 id="buildDate"></h3>
+      <h3 id="pilot"></h3>
+      <h3 id="myIP"></h3>
+    </div>
+    <fieldset>
+      <legend><b>upgrade by file upload</b></legend>
+	  1. Download latest version from <a href='https://github.com/gereic/GXAirCom/tree/master/bin' target='_blank'>https://github.com/gereic/GXAirCom/tree/master/bin </a><br>
+	  1. Search and select "firmware_xxx.bin" <br>
+	  3. start upgrade <br>
+	  3. Search and select "spiffs_xxx.bin"	 <br>
+	  5. start upgrade <br>
+      <form method="post" action="/fwupdate" enctype='multipart/form-data' id='upload_form'>
+        <br>
+        <input type='file' name='update' required>
+        <br>
+        <br>
+        <button type="submit" id="btnUpdate">start upgrade</button>
+      </form>
+      <div id='prg'>progress: 0&#37;</div>
+    </fieldset>
+    <p></p>
+    <p></p>
+    <fieldset>
+      <legend><b>upgrade directly from internet</b></legend>
+      <table style="width:100&#37;">
+        <tbody>
+          <tr>
+            <th>update-state:</th>
+            <td><input type="text" id="updstate" disabled></td>
+            <td>
+              <button type="button" id="btnOnlineUpdate" onClick="btnUpdClick()" class="button byel" style="line-height: 1.7rem;">Check for new Version</button>
+            </td>
+          </tr>
+      </table>
+    </fieldset>
+    <p></p>
+    <p></p>
+    <table style="width:100&#37;">
+      <tr>
+        <td style="width:100&#37;">
+          <button onClick="location.href='/index.html'">main menu</button>
+        </td>
+      </tr>
+    </table>
+    <p></p>
+    <div style='text-align:right;font-size:11px;'><hr><a href='https://www.getronix.at' target='_blank' style='color:#aaa;'>GXAirCom by Gerald Eichler</a>
+    </div>
+  </div>
+  <script>
+    function callMainPage(){
+      window.location="/index.html";
+    }    
+
+    $('form').submit(function(e){
+      document.getElementById("btnUpdate").innerText  = "update is running ....";
+      e.preventDefault();
+      var form = $('#upload_form')[0];
+      var data = new FormData(form);
+      $.ajax({
+        url: '/fwupdate',
+        type: 'POST',
+        data: data,
+        contentType: false,
+        processData:false,
+        xhr: function() {
+          var xhr = new window.XMLHttpRequest();
+          xhr.upload.addEventListener('progress', function(evt) {
+          if (evt.lengthComputable) {
+          var per = evt.loaded / evt.total;
+          $('#prg').html('progress: ' + Math.round(per*100) + '&#37;');
+        }
+      }, false);
+      return xhr;
+    },
+    success:function(d, s) {
+      document.getElementById("btnUpdate").innerText  = "rebooting ...";
+      var delay = 5000; /*wait 5 seconds until reconnect*/
+      setTimeout( callMainPage, delay );
+      console.log('success!');
+   },
+   error: function (a, b, c) {
+   }
+   });
+   });
+   </script>
+  
+</body>
+</html>

@@ -27,6 +27,7 @@ extern struct statusData status;
 extern void checkReceivedLine(char *ch_str);
 
 NimBLECharacteristic *pCharacteristic;
+uint16_t maxMtu = 0xFFFF;
 
 
 /*
@@ -42,20 +43,39 @@ const char *SERVICE_UUID = "0000FFE0-0000-1000-8000-00805F9B34FB";
 
 class MyServerCallbacks : public NimBLEServerCallbacks {
 
-	void onConnect(NimBLEServer* pServer) {
+	static void updateMtu(NimBLEServer* pServer) {
+		uint16_t newMtu = 0xFFFF;
+		for (uint16_t conn_id : pServer->getPeerDevices()){
+			// remove OP-Code (1 Byte) and Attribute Handle (2 Byte)
+			uint16_t mtu = pServer->getPeerMTU(conn_id) - 3;
+			newMtu = std::min<uint16_t>(newMtu, mtu);
+		}
+		if (newMtu != maxMtu && newMtu < 0xFFFF){
+			maxMtu = newMtu;
+			log_i("new mtu-size=%u",maxMtu);
+		}
+	}
+
+	void onConnect(NimBLEServer* pServer) override {
   		//log_d("***************************** BLE CONNECTED *****************");
+		updateMtu(pServer);
 		status.bluetoothStat = 2; //we have a connected client
 		NimBLEDevice::startAdvertising();
 	};
 
-	void onDisconnect(NimBLEServer* pServer) {
+	void onDisconnect(NimBLEServer* pServer) override {
 		//log_d("***************************** BLE DISCONNECTED *****************");
-		status.bluetoothStat = 1; //client disconnected
-		//delay(1000);
-		//	pServer->
+		updateMtu(pServer);
+		if (pServer->getConnectedCount() == 0) {
+			status.bluetoothStat = 1; //client disconnected
+		}
 		NimBLEDevice::startAdvertising();
 	}
 
+	void onMTUChange(uint16_t MTU, ble_gap_conn_desc* desc) override {
+		NimBLEServer* server = NimBLEDevice::getServer();
+		updateMtu(server);
+	}
 };
 
 
@@ -88,19 +108,25 @@ class MyCallbacks : public NimBLECharacteristicCallbacks {
 
 };
 
-void BLESendChunks(String str)
+void BLESendChunks(char *buffer,int iLen)
 {
-	String substr;
-	if (status.bluetoothStat == 2) {
-		for (int k = 0; k < str.length(); k += _min(str.length(), 20)) {
-			substr = str.substring(k, k + _min(str.length() - k, 20));
-			//pCharacteristic->setValue(substr.c_str());
-			pCharacteristic->sNotify = std::string(substr.c_str());
-			pCharacteristic->notify();			
-			vTaskDelay(5);
+	if ((status.bluetoothStat == 2) && (iLen > 0) && (maxMtu < 0xFFFF)){ //we have a connection
+
+		const uint8_t* begin = reinterpret_cast<uint8_t*>(buffer);
+		const uint8_t* end = reinterpret_cast<uint8_t*>(buffer + iLen);
+
+		while (std::distance(begin, end) > maxMtu) {
+			//log_i("ble chunk : %s", std::string(begin, std::next(begin, maxMtu)).c_str());
+			pCharacteristic->notify(begin, maxMtu, true);
+			std::advance(begin, maxMtu);
+			taskYIELD();
+		}
+		if(begin < end) {
+			//log_i("ble chunk : %s", std::string(begin, end).c_str());
+			pCharacteristic->notify(begin, std::distance(begin, end), true);
+			taskYIELD();
 		}
 	}
-	//vTaskDelay(20);
 }
 
 void NEMEA_Checksum(String *sentence)
@@ -129,50 +155,24 @@ void start_ble (String bleId)
 	esp_coex_preference_set(ESP_COEX_PREFER_BT);
   NimBLEDevice::init(bleId.c_str());
 	NimBLEDevice::setMTU(256); //set MTU-Size to 256 Byte
-	NimBLEServer *pServer = NimBLEDevice::createServer();
+	NimBLEServer* pServer = NimBLEDevice::createServer();
 	pServer->setCallbacks(new MyServerCallbacks());
-
-	/*
-	BLEService *pService = pServer->createService(SERVICE_UUID);
-
-	pCharacteristic = pService->createCharacteristic(
-                      CHARACTERISTIC_UUID_TX,
-                      BLECharacteristic::PROPERTY_NOTIFY
-                    );
-                      
-  	pCharacteristic->addDescriptor(new BLE2902());
- 
-  	BLECharacteristic *pCharacteristic = pService->createCharacteristic(
-    	                                     CHARACTERISTIC_UUID_RX,
-        	                                 BLECharacteristic::PROPERTY_WRITE
-            	                           );
- 
-  	pCharacteristic->setCallbacks(new MyCallbacks());
-	pService->start();
-	pServer->getAdvertising()->start();
-	*/
-
 	NimBLEService *pService = pServer->createService(NimBLEUUID((uint16_t)0xFFE0));
 	// Create a BLE Characteristic
 	pCharacteristic = pService->createCharacteristic(NimBLEUUID((uint16_t)0xFFE1),
 		NIMBLE_PROPERTY::NOTIFY| NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::WRITE_NR
 	);
-	//pCharacteristic->addDescriptor(new BLE2902());
-
-	//BLECharacteristic *pCharacteristic = pService->createCharacteristic(
-	//CHARACTERISTIC_UUID_DEVICENAME,
-	//BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_WRITE_NR
-	//);
 	pCharacteristic->setCallbacks(new MyCallbacks());
 	log_i("Starting BLE");
 	// Start the service
 	pService->start();
-	pServer->getAdvertising()->addServiceUUID(NimBLEUUID((uint16_t)0xFFE0));
+
 	// Start advertising
-	pServer->getAdvertising()->start();
+	NimBLEAdvertising* pAdvertising = pServer->getAdvertising();
+	pAdvertising->addServiceUUID(pService->getUUID());
+	pAdvertising->start();
 
 	log_i("Waiting a client connection to notify...");
-
 }
 
 void stop_ble ()

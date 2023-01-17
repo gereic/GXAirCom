@@ -10,6 +10,8 @@
 #include <math.h>
 #include <Update.h>
 #include <CalcTools.h>
+#include <Logger.h>
+#include "./web/website.h"
 
 //extern WebServer server;
 extern struct SettingsData setting;
