@@ -1952,6 +1952,7 @@ void setup() {
   testLegacy();
   #endif
 
+  // forcing TTGO T3 v2.1.1.6 SD board with env variable declared
   #ifdef BTT3V2
     setting.boardType = eBoard::TTGO_T3_V2;
     log_i("Board is forced by platformio.ini env to TTGO T3 v2.1.1.6");
@@ -2097,6 +2098,8 @@ void setup() {
     adcVoltageMultiplier = 2.12f;
     pinMode(PinADCVoltage, INPUT);
     break;
+  
+  // moved here PIN configuraiton for TTGO T3 v2.1.1.6 board with SD, still not listed in web interface and set forced above with platformio env variable 
   case eBoard::TTGO_T3_V2:
     log_i("Board=TTGO_T3_V2_1_1_6");
     PinGPSRX = 34;
