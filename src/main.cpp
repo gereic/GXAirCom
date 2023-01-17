@@ -2100,7 +2100,7 @@ void setup() {
   case eBoard::TTGO_T3_V2:
     log_i("Board=TTGO_T3_V2_1_1_6");
     PinGPSRX = 34;
-    PinGPSTX = 39;
+    PinGPSTX = 15;
 
     PinLoraRst = 23;
     PinLoraDI0 = 26;
@@ -2121,7 +2121,10 @@ void setup() {
     pinMode(PinBaroSCL, INPUT_PULLUP);
     PinADCVoltage = 35;
 
-    // no PinFuelSensor for this board, pin not available 39
+    if (setting.bHasFuelSensor){
+      PinFuelSensor = 39;
+      pinMode(PinFuelSensor, INPUT);
+    }    
 
     PinBuzzer = 25;
 
