@@ -2103,7 +2103,7 @@ void setup() {
   case eBoard::TTGO_T3_V2:
     log_i("Board=TTGO_T3_V2_1_1_6");
     PinGPSRX = 34;
-    PinGPSTX = 15;
+    PinGPSTX = 39;
 
     PinLoraRst = 23;
     PinLoraDI0 = 26;
@@ -5484,7 +5484,12 @@ void taskBackGround(void *pvParameters){
       }
     }
     */
-    if (minFreeHeap<10000)
+   #ifdef LOGGER
+     uint32_t freeHeapLimit = 2000;
+   #else
+     uint32_t freeHeapLimit = 10000;
+   #endif
+    if (minFreeHeap<freeHeapLimit)
     {
       log_e( "*****LOOP current free heap: %d, minimum ever free heap: %d ******", actFreeHeap, minFreeHeap);
       log_e("System Low on Memory - xPortGetMinimumEverFreeHeapSize < 10KB");

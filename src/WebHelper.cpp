@@ -334,6 +334,12 @@ void onWebSocketEvent(uint8_t client_num,
           doc["MqttPw"] = setting.mqtt.pw;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
+        }else if (clientPages[client_num] == 50){ //igcfile page
+          // doc.clear();
+          // doc["test"] = "test ok.";
+          // serializeJson(doc, msg_buf);
+          // webSocket.sendTXT(client_num, msg_buf);
+          log_i("Receiving from page igclogs");
         }else if (clientPages[client_num] == 101){ //msg-type 1 test
           doc["lat"] = String(fanetTrackingData.lat,6);
           doc["lon"] = String(fanetTrackingData.lon,6);
@@ -609,25 +615,27 @@ String processor(const String& var){
   //log_i("%s",var.c_str());
   if (var == "IGCFILELIST"){
     // TODO list all igc files and create link to download
-    logger.listFiles(SD_MMC,"/");
-    sRet = "";
-    char* d = strtok(logger.igclist, ";");
-    sRet += "<table><thead><tr><th>Download</th><th>Delete</th></tr></thead><tbody>";
-    while (d != NULL ) {
-        //Serial.println (d);
-        if((!String(d).startsWith("/._") )){//&& !String(d).startsWith("/test"))){
-          sRet += "<tr><td><button class='button bsil'>";
-          sRet += "<a href='/download?igc="+String(d)+"' download>";
-          sRet += "<span style='color:black'>"+String(d)+"</span></a>";
-          sRet += "</button></td>";
-          sRet += "<td><button title='Delete' class='button bred'>";
-          sRet += "<a href='/deleteigc?igc="+String(d)+"' target='_blank'>";
-          sRet += " X </a></button></td>";
-          sRet += "</tr>";
-        }
-        d = strtok(NULL, ";");
-    }
-    sRet += "</tbody></table>";
+
+    // logger.listFiles(SD_MMC,"/");
+    // sRet = "";
+    // char* d = strtok(logger.igclist, ";");
+    // sRet += "<table><thead><tr><th>Download</th><th>Delete</th></tr></thead><tbody>";
+    // while (d != NULL ) {
+    //     //Serial.println (d);
+    //     if((!String(d).startsWith("/._") )){//&& !String(d).startsWith("/test"))){
+    //       sRet += "<tr><td><button class='button bsil'>";
+    //       sRet += "<a href='/download?igc="+String(d)+"' download>";
+    //       sRet += "<span style='color:black'>"+String(d)+"</span></a>";
+    //       sRet += "</button></td>";
+    //       sRet += "<td><button title='Delete' class='button bred'>";
+    //       sRet += "<a href='/deleteigc?igc="+String(d)+"' target='_blank'>";
+    //       sRet += " X </a></button></td>";
+    //       sRet += "</tr>";
+    //     }
+    //     d = strtok(NULL, ";");
+    // }
+    // sRet += "</tbody></table>";
+    
     return sRet;
   }else if (var == "NEIGHBOURS"){
     sRet = "";
@@ -766,7 +774,11 @@ void Web_setup(void){
   });
   // new igc track logger page
   server.on("/igclogs.html", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(SPIFFS, "/igclogs.html", "text/html",false,processor);
+    // request->send(SPIFFS, "/igclogs.html", "text/html",false,processor);
+    const char* dataType = "text/html";
+    AsyncWebServerResponse *response = request->beginResponse_P(200, dataType,igclogs_html_gz, igclogs_html_gz_len);
+    response->addHeader("Content-Encoding", "gzip");
+    request->send(response);     
   });
   server.on("/download", HTTP_GET, [](AsyncWebServerRequest *request){
     SD_file_download(request);
@@ -1393,6 +1405,19 @@ void sendPage(uint8_t pageNr){
           }
         }
      }
+      break;
+    case 50: 
+      //page igcfiles
+      doc.clear();
+      log_d("sending data to page 50")
+      doc["test"] = String("test ok");
+      serializeJson(doc, msg_buf);
+      for (int i = 0;i <MAXCLIENTS;i++){
+        if (clientPages[i] == pageNr){
+          log_d("Sending to [%u]: %s", i, msg_buf);
+          webSocket.sendTXT(i, msg_buf);
+        }
+    }
       break;
   }
   
