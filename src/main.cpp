@@ -5058,6 +5058,10 @@ void taskLogger(void * pvPArameters){
   delay(10);
   while(1){
     logger.run();
+    // uint32_t actFreeHeap = xPortGetFreeHeapSize();
+    // uint32_t minFreeHeap = xPortGetMinimumEverFreeHeapSize();
+    // log_e( "*****LOOP current free heap: %d, minimum ever free heap: %d ******", actFreeHeap, minFreeHeap);
+
     delay(900);
     if ((WebUpdateRunning) || (bPowerOff)) break;
   }
