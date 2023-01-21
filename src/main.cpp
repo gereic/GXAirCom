@@ -5054,15 +5054,19 @@ void taskLogger(void * pvPArameters){
     SD_MMC.begin("/sdcard", true);
   }
 
-  logger.begin();
-  delay(10);
+  delay(50);
+  bool init_logger = false;
   while(1){
-    logger.run();
     // uint32_t actFreeHeap = xPortGetFreeHeapSize();
     // uint32_t minFreeHeap = xPortGetMinimumEverFreeHeapSize();
     // log_e( "*****LOOP current free heap: %d, minimum ever free heap: %d ******", actFreeHeap, minFreeHeap);
+    if(!init_logger){
+      init_logger = logger.begin();          
+    }else{
+        logger.run();  
+    }
 
-    delay(900);
+    delay(500);
     if ((WebUpdateRunning) || (bPowerOff)) break;
   }
   if (bPowerOff) logger.end();

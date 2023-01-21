@@ -15,32 +15,39 @@ bool Logger::begin(){
   lStop = true;
   ltest = false;
 
-  strcpy(igcPAth,"/test.igc");
+  igcDate[0] = 0;
 
+  char headers[500];
+
+  strcpy(igcPath, IGCFOLDER);
+  strcat(igcPath,"/test.igc");
+
+  uint16_t sdSize = SD_MMC.cardSize() / 1024.0 / 1024.0 / 1024.0;
+  log_i("Card: %s", "SD:" + String(sdSize) + "Gb");
+  delay(1);
+
+  strcpy(headers,igcHeaders());
+  writeFile(SD_MMC, (const char*)igcPath, headers);
+  delay(1);
+
+//  strcpy(gcodeRow, shaOut);
+  //Close Hash sha256
+  char gfinalrow[79];
+  strcpy(gfinalrow, "G");
+  strcat(gfinalrow, gcodeRow);
+  strcat(gfinalrow,"\r");
+
+  appendFile(SD_MMC, (const char*)igcPath, gfinalrow);
+
+  char igc_dir[32];
+  strcpy(igc_dir,IGCFOLDER);
+  // Serial.println("###IGC FOLDER ###");
+  // Serial.println(igc_dir);
+  // Serial.println("SD Logger Init OK.");
+
+  log_i("Igc folder: %s",(String)igc_dir);
   log_i("IGC - Initialization done.");
-  uint8_t cardType = SD_MMC.cardType();
-
-    if(cardType == CARD_NONE){
-        log_i("No SD_MMC card attached");
-    }
-
-    log_i("SD_MMC Card Type: ");
-    if(cardType == CARD_MMC){
-        log_i("MMC");
-    } else if(cardType == CARD_SD){
-        log_i("SDSC");
-    } else if(cardType == CARD_SDHC){
-        log_i("SDHC");
-    } else {
-        log_i("UNKNOWN");
-    }
-
-    uint64_t cardSize = SD_MMC.cardSize() / (1024 * 1024);
-    log_i("SD_MMC Card Size: %10dMB", cardSize);
-
-    char* testigc = igcHeaders();
-    writeFile(SD_MMC, igcPAth, testigc);
-    listFiles(SD_MMC,"/");
+  delay(1);
 
   return true;
 };
@@ -62,16 +69,15 @@ void Logger::run(void){
   // if Flying i.e. also got gps fix and not initialized
   // test TODO CHANGE HERE to start recording when flying
 //  if (status.GPS_Date && !lInit){
-  if ((status.flying || ltest) && !lInit && status.GPS_Date){
+  if ((status.flying || ltest) && !lInit){
     lInit = true;
     lStop = false;
     // start new igc track with headers
     int8_t fnum = 0;
     char fnumc[3];
     while (1){
-      char trackFile[32];
-      strcpy(trackFile,"/");
-      strcat(trackFile,status.GPS_Date);
+      char trackFile[64];
+      strcpy(trackFile,String(pathDateGPSchar(IGCFOLDER)).c_str());
       strcat(trackFile,"_");
       strcat(trackFile,itoa(fnum,fnumc,10));
       // TODO this will be withouth extension and will be added when closing the igc 
@@ -82,16 +88,16 @@ void Logger::run(void){
         fnum+=1;
       }else{
         log_i("File to write: %s",trackFile);
-        strcpy(igcPAth,trackFile);
-        doInitLogger(igcPAth);
+        strcpy(igcPath,trackFile);
+        doInitLogger(igcPath);
         // write only one log for 30 seconds (ignoring flying status)
         ltest = false;
         break;
       }
     }
   }
-    // if initilaized and flying/not but gps fix and sat > 3
-  if(lInit && ( status.flying || (status.GPS_Fix && status.GPS_NumSat > 3)) ){
+    // if initilaized and flying/not but gps fix and sat > min sat available
+  if(lInit && ( status.flying || (status.GPS_Fix && status.GPS_NumSat >= MIN_SAT_AVAILABLE)) ){
     updateLogger();
   }
 
@@ -107,67 +113,143 @@ void Logger::run(void){
 
 }
 
+char * Logger::pathDateGPSchar(const char* subpath){
+  // create a global variable for logger igc file name based on GPS datetime
+  //set today date
+  static char fullDate[36];
+  static char full_p[64];
+
+  strcpy(fullDate,"");
+  // if got a correct date i.e. with year
+  if (status.GPS_Fix){
+    strcat(fullDate, status.GPS_Date);
+    strcpy(igcDate, fullDate);
+
+    // check and create folders 
+    strcpy(full_p,subpath);
+    strcat(full_p,"/20");
+    
+    // date format ddmmyy
+    //             012345
+    strcat(full_p,(const char *)status.GPS_Date[4]);
+    strcat(full_p,(const char *)status.GPS_Date[5]);
+    if(!SD_MMC.exists(full_p)) SD_MMC.mkdir(full_p);
+    strcat(full_p,"/");
+    strcat(full_p,(const char *)status.GPS_Date[2]);
+    strcat(full_p,(const char *)status.GPS_Date[3]);
+    if(!SD_MMC.exists(full_p)) SD_MMC.mkdir(full_p);
+    strcat(full_p,"/");
+    strcat(full_p,(const char *)status.GPS_Date[0]);
+    strcat(full_p,(const char *)status.GPS_Date[1]);
+    if(!SD_MMC.exists(full_p)) SD_MMC.mkdir(full_p);
+    strcat(full_p,"/");
+    strcat(full_p,fullDate);
+
+  }
+  //Serial.println(full_p);
+  return full_p;
+}
+
+void Logger::updateHash(const char* row){
+  //update hash - combine previous hash with new data
+  char sha_comb[160];
+  strcpy(sha_comb, gcodeRow);
+  strcat(sha_comb, row);
+  hash256(sha_comb);
+  // update gcodeRow var only here and first time!
+  strcpy(gcodeRow, shaOut);
+}
+
 char * Logger::igcHeaders(){
+
+  //Start New Hash sha256
+  hash256(SHAPRIVATEKEY);
+  // write computed first sha256 to gcodeRow var to init
+  strcpy(gcodeRow, shaOut);
+
   static char headers[500]; 
+  static char hfrows[128];
   strcpy(headers,IGC_ROW1);
   #ifdef APPNAME
     strcat(headers,APPNAME);
   #endif
   strcat(headers,"\r");
   strcat(headers,IGC_ROW2);
+  updateHash(IGC_ROW2);
   strcat(headers,"\r");
   strcat(headers,IGC_ROW3);
-  if (status.GPS_Date) strcat(headers,status.GPS_Date);
+    strcpy(hfrows,IGC_ROW3);
+  if (status.GPS_Fix ) {
+    strcat(headers,igcDate);
+      strcat(hfrows,igcDate);
+    }
+    updateHash(hfrows);
   strcat(headers,"\r");
   strcat(headers,IGC_ROW4);
+    strcpy(hfrows,IGC_ROW4);
   if (setting.PilotName) {
-    char pname[100];
-    setting.PilotName.toCharArray(pname,100);
+    char pname[30];
+    setting.PilotName.toCharArray(pname,30);
     strcat(headers, pname);
+      strcat(hfrows,pname);
   } 
+    updateHash(hfrows);
   strcat(headers,"\r");
   strcat(headers,IGC_ROW5);
+    updateHash(IGC_ROW5);
   strcat(headers,"\r");
   strcat(headers,IGC_ROW6);
+    updateHash(IGC_ROW6);
   strcat(headers,"\r");
   strcat(headers,IGC_ROW7);
   strcat(headers,"\r");
   strcat(headers,IGC_ROW8);
+    updateHash(IGC_ROW8);
   strcat(headers,"\r");
   strcat(headers,IGC_ROW9);
+    updateHash(IGC_ROW9);
   strcat(headers,"\r");
   strcat(headers,IGC_ROW10);
+    strcpy(hfrows,IGC_ROW10);
   #ifdef VERSION
     strcat(headers,VERSION);
+      strcat(hfrows,VERSION);
   #endif
+    updateHash(hfrows);
   strcat(headers,"\r");
   strcat(headers,IGC_ROW11);
+    updateHash(IGC_ROW11);
   strcat(headers,"\r");
   strcat(headers,IGC_ROW12);
+    updateHash(IGC_ROW12);
   strcat(headers,"\r");
   strcat(headers,IGC_ROW13);
+    updateHash(IGC_ROW13);
   strcat(headers,"\r");
   strcat(headers,IGC_ROW14);
+    updateHash(IGC_ROW14);
   strcat(headers,"\r");
   strcat(headers,IGC_ROW15);
+    updateHash(IGC_ROW15);
   strcat(headers,"\r");
   strcat(headers,IGC_ROW16);
   strcat(headers,"\r");
   strcat(headers,IGC_ROW17);
+    updateHash(IGC_ROW17);
   strcat(headers,"\r");
   return headers;
 }
 
-void Logger::doInitLogger(const char * trackFile){
+void Logger::doInitLogger(char * trackFile){
   
   //const char* headers = "...headers...\r";
   log_i("%s",trackFile);
-  char* newigc = igcHeaders();
-  g_time = 0;
-  g_latlon = 0;
-  g_baroalt = 0;
-  g_gpsalt = 0;
+  char newigc[1024];
+  strcpy(newigc, igcHeaders());
   writeFile(SD_MMC, trackFile, newigc);
+
+//  strcpy(gcodeRow, shaOut);
+
 };
 
 void Logger::updateLogger(void){
@@ -187,7 +269,7 @@ void Logger::updateLogger(void){
 // 00587: <altitude from pressure sensor>
 // 00558: <altitude from GPS>
 
-  static char row[256];
+  static char row[256]={0};
 
   strcpy(row,"B");
   strcat(row,status.GPS_Time);
@@ -249,29 +331,47 @@ void Logger::updateLogger(void){
   itoa(igpsvario,altgps,10);
   strcat(row,altgps);
 
+  //update hash - combine previous hash with new data
+  // char sha_comb[160];
+  // strcpy(sha_comb, gcodeRow);
+  // strcat(sha_comb, row);
+  // hash256(sha_comb);
+  // strcpy(gcodeRow, shaOut);
+  updateHash(row);
+
   strcat(row,"\r");
 
-  appendFile(SD_MMC, igcPAth, row);
-
-  // G update
-  g_time += (int)status.GPS_Time[strlen(status.GPS_Time)-1];
-  g_latlon += (int)lat_m[strlen(lat_m)-1];
-  g_baroalt += (int)altvario[strlen(altvario)-1];
-  g_gpsalt += (int)altgps[strlen(altgps)-1];
+  appendFile(SD_MMC, igcPath, row);
 
 }
 
 void Logger::doStopLogger(void){
+
+  //Close Hash sha256
+  char gfinalrow[79];
+  strcpy(gfinalrow, "G");
+  strcat(gfinalrow, gcodeRow);
+  strcat(gfinalrow,"\r");
+
   // add igc security line
   // close igc file and rename to .igc to be downloadable
-  static char row[256];
-  strcpy(row,"G");
-
   //TODO create the algorithm to write security based on data
 
   log_i("Closing igc file with security line G");
-  appendFile(SD_MMC, igcPAth, row);
+  appendFile(SD_MMC, igcPath, gfinalrow);
 
+}
+
+void Logger::createDir(fs::FS &fs, const char * path){
+    // Serial.printf("Creating Dir: %s\n", path);
+    log_i("Creating Dir: %s\n", path);
+    if(fs.mkdir(path)){
+        // Serial.println("Dir created");
+        log_i("Dir created");
+    } else {
+        // Serial.println("mkdir failed");
+        log_e("mkdir failed");
+    }
 }
 
 void Logger::writeFile(fs::FS &fs, const char * path, const char * message){
@@ -287,6 +387,7 @@ void Logger::writeFile(fs::FS &fs, const char * path, const char * message){
     } else {
         log_i("Write failed");
     }
+    file.close();
 }
 
 void Logger::appendFile(fs::FS &fs, const char * path, const char * message){
@@ -302,6 +403,7 @@ void Logger::appendFile(fs::FS &fs, const char * path, const char * message){
     } else {
         log_i("Append failed");
     }
+    file.close();
 }
 
 void Logger::deleteFile(fs::FS &fs, const char * path){
@@ -313,7 +415,7 @@ void Logger::deleteFile(fs::FS &fs, const char * path){
     }
 }
 
-void Logger::listFiles(fs::FS &fs, const char * dirname){
+void Logger::listFiles(fs::FS &fs, const char * dirname, bool all_faf){
   // TODO List all files and push to server
   log_i("Listing igc files:");
   File root = fs.open(dirname);
@@ -337,12 +439,44 @@ void Logger::listFiles(fs::FS &fs, const char * dirname){
             strcat(igclist,file.name());
             strcat(igclist,";");
           }
+        }else{
+              log_i("  Folder: %s", file.name());
+              strcat(igclist,file.name());
+              strcat(igclist,";");
         }
-        file = root.openNextFile();
+      file = root.openNextFile();
     }
 
     return;
 }
 
-// TODO! download igcfiles form server
+//download igcfiles form server
 //https://github.com/G6EJD/ESP32-8266-File-Download/blob/master/ESP_File_Download_v01.ino
+
+void Logger::hash256(const char * payload){
+  byte shaResult[32];
+
+  mbedtls_md_context_t ctx;
+  mbedtls_md_type_t md_type = MBEDTLS_MD_SHA256;
+  
+  const size_t payloadLength = strlen(payload);
+  
+  mbedtls_md_init(&ctx);
+  mbedtls_md_setup(&ctx, mbedtls_md_info_from_type(md_type), 0);
+  mbedtls_md_starts(&ctx);
+  mbedtls_md_update(&ctx, (const unsigned char *) payload, payloadLength);
+  mbedtls_md_finish(&ctx, shaResult);
+  mbedtls_md_free(&ctx);
+  
+  //Serial.print("Hash: ");
+  strcpy(shaOut,"");
+  
+  for(int i= 0; i< sizeof(shaResult); i++){
+    char str[3];
+    sprintf(str, "%02x", (int)shaResult[i]);
+    //Serial.print(str);
+    strcat(shaOut,str);
+  }
+
+  return;
+}
