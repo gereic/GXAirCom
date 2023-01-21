@@ -17,6 +17,9 @@ extern struct SettingsData setting;
 #include "SPI.h"
 #include "mbedtls/md.h"
 #include "main.h"
+// include local secret for IGC private sha256 key encription
+// the file must include:
+// #define SHAPRIVATEKEY "your-private-key"
 #include "../igc_check/igc_key.h"
 
 //minimum satellites available to store accurate gps coordinates
