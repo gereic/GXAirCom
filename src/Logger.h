@@ -17,6 +17,7 @@ extern struct SettingsData setting;
 #include "SPI.h"
 #include "mbedtls/md.h"
 #include "main.h"
+#include "../igc_check/igc_key.h"
 
 //minimum satellites available to store accurate gps coordinates
 #define MIN_SAT_AVAILABLE 5
@@ -53,9 +54,6 @@ extern struct SettingsData setting;
 #define IGC_ROW15 "HFALG:GEO"
 #define IGC_ROW16 "HOSITSite:?"
 #define IGC_ROW17 "HFALPALTPRESSURE:ISA"
-
-#define SHAPRIVATEKEY "TzInstuments-Pk1981@Rocks!"
-
 
 // File myFile;
 

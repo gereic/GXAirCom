@@ -5054,6 +5054,8 @@ void taskLogger(void * pvPArameters){
     SD_MMC.begin("/sdcard", true);
   }
 
+  log_i("=== IGC KEY === %s",IGCKEY);
+
   delay(50);
   bool init_logger = false;
   while(1){
