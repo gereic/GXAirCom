@@ -6,9 +6,7 @@
 
 #include "Logger.h"
 
-Logger::Logger(){
-
-}
+Logger::Logger(){}
 
 bool Logger::begin(){
   lInit = false;
@@ -47,6 +45,7 @@ bool Logger::begin(){
 
   log_i("Igc folder: %s",(String)igc_dir);
   log_i("IGC - Initialization done.");
+  log_i("=== IGC KEY === %s",SHAPRIVATEKEY);
   delay(1);
 
   return true;
@@ -131,16 +130,13 @@ char * Logger::pathDateGPSchar(const char* subpath){
     
     // date format ddmmyy
     //             012345
-    strcat(full_p,(const char *)status.GPS_Date[4]);
-    strcat(full_p,(const char *)status.GPS_Date[5]);
+    strcat(full_p,String(status.GPS_Date).substring(4,6).c_str());
     if(!SD_MMC.exists(full_p)) SD_MMC.mkdir(full_p);
     strcat(full_p,"/");
-    strcat(full_p,(const char *)status.GPS_Date[2]);
-    strcat(full_p,(const char *)status.GPS_Date[3]);
+    strcat(full_p,String(status.GPS_Date).substring(2,4).c_str());
     if(!SD_MMC.exists(full_p)) SD_MMC.mkdir(full_p);
     strcat(full_p,"/");
-    strcat(full_p,(const char *)status.GPS_Date[0]);
-    strcat(full_p,(const char *)status.GPS_Date[1]);
+    strcat(full_p,String(status.GPS_Date).substring(0,2).c_str());
     if(!SD_MMC.exists(full_p)) SD_MMC.mkdir(full_p);
     strcat(full_p,"/");
     strcat(full_p,fullDate);
