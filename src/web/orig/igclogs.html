@@ -12,13 +12,13 @@
 
   function onMessage(evt) {
     if (firstTime){
-      firstTime = false;
       console.log("Received: " + evt.data);
       var myObj = JSON.parse(evt.data);
       var years = {};
       for (var key of Object.keys(myObj)) {
           console.log(key + " -> " + myObj[key]);
           if (key == "igclist"){
+            firstTime = false;
             let fl = myObj[key].split(";");
             const divElem = document.getElementById(key);
             fl.forEach(fpath => {
