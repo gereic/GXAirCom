@@ -2185,8 +2185,6 @@ void setup() {
       pinMode(PinFuelSensor, INPUT);
     }    
 
-
-
     sButton[0].PinButton = 0; //pin for program-Led
     //PinButton[0] = 0; //pin for Program-Led
 
