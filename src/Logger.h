@@ -66,7 +66,7 @@ class Logger{
     bool begin();
     void end(void);
     void run(void); //has to be called cyclic
-    void listFiles(fs::FS &fs, const char * dirname, bool listfiles);
+    void listFiles(fs::FS &fs, const char * dirname);
     void deleteFile(fs::FS &fs, const char * path);
     void createDir(fs::FS &fs, const char * path);
     char igclist[1000];

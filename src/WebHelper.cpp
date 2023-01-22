@@ -635,7 +635,7 @@ String processor(const String& var){
     //     d = strtok(NULL, ";");
     // }
     // sRet += "</tbody></table>";
-    
+
     return sRet;
   }else if (var == "NEIGHBOURS"){
     sRet = "";
@@ -1410,7 +1410,9 @@ void sendPage(uint8_t pageNr){
       //page igcfiles
       doc.clear();
       log_d("sending data to page 50")
-      doc["test"] = String("test ok");
+      // doc["test"] = String("test ok");
+      logger.listFiles(SD_MMC,IGCFOLDER); 
+      doc["igclist"] = logger.igclist;
       serializeJson(doc, msg_buf);
       for (int i = 0;i <MAXCLIENTS;i++){
         if (clientPages[i] == pageNr){

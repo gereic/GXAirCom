@@ -45,7 +45,7 @@ bool Logger::begin(){
 
   log_i("Igc folder: %s",(String)igc_dir);
   log_i("IGC - Initialization done.");
-  log_i("=== IGC KEY === %s",SHAPRIVATEKEY);
+  // log_i("=== IGC KEY === %s",SHAPRIVATEKEY);
   delay(1);
 
   return true;
@@ -120,25 +120,26 @@ char * Logger::pathDateGPSchar(const char* subpath){
 
   strcpy(fullDate,"");
   // if got a correct date i.e. with year
-  if (status.GPS_Fix){
+  if (status.GPS_hasDate){
     strcat(fullDate, status.GPS_Date);
     strcpy(igcDate, fullDate);
 
     // check and create folders 
     strcpy(full_p,subpath);
-    strcat(full_p,"/20");
+    strcat(full_p,"/");
     
     // date format ddmmyy
     //             012345
-    strcat(full_p,String(status.GPS_Date).substring(4,6).c_str());
-    if(!SD_MMC.exists(full_p)) SD_MMC.mkdir(full_p);
-    strcat(full_p,"/");
-    strcat(full_p,String(status.GPS_Date).substring(2,4).c_str());
-    if(!SD_MMC.exists(full_p)) SD_MMC.mkdir(full_p);
-    strcat(full_p,"/");
-    strcat(full_p,String(status.GPS_Date).substring(0,2).c_str());
-    if(!SD_MMC.exists(full_p)) SD_MMC.mkdir(full_p);
-    strcat(full_p,"/");
+    // strcat(full_p,String(status.GPS_Date).substring(4,6).c_str());
+    // if(!SD_MMC.exists(full_p)) SD_MMC.mkdir(full_p);
+    // strcat(full_p,"/");
+    // strcat(full_p,String(status.GPS_Date).substring(2,4).c_str());
+    // if(!SD_MMC.exists(full_p)) SD_MMC.mkdir(full_p);
+    // strcat(full_p,"/");
+    // strcat(full_p,String(status.GPS_Date).substring(0,2).c_str());
+    // if(!SD_MMC.exists(full_p)) SD_MMC.mkdir(full_p);
+    // strcat(full_p,"/");
+
     strcat(full_p,fullDate);
 
   }
@@ -411,7 +412,7 @@ void Logger::deleteFile(fs::FS &fs, const char * path){
     }
 }
 
-void Logger::listFiles(fs::FS &fs, const char * dirname, bool all_faf){
+void Logger::listFiles(fs::FS &fs, const char * dirname){
   // TODO List all files and push to server
   log_i("Listing igc files:");
   File root = fs.open(dirname);
@@ -432,13 +433,15 @@ void Logger::listFiles(fs::FS &fs, const char * dirname, bool all_faf){
           if (  strstr(file.name(), ".igc") ){       
             log_i("  FILE: %s", file.name());
             log_i("  SIZE: %10d", file.size());
-            strcat(igclist,file.name());
-            strcat(igclist,";");
+            if (! strstr(file.name(), "test")){
+              strcat(igclist,file.name());
+              strcat(igclist,";");
+            }
           }
         }else{
               log_i("  Folder: %s", file.name());
-              strcat(igclist,file.name());
-              strcat(igclist,";");
+              // strcat(igclist,file.name());
+              // strcat(igclist,";");
         }
       file = root.openNextFile();
     }

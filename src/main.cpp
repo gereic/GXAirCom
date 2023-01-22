@@ -1816,6 +1816,7 @@ void setup() {
   sMqttState[0] = 0; //zero-Termination of String !!
   status.GPS_Date[0] = 0; //clear string
   status.GPS_Time[0] = 0; //clear string
+  status.GPS_hasDate = false;
   
   log_i("SDK-Version=%s",ESP.getSdkVersion());
   log_i("CPU-Speed=%dMHz",getCpuFrequencyMhz());
@@ -4738,8 +4739,12 @@ void taskStandard(void *pvParameters){
             //set today date
             // if got a correct date i.e. with year
             if (nmea.getYear()>0){
+              status.GPS_hasDate = true;
+              strcpy(status.GPS_Date,""); // reset always date
               snprintf (status.GPS_Date,sizeof(status.GPS_Date)-1,"%02d%02d%02d",nmea.getDay(),nmea.getMonth(),nmea.getYear() - 2000);
               snprintf (status.GPS_Time,sizeof(status.GPS_Time)-1,"%02d%02d%02d",nmea.getHour(),nmea.getMinute(),nmea.getSecond());
+            }else{
+              status.GPS_hasDate = false;
             }
           }
           long geoidalt = 0;
