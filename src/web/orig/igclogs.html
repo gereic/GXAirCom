@@ -19,6 +19,7 @@
           console.log(key + " -> " + myObj[key]);
           if (key == "igclist"){
             firstTime = false;
+            websocket.close();
             let fl = myObj[key].split(";");
             const divElem = document.getElementById(key);
             fl.forEach(fpath => {
