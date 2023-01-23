@@ -8,20 +8,22 @@
 <title>GXAirCom</title>
 <script language="javascript" type="text/javascript">
   var pageNumber=50;
-  var firstTime = true;
+  var gotMainData = false;
+  var gotIgcData = false;
 
   function onMessage(evt) {
-    if (firstTime){
       console.log("Received: " + evt.data);
       var myObj = JSON.parse(evt.data);
       var years = {};
-      for (var key of Object.keys(myObj)) {
+      if (!gotMainData || !gotIgcData){
+        if ("pilot" in myObj) gotMainData = true;
+        for (var key of Object.keys(myObj)) {
           console.log(key + " -> " + myObj[key]);
           if (key == "igclist"){
-            firstTime = false;
+            gotIgcData = true;
             websocket.close();
-            let fl = myObj[key].split(";");
-            const divElem = document.getElementById(key);
+            var fl = myObj[key].split(";");
+            var divElem = document.getElementById(key);
             fl.forEach(fpath => {
               const fname = fpath.split('/').slice(-1);
               const year = parseInt(fname[0].split('_')[0].slice(-2)) + 2000;
@@ -35,55 +37,40 @@
             });
 
             for (y in years){
-              var el = document.createElement("h3");
-              el.textContent = y;
-              divElem.appendChild(el);
-              years[y].forEach( t => {
-                var el = document.createElement("p");
-                el.innerHTML =  "<a href='/download?igc="+String(t.path)+"' download class='igc_link'>" + t.fname + "</a>";
+              if (y && y != 'NaN'){
+                var el = document.createElement("h3");
+                el.textContent = y;
                 divElem.appendChild(el);
-              });
+                years[y].forEach( t => {
+                  var el = document.createElement("p");
+                  var record = "<a href='/download?igc="+String(t.path)+"' download class='igc_link'>" + t.fname + "</a>";
+                  record += "<a href='/deleteigc?igc="+String(t.path)+"' target='_self' style='color:red;'> [X] </a>";
+                  el.innerHTML =  record;
+                  divElem.appendChild(el);
+                });
+              }
+            }
+          }else{
+            var e=document.getElementById(key);
+            if (e == null) continue;
+            if (e instanceof HTMLSelectElement) {
+              document.getElementById(key).value = myObj[key];
+            }else if ((e instanceof HTMLInputElement ) && (e.getAttribute('type') == 'checkbox')){   
+              if (myObj[key] == 1){
+                document.getElementById(key).checked = true;
+              }else{
+                document.getElementById(key).checked = false;
+              }
+            }else{
+              document.getElementById(key).textContent = myObj[key];
+              document.getElementById(key).value = myObj[key];
             }
           }
+        }
       }
-    }
-  }
-
-  var url = "ws://" + window.location.hostname + ":1337/";
-
-function init() { 
-  wsConnect(url);
-}
-
-function wsConnect(url) {
-  websocket = new WebSocket(url);
-  websocket.onopen = function(evt) { onOpen(evt) };
-  websocket.onclose = function(evt) { onClose(evt) };
-  websocket.onmessage = function(evt) { onMessage(evt) };
-  websocket.onerror = function(evt) { onError(evt) };
-}
-
-function onOpen(evt) { 
-  console.log("Connected");
-  doSend(JSON.stringify({ page : pageNumber }));
-}
-
-function onClose(evt) {
-  console.log("Disconnected");
-}
-
-function onError(evt) {
-  console.log("ERROR: " + evt.data);
-}
-
-function doSend(message) {
-  console.log("Sending: " + message);
-  websocket.send(message);
-}
-
-window.addEventListener("load", init, false);
-
+  } 
 </script>
+<script type="text/javascript" src="scripts.js"></script>
 </head>
 <body>
   <div style="text-align:left;display:inline-block;color:#eaeaea;min-width:340px;">

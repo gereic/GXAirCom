@@ -874,6 +874,7 @@ void sendPage(uint8_t pageNr){
   static uint16_t counter = 0;
   static uint32_t tCount20 = millis();
   static uint32_t tCount30 = millis();
+
   switch (pageNr) {
     case 2:
       //page info.html
@@ -1419,7 +1420,8 @@ void sendPage(uint8_t pageNr){
           log_d("Sending to [%u]: %s", i, msg_buf);
           webSocket.sendTXT(i, msg_buf);
         }
-    }
+      }
+      delay(10000);
       break;
   }
   
