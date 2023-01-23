@@ -75,6 +75,7 @@
 #include "driver/rtc_io.h"
 #endif
 
+#define uS_TO_S_FACTOR 1000000uL  /* Conversion factor for micro seconds to seconds */
 
 #ifdef GSMODULE
 
@@ -83,7 +84,6 @@
 #include <WeatherUnderground.h>
 #include <Windy.h>
 
-#define uS_TO_S_FACTOR 1000000uL  /* Conversion factor for micro seconds to seconds */
 //#define uS_TO_ms_FACTOR 1000000uL  /* Conversion factor for micro seconds to seconds */
 //#define TIME_TO_SLEEP  5uL //5 seconds
 //#define TIME_TO_SLEEP  1800uL //1/2 Stunde
@@ -398,12 +398,15 @@ void handleUpdate(uint32_t tAct);
 void printChipInfo(void);
 void setAllTime(tm &timeinfo);
 void checkExtPowerOff(uint32_t tAct);
+#ifdef GSMODULE
 void sendFanetWeatherData2WU(FanetLora::weatherData *weatherData,uint8_t wuIndex);
 void sendFanetWeatherData2WI(FanetLora::weatherData *weatherData,uint8_t wiIndex);
+#endif
 #ifdef AIRMODULE
 bool setupUbloxConfig(void);
 #endif
 
+#ifdef GSMODULE
 void sendFanetWeatherData2WU(FanetLora::weatherData *weatherData,uint8_t wuIndex){
   if ((status.bInternetConnected) && (status.bTimeOk)){
     WeatherUnderground wu;
@@ -450,6 +453,7 @@ void sendFanetWeatherData2WI(FanetLora::weatherData *weatherData,uint8_t wiIndex
     wi.sendData(setting.FntWiUpload[wiIndex].ID,setting.FntWiUpload[wiIndex].KEY,&wiData);
   }
 }
+#endif
 
 void readFuelSensor(uint32_t tAct){
   static uint32_t tRead = millis();
@@ -4614,6 +4618,8 @@ void taskStandard(void *pvParameters){
         }
       }
     }
+
+#ifdef GSMODULE
     FanetLora::weatherData weatherData;
     if (fanet.getWeatherData(&weatherData)){
       //check if we forward the weather-data to WU
@@ -4653,7 +4659,8 @@ void taskStandard(void *pvParameters){
         }
         
       }
-    }    
+    }
+#endif    
     if (fanet.getTrackingData(&tFanetData)){
       //log_i("new Tracking-Data");
       if (tFanetData.type == 0x11){ //online-tracking
