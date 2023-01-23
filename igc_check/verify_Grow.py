@@ -29,6 +29,7 @@ def main(argv):
 
         f =  open(pkfile,'r')
         pk = f.read().rstrip()
+        pk = pk.split(' ')[-1].replace('"','')
         f.close()
         encoded=pk.encode()
 
