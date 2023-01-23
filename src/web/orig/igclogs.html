@@ -7,21 +7,21 @@
 <meta http-equiv="Refresh" content="10">
 <title>GXAirCom</title>
 <script language="javascript" type="text/javascript">
-  var pageNumber=50;
-  var gotMainData = false;
-  var gotIgcData = false;
+  var pageNumber=6;
 
+  /* Called when a message is received from the server*/
   function onMessage(evt) {
-      console.log("Received: " + evt.data);
-      var myObj = JSON.parse(evt.data);
-      var years = {};
-      if (!gotMainData || !gotIgcData){
-        if ("pilot" in myObj) gotMainData = true;
-        for (var key of Object.keys(myObj)) {
-          console.log(key + " -> " + myObj[key]);
-          if (key == "igclist"){
-            gotIgcData = true;
-            var fl = myObj[key].split(";");
+    /* Print out our received message */
+    console.log("Received: " + evt.data);
+    /* Update circle graphic with LED state */
+    var myObj = JSON.parse(evt.data);
+    var years = {};
+
+    for (var key of Object.keys(myObj)) {
+      console.log(key + " -> " + myObj[key]);
+      if (key == "igclist"){
+
+        var fl = myObj[key].split(";");
             var divElem = document.getElementById(key);
             fl.forEach(fpath => {
               const fname = fpath.split('/').slice(-1);
@@ -43,7 +43,8 @@
                 var el = document.createElement("h3");
                 el.textContent = y;
                 divElem.appendChild(el);
-                years[y].forEach( t => {
+                var ordered = years[y].sort( (a,b) => new Date(b.year,b.month-1,b.day) - new Date(a.year,a.month-1,a.day) );
+                ordered.forEach( t => {
                   var el = document.createElement("p");
                   var record = "<a href='/download?igc="+String(t.path)+"' download class='igc_link'>" + t.fname + "</a>";
                   record += "<a href='/deleteigc?igc="+String(t.path)+"' target='_self' style='color:red;'> [X] </a>";
@@ -52,26 +53,25 @@
                 });
               }
             });
-            pageNumber = 1;
-          }else{
-            var e=document.getElementById(key);
-            if (e == null) continue;
-            if (e instanceof HTMLSelectElement) {
-              document.getElementById(key).value = myObj[key];
-            }else if ((e instanceof HTMLInputElement ) && (e.getAttribute('type') == 'checkbox')){   
-              if (myObj[key] == 1){
-                document.getElementById(key).checked = true;
-              }else{
-                document.getElementById(key).checked = false;
-              }
-            }else{
-              document.getElementById(key).textContent = myObj[key];
-              document.getElementById(key).value = myObj[key];
-            }
-          }
-        }
+
+        continue;
       }
-  } 
+      var e=document.getElementById(key);
+      if (e == null) continue;
+      if (e instanceof HTMLSelectElement) {
+        document.getElementById(key).value = myObj[key];
+      }else if ((e instanceof HTMLInputElement ) && (e.getAttribute('type') == 'checkbox')){
+        if (myObj[key] == 1){
+          document.getElementById(key).checked = true;
+        }else{
+          document.getElementById(key).checked = false;
+        }
+      }else{
+        document.getElementById(key).textContent = myObj[key];
+        document.getElementById(key).value = myObj[key];
+      }
+    }
+  };
 </script>
 <script type="text/javascript" src="scripts.js"></script>
 </head>

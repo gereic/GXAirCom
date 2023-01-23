@@ -86,7 +86,6 @@ void onWebSocketEvent(uint8_t client_num,
           doc["developer"] = (setting.Mode == eMode::DEVELOPER) ? 1 : 0 ;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
-
         }else if (clientPages[client_num] == 2){ //info
           doc["myDevId"] = setting.myDevId;
           doc["compiledate"] = String(compile_date);
@@ -334,13 +333,12 @@ void onWebSocketEvent(uint8_t client_num,
           doc["MqttPw"] = setting.mqtt.pw;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
-        }else if (clientPages[client_num] == 50){ //igcfile page
-          // doc.clear();
-          // doc["test"] = "test ok.";
-          // serializeJson(doc, msg_buf);
-          // webSocket.sendTXT(client_num, msg_buf);
-          log_i("Receiving from page igclogs");
-          webSocket.sendTXT(client_num, msg_buf);
+        }else if (clientPages[client_num] == 6){ //igcfile page
+          logger.listFiles(SD_MMC,IGCFOLDER); 
+          doc["igclist"] = logger.igclist;
+          delay(5);
+          serializeJson(doc, msg_buf);
+          webSocket.sendTXT(client_num, msg_buf);   
         }else if (clientPages[client_num] == 101){ //msg-type 1 test
           doc["lat"] = String(fanetTrackingData.lat,6);
           doc["lon"] = String(fanetTrackingData.lon,6);
@@ -1407,22 +1405,6 @@ void sendPage(uint8_t pageNr){
           }
         }
      }
-      break;
-    case 50: 
-      //page igcfiles
-      doc.clear();
-      log_d("sending data to page 50")
-      // doc["test"] = String("test ok");
-      logger.listFiles(SD_MMC,IGCFOLDER); 
-      doc["igclist"] = logger.igclist;
-      serializeJson(doc, msg_buf);
-      for (int i = 0;i <MAXCLIENTS;i++){
-        if (clientPages[i] == pageNr){
-          log_d("Sending to [%u]: %s", i, msg_buf);
-          webSocket.sendTXT(i, msg_buf);
-        }
-      }
-      delay(10000);
       break;
   }
   
