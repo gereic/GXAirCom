@@ -21,7 +21,6 @@
           console.log(key + " -> " + myObj[key]);
           if (key == "igclist"){
             gotIgcData = true;
-            websocket.close();
             var fl = myObj[key].split(";");
             var divElem = document.getElementById(key);
             fl.forEach(fpath => {
@@ -30,13 +29,16 @@
               const month = parseInt(fname[0].split('_')[0].slice(-4,-2));
               const day = parseInt(fname[0].split('_')[0].slice(-6,-4));
               if (year in years){
-                years[year].push({'path':fpath,'fname':fname,'month':month,'day':day});
+                years[year].push({'path':fpath,'fname':fname,'year':year,'month':month,'day':day});
               }else{
-                years[year] = [{'path':fpath,'fname':fname,'month':month,'day':day}];
+                years[year] = [{'path':fpath,'fname':fname,'year':year,'month':month,'day':day}];
               }
             });
 
-            for (y in years){
+            console.log("UnOrdered",years);
+            if ('NaN' in years) delete years['NaN'];
+
+            Object.keys(years).sort( (a,b) => b-a).forEach( y => {
               if (y && y != 'NaN'){
                 var el = document.createElement("h3");
                 el.textContent = y;
@@ -49,7 +51,8 @@
                   divElem.appendChild(el);
                 });
               }
-            }
+            });
+            pageNumber = 1;
           }else{
             var e=document.getElementById(key);
             if (e == null) continue;

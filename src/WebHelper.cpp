@@ -340,6 +340,7 @@ void onWebSocketEvent(uint8_t client_num,
           // serializeJson(doc, msg_buf);
           // webSocket.sendTXT(client_num, msg_buf);
           log_i("Receiving from page igclogs");
+          webSocket.sendTXT(client_num, msg_buf);
         }else if (clientPages[client_num] == 101){ //msg-type 1 test
           doc["lat"] = String(fanetTrackingData.lat,6);
           doc["lon"] = String(fanetTrackingData.lon,6);
