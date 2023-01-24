@@ -9,3 +9,4 @@ bin/_copy2server.bat
 bin/scplog.txt
 igc_check/*.pk
 igc_check/*.h
+igc_check/*.igc

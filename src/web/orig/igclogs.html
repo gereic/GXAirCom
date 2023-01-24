@@ -8,6 +8,7 @@
 <title>GXAirCom</title>
 <script language="javascript" type="text/javascript">
   var pageNumber=6;
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
   /* Called when a message is received from the server*/
   function onMessage(evt) {
@@ -46,8 +47,9 @@
                 var ordered = years[y].sort( (a,b) => new Date(b.year,b.month-1,b.day) - new Date(a.year,a.month-1,a.day) );
                 ordered.forEach( t => {
                   var el = document.createElement("p");
-                  var record = "<a href='/download?igc="+String(t.path)+"' download class='igc_link'>" + t.fname + "</a>";
-                  record += "<a href='/deleteigc?igc="+String(t.path)+"' target='_self' style='color:red;'> [X] </a>";
+                  var record = "<span style='margin-right:1rem;'>"+months[t.month-1]+"-"+String(t.day)+"</span>";
+                  record += "<a titel='Download' href='/download?igc="+String(t.path)+"' download class='igc_link'><u>↓</u>" + t.fname + "<u>↓</u></a>";
+                  record += "<a title='Delete' href='/deleteigc?igc="+String(t.path)+"' target='_self' style='color:red;'> [×] </a>";
                   el.innerHTML =  record;
                   divElem.appendChild(el);
                 });
