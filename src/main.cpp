@@ -2118,9 +2118,11 @@ void setup() {
     PinOledSCL = 22;
 
     // moving SCL SDA to different GPIO to avoid conflicts with mounted SD card on Lilygo T3 v2.1.1.6
-    PinBaroSDA = 3; //13;
-    PinBaroSCL = 4; //14;
-
+    PinBaroSDA = 4; //13;
+    PinBaroSCL = 3; //14;
+    pinMode(PinBaroSCL, INPUT_PULLUP);
+    pinMode(PinBaroSDA, INPUT_PULLUP);
+    
     // set gpio 4 as INPUT
     pinMode(PinBaroSCL, INPUT_PULLUP);
     PinADCVoltage = 35;
@@ -5048,12 +5050,12 @@ void taskLogger(void * pvPArameters){
 
   pinMode(2, INPUT_PULLUP);
   pinMode(15, INPUT_PULLUP);
-  pinMode(4, OUTPUT);
-  digitalWrite(4,LOW);
+  pinMode(14, OUTPUT);
+  digitalWrite(14,LOW);
   if (!SD_MMC.begin()){
     pinMode(2, INPUT_PULLUP);
-    pinMode(4, OUTPUT);
-    digitalWrite(4,LOW);
+    pinMode(14, OUTPUT);
+    digitalWrite(14,LOW);
     SD_MMC.begin("/sdcard", true);
   }
 
