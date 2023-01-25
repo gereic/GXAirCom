@@ -451,6 +451,7 @@ struct statusData{
   float GPS_speed;
   float GPS_course;
   float GPS_geoidAlt;
+  bool GPS_hasDate;
   char GPS_Date[10];
   char GPS_Time[10];
   float pressure = NAN;

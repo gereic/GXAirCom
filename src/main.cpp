@@ -956,21 +956,23 @@ void drawflying(int16_t x, int16_t y, bool flying){
 
 
 void drawBatt(int16_t x, int16_t y,uint8_t value){
-    /*
-    display.setTextSize(1);
-    display.setCursor(x-15,y+9);
-    display.print(status.vBatt/1000);
-    display.print(".");
-    if(status.vBatt%1000/10<10){
-      display.print("0");
-    }
-    display.print((status.vBatt%1000)/10);
-    display.print("V");
+    #ifdef BDETAIL
+      display.setTextSize(1);
+      display.setCursor(x-15,y+9);
+      display.print(status.vBatt/1000);
+      display.print(".");
+      if(status.vBatt%1000/10<10){
+        display.print("0");
+      }
+      display.print((status.vBatt%1000)/10);
+      display.print("V");
+      if (status.vario.bHasVario){
+        display.setCursor(x-5,y+18);
+        display.print(String(status.varioTemp,0));
+        display.print("C");    
+      }
+    #endif
 
-    display.setCursor(x-5,y+18);
-    display.print(String(status.varioTemp,0));
-    display.print("C");
-    */
     static uint8_t DrawValue = 0;
     if (value == 255){
         DrawValue = (DrawValue + 1) %5; 
@@ -1814,6 +1816,7 @@ void setup() {
   sMqttState[0] = 0; //zero-Termination of String !!
   status.GPS_Date[0] = 0; //clear string
   status.GPS_Time[0] = 0; //clear string
+  status.GPS_hasDate = false;
   
   log_i("SDK-Version=%s",ESP.getSdkVersion());
   log_i("CPU-Speed=%dMHz",getCpuFrequencyMhz());
@@ -1950,6 +1953,12 @@ void setup() {
   testLegacy();
   #endif
 
+  // forcing TTGO T3 v2.1.1.6 SD board with env variable declared
+  #ifdef BTT3V2
+    setting.boardType = eBoard::TTGO_T3_V2;
+    log_i("Board is forced by platformio.ini env to TTGO T3 v2.1.1.6");
+  #endif
+
   switch (setting.boardType)
   {
   case eBoard::T_BEAM: 
@@ -2053,9 +2062,7 @@ void setup() {
 
     break;
   case eBoard::T_BEAM_V07:
-    log_i("Board=T_BEAM_V07/TTGO_T3_V1_6");
-    //PinGPSRX = 34;
-    //PinGPSTX = 39;
+    log_i("Board=T_BEAM_V07");
     PinGPSRX = 12; //T-Beam V07
     PinGPSTX = 15;
 
@@ -2092,9 +2099,13 @@ void setup() {
     adcVoltageMultiplier = 2.12f;
     pinMode(PinADCVoltage, INPUT);
     break;
-  /*
-  case BOARD_TTGO_T3_V1_6:
-    log_i("Board=TTGO_T3_V1_6");
+  
+  // moved here PIN configuraiton for TTGO T3 v2.1.1.6 board with SD, still not listed in web interface and set forced above with platformio env variable 
+  case eBoard::TTGO_T3_V2:
+    log_i("Board=TTGO_T3_V2_1_1_6");
+    PinGPSRX = 34;
+    PinGPSTX = 39;
+
     PinLoraRst = 23;
     PinLoraDI0 = 26;
     PinLora_SS = 18;
@@ -2106,20 +2117,32 @@ void setup() {
     PinOledSDA = 21;
     PinOledSCL = 22;
 
-    PinBaroSDA = 13;
-    PinBaroSCL = 14;
-
+    // moving SCL SDA to different GPIO to avoid conflicts with mounted SD card on Lilygo T3 v2.1.1.6
+    PinBaroSDA = 4; //13;
+    PinBaroSCL = 3; //14;
+    pinMode(PinBaroSCL, INPUT_PULLUP);
+    pinMode(PinBaroSDA, INPUT_PULLUP);
+    
+    // set gpio 4 as INPUT
+    pinMode(PinBaroSCL, INPUT_PULLUP);
     PinADCVoltage = 35;
 
-    PinBuzzer = 0;
+    if (setting.bHasFuelSensor){
+      PinFuelSensor = 39;
+      pinMode(PinFuelSensor, INPUT);
+    }    
+
+    PinBuzzer = 25;
+
+    // Lilygo T3 v2.1.1.6 extra button on 0
+    sButton[1].PinButton = 0;
 
     i2cOLED.begin(PinOledSDA, PinOledSCL);
     // voltage-divier 100kOhm and 100kOhm
     // vIn = (R1+R2)/R2 * VOut
-    adcVoltageMultiplier = 2.5f; // not sure if it is ok ?? don't have this kind of board
+    adcVoltageMultiplier = 2.12f;
     pinMode(PinADCVoltage, INPUT);
     break;
-  */
   case eBoard::HELTEC_LORA:
     log_i("Board=HELTEC_LORA");
     //PinGPSRX = 34;
@@ -2163,8 +2186,6 @@ void setup() {
       PinFuelSensor = 39;
       pinMode(PinFuelSensor, INPUT);
     }    
-
-
 
     sButton[0].PinButton = 0; //pin for program-Led
     //PinButton[0] = 0; //pin for Program-Led
@@ -4718,8 +4739,12 @@ void taskStandard(void *pvParameters){
             //set today date
             // if got a correct date i.e. with year
             if (nmea.getYear()>0){
+              status.GPS_hasDate = true;
+              strcpy(status.GPS_Date,""); // reset always date
               snprintf (status.GPS_Date,sizeof(status.GPS_Date)-1,"%02d%02d%02d",nmea.getDay(),nmea.getMonth(),nmea.getYear() - 2000);
               snprintf (status.GPS_Time,sizeof(status.GPS_Time)-1,"%02d%02d%02d",nmea.getHour(),nmea.getMinute(),nmea.getSecond());
+            }else{
+              status.GPS_hasDate = false;
             }
           }
           long geoidalt = 0;
@@ -5025,20 +5050,28 @@ void taskLogger(void * pvPArameters){
 
   pinMode(2, INPUT_PULLUP);
   pinMode(15, INPUT_PULLUP);
-  pinMode(4, OUTPUT);
-  digitalWrite(4,LOW);
+  pinMode(14, OUTPUT);
+  digitalWrite(14,LOW);
   if (!SD_MMC.begin()){
     pinMode(2, INPUT_PULLUP);
-    pinMode(4, OUTPUT);
-    digitalWrite(4,LOW);
+    pinMode(14, OUTPUT);
+    digitalWrite(14,LOW);
     SD_MMC.begin("/sdcard", true);
   }
 
-  logger.begin();
-  delay(10);
+  delay(50);
+  bool init_logger = false;
   while(1){
-    logger.run();
-    delay(900);
+    // uint32_t actFreeHeap = xPortGetFreeHeapSize();
+    // uint32_t minFreeHeap = xPortGetMinimumEverFreeHeapSize();
+    // log_e( "*****LOOP current free heap: %d, minimum ever free heap: %d ******", actFreeHeap, minFreeHeap);
+    if(!init_logger){
+      init_logger = logger.begin();          
+    }else{
+        logger.run();  
+    }
+
+    delay(500);
     if ((WebUpdateRunning) || (bPowerOff)) break;
   }
   if (bPowerOff) logger.end();
@@ -5464,7 +5497,12 @@ void taskBackGround(void *pvParameters){
       }
     }
     */
-    if (minFreeHeap<10000)
+   #ifdef LOGGER
+     uint32_t freeHeapLimit = 2000;
+   #else
+     uint32_t freeHeapLimit = 10000;
+   #endif
+    if (minFreeHeap<freeHeapLimit)
     {
       log_e( "*****LOOP current free heap: %d, minimum ever free heap: %d ******", actFreeHeap, minFreeHeap);
       log_e("System Low on Memory - xPortGetMinimumEverFreeHeapSize < 10KB");

@@ -29,6 +29,8 @@ extern const char compile_date[];
 extern TaskHandle_t xHandleStandard;
 extern bool WebUpdateRunning;
 
+// extern char igclist;
+
 void Web_setup(void);
 void Web_stop(void);
 void Web_loop(void);
