@@ -15,6 +15,54 @@ Logger logger;
 
 void sendPage(uint8_t pageNr);
 void sendPageHeader(uint8_t client_num);
+void sendReceivers(uint8_t client_num);
+
+void sendReceivers(uint8_t client_num){
+  StaticJsonDocument<400> doc;
+  doc.clear();
+  uint8_t count = fanet.getNeighboursCount();
+  for (int i = 0; i < MAXWEATHERDATAS; i++){
+    if (fanet.weatherDatas[i].devId){
+      count++;
+    }
+  }
+  doc["NBCount"] = count + 1;
+  serializeJson(doc, msg_buf);
+  webSocket.sendTXT(client_num, msg_buf);
+  uint8_t iIndex = 0;
+  for (int i = 0; i < MAXNEIGHBOURS; i++){
+    if (fanet.neighbours[i].devId){              
+      doc.clear();
+      doc["INDEX"] = iIndex;
+      doc["ID"] = fanet.getDevId(fanet.neighbours[i].devId);
+      doc["NAME"] = (fanet.neighbours[i].name.length() > 0) ? fanet.neighbours[i].name : "";
+      serializeJson(doc, msg_buf);
+      webSocket.sendTXT(client_num, msg_buf);
+      iIndex++;
+    }
+  }
+  for (int i = 0; i < MAXWEATHERDATAS; i++){
+    if (fanet.weatherDatas[i].devId){              
+      doc.clear();
+      doc["INDEX"] = iIndex;
+      doc["ID"] = fanet.getDevId(fanet.weatherDatas[i].devId);
+      doc["NAME"] = (fanet.weatherDatas[i].name.length() > 0) ? fanet.weatherDatas[i].name : "";
+      serializeJson(doc, msg_buf);
+      webSocket.sendTXT(client_num, msg_buf);
+      iIndex++;
+    }
+  }
+  doc.clear();
+  doc["INDEX"] = iIndex;
+  doc["ID"] = "000000";
+  doc["NAME"] = "Send to All";
+  serializeJson(doc, msg_buf);
+  webSocket.sendTXT(client_num, msg_buf);
+  iIndex++;
+
+}
+
+
 
 void sendPageHeader(uint8_t client_num){
   StaticJsonDocument<400> doc;
@@ -84,6 +132,7 @@ void onWebSocketEvent(uint8_t client_num,
           doc["igcMenue"] = 1;
           #endif
           doc["developer"] = (setting.Mode == eMode::DEVELOPER) ? 1 : 0 ;
+          doc["setView"] = setting.settingsView;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
 
@@ -172,6 +221,7 @@ void onWebSocketEvent(uint8_t client_num,
           doc["FNTMSGIN"] = status.lastFanetMsg;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
+          sendReceivers(client_num); //send clients
 
         }else if (clientPages[client_num] == 5){ //FW-Update
           doc["updateState"] = status.updateState;

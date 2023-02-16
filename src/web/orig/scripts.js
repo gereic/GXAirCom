@@ -1,3 +1,7 @@
+const SETTING_BASIC = 0;
+const SETTING_ADVANCED = 100;
+const SETTING_EXPERT = 200;
+
 var url = "ws://" + window.location.hostname + ":1337/";
 
 // This is called when the page finishes loading

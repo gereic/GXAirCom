@@ -51,7 +51,7 @@ function setVis(){
   document.getElementById("VisAutoUpdate").style.display='none';  /*disable autoupdate*/
   document.getElementById("VisADS1015Exp").style.display='none';
   document.getElementById("VisADS1015").style.display='none'; //set ADS1015 settings invisible
-  if (document.getElementById("setView").value > 100){ /*we are expert user*/
+  if (document.getElementById("setView").value == SETTING_EXPERT){ /*we are expert user*/
     document.getElementById("VisFrequ").style.display=''; /*set Frequency-settings visible*/
   }
   if (document.getElementById("useMPU").checked){
@@ -61,11 +61,11 @@ function setVis(){
     document.getElementById("KfP").innerHTML='Kalman filter pressure-value (default 0.1)';
     document.getElementById("KfA").innerHTML='Kalman filter accelerator-value (default 0.6)';
   }
-  if (document.getElementById("setView").value > 0){ /*we are advanced user*/
+  if (document.getElementById("setView").value >= SETTING_ADVANCED){ /*we are advanced user*/
     document.getElementById("visSigmaP").style.display='';  
     document.getElementById("visSigmaA").style.display='';  
   }
-  if (document.getElementById("setView").value > 100){ /*we are expert*/
+  if (document.getElementById("setView").value == SETTING_EXPERT){ /*we are expert*/
     document.getElementById("visAxOffset").style.display='';
     document.getElementById("visAyOffset").style.display='';
     document.getElementById("visAzOffset").style.display='';
@@ -85,9 +85,9 @@ function setVis(){
       document.getElementById("tWi").innerHTML='windy Upload';
       document.getElementById("tWi2").innerHTML='enable sending weather-data to windy';
       document.getElementById("VisWI").style.display=''; /*set windy upload invisible*/
-      if (document.getElementById("setView").value > 0){ /*we are advanced or expert*/
+      if (document.getElementById("setView").value >= SETTING_ADVANCED){ /*we are advanced or expert*/
         document.getElementById("VisAWUS").style.display=''; /*set advanced weather upload settings visible  */
-        if (document.getElementById("setView").value > 100){ /*we are expert user*/
+        if (document.getElementById("setView").value == SETTING_EXPERT){ /*we are expert user*/
           document.getElementById("VisAWFFNT").style.display=''; /*set advanced weather settings visible    */
         }
       }
@@ -97,7 +97,7 @@ function setVis(){
       if (document.getElementById("wdAnemo").value == 2){
         document.getElementById("VisADS1015").style.display=''; //enable ADS1015 settings
       }
-      if ((document.getElementById("wdAnemo").value == 2) && (document.getElementById("setView").value > 100)){
+      if ((document.getElementById("wdAnemo").value == 2) && (document.getElementById("setView").value == SETTING_EXPERT)){
         document.getElementById("VisADS1015Exp").style.display=''; //enable ADS1015 expert-settings
       }    
     }else{

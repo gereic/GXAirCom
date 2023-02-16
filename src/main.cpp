@@ -2158,6 +2158,10 @@ void setup() {
     PinWindSpeed = 37;
     PinRainGauge = 38;
 
+    #ifdef GXTEST
+      PinPPS = 37;
+    #endif
+
     
     if (setting.bHasFuelSensor){
       PinFuelSensor = 39;
@@ -3949,8 +3953,17 @@ void readGPS(){
   static uint16_t recBufferIndex = 0;
   static uint32_t tGpsOk = millis();
   
-  if (sNmeaIn.length() > 0){ //String received by Bluetooth
+  if (sNmeaIn.length() > 0){ //String received by Bluetooth or serial, ...
+    #ifdef GXTEST
+    if (true){
+        tGpsOk = millis();
+        if (!status.bHasGPS){
+          status.bHasGPS = true;
+          fanet.setGPS(status.bHasGPS);          
+        }
+    #else
     if (!status.bHasGPS){
+    #endif
       char * cstr = new char [sNmeaIn.length()+1];
       strcpy (cstr, sNmeaIn.c_str());
       //log_i("process GPS-String:%s",cstr);

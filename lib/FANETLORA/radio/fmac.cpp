@@ -285,11 +285,21 @@ void FanetMac::frameReceived(int length)
 		time_t tUnix;
 		time(&tUnix);
 		#if RX_DEBUG > 0
+			static uint32_t tmax = 0;
+			static uint32_t tmin = 1000;
+			uint32_t tPPS = millis()-_ppsMillis;
+			if (tPPS > 400){
+				if (tmin > tPPS) tmin = tPPS;
+			}else{
+				if (tmax < tPPS) tmax = tPPS;
+			}
 			char Buffer[500];	
 			int len = 0;
       char strftime_buf[64];
       struct tm timeinfo;      
-			len += sprintf(Buffer+len,"T=%d;",tUnix);
+			len += sprintf(Buffer+len,"min=%d;max=%d;%d;T=%d;",tmin,tmax,tPPS,tUnix);
+			//len += sprintf(Buffer+len,"%d;",tPPS);
+			//len += sprintf(Buffer+len,"T=%d;",tUnix);
 			//log_i("l=%d,%s",len,Buffer);
       localtime_r(&tUnix, &timeinfo);
       strftime(strftime_buf, sizeof(strftime_buf), "%F %T", &timeinfo);   
@@ -508,7 +518,7 @@ bool FanetMac::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int8_t rese
 	setup_frequency=frequency;
 	_ss = ss;
 	_reset = reset;
-	_actMode = MODE_LORA;
+	_actMode = 0;
 
 	// address 
 	_myAddr = readAddr();
@@ -593,11 +603,11 @@ void FanetMac::switchMode(uint8_t mode,bool bStartReceive){
 		int len = 0;
 		len += sprintf(Buffer+len,"%d switch to mode ",millis());
 		if (mode == MODE_LORA){
-			len += sprintf(Buffer+len,"LORA ");
+			len += sprintf(Buffer+len,"LORA %0.1fMhz BW=%d",loraFrequency,loraBandwidth);
 		}else if (mode == MODE_FSK_8682){
-			len += sprintf(Buffer+len,"FSK%0.1f ",actflarmFreq);
+			len += sprintf(Buffer+len,"FSK %0.1fMhz ",actflarmFreq);
 		}else if (mode == MODE_FSK_8684){
-			len += sprintf(Buffer+len,"FSK%0.1f ",actflarmFreq);
+			len += sprintf(Buffer+len,"FSK %0.1fMhz ",actflarmFreq);
 		}else if (mode == MODE_FSK){
 			len += sprintf(Buffer+len,"FSK c=%d,f=%0.2f,t=%d",channel,actflarmFreq,tUnix);
 			//log_i("channel=%d,frequ=%.2f,time=%d",channel,frequ,tUnix);
@@ -710,6 +720,8 @@ void FanetMac::stateWrapper()
 					fmac.switchMode(MODE_FSK); //start now with FSK //switch to right channel !!
 				}
 			}
+		}else{
+
 		} 
 	}else{
 		if (fmac.flarmZone == 1){
@@ -811,7 +823,7 @@ void FanetMac::handleIRQ(){
 		
 		int16_t packetSize = radio.getPacketLength();
 		#if RX_DEBUG > 1
-		log_i("new package arrived %d",packetSize);
+		//log_i("new package arrived %d",packetSize);
 		#endif
 		if (packetSize > 0){
 			//log_i("packet receive %d",packetSize);			
