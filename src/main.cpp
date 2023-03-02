@@ -678,6 +678,7 @@ void oledPowerOn(){
   //added the possibility to invert BW .. whould be nice to put it in the settings TODO
   display.invertDisplay(0);
   status.displayStat = eDisplayState::DISPLAY_STAT_ON;
+  display.setRotation(setting.displayRotation);
 }
 
 void oledPowerOff(){
@@ -1861,6 +1862,11 @@ void setup() {
   }
   log_i("set CPU-Speed to %dMHz",getCpuFrequencyMhz());
   //setting.boardType = BOARD_UNKNOWN;
+  #ifdef HELTEC_S3_1262_V3
+    setting.boardType = eBoard::HELTEC_LORA;
+    setting.displayType = OLED0_96;
+  #endif
+
   if (setting.boardType == eBoard::UNKNOWN){
     checkBoardType();
   }  
@@ -2124,59 +2130,86 @@ void setup() {
     log_i("Board=HELTEC_LORA");
     //PinGPSRX = 34;
     //PinGPSTX = 39;
-    PinGPSRX = 12;
-    //PinGPSTX = 15; // no GPS-TX
+    #ifdef HELTEC_S3_1262_V3    
+      PinGPSRX = 34;
 
+      // old V2
+      // sck=5,miso=19,mosi=27,ss=18,reset=14,dio0=26,gpio=-1
+      
+      PinLoraRst = 12;//12;
+      PinLoraDI0 = 14;//14;
+      PinLoraGPIO = 13;
+      PinLora_SS = 8;//8;
 
-    PinLoraRst = 14;
-    PinLoraDI0 = 26;
-    PinLora_SS = 18;
-    PinLora_MISO = 19;
-    PinLora_MOSI = 27;
-    PinLora_SCK = 5;
-    PinGsmRst = 25;
-    PinGsmTx = 21;
-    PinGsmRx = 35;
+      PinLora_MISO = 11; //11;
+      PinLora_MOSI = 10; //10;
+      PinLora_SCK = 9; //9;
 
-    if (setting.displayType == OLED0_96){
-      PinOledRst = 16;
-      PinOledSDA = 4;
-      PinOledSCL = 15;
-      i2cOLED.begin(PinOledSDA, PinOledSCL);
-    }
+      // PinGsmRst = 25;
+      // PinGsmTx = 21;
+      // PinGsmRx = 35;
 
-    PinBuzzer = 17;
+      if (setting.displayType == OLED0_96){
+        PinOledRst = 21;
+        PinOledSDA = 17;
+        PinOledSCL = 18;
+        i2cOLED.begin(PinOledSDA, PinOledSCL);
+      }
 
-    PinBaroSDA = 13;
-    PinBaroSCL = 23;
+      // PinBuzzer = 17;
+      // PinBaroSDA = 13;
+      // PinBaroSCL = 23;
+      // PinOneWire = 22;    
+      PinADCVoltage = 1;
+      analogSetPinAttenuation(PinADCVoltage,ADC_11db);
+      adcVoltageMultiplier = 5.5f;
+      sButton[0].PinButton = 0; //pin for program-Led
 
-    PinOneWire = 22;    
+    #else
 
-    PinADCVoltage = 34;
+      PinGPSRX = 12;
 
-    PinWindDir = 36;
-    PinWindSpeed = 37;
-    PinRainGauge = 38;
+      PinLoraRst = 14;
+      PinLoraDI0 = 26;
+      PinLora_SS = 18;
+      PinLora_MISO = 19;
+      PinLora_MOSI = 27;
+      PinLora_SCK = 5;
+      PinGsmRst = 25;
+      PinGsmTx = 21;
+      PinGsmRx = 35;
 
-    #ifdef GXTEST
-      PinPPS = 37;
+      if (setting.displayType == OLED0_96){
+        PinOledRst = 16;
+        PinOledSDA = 4;
+        PinOledSCL = 15;
+        i2cOLED.begin(PinOledSDA, PinOledSCL);
+      }
+
+      PinBuzzer = 17;
+      PinBaroSDA = 13;
+      PinBaroSCL = 23;
+      PinOneWire = 22;    
+      PinADCVoltage = 34;
+
+      PinWindDir = 36;
+      PinWindSpeed = 37;
+      PinRainGauge = 38;
+
+      if (setting.bHasFuelSensor){
+        PinFuelSensor = 39;
+        pinMode(PinFuelSensor, INPUT);
+      }    
+
+      sButton[0].PinButton = 0; //pin for program-Led
+      //PinButton[0] = 0; //pin for Program-Led
+
+      // voltage-divier 27kOhm and 100kOhm
+      // vIn = (R1+R2)/R2 * VOut
+      //1S LiPo
+      adcVoltageMultiplier = (100000.0f + 27000.0f) / 100000.0f;
     #endif
 
-    
-    if (setting.bHasFuelSensor){
-      PinFuelSensor = 39;
-      pinMode(PinFuelSensor, INPUT);
-    }    
-
-
-
-    sButton[0].PinButton = 0; //pin for program-Led
-    //PinButton[0] = 0; //pin for Program-Led
-
-    // voltage-divier 27kOhm and 100kOhm
-    // vIn = (R1+R2)/R2 * VOut
-    //1S LiPo
-    adcVoltageMultiplier = (100000.0f + 27000.0f) / 100000.0f;
     pinMode(PinADCVoltage, INPUT); //input-Voltage on GPIO34
     break;
   case eBoard::HELTEC_WIRELESS_STICK_LITE:
@@ -4276,6 +4309,9 @@ void taskStandard(void *pvParameters){
   fanet.setRFMode(setting.RFMode);
   uint8_t radioChip = RADIO_SX1276;
   if (setting.boardType == eBoard::T_BEAM_SX1262) radioChip = RADIO_SX1262;
+  #ifdef HELTEC_S3_1262_V3
+    radioChip = RADIO_SX1262;
+  #endif
   fanet.begin(PinLora_SCK, PinLora_MISO, PinLora_MOSI, PinLora_SS,PinLoraRst, PinLoraDI0,PinLoraGPIO,frequency,14,radioChip);
   fanet.setGPS(status.bHasGPS);
   #ifdef GSMODULE
