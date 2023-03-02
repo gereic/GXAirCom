@@ -8,6 +8,21 @@
 <script language="javascript" type="text/javascript">
  var pageNumber = 3;
  var settingsView = 0;
+ var bChangeRow = 0;
+ var actIndex = 0;
+
+
+ function removeAll(selectBox) {
+    while (selectBox.options.length > 0) {
+      selectBox.remove(0);
+    }
+}
+
+ function setRows(number){
+  var list = document.getElementById("receiver");
+  removeAll(list);
+}
+
 
  function sendSystemCmd(){
   document.getElementById("FNTMSGIN").value = ""; //clear msg
@@ -43,6 +58,23 @@ function sendValues(){
             sendfanet : 3 };
   doSend(JSON.stringify(obj));
 }
+
+function changeRow(key,myObj){
+  /*var table = document.getElementById("table1");*/
+  console.log("index: " + actIndex);
+  var list = document.getElementById("receiver");
+  var name = "";
+  if (myObj["NAME"] != ""){
+    name += myObj["NAME"] + " ";
+  }
+  name += "[" + myObj["ID"] + "]";
+  
+  
+  let newOption = new Option(name,myObj["ID"]);
+  list.add(newOption,undefined);
+}
+  
+
  
 // Called when a message is received from the server
 function onMessage(evt) {
@@ -54,10 +86,19 @@ function onMessage(evt) {
     var myObj = JSON.parse(evt.data);
     for (var key of Object.keys(myObj)) {
         console.log(key + " -> " + myObj[key]);
+        if (key == "NBCount"){
+          setRows(myObj[key]);
+          continue;
+        }
         if (key == "setView"){
           settingsView = myObj[key];
           continue;
         }        
+        if (key == "INDEX"){
+          actIndex = myObj[key] + 1;
+          bChangeRow = 1;
+          break; /*jump out of the loop*/
+        }
         var e = document.getElementById(key);
         if (e == null) continue;
         if (e instanceof HTMLSelectElement) {     /* <select>*/
@@ -74,14 +115,19 @@ function onMessage(evt) {
           document.getElementById(key).value = myObj[key];
         }
     }
-    setVis(); //now set visibility
+    if (bChangeRow == 1){
+      changeRow(key,myObj);
+    }else{
+      setVis(); //now set visibility
+    }
+    
 }
  
 //this function sets visible depending on actual option
 function setVis(){
   //console.log("visible=" + document.getElementById("mode").style.display)
   document.getElementById("visSendSystemCmd").style.display='none'; //set advanced weahter upload settings invisible    
-  if (settingsView > 100){
+  if (settingsView == SETTING_EXPERT){
     document.getElementById("visSendSystemCmd").style.display='';  //we are expert
   }
   
