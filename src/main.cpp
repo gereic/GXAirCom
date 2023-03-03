@@ -2132,6 +2132,7 @@ void setup() {
     //PinGPSTX = 39;
     #ifdef HELTEC_S3_1262_V3    
       PinGPSRX = 34;
+      PinGPSTX = 33;
 
       // old V2
       // sck=5,miso=19,mosi=27,ss=18,reset=14,dio0=26,gpio=-1
@@ -2157,8 +2158,10 @@ void setup() {
       }
 
       // PinBuzzer = 17;
-      // PinBaroSDA = 13;
-      // PinBaroSCL = 23;
+
+      PinBaroSDA = 39;
+      PinBaroSCL = 45;
+
       // PinOneWire = 22;    
       PinADCVoltage = 1;
       analogSetPinAttenuation(PinADCVoltage,ADC_11db);
