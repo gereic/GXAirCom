@@ -19,12 +19,18 @@ for i in orig/*.{css,js,html}; do
     gzip -k "${si}"
 done
 
+rm ../../data/*.*
+#cp stripped/*.html ../../data/
+#cp stripped/*.js ../../data/
+#cp stripped/*.css ../../data/
+
 pushd stripped >/dev/null
 for i in *.gz; do
-    ../filetoarray "${i}" >> "${TMP}"
+    ../filetoarray "${i}" >> "${TMP}"    
 done
 popd >/dev/null
 
+cp stripped/*.gz ../../data/
 rm -f stripped/*.gz
 
 mv "${TMP}" "website.h"

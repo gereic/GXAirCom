@@ -719,12 +719,6 @@ static int restartNow = false;
 static void handle_update_progress_cb(AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
   uint32_t free_space = (ESP.getFreeSketchSpace() - 0x1000) & 0xFFFFF000;
   if (!index){
-    //Serial.print("Total bytes:    "); Serial.println(SPIFFS.totalBytes());
-    //Serial.print("Used bytes:     "); Serial.println(SPIFFS.usedBytes());
-    //Serial.println(filename);
-    //Serial.println("Update");
-    //log_i("stopping standard-task");
-    //vTaskDelete(xHandleStandard); //delete standard-task    
     WebUpdateRunning = true;
     delay(500); //wait 1 second until tasks are stopped
     Serial.println("webupdate starting");      
@@ -754,15 +748,25 @@ static void handle_update_progress_cb(AsyncWebServerRequest *request, String fil
   }
 }
 
+void loadFromSPIFFS(AsyncWebServerRequest *request,String path,String dataType = "text/html") {
+  //request->send(SPIFFS, "/index.html", "text/html",false,processor);
+  AsyncWebServerResponse *response = request->beginResponse(SPIFFS, path, dataType, false);
+  response->addHeader("Content-Encoding", "gzip");
+  request->send(response);
+}
+
 void Web_setup(void){
   for (int i = 0;i < MAXCLIENTS;i++) clientPages[i] = 0;
   // On HTTP request for root, provide index.html file
   server.on("/fwupdate", HTTP_GET, [](AsyncWebServerRequest *request){
-    //request->send(SPIFFS, request->url() + ".html", "text/html",false,processor);
-    const char* dataType = "text/html";
-    AsyncWebServerResponse *response = request->beginResponse_P(200, dataType,fwupdate_html_gz, fwupdate_html_gz_len);
-    response->addHeader("Content-Encoding", "gzip");
-    request->send(response); 
+    #ifdef useSpiffsWebsite      
+      loadFromSPIFFS(request,request->url() + ".html.gz");
+    #else
+      const char* dataType = "text/html";
+      AsyncWebServerResponse *response = request->beginResponse_P(200, dataType,fwupdate_html_gz, fwupdate_html_gz_len);
+      response->addHeader("Content-Encoding", "gzip");
+      request->send(response); 
+    #endif
   });
   // handler for the /update form POST (once file upload finishes)
   server.on("/fwupdate", HTTP_POST, [](AsyncWebServerRequest *request){
@@ -772,11 +776,14 @@ void Web_setup(void){
     request->send(SPIFFS, request->url(), "text/html",false,processor);
   });
   server.on("/fullsettings.html", HTTP_GET, [](AsyncWebServerRequest *request){
-    //request->send(SPIFFS, request->url(), "text/html",false,processor);
-    const char* dataType = "text/html";
-    AsyncWebServerResponse *response = request->beginResponse_P(200, dataType,fullsettings_html_gz, fullsettings_html_gz_len);
-    response->addHeader("Content-Encoding", "gzip");
-    request->send(response); 
+    #ifdef useSpiffsWebsite
+      loadFromSPIFFS(request,request->url() + ".gz");
+    #else
+      const char* dataType = "text/html";
+      AsyncWebServerResponse *response = request->beginResponse_P(200, dataType,fullsettings_html_gz, fullsettings_html_gz_len);
+      response->addHeader("Content-Encoding", "gzip");
+      request->send(response); 
+    #endif    
   });
   server.on("/setgeneral.html", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, request->url(), "text/html",false,processor);
@@ -794,25 +801,34 @@ void Web_setup(void){
     request->send(SPIFFS, request->url(), "text/html",false,processor);
   });
   server.on("/index.html", HTTP_GET, [](AsyncWebServerRequest *request){
-    //request->send(SPIFFS, request->url(), "text/html",false,processor);
-    const char* dataType = "text/html";
-    AsyncWebServerResponse *response = request->beginResponse_P(200, dataType,index_html_gz, index_html_gz_len);
-    response->addHeader("Content-Encoding", "gzip");
-    request->send(response); 
+    #ifdef useSpiffsWebsite
+      loadFromSPIFFS(request,request->url() + ".gz");
+    #else
+      const char* dataType = "text/html";
+      AsyncWebServerResponse *response = request->beginResponse_P(200, dataType,index_html_gz, index_html_gz_len);
+      response->addHeader("Content-Encoding", "gzip");
+      request->send(response); 
+    #endif
   });
   server.on("/sendmessage.html", HTTP_GET, [](AsyncWebServerRequest *request){
-    //request->send(SPIFFS, request->url(), "text/html",false,processor);
-    const char* dataType = "text/html";
-    AsyncWebServerResponse *response = request->beginResponse_P(200, dataType,sendmessage_html_gz, sendmessage_html_gz_len);
-    response->addHeader("Content-Encoding", "gzip");
-    request->send(response); 
+    #ifdef useSpiffsWebsite
+      loadFromSPIFFS(request,request->url() + ".gz");
+    #else
+      const char* dataType = "text/html";
+      AsyncWebServerResponse *response = request->beginResponse_P(200, dataType,sendmessage_html_gz, sendmessage_html_gz_len);
+      response->addHeader("Content-Encoding", "gzip");
+      request->send(response); 
+    #endif
   });
   server.on("/neighbours.html", HTTP_GET, [](AsyncWebServerRequest *request){
-    //request->send(SPIFFS, request->url(), "text/html",false,processor);
-    const char* dataType = "text/html";
-    AsyncWebServerResponse *response = request->beginResponse_P(200, dataType,neighbours_html_gz, neighbours_html_gz_len);
-    response->addHeader("Content-Encoding", "gzip");
-    request->send(response);     
+    #ifdef useSpiffsWebsite
+      loadFromSPIFFS(request,request->url() + ".gz");
+    #else
+      const char* dataType = "text/html";
+      AsyncWebServerResponse *response = request->beginResponse_P(200, dataType,neighbours_html_gz, neighbours_html_gz_len);
+      response->addHeader("Content-Encoding", "gzip");
+      request->send(response);     
+    #endif
   });
   // new igc track logger page
   server.on("/igclogs.html", HTTP_GET, [](AsyncWebServerRequest *request){
@@ -827,18 +843,24 @@ void Web_setup(void){
   });
 
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-    //request->send(SPIFFS, "/index.html", "text/html",false,processor);
-    const char* dataType = "text/html";
-    AsyncWebServerResponse *response = request->beginResponse_P(200, dataType,index_html_gz, index_html_gz_len);
-    response->addHeader("Content-Encoding", "gzip");
-    request->send(response); 
+    #ifdef useSpiffsWebsite
+      loadFromSPIFFS(request,"/index.html.gz");
+    #else
+      const char* dataType = "text/html";
+      AsyncWebServerResponse *response = request->beginResponse_P(200, dataType,index_html_gz, index_html_gz_len);
+      response->addHeader("Content-Encoding", "gzip");
+      request->send(response); 
+    #endif
   });
   server.on("/info.html", HTTP_GET, [](AsyncWebServerRequest *request){
-    //request->send(SPIFFS, request->url(), "text/html",false,processor);
-    const char* dataType = "text/html";
-    AsyncWebServerResponse *response = request->beginResponse_P(200, dataType,info_html_gz, info_html_gz_len);
-    response->addHeader("Content-Encoding", "gzip");
-    request->send(response); 
+    #ifdef useSpiffsWebsite
+      loadFromSPIFFS(request,request->url() + ".gz");
+    #else
+      const char* dataType = "text/html";
+      AsyncWebServerResponse *response = request->beginResponse_P(200, dataType,info_html_gz, info_html_gz_len);
+      response->addHeader("Content-Encoding", "gzip");
+      request->send(response); 
+    #endif
   });
   server.on("/msgtype1.html", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, request->url(), "text/html",false,processor);
@@ -859,32 +881,39 @@ void Web_setup(void){
     request->send(SPIFFS, request->url(), "text/html",false,processor);
   });
   server.on("/weather.html", HTTP_GET, [](AsyncWebServerRequest *request){
-    //request->send(SPIFFS, request->url(), "text/html",false,processor);
-    const char* dataType = "text/html";
-    AsyncWebServerResponse *response = request->beginResponse_P(200, dataType,weather_html_gz, weather_html_gz_len);
-    response->addHeader("Content-Encoding", "gzip");
-    request->send(response); 
+    #ifdef useSpiffsWebsite
+      loadFromSPIFFS(request,request->url() + ".gz");
+    #else
+      const char* dataType = "text/html";
+      AsyncWebServerResponse *response = request->beginResponse_P(200, dataType,weather_html_gz, weather_html_gz_len);
+      response->addHeader("Content-Encoding", "gzip");
+      request->send(response); 
+    #endif
   });  
   server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request){
-    //request->send(SPIFFS, request->url(), "text/css");
-    const char* dataType = "text/css";
-    AsyncWebServerResponse *response = request->beginResponse_P(200, dataType,style_css_gz, style_css_gz_len);
-    response->addHeader("Content-Encoding", "gzip");
-    request->send(response); 
+    #ifdef useSpiffsWebsite
+      loadFromSPIFFS(request,request->url() + ".gz","text/css");
+    #else
+      const char* dataType = "text/css";
+      AsyncWebServerResponse *response = request->beginResponse_P(200, dataType,style_css_gz, style_css_gz_len);
+      response->addHeader("Content-Encoding", "gzip");
+      request->send(response); 
+    #endif
   });
   server.on("/scripts.js", HTTP_GET, [](AsyncWebServerRequest *request){
-    //request->send(SPIFFS, request->url(), "text/css");
-    const char* dataType = "text/javascript";
-    AsyncWebServerResponse *response = request->beginResponse_P(200, dataType,scripts_js_gz, scripts_js_gz_len);
-    response->addHeader("Content-Encoding", "gzip");
-    request->send(response); 
+    #ifdef useSpiffsWebsite
+      loadFromSPIFFS(request,request->url() + ".gz","text/javascript");
+    #else
+      const char* dataType = "text/javascript";
+      AsyncWebServerResponse *response = request->beginResponse_P(200, dataType,scripts_js_gz, scripts_js_gz_len);
+      response->addHeader("Content-Encoding", "gzip");
+      request->send(response); 
+    #endif
   });
   server.on("/communicator.html", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, request->url(), "text/html",false,processor);
   });
 
-  // On HTTP request for style sheet, provide style.css
-  //server.on("/style.css", HTTP_GET, onCSSRequest);
 
   // Handle requests for pages that do not exist
   server.onNotFound(onPageNotFound);

@@ -62,7 +62,8 @@
 #endif
   //TinyGsm modem(GsmSerial);
   TinyGsmClient GsmOGNClient(modem,0); //client number 0 for OGN
-  TinyGsmClient GsmWUClient(modem,1); //client number 1 for weather-underground
+  //TinyGsmClient GsmWUClient(modem,1); //client number 1 for weather-underground
+  TinyGsmClientSecure  GsmWUClient(modem,1); //client number 1 for weather-underground
   TinyGsmClient GsmUpdaterClient(modem,2); //client number 2 for updater
   TinyGsmClient GsmMqttClient(modem,3); //client number 3 for MQTT
 #endif
@@ -334,7 +335,7 @@ void PowerOffModem();
 //void readSMS();
 //void sendStatus();
 #endif
-#ifdef TINY_GSM_MODEM_SIM7000
+#ifdef TINY_GSM_MODEM_SIM7000SSL
 void setupSim7000Gps();
 #endif
 #ifdef OLED
@@ -563,7 +564,7 @@ uint8_t checkI2C(){
 }
 
 void checkBoardType(){
-  #ifdef TINY_GSM_MODEM_SIM7000
+  #ifdef TINY_GSM_MODEM_SIM7000SSL
     setting.displayType = NO_DISPLAY;
     setting.boardType = eBoard::TTGO_TSIM_7000;
     log_i("TTGO-T-Sim7000 found");
@@ -2463,7 +2464,7 @@ bool connectModem(){
   //log_i("signal quality %d",status.gsm.SignalQuality);
   status.gsm.sOperator = modem.getOperator();
   //log_i("operator=%s",status.gsm.sOperator.c_str());
-  #ifdef TINY_GSM_MODEM_SIM7000
+  #ifdef TINY_GSM_MODEM_SIM7000SSL
   bool bAutoreport;
   if (modem.getNetworkSystemMode(bAutoreport,status.gsm.networkstat)){        
     //log_i("network system mode %d",status.gsm.networkstat);
@@ -2527,7 +2528,7 @@ bool initModem(){
     log_e("restarting modem failed");
     return false; 
   }
-  #ifdef TINY_GSM_MODEM_SIM7000
+  #ifdef TINY_GSM_MODEM_SIM7000SSL
   log_i("set NetworkMode to %d",setting.gsm.NetworkMode);
   modem.setNetworkMode(setting.gsm.NetworkMode); //set mode
   if (setting.gsm.PreferredMode > 0){
@@ -2552,7 +2553,7 @@ void PowerOffModem(){
   log_i("switch radio off");
   modem.radioOff();  
 
-  #ifdef TINY_GSM_MODEM_SIM7000
+  #ifdef TINY_GSM_MODEM_SIM7000SSL
     digitalWrite(5,HIGH);
     //Power-off SIM7000-module
     modem.sleepEnable(false); // required in case sleep was activated and will apply after reboot
@@ -2577,7 +2578,7 @@ void PowerOffModem(){
 
 }
 
-#ifdef TINY_GSM_MODEM_SIM7000
+#ifdef TINY_GSM_MODEM_SIM7000SSL
 void setupSim7000Gps(){
   xSemaphoreTake( xGsmMutex, portMAX_DELAY );
   modem.sendAT("+SGPIO=0,4,1,1");
@@ -2640,7 +2641,7 @@ void taskGsm(void *pvParameters){
   while(1){
     tAct = millis();
     
-    #ifdef TINY_GSM_MODEM_SIM7000
+    #ifdef TINY_GSM_MODEM_SIM7000SSL
     if (command.getGpsPos == 1){
       setupSim7000Gps();
     }else if (command.getGpsPos == 2){
@@ -2678,7 +2679,7 @@ void taskGsm(void *pvParameters){
         if (status.gsm.sOperator.length() == 0){
           status.gsm.sOperator = modem.getOperator();
         }
-        #ifdef TINY_GSM_MODEM_SIM7000
+        #ifdef TINY_GSM_MODEM_SIM7000SSL
         bool bAutoreport;
         if (modem.getNetworkSystemMode(bAutoreport,status.gsm.networkstat)){        
           //log_i("network system mode %d",status.gsm.networkstat);
@@ -2864,6 +2865,7 @@ void taskWeather(void *pvParameters){
             wiData.bRain = setting.wd.mode.bits.rainSensor;
             wiData.rain1h = wData.rain1h ;
             wiData.raindaily = wData.rain1d;
+            log_i("send weather-data to windy");
             wi.sendData(setting.WindyUpload.ID,setting.WindyUpload.KEY,&wiData);
           }
 
@@ -5282,6 +5284,7 @@ void taskBackGround(void *pvParameters){
   #endif
 
   tBattEmpty = millis();
+  tGetTime = millis() - GETNTPINTERVALL + 5000; //we refresh NTP-Time 5 sec. after internet is connected
   while (1){
     uint32_t tAct = millis();
     if  (status.wifiStat != 0){
@@ -5305,7 +5308,7 @@ void taskBackGround(void *pvParameters){
         myWdCount = wdCount;
       }
     } 
-    #ifdef GSMODULE    
+    #ifdef GSMODULE  
     if (setting.Mode == eMode::GROUND_STATION){
       if (status.bTimeOk == true){
         struct tm now;
@@ -5445,7 +5448,7 @@ void taskBackGround(void *pvParameters){
       }
     #endif
     }else{
-      tGetTime = tAct - (GETNTPINTERVALL - 5000); //we refresh NTP-Time 5 sec. after internet is connected
+      tGetTime = tAct - GETNTPINTERVALL + 5000; //we refresh NTP-Time 5 sec. after internet is connected
     }
     if (timeOver(tAct,tWifiCheck,WIFI_RECONNECT_TIME)){
       tWifiCheck = tAct;

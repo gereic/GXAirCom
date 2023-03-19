@@ -11,7 +11,12 @@
 #include <Update.h>
 #include <CalcTools.h>
 #include <Logger.h>
+
+#define useSpiffsWebsite
+
+#ifndef useSpiffsWebsite
 #include "./web/website.h"
+#endif
 
 //extern WebServer server;
 extern struct SettingsData setting;

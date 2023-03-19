@@ -4,6 +4,13 @@
 Windy::Windy(){
     client = NULL;
     xMutex = NULL;
+    sslClient = NULL;
+}
+
+Windy::~Windy(){
+  if (sslClient != NULL){
+    delete sslClient;
+  }
 }
 
 void Windy::setClient(Client *_client){
@@ -77,10 +84,13 @@ bool  Windy::sendData(String ID,String APIKEY,wData *data){ //send Data to WU wi
   //log_i("%s len=%d",msg,strlen(msg));
   
   if (client == NULL){    
-    client = new WiFiClient();
+    sslClient = new WiFiClientSecure();
+    sslClient->setInsecure();
+    client = sslClient;
+    
   }
   xSemaphoreTake( *xMutex, portMAX_DELAY );
-  HttpClient http(*client, "stations.windy.com");  
+  HttpClient http(*client, "stations.windy.com",443);  
   int httpResponseCode = http.get(msg);
   if (httpResponseCode == 0){
     httpResponseCode = http.responseStatusCode();

@@ -2,7 +2,8 @@
 
 
 bool timeOver(uint32_t tAct,uint32_t timestamp,uint32_t tTime){
-    if ((tAct - timestamp) >= tTime){
+    uint32_t tDiff = tAct - timestamp;
+    if ((tDiff) >= tTime){
         return true;
     }else{
         return false;

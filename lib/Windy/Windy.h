@@ -16,6 +16,7 @@
 #include <ArduinoJson.h>
 #include <ArduinoHttpClient.h>
 #include <WiFi.h>
+#include <WiFiClientSecure.h>
 
 //windspeed [km/h]
 //windgust [km/h]
@@ -44,6 +45,7 @@ public:
   } wData;
 
     Windy(); //constructor
+    ~Windy(); //destructor
     bool sendData(String ID,String APIKEY,wData *data); //send Data to Windy with Station-ID and Station-Key
     void setClient(Client *_client);
     void setMutex(SemaphoreHandle_t *_xMutex);
@@ -56,6 +58,7 @@ private:
     bool _windsensor;
     bool _rainsensor;
     Client *client;
+    WiFiClientSecure *sslClient;
     SemaphoreHandle_t *xMutex;
 };
 #endif

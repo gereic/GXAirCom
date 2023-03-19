@@ -428,6 +428,166 @@ function checkValues(){
   return true;
 }
 
+function importJson(){
+  console.log("start reading file:");  
+  const uploadInput = document.getElementById("importJson");
+  // Calculate total size
+  let numberOfBytes = 0;
+  for (const file of uploadInput.files) {
+    numberOfBytes += file.size;
+  } 
+  if (!uploadInput.files.length){
+    console.log("No file selected!");  
+    return;
+  }
+  let file = uploadInput.files[0];
+  let reader = new FileReader();
+  const self = this;
+  console.log("reading " + numberOfBytes + " Bytes, file:" + file);
+  reader.onload = function(e) { 
+    //console.log(e.target.result);
+    parseJson(e.target.result);  
+  }
+  reader.readAsText(file);
+  uploadInput.value = ""; //clear value again
+}
+function exportJson() {
+
+console.log("export JSON");
+var obj = {};
+getValue(obj,
+    [
+    "setView",
+    "board",
+    "Frequ",
+    "disp",
+    "dispRot",
+    "type",
+    "mode",
+    "fntMode",
+    "fntPin",
+    "PilotName",
+    "expwsw",
+    "fuelSensor",
+    "AUTOUPDATE",
+    "gslat",
+    "gslon",
+    "gsalt",
+    "gsGeoAlt",
+    "gsScr",
+    "gsPs",
+    "MinBatPerc",
+    "restartBattPerc",
+    "wdAnemo",
+    "wdAnemoAdsGain",
+    "wdAnemoAdsWSpeedMinVoltage",
+    "wdAnemoAdsWSpeedMaxVoltage",
+    "wdAnemoAdsWDirMinVoltage",
+    "wdAnemoAdsWDirMaxVoltage",
+    "wdAnemoAdsWSpeedMinSpeed",
+    "wdAnemoAdsWSpeedMaxSpeed",
+    "wdAnemoAdsWDirMinDir",
+    "wdAnemoAdsWDirMaxDir",
+    "wdAnemoAdsVDivR1",
+    "wdAnemoAdsVDivR2",
+    "appw",
+    "wificonnect",
+    "ssid",
+    "password",
+    "wifioff",
+    "output",
+    "oSERIAL",
+    "oGPS",
+    "oFlarm",
+    "oFanet",
+    "oVario",
+    "awlive",
+    "UDPServerIP",
+    "UDPSendPort",
+    "traccar_live",
+    "traccarsrv",
+    "sigmaP",
+    "sigmaA",
+    "vSinkTh",
+    "vClimbTh",
+    "vNClimbSens",
+    "vVol",
+    "vBeepFly",
+    "useMPU",
+    "axOffset",
+    "ayOffset",
+    "azOffset",
+    "gxOffset",
+    "gyOffset",
+    "gzOffset",
+    "t[0]",
+    "z[0]",
+    "sFWD",
+    "wdTempOffset",
+    "wdWDirOffset",
+    "WUUlEnable",
+    "WUUlID",
+    "WUUlKEY",
+    "WIUlEnable",
+    "WIUlID",
+    "WIUlKEY",
+    "WFFNT",
+    "WIFNT",
+    "WFWU",
+    "WIWU",
+    "MqttServer",
+    "MqttPort",
+    "MqttPw",
+    "GSMAPN",
+    "GSMUSER",
+    "GSMPWD",
+    "GSMMODE",
+    "GSMPREF",
+    ]
+  );
+  obj['F2WuF'] = [ FntIdHex2Dec(_value("F2WuF0")).toString(),
+            FntIdHex2Dec(_value("F2WuF1")).toString(),
+            FntIdHex2Dec(_value("F2WuF2")).toString(),
+            FntIdHex2Dec(_value("F2WuF3")).toString(),
+            FntIdHex2Dec(_value("F2WuF4")).toString()];
+  obj['F2WuI'] = [ _value("F2WuI0"),
+            _value("F2WuI1"),
+            _value("F2WuI2"),
+            _value("F2WuI3"),
+            _value("F2WuI4")];
+  obj['F2WuK'] = [ _value("F2WuK0"),
+            _value("F2WuK1"),
+            _value("F2WuK2"),
+            _value("F2WuK3"),
+            _value("F2WuK4")];
+  obj['F2WiF'] = [ FntIdHex2Dec(_value("F2WiF0")).toString(),
+            FntIdHex2Dec(_value("F2WiF1")).toString(),
+            FntIdHex2Dec(_value("F2WiF2")).toString(),
+            FntIdHex2Dec(_value("F2WiF3")).toString(),
+            FntIdHex2Dec(_value("F2WiF4")).toString()];
+  obj['F2WiI'] = [ _value("F2WiI0"),
+            _value("F2WiI1"),
+            _value("F2WiI2"),
+            _value("F2WiI3"),
+            _value("F2WiI4")];
+  obj['F2WiK'] = [ _value("F2WiK0"),
+            _value("F2WiK1"),
+            _value("F2WiK2"),
+            _value("F2WiK3"),
+            _value("F2WiK4")];
+  obj['ognlive'] = getOGNMode();
+  obj['RFM'] = getRfMode();
+  obj['MqttMode'] = getMQTTMode();
+  obj['WsMode'] = getWsMode();
+  obj['vTOffs'] = parseFloat(document.getElementById("vTOffs").value);
+
+  const a = document.createElement("a");
+  const file = new Blob([JSON.stringify(obj)], { type: "text/plain" });
+  a.href = URL.createObjectURL(file);
+  a.download = "settings.json";
+  a.click();   
+}
+
 function sendValues(){  
   if (!checkValues()){
     return;
@@ -589,7 +749,7 @@ function sendValues(){
     "WUUlKEY",
     "WIUlEnable",
     "WIUlID",
-    "WUUlKEY",
+    "WIUlKEY",
     "WFFNT",
     "WIFNT",
     "WFWU",
@@ -624,6 +784,89 @@ function sendValues(){
   setTimeout( callMainPage, delay );
 }
 
+function parseJson(data){
+  var myObj = JSON.parse(data);
+  for (var key of Object.keys(myObj)) {
+    console.log(key + " -> " + myObj[key]);
+    let isArray = Array.isArray(myObj[key]);
+    if (Array.isArray(myObj[key])){
+      var i = 0;
+      for (var myValue of myObj[key]){
+        if ((key == "F2WuF") || (key == "F2WiF")){
+          myValue = FntIdDec2Hex(myValue);
+        }
+        document.getElementById(key + i).value = myValue;
+        document.getElementById(key + i).textContent = myValue;
+        i++;
+      }
+      continue;
+    }
+    if (key == "WsMode"){
+      wsMode = myObj[key];
+      continue;
+    }
+    if (key == "bHasVario"){
+      bHasVario = myObj[key];
+      continue;
+    }else if (key == "bHasMPU"){
+      if (myObj[key] == 0){
+        document.getElementById("VisMPU").style.display='none';
+      }
+      continue;
+    }else if (key == "bHasGSM"){
+      if (myObj[key] == 0){
+        document.getElementById("VisGSM").style.display='none';
+      }
+      continue;          
+    }else if (key == "configGPS"){
+      setBtnGPS(myObj[key]);
+      continue;    
+    }else if (key == "getGpsPos"){
+      setBtnGetGpsPos(myObj[key]);
+      continue;    
+    }else if (key == "calibGyro"){
+      setBtnCalib("btnCalibGyro",myObj[key]);
+      continue;          
+    }else if (key == "RFM"){
+      setRfMode(myObj[key]);
+      continue;
+    }else if (key == "ognlive"){
+      setOGNMode(myObj[key]);
+      continue;
+    }else if (key == "MqttMode"){
+      setMQTTMode(myObj[key]);
+      continue;          
+    }else if (key == "calibAcc"){
+      calibBtnState = myObj[key];
+      setBtnCalib("btnCalibAcc",myObj[key]);
+      continue; 
+    }else if (key == "stateCalibAcc"){
+      setCalibState(myObj[key]);
+      continue;                    
+    }else if (key == "useMPU"){
+      if (myObj[key] == 0){
+        document.getElementById("VisMPU").style.display='none';
+      }
+    }
+    var e = document.getElementById(key);
+    if (e == null) continue;
+    if (e instanceof HTMLSelectElement) {     /* <select>*/
+      document.getElementById(key).value = myObj[key];
+    }else if ((e instanceof HTMLInputElement ) && (e.getAttribute('type') == 'checkbox')){     /* <input checkbox>*/
+      if (myObj[key] == 1){
+        document.getElementById(key).checked = true;
+      }else{
+        document.getElementById(key).checked = false;
+      }
+      
+    }else{
+      document.getElementById(key).textContent = myObj[key];
+      document.getElementById(key).value = myObj[key];
+    }
+  }
+  setVis(); /*now set visibility*/
+}
+
 /* Called when a message is received from the server*/
 function onMessage(evt) {
  
@@ -631,86 +874,7 @@ function onMessage(evt) {
     console.log("Received: " + evt.data);
     
     /* Update circle graphic with LED state*/
-    var myObj = JSON.parse(evt.data);
-    for (var key of Object.keys(myObj)) {
-        console.log(key + " -> " + myObj[key]);
-        let isArray = Array.isArray(myObj[key]);
-        if (Array.isArray(myObj[key])){
-          var i = 0;
-          for (var myValue of myObj[key]){
-            if ((key == "F2WuF") || (key == "F2WiF")){
-              myValue = FntIdDec2Hex(myValue);
-            }
-            document.getElementById(key + i).value = myValue;
-            document.getElementById(key + i).textContent = myValue;
-            i++;
-          }
-          continue;
-        }
-        if (key == "WsMode"){
-          wsMode = myObj[key];
-          continue;
-        }
-        if (key == "bHasVario"){
-          bHasVario = myObj[key];
-          continue;
-        }else if (key == "bHasMPU"){
-          if (myObj[key] == 0){
-            document.getElementById("VisMPU").style.display='none';
-          }
-          continue;
-        }else if (key == "bHasGSM"){
-          if (myObj[key] == 0){
-            document.getElementById("VisGSM").style.display='none';
-          }
-          continue;          
-        }else if (key == "configGPS"){
-          setBtnGPS(myObj[key]);
-          continue;    
-        }else if (key == "getGpsPos"){
-          setBtnGetGpsPos(myObj[key]);
-          continue;    
-        }else if (key == "calibGyro"){
-          setBtnCalib("btnCalibGyro",myObj[key]);
-          continue;          
-        }else if (key == "RFM"){
-          setRfMode(myObj[key]);
-          continue;
-        }else if (key == "ognlive"){
-          setOGNMode(myObj[key]);
-          continue;
-        }else if (key == "MqttMode"){
-          setMQTTMode(myObj[key]);
-          continue;          
-        }else if (key == "calibAcc"){
-          calibBtnState = myObj[key];
-          setBtnCalib("btnCalibAcc",myObj[key]);
-          continue; 
-       }else if (key == "stateCalibAcc"){
-          setCalibState(myObj[key]);
-          continue;                    
-        }else if (key == "useMPU"){
-          if (myObj[key] == 0){
-            document.getElementById("VisMPU").style.display='none';
-          }
-        }
-        var e = document.getElementById(key);
-        if (e == null) continue;
-        if (e instanceof HTMLSelectElement) {     /* <select>*/
-          document.getElementById(key).value = myObj[key];
-        }else if ((e instanceof HTMLInputElement ) && (e.getAttribute('type') == 'checkbox')){     /* <input checkbox>*/
-          if (myObj[key] == 1){
-            document.getElementById(key).checked = true;
-          }else{
-            document.getElementById(key).checked = false;
-          }
-          
-        }else{
-          document.getElementById(key).textContent = myObj[key];
-          document.getElementById(key).value = myObj[key];
-        }
-    }
-    setVis(); /*now set visibility*/
+    parseJson(evt.data);
 }
  
 </script>
@@ -1494,8 +1658,21 @@ function onMessage(evt) {
     <p></p>
     <table style="width:100&#37;">
       <tr>
+        <td style="width:50&#37;">
+          <button id="btnsaveSettings" onClick="exportJson()">save settings to file</button>
+        </td>
+        <td style="width:50&#37;">
+          <button id="btnloadSettings"  class="button byel"  onClick="document.getElementById('importJson').click()">load settings from file</button>
+          <input id="importJson" value="import json" onchange="importJson()" type="file" accept="application/json" style="display:none" />
+        </td>
+      </tr>
+    </table>
+    <p></p>
+    <p></p>
+    <table style="width:100&#37;">
+      <tr>
         <td style="width:100&#37;">
-          <button id="btnsave" onClick="sendValues()" class="button bgrn">save and reboot</button>
+          <button id="btnsave" onClick="sendValues()" class="button bgrn">save settings on board and reboot</button>
         </td>
       </tr>
     </table>

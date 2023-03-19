@@ -86,9 +86,7 @@ function doSend(message) {
 // Call the init function as soon as the page loads
 window.addEventListener("load", init, false);
 
-
-function doSendData(elements, save) {
-  var obj = { save: save };
+function getValue(obj,elements){
   elements.forEach(element => {
     var e = document.getElementById(element);
     //console.log("type=" + e.tagName);
@@ -106,6 +104,14 @@ function doSendData(elements, save) {
       obj[element] = e.value;
     }
   });
+  return obj;
+}
+
+
+
+function doSendData(elements, save) {
+  var obj = { save: save };
+  getValue(obj,elements);
   doSend(JSON.stringify(obj));
 }
 
