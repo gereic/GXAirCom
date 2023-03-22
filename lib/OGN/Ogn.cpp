@@ -113,6 +113,7 @@ void Ogn::checkLine(String line){
             tRecBaecon = millis() - OGNSTATUSINTERVALL;
             _servername = s;
             initOk = 1;
+            log_i("logged in successfully");
         }
     }
 }

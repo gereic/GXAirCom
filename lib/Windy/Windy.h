@@ -18,6 +18,8 @@
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 
+//#define SSLCONNECTION
+
 //windspeed [km/h]
 //windgust [km/h]
 //temp [°F]
@@ -58,7 +60,11 @@ private:
     bool _windsensor;
     bool _rainsensor;
     Client *client;
-    WiFiClientSecure *sslClient;
+    #ifdef SSLCONNECTION
+    WiFiClientSecure *MyClient;
+    #else
+    WiFiClient *MyClient;
+    #endif
     SemaphoreHandle_t *xMutex;
 };
 #endif

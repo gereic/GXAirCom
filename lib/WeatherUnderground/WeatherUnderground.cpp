@@ -3,13 +3,13 @@
 
 WeatherUnderground::WeatherUnderground(){
     client = NULL;
-    sslClient = NULL;
+    MyClient = NULL;
     xMutex = NULL;
 }
 
 WeatherUnderground::~WeatherUnderground(){
-  if (sslClient != NULL){
-    delete sslClient;
+  if (MyClient != NULL){
+    delete MyClient;
   }
 }
 
@@ -35,13 +35,19 @@ bool WeatherUnderground::getData(String ID,String KEY,wData *data){ //get Data f
           KEY.c_str()
           );
   String payload = ""; //http.getString();
+  uint16_t serverPort = 80;
   if (client == NULL){    
-    sslClient = new WiFiClientSecure();
-    sslClient->setInsecure();
-    client = sslClient;
+    #ifdef SSLCONNECTION
+    MyClient = new WiFiClientSecure();
+    MyClient->setInsecure();
+    serverPort = 443;
+    #else
+    MyClient = new WiFiClient();
+    #endif
+    client = MyClient;
   }
   xSemaphoreTake( *xMutex, portMAX_DELAY );
-  HttpClient http(*client, "api.weather.com",443);  
+  HttpClient http(*client, "api.weather.com",serverPort);  
   int httpResponseCode = http.get(msg);
   if (httpResponseCode == 0){
     httpResponseCode = http.responseStatusCode();
@@ -183,13 +189,19 @@ bool  WeatherUnderground::sendData(String ID,String KEY,wData *data){ //send Dat
   strcat(msg,msg2);
 
   //log_i("%s len=%d",msg,strlen(msg));
+  uint16_t serverPort = 80;
   if (client == NULL){    
-    sslClient = new WiFiClientSecure();
-    sslClient->setInsecure();
-    client = sslClient;
+    #ifdef SSLCONNECTION
+    MyClient = new WiFiClientSecure();
+    MyClient->setInsecure();
+    serverPort = 443;
+    #else
+    MyClient = new WiFiClient();
+    #endif
+    client = MyClient;
   }
   xSemaphoreTake( *xMutex, portMAX_DELAY );
-  HttpClient http(*client, "weatherstation.wunderground.com",443);  
+  HttpClient http(*client, "weatherstation.wunderground.com",serverPort);  
   int httpResponseCode = http.get(msg);
   if (httpResponseCode == 0){
     httpResponseCode = http.responseStatusCode();
