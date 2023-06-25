@@ -422,6 +422,8 @@ struct weatherStatus{
   bool bRain; //rain-sensor exists
   float rain1h = NAN; // rain this hour [l/h]
   float rain1d = NAN; // rain this day [l/h]
+  int vaneVAlue = 0;
+  bool bWindInvalid = false;
 };
 
 struct commandData{

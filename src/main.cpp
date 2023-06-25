@@ -2721,6 +2721,7 @@ void taskWeather(void *pvParameters){
   static uint32_t tUploadData; //first sending is in Sending-intervall to have steady-values
   static uint32_t tSendData; //first sending is in FANET-Sending-intervall to have steady-values
   static uint32_t tLastWindSpeed; //
+  static uint32_t tWindOk;
   bool bDataOk = false;
   log_i("starting weather-task ");  
   Weather::weatherData wData;
@@ -2751,6 +2752,8 @@ void taskWeather(void *pvParameters){
   tUploadData = millis();
   tSendData = millis();
   tLastWindSpeed = millis();
+  tWindOk = millis();
+  status.weather.bWindInvalid = false;
   while (1){
     uint32_t tAct = millis();
     if (setting.wd.mode.bits.enable){
@@ -2758,6 +2761,13 @@ void taskWeather(void *pvParameters){
       weather.run();
       if (weather.getValues(&wData)){
         //log_i("wdata:wDir=%f;wSpeed=%f,temp=%f,h=%f,p=%f",wData.WindDir,wData.WindSpeed,wData.temp,wData.Humidity,wData.Pressure);
+        if (status.weather.vaneVAlue != wData.vaneValue){ //we check, if analog-value is changing, when there is an error, we get always 1023 for analog-read
+          tWindOk = tAct;
+        }
+        status.weather.vaneVAlue =  wData.vaneValue;
+        if ((timeOver(tAct,tWindOk,3600000uL)) && (setting.wd.anemometer.AnemometerType == eAnemometer::DAVIS)) { //when more than one hour we get always the same value --> problem with wind-sensor
+          status.weather.bWindInvalid = true;
+        }
         if (wData.WindSpeed > 0.01){
           tLastWindSpeed = tAct;
         }
@@ -2889,6 +2899,8 @@ void taskWeather(void *pvParameters){
           snprintf (buff,sizeof(buff)-1,"%04d-%02d-%02dT%02d:%02d:%02d+00:00",year(),month(),day(),hour(),minute(),second()); // ISO 8601
           doc["DT"] = buff;
           doc["wDir"] = String(avg[0].Winddir,2);
+          doc["vaneValue"] = String(status.weather.vaneVAlue);
+          doc["bWInvalid"] = status.weather.bWindInvalid ? "1" : "0";
           doc["wSpeed"] = String(avg[0].WindSpeed,2);
           doc["wGust"] = String(avg[0].WindGust,2);
           if (wData.bTemp) doc["temp"] = String(avg[0].temp,2);
@@ -3899,6 +3911,12 @@ void checkSystemCmd(char *ch_str){
   if (line.indexOf("#SYC DOUPDATE") >= 0){
     status.updateState = 50; //check for Update automatic
     add2OutputString("Check for update\r\n");
+  }
+  iPos = getStringValue(line,"#SYC UPDATE=","\r",0,&sRet);
+  if (iPos >= 0){
+    status.sNewVersion = sRet;
+    status.updateState = 60; //check for Update automatic
+    add2OutputString("#SYC UPDATE NEW VERSION\r\n");
   }
 }
 
@@ -5107,6 +5125,7 @@ void checkExtPowerOff(uint32_t tAct){
 
 void handleUpdate(uint32_t tAct){
   static uint32_t tStartAutoUpdate = millis();
+  static uint32_t tWait = 0;
   if (status.tRestart != 0){
     if (timeOver(tAct,status.tRestart,5000)){
       esp_restart();
@@ -5131,6 +5150,8 @@ void handleUpdate(uint32_t tAct){
     if (updater.checkVersion()){
       status.sNewVersion = updater.getVersion();
       if (updater.checkVersionNewer()){
+        status.updateState = 61;
+        /*
         add2OutputString("update to " + status.sNewVersion + "\r\n");
         WebUpdateRunning = true;
         delay(500); //wait 1 second until tasks are stopped
@@ -5143,6 +5164,7 @@ void handleUpdate(uint32_t tAct){
           status.updateState = 254;
           status.tRestart = millis();
         }
+        */
       }else{
         add2OutputString("no new Version avaiable\r\n");
         status.updateState = 253;
@@ -5150,6 +5172,26 @@ void handleUpdate(uint32_t tAct){
     }else{
       add2OutputString("no connection to server\r\n");
       status.updateState = 252;
+    }
+  }else if (status.updateState == 60){ //update to version
+    updater.setVersion(status.sNewVersion);
+    status.updateState = 61;
+  }else if (status.updateState == 61){ //update to version
+    add2OutputString("update to " + status.sNewVersion + "\r\n");
+    tWait = millis();
+    status.updateState = 62;
+  }else if ((status.updateState == 62) && (timeOver(millis(),tWait,500))) { //update to version
+    WebUpdateRunning = true;
+    status.updateState = 63;
+  }else if ((status.updateState == 63) && (timeOver(millis(),tWait,500))) { //update to version
+    if (updater.updateVersion()){ //update to newest version  
+      add2OutputString("update complete\r\n");
+      status.updateState = 200;
+      status.tRestart = millis();
+    }else{
+      add2OutputString("update failed\r\n");
+      status.updateState = 254;
+      status.tRestart = millis();
     }
   }else if (status.updateState == 100){
     status.updateState = 110;
@@ -5308,7 +5350,7 @@ void taskBackGround(void *pvParameters){
         xSemaphoreGive(xOutputMutex);
       }      
       if ((myWdCount != wdCount) && (setting.mqtt.mode.bits.sendWeather)) {
-        pMqtt->sendTopic("WD",pWd);
+        pMqtt->sendTopic("WD",pWd,false);
         myWdCount = wdCount;
       }
     } 

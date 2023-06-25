@@ -50,6 +50,7 @@ public:
         bool bRain; //rain-sensor exists
         float rain1h; // rain this hour [l/h]
         float rain1d; // rain this day [l/h]
+        int vaneValue = 0;
     } weatherData;
 
     Weather(); //constructor

@@ -374,3 +374,6 @@ added worldwide FANET-frequencys
 added worldwide Flarm-frequencys
 Flarm outside europe is only working with GPS (and PPS-Signal like TTGO T-Beam),
  because of frequency-hoping (not well tested yed (outside europe))
+
+V5.3.4
+added raw vaneValue of weatherstation to mqtt-data. For detecting, when analog-read is not working anymore

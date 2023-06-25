@@ -222,6 +222,7 @@ float Weather::calcWindspeed(void){
 void Weather::checkAneometer(void){
   if (_weather.bWindDir){
     VaneValue = analogRead(_windDirPin);
+    _weather.vaneValue = VaneValue;
     winddir = (map(VaneValue, 0, 1023, 0, 359) + _winddirOffset) % 360;
     _weather.WindDir = winddir;
   }
@@ -380,7 +381,8 @@ void Weather::run(void){
       uint16_t Speed;
       uint8_t ret = tx20getNewData(&Dir,&Speed);
       if (ret == 1){
-        _weather.WindDir = float(Dir) * 22.5;
+        _weather.vaneValue = int16_t(float(Dir) * 22.5);
+        _weather.WindDir = (int16_t(float(Dir) * 22.5) + _winddirOffset) % 360;
         _weather.WindSpeed = float(Speed) / 10.0 * 3.6; //[1/10m/s] --> [km/h]
         if (_weather.WindSpeed > _weather.WindGust) _weather.WindGust = _weather.WindSpeed; 
       }

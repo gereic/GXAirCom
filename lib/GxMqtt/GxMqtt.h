@@ -26,12 +26,13 @@ public:
     void end(void);
     int16_t getLastCmd(char *c,uint16_t len);
     void sendState(const char *c);
-    void sendTopic(const char *topic,const char *payload);
+    void sendTopic(const char *topic,const char *payload, boolean retained);
 
 protected:
 private:
     void callback(char* topic, byte* payload, unsigned int length);
     void connect();
+    void sendOnlineTopic(uint8_t state);
     PubSubClient *pPubSubClient = NULL;
     Client *pClient;
     SemaphoreHandle_t *xMutex;

@@ -52,16 +52,22 @@ bool GxMqtt::begin(SemaphoreHandle_t *_xMutex,Client *_client){
   return true;
 }
 
-void GxMqtt::sendTopic(const char* topic,const char* payload){
+void GxMqtt::sendTopic(const char* topic,const char* payload, boolean retained){
   char sendTopic[100];
   snprintf(sendTopic,sizeof(sendTopic),"%s/%s",myTopic,topic);
   xSemaphoreTake( *xMutex, portMAX_DELAY );
-  pPubSubClient->publish(sendTopic,payload);
+  pPubSubClient->publish(sendTopic,payload,retained);
   xSemaphoreGive( *xMutex );
 }
 
 void GxMqtt::sendState(const char *c){
-  sendTopic("state",c);
+  sendTopic("state",c,false);
+}
+
+void GxMqtt::sendOnlineTopic(uint8_t state){
+  char sMqttState[5];
+  sprintf(sMqttState, "%d", state);
+  sendTopic("online",sMqttState,true);
 }
 
 int16_t GxMqtt::getLastCmd(char *c,uint16_t len){
@@ -92,6 +98,7 @@ void GxMqtt::connect() {
   
   if (bRet) {
     log_i("connected as %s",myDevId);
+    delay(2000); //wait 2 seconds until will-topic is sent
     pPubSubClient->publish(willTopic,"1",true); //retained
     pPubSubClient->publish(stateTopic,"");
     //log_i("subscribe to topic %s",cmdTopic);

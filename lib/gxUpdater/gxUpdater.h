@@ -30,6 +30,7 @@ public:
   void setMutex(SemaphoreHandle_t *_xMutex);
   bool checkVersion(void);
   String getVersion(void);
+  void setVersion(String s);
   bool checkVersionNewer(void);
   bool updateVersion(void);
 private:

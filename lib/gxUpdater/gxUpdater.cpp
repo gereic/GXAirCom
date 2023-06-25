@@ -95,6 +95,10 @@ bool gxUpdater::checkVersionNewer(void){
   return false;
 }
 
+void gxUpdater::setVersion(String s){
+  _version = s; //set version
+}
+
 bool gxUpdater::getVersion(tVersion *v,String s){
   bool bRet = false;
   //tVersion v;
