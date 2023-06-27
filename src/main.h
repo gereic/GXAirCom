@@ -375,6 +375,8 @@ struct SettingsData{
   float BattVoltOffs; //offset for Battery-multiplier
   uint8_t minBattPercent;
   uint8_t restartBattPercent;
+  uint32_t myDevIdOverride; //When !=0 this devide ID will be used instead of mac Addess
+  bool stratuxNMEA; // provide NMEA needed for operation with stratux
   String myDevId; //my device-ID
   eOutputVario outputModeVario;
   uint8_t outputFLARM;

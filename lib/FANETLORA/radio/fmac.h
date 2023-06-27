@@ -286,6 +286,10 @@ public:
 	/* Addr */
 	const MacAddr &myAddr;
 	bool setAddr(MacAddr addr);
+	// Set's the soft address. This is different from the hard address, which is set by the manufacturer
+	// and cannot be changed. The soft address is used when you want the address be different from HW,
+	// for example when you want to match your mode-S address so no two planes are seen at the same location
+	void setSoftAddr(uint32_t addr);
 	bool eraseAddr(void);
 	MacAddr readAddr();	
 

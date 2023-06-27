@@ -3,5 +3,14 @@
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
 
 //GPS
-#define GPSBAUDRATE 9600
+#if !defined(GPSBAUDRATE)
+#define GPSBAUDRATE 57600
+#endif
 
+#if !defined(PINBAROSDA)
+#define PINBAROSDA 0
+#endif
+
+#if !defined(PINBAROSCL)
+#define PINBAROSCL 0
+#endif
