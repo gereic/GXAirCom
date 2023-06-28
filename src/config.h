@@ -7,10 +7,3 @@
 #define GPSBAUDRATE 57600
 #endif
 
-#if !defined(PINBAROSDA)
-#define PINBAROSDA 0
-#endif
-
-#if !defined(PINBAROSCL)
-#define PINBAROSCL 0
-#endif

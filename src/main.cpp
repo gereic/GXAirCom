@@ -400,19 +400,19 @@ constexpr uint32_t commonBaudRates[] = {9600, 19200, 38400, 57600, 115200};
 constexpr uint8_t  commonBaudRatesSize = sizeof(commonBaudRates) / sizeof(commonBaudRates[0]);
 
 /* QZSS is disabled becaus this is operational in Japan mostly */
-/* Stratux Setup: enable GPS & Glonass for u-blox 6 & 7 */
+/* customGPP Setup: enable GPS & Glonass for u-blox 6 & 7 */
 uint8_t setGNSS_U6_7[] PROGMEM = {0x00, 0x00, 0xFF, 0x04,
                                   0x00, 0x04, 0xFF, 0x00, 0x01, 0x00, 0x01, 0x01,  /* enable GPS */
                                   0x01, 0x01, 0x03, 0x00, 0x01, 0x00, 0x01, 0x01,  /* enable SBAS */
                                   0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01,  /* disable QZSS */
                                   0x06, 0x08, 0xFF, 0x00, 0x00, 0x00, 0x01, 0x01}; /* disable Glonass */
 
-/* Stratux Setup: set NMEA protocol version and numbering for u-blox 6 & 7 */
+/* customGPP Setup: set NMEA protocol version and numbering for u-blox 6 & 7 */
 uint8_t setNMEA_U6_7[] PROGMEM = {0x00, 0x23, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00,  /* NMEA protocol v2.3 extended */
                                   0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
                                   0x00, 0x00, 0x00, 0x00};
 
- /* Stratux Setup: set NMEA protocol version and numbering for u-blox 8 */
+ /* customGPP Setup: set NMEA protocol version and numbering for u-blox 8 */
  /* https://content.arduino.cc/assets/Arduino-MKR-GPS-Shield_u-blox8-M8_ReceiverDescrProtSpec_UBX-13003221_Public.pdf 198 */
 // uint8_t setNMEA_U8_9_10[] PROGMEM = {0x00, 0x40, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00,  /* NMEA protocol v4.00 extended */
 //                                       0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
@@ -421,13 +421,13 @@ uint8_t setNMEA_U8_9_10[] PROGMEM = {0x00, 0x41, 0x00, 0x02, 0x00, 0x00, 0x00, 0
                                       0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
                                       0x00, 0x00, 0x00, 0x00};
 
- /* Stratux Setup: configure SBAS */
+ /* customGPP Setup: configure SBAS */
 uint8_t setSBAS[] PROGMEM = {0x01, 0x03, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00}; /* disable integrity, enable auto-scan */
 
- /* Stratux Setup: configure PMS */
+ /* customGPP Setup: configure PMS */
 uint8_t setPMS[] PROGMEM = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; /* Full power */
 
- /* Stratux Setup: Rate 200ms */
+ /* customGPP Setup: Rate 200ms */
 uint8_t setCFGRATE[] PROGMEM = {0xC8, 0x00, 0x01, 0x00, 0x01, 0x00};
 
 /* UBX-CFG-MSG (NMEA Standard Messages) */
@@ -449,6 +449,7 @@ uint8_t setCFG[16][8] PROGMEM = {
 	{0xF1, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, // Ublox - Satellite Status
 	{0xF1, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, // Ublox - Time of Day and Clock Information
 } ;
+
 
 
 void i2cScanner(){
@@ -1690,13 +1691,13 @@ void testLegacy(){
  */
 void writePGXCFSentence() {
   char buffer[MAXSTRING];
-  // $PGXCF,<version>,<eMode>,<eOutputVario>,<output Fanet>,<output GPS>,<output FLARM>,<stratuxNMEA>,<Aircraft Type>,<Address>,<Pilot Name>
+  // $PGXCF,<version>,<eMode>,<eOutputVario>,<output Fanet>,<output GPS>,<output FLARM>,<customGPSConfig>,<Aircraft Type>,<Address>,<Pilot Name>
   int8_t version = 1;
   snprintf(buffer, MAXSTRING, "$PGXCF,%d,%d,%d,%d,%d,%d,%d,%d,%s,%s",
     version,
     setting.Mode, setting.outputModeVario,
     setting.outputFANET, setting.outputGPS, setting.outputFLARM,
-    setting.stratuxNMEA, setting.AircraftType,
+    setting.customGPSConfig, setting.AircraftType,
     setting.myDevId.c_str(), setting.PilotName.c_str());
   size_t size = flarmDataPort.addChecksum(buffer, MAXSTRING);
   sendData2Client(buffer, size);
@@ -1706,8 +1707,8 @@ void readPGXCFSentence(const char* data)
 {
   constexpr uint8_t BUFFER_SIZE=48;
   char result[BUFFER_SIZE];
-  // Parse $PGXCF,<version>,<eMode>,<eOutputVario>,<output Fanet>,<output GPS>,<output FLARM>,<stratuxNMEA>,<Aircraft Type>,<Address>,<Pilot Name>
-  // $PGXCF,1,0,1,0,1,1,1,5,123456,GXAirCom*4C // enable stratux mode
+  // Parse $PGXCF,<version>,<eMode>,<eOutputVario>,<output Fanet>,<output GPS>,<output FLARM>,<customGPSConfig>,<Aircraft Type>,<Address>,<Pilot Name>
+  // $PGXCF,1,0,1,0,1,1,1,5,123456,GXAirCom*4C // enable customGPS config mode
   // $PGXCF,1,0,1,0,1,1,0,5,000000,GXAirCom*7B // Enable default GXAirCom
 
   // NMEA type (PGXCF)
@@ -1729,23 +1730,23 @@ void readPGXCFSentence(const char* data)
 
   // output Fanet
   if ((data = MicroNMEA::parseField(data, &result[0], BUFFER_SIZE)), (result[0] == '\0')) return;
-  bool outputFANET = strtol(result, NULL, 10);
+  bool outputFANET = result[0] == '1';
 
   // output GPS
   if ((data = MicroNMEA::parseField(data, &result[0], BUFFER_SIZE)), (result[0] == '\0')) return;
-  bool outputGPS = strtol(result, NULL, 10);
+  bool outputGPS = result[0] == '1';
 
   // output FLARM
   if ((data = MicroNMEA::parseField(data, &result[0], BUFFER_SIZE)), (result[0] == '\0')) return;
-  bool outputFLARM = strtol(result, NULL, 10);
+  bool outputFLARM = result[0] == '1';
 
-  // stratuxNMEA
+  // customGPSConfig
   if ((data = MicroNMEA::parseField(data, &result[0], BUFFER_SIZE)), (result[0] == '\0')) return;
-  bool stratuxNMEA = strtol(result, NULL, 10);
+  bool customGPSConfig = result[0] == '1';
 
   // Aircraft type
   if ((data = MicroNMEA::parseField(data, &result[0], BUFFER_SIZE)), (result[0] == '\0')) return;
-  uint aircraftType = strtol(result, NULL, 16);
+  uint aircraftType = strtol(result, NULL, 10);
 
   // Address
   if ((data = MicroNMEA::parseField(data, &result[0], sizeof(result))), (result[0] == '\0')) return;
@@ -1761,7 +1762,7 @@ void readPGXCFSentence(const char* data)
   setting.outputFANET = outputFANET;
   setting.outputGPS = outputGPS;
   setting.outputFLARM = outputFLARM;
-  setting.stratuxNMEA = stratuxNMEA;
+  setting.customGPSConfig = customGPSConfig;
   setting.AircraftType = aircraftType;
   setting.myDevIdOverride = deviceId;
   setting.PilotName = pilotName;
@@ -3800,7 +3801,6 @@ bool setupUbloxConfig(){
   ublox.factoryReset();
   delay(2000); //wait for hardware again !!
   for (int i = 0; i < 3; i++){
-    // Findout working baudrate
     uint8_t tryBaudPos=0;
     do {
       log_i("ublox: Trying baudRate=%d %d/%d",commonBaudRates[tryBaudPos],tryBaudPos,commonBaudRatesSize);
@@ -3822,7 +3822,7 @@ bool setupUbloxConfig(){
     }
 
     bool shouldHardReset = false;
-    if (!setting.stratuxNMEA){
+    if (!setting.customGPSConfig){
       //disable nmea sentencess
       if (!ublox.disableNMEAMessage(UBX_NMEA_GLL,COM_PORT_UART1)){
         log_e("ublox: error setting parameter %d",UBX_NMEA_GLL);
@@ -3956,7 +3956,7 @@ bool setupUbloxConfig(){
           continue;
       }
 
-      log_i("ublox: Configured for Stratux");
+      log_i("ublox: Configured for customGPP");
     }
 
     // Set baudrate faster because we handle more messages in case of strat
@@ -3968,7 +3968,7 @@ bool setupUbloxConfig(){
       log_e("ublox: error saving config");
       continue;
     }else{
-      if (setting.stratuxNMEA && shouldHardReset){
+      if (setting.customGPSConfig && shouldHardReset){
         /* If Galileo was previously disabled, and now enabled, UBX_CFG_GNSS must be followed by UBX_CFG_CF (saveConfiguration) and then followed by UBX_CFG_RST */
         delay(50);
         log_i("Hard reset to enable Galileo");
@@ -4038,7 +4038,7 @@ void taskStandard(void *pvParameters){
   if ((setting.boardType == eBoard::T_BEAM_SX1262) || (setting.boardType == eBoard::T_BEAM_S3CORE)) radioChip = RADIO_SX1262;
 
   // Set the device to the given deviceId when requested
-  // THis is a case where your mode-s needs to be the same as the OGN/FLARM OD to avoid multiple aircraft athe same location
+  // When they are the same, capable receivers won't see two aircraft at the same location
   if (setting.myDevIdOverride > 0){
     fmac.setSoftAddr(setting.myDevIdOverride);
   }

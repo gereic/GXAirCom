@@ -19,7 +19,7 @@ void load_configFile(SettingsData* pSetting){
   pSetting->outputFANET = preferences.getUChar("OFANET",1); //
   pSetting->PilotName = preferences.getString("PILOTNAME","");
   pSetting->myDevIdOverride = preferences.getULong("myDevIdOverride",0);
-  pSetting->stratuxNMEA = preferences.getBool("stratuxNMEA",false);
+  pSetting->customGPSConfig = preferences.getBool("customGPSConfig",false);
   pSetting->wifi.connect = eWifiMode(preferences.getUChar("WIFI_CONNECT",eWifiMode::CONNECT_NONE)); //
   pSetting->wifi.ssid = preferences.getString("WIFI_SSID","");
   pSetting->wifi.password = preferences.getString("WIFI_PW","");
@@ -177,7 +177,7 @@ void write_configFile(SettingsData* pSetting){
   preferences.putUChar("OFANET",pSetting->outputFANET); //
   preferences.putString("PILOTNAME",pSetting->PilotName);
   preferences.putULong("myDevIdOverride",pSetting->myDevIdOverride);
-  preferences.putBool("stratuxNMEA",pSetting->stratuxNMEA);
+  preferences.putBool("customGPSConfig",pSetting->customGPSConfig);
   preferences.putUChar("WIFI_CONNECT",pSetting->wifi.connect); //
   preferences.putString("WIFI_SSID",pSetting->wifi.ssid);
   preferences.putString("WIFI_PW",pSetting->wifi.password);

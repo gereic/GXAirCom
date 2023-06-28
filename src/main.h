@@ -376,7 +376,7 @@ struct SettingsData{
   uint8_t minBattPercent;
   uint8_t restartBattPercent;
   uint32_t myDevIdOverride; //When !=0 this devide ID will be used instead of mac Addess
-  bool stratuxNMEA; // provide NMEA needed for operation with stratux
+  bool customGPSConfig; // When enable, GPS is configured with additional like SBAS, 5HZ, Galileo and a few others from the default
   String myDevId; //my device-ID
   eOutputVario outputModeVario;
   uint8_t outputFLARM;
