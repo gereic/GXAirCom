@@ -203,7 +203,7 @@ public:
   typedef struct {
     uint32_t tLastMsg; //timestamp of neighbour (if 0 --> empty slot)
     uint32_t devId; //devId
-    String name; //name of neughbour
+    String name; //name of neighbour
     aircraft_t aircraftType; //
     float lat; //latitude
     float lon; //longitude
@@ -250,6 +250,8 @@ public:
   String getType(uint8_t type);
   void setPilotname(String name);
   void setAircraftType(aircraft_t type);
+  void setAddressType(uint8_t addressType);
+  uint8_t getAddressType();
   void setMyTrackingData(trackingData *tData,float geoidAlt,uint32_t ppsMillis);
   void setGPS(bool bHasGps);
   void writeMsgType1(trackingData *tData);
@@ -299,6 +301,8 @@ public:
 
   /* Legacy Switch */
   void setRFMode(uint8_t mode);
+  uint32_t getDevIdFromMac(MacAddr *adr);
+  MacAddr getMacFromDevId(uint32_t devId);
 
 protected:
 private:  
@@ -338,8 +342,6 @@ private:
   int16_t getWeatherIndex(uint32_t devId,bool getEmptyEntry);
   void insertDataToWeatherStation(uint32_t devId, weatherData *Data);
   void clearNeighboursWeather(uint32_t tAct);
-  uint32_t getDevIdFromMac(MacAddr *adr);
-  MacAddr getMacFromDevId(uint32_t devId);
   int serialize_name(String name,uint8_t*& buffer);
   int serialize_msg(String name,uint8_t*& buffer);
   int serialize_service(weatherData *wData,uint8_t*& buffer);

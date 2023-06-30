@@ -375,7 +375,7 @@ struct SettingsData{
   float BattVoltOffs; //offset for Battery-multiplier
   uint8_t minBattPercent;
   uint8_t restartBattPercent;
-  uint32_t myDevIdOverride; //When !=0 this devide ID will be used instead of mac Addess
+  uint8_t myDevIdType; // Address type 0=Stateless Random, 1=Official ICAO, 2=stableFlarm, FF=Not overridden
   bool customGPSConfig; // When enable, GPS is configured with additional like SBAS, 5HZ, Galileo and a few others from the default
   String myDevId; //my device-ID
   eOutputVario outputModeVario;

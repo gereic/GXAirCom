@@ -399,35 +399,26 @@ bool setupUbloxConfig(void);
 constexpr uint32_t commonBaudRates[] = {9600, 19200, 38400, 57600, 115200};
 constexpr uint8_t  commonBaudRatesSize = sizeof(commonBaudRates) / sizeof(commonBaudRates[0]);
 
-/* QZSS is disabled becaus this is operational in Japan mostly */
-/* customGPP Setup: enable GPS & Glonass for u-blox 6 & 7 */
-uint8_t setGNSS_U6_7[] PROGMEM = {0x00, 0x00, 0xFF, 0x04,
-                                  0x00, 0x04, 0xFF, 0x00, 0x01, 0x00, 0x01, 0x01,  /* enable GPS */
-                                  0x01, 0x01, 0x03, 0x00, 0x01, 0x00, 0x01, 0x01,  /* enable SBAS */
-                                  0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01,  /* disable QZSS */
-                                  0x06, 0x08, 0xFF, 0x00, 0x00, 0x00, 0x01, 0x01}; /* disable Glonass */
-
-/* customGPP Setup: set NMEA protocol version and numbering for u-blox 6 & 7 */
+/* customGPS Setup: set NMEA protocol version and numbering for u-blox 6 & 7 */
 uint8_t setNMEA_U6_7[] PROGMEM = {0x00, 0x23, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00,  /* NMEA protocol v2.3 extended */
                                   0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
                                   0x00, 0x00, 0x00, 0x00};
 
- /* customGPP Setup: set NMEA protocol version and numbering for u-blox 8 */
  /* https://content.arduino.cc/assets/Arduino-MKR-GPS-Shield_u-blox8-M8_ReceiverDescrProtSpec_UBX-13003221_Public.pdf 198 */
 // uint8_t setNMEA_U8_9_10[] PROGMEM = {0x00, 0x40, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00,  /* NMEA protocol v4.00 extended */
-//                                       0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
-//                                       0x00, 0x00, 0x00, 0x00};
-uint8_t setNMEA_U8_9_10[] PROGMEM = {0x00, 0x41, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00,  /* NMEA protocol v4.10 extended for Galileo */
-                                      0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
-                                      0x00, 0x00, 0x00, 0x00};
+//                                      0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
+//                                      0x00, 0x00, 0x00, 0x00};
+uint8_t setNMEA_U8_9_10[] PROGMEM = {0x00, 0x40, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00,  /* NMEA protocol v4.00 extended for Galileo */
+                                     0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
+                                     0x00, 0x00, 0x00, 0x00};
 
- /* customGPP Setup: configure SBAS */
+ /* customGPS Setup: configure SBAS */
 uint8_t setSBAS[] PROGMEM = {0x01, 0x03, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00}; /* disable integrity, enable auto-scan */
 
- /* customGPP Setup: configure PMS */
+ /* customGPS Setup: configure PMS */
 uint8_t setPMS[] PROGMEM = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; /* Full power */
 
- /* customGPP Setup: Rate 200ms */
+ /* customGPS Setup: Rate 200ms */
 uint8_t setCFGRATE[] PROGMEM = {0xC8, 0x00, 0x01, 0x00, 0x01, 0x00};
 
 /* UBX-CFG-MSG (NMEA Standard Messages) */
@@ -866,6 +857,7 @@ void sendFlarmData(uint32_t tAct){
           tFanetData.altitude = fanet.neighbours[i].altitude;
           tFanetData.climb = fanet.neighbours[i].climb;
           tFanetData.devId = fanet.neighbours[i].devId;
+          tFanetData.addressType = fanet.neighbours[i].addressType;
           tFanetData.heading = fanet.neighbours[i].heading;
           tFanetData.lat = fanet.neighbours[i].lat;
           tFanetData.lon = fanet.neighbours[i].lon;
@@ -1500,7 +1492,9 @@ void printSettings(){
   log_i("OUTPUT FLARM=%d",setting.outputFLARM);
   log_i("OUTPUT GPS=%d",setting.outputGPS);
   log_i("OUTPUT FANET=%d",setting.outputFANET);
-  
+  log_i("Device ID=%s",setting.myDevId);
+  log_i("Device Address Type=%d",setting.myDevIdType);
+
   log_i("WIFI connect=%d",setting.wifi.connect);
   log_i("WIFI SSID=%s",setting.wifi.ssid.c_str());
   log_i("WIFI PW=%s",setting.wifi.password.c_str());
@@ -1685,78 +1679,91 @@ void testLegacy(){
  * @brief Write a $PGXAC sentence to buffer, this can be used by Stratux (or other device) to validate
  * (part) of it's configuration.
  *
- * @param buffer
- * @param size
- * @return int
  */
 void writePGXCFSentence() {
   char buffer[MAXSTRING];
-  // $PGXCF,<version>,<eMode>,<eOutputVario>,<output Fanet>,<output GPS>,<output FLARM>,<customGPSConfig>,<Aircraft Type>,<Address>,<Pilot Name>
+  // $PGXCF,<version>,<Output Serial>,<eMode>,<eOutputVario>,<output Fanet>,<output GPS>,<output FLARM>,<customGPSConfig>,<Aircraft Type>,<Address>,<Pilot Name>
   int8_t version = 1;
-  snprintf(buffer, MAXSTRING, "$PGXCF,%d,%d,%d,%d,%d,%d,%d,%d,%s,%s",
+  snprintf(buffer, MAXSTRING, "$PGXCF,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%s,%s",
     version,
+    setting.outputMode,
     setting.Mode, setting.outputModeVario,
     setting.outputFANET, setting.outputGPS, setting.outputFLARM,
     setting.customGPSConfig, setting.AircraftType,
-    setting.myDevId.c_str(), setting.PilotName.c_str());
+    setting.myDevIdType, setting.myDevId.c_str(), setting.PilotName.c_str());
   size_t size = flarmDataPort.addChecksum(buffer, MAXSTRING);
   sendData2Client(buffer, size);
 }
 
+/**
+ * @brief Parse a $PGXCF sentence and set the configuration accordingly
+ * This is mainly used for automation of GxAirCom configuration
+ * @param data incomming NMEA sentence
+*/
 void readPGXCFSentence(const char* data)
 {
-  constexpr uint8_t BUFFER_SIZE=48;
-  char result[BUFFER_SIZE];
-  // Parse $PGXCF,<version>,<eMode>,<eOutputVario>,<output Fanet>,<output GPS>,<output FLARM>,<customGPSConfig>,<Aircraft Type>,<Address>,<Pilot Name>
-  // $PGXCF,1,0,1,0,1,1,1,5,123456,GXAirCom*4C // enable customGPS config mode
-  // $PGXCF,1,0,1,0,1,1,0,5,000000,GXAirCom*7B // Enable default GXAirCom
+  char result[MAXSTRING];
+  // Parse $PGXCF,<version>,<Output Serial>,<eMode>,<eOutputVario>,<output Fanet>,<output GPS>,<output FLARM>,<customGPSConfig>,<Aircraft Type (hex)>,<Address Type>,<Address (hex)>, <Pilot Name>
+  // $PGXCF,1,0,0,1,0,1,1,1,5,1,F23456,Pilot Name*76 // enable customGPS config mode with ICAO address type
+  // $PGXCF,1,3,0,1,0,1,1,0,5,2,,GXAirCom*4A  // Enable default GXAirCom with FLARM address type default hardware Id
 
   // NMEA type (PGXCF)
-  if ((data = MicroNMEA::parseField(data, &result[0], BUFFER_SIZE)), (result[0] == '\0')) return;
+  data = MicroNMEA::parseField(data, &result[0], MAXSTRING); if (data == NULL) return;
 
   // Version
-  if ((data = MicroNMEA::parseField(data, &result[0], BUFFER_SIZE)), (result[0] == '\0')) return;
+  data = MicroNMEA::parseField(data, &result[0], MAXSTRING); if (data == NULL) return;
 
   // only version 1 is supported
   if (strtol(result, NULL, 10) != 1) return;
 
+  // Output mode
+  data = MicroNMEA::parseField(data, &result[0], MAXSTRING); if (data == NULL) return;
+  eOutput outputMode = (eOutput)strtol(result, NULL, 10);
+
   // GXAircomMode
-  if ((data = MicroNMEA::parseField(data, &result[0], BUFFER_SIZE)), (result[0] == '\0')) return;
+  data = MicroNMEA::parseField(data, &result[0], MAXSTRING); if (data == NULL) return;
   eMode gxMode = (eMode)strtol(result, NULL, 10);
 
   // eOutputVario
-  if ((data = MicroNMEA::parseField(data, &result[0], BUFFER_SIZE)), (result[0] == '\0')) return;
+  data = MicroNMEA::parseField(data, &result[0], MAXSTRING); if (data == NULL) return;
   eOutputVario outputModeVario = (eOutputVario)strtol(result, NULL, 10);
 
   // output Fanet
-  if ((data = MicroNMEA::parseField(data, &result[0], BUFFER_SIZE)), (result[0] == '\0')) return;
-  bool outputFANET = result[0] == '1';
+  data = MicroNMEA::parseField(data, &result[0], MAXSTRING); if (data == NULL) return;
+  bool outputFANET = result[0] != '0';
 
   // output GPS
-  if ((data = MicroNMEA::parseField(data, &result[0], BUFFER_SIZE)), (result[0] == '\0')) return;
-  bool outputGPS = result[0] == '1';
+  data = MicroNMEA::parseField(data, &result[0], MAXSTRING); if (data == NULL) return;
+  bool outputGPS = result[0] != '0';
 
   // output FLARM
-  if ((data = MicroNMEA::parseField(data, &result[0], BUFFER_SIZE)), (result[0] == '\0')) return;
-  bool outputFLARM = result[0] == '1';
+  data = MicroNMEA::parseField(data, &result[0], MAXSTRING); if (data == NULL) return;
+  bool outputFLARM = result[0] != '0';
 
   // customGPSConfig
-  if ((data = MicroNMEA::parseField(data, &result[0], BUFFER_SIZE)), (result[0] == '\0')) return;
-  bool customGPSConfig = result[0] == '1';
+  data = MicroNMEA::parseField(data, &result[0], MAXSTRING); if (data == NULL) return;
+  bool customGPSConfig = result[0] != '0';
 
   // Aircraft type
-  if ((data = MicroNMEA::parseField(data, &result[0], BUFFER_SIZE)), (result[0] == '\0')) return;
-  uint aircraftType = strtol(result, NULL, 10);
+  data = MicroNMEA::parseField(data, &result[0], MAXSTRING); if (data == NULL) return;
+  uint8_t aircraftType = strtol(result, NULL, 16);
+
+  // Address Type 1=ADDRESSTYPE_FLARM or 2=ADDRESSTYPE_ICAO
+  data = MicroNMEA::parseField(data, &result[0], MAXSTRING); if (data == NULL) return;
+  uint8_t myDevIdType = atoi(result) == 0x01?ADDRESSTYPE_ICAO:ADDRESSTYPE_FLARM;
 
   // Address
-  if ((data = MicroNMEA::parseField(data, &result[0], sizeof(result))), (result[0] == '\0')) return;
-  uint32_t deviceId = strtol(result, NULL, 16);
+  data = MicroNMEA::parseField(data, &result[0], MAXSTRING); if (data == NULL) return;
+  uint32_t devId = strtol(result, NULL, 16);
+  MacAddr address = devId==0?fmac.readAddr(true):fanet.getMacFromDevId(devId);
+  String myDevId = fanet.getDevId(fanet.getDevIdFromMac(&address));;
 
   // Pilot Name
-  if ((data = MicroNMEA::parseField(data, &result[0], sizeof(result))), (result[0] == '\0')) return;
+  data = MicroNMEA::parseField(data, &result[0], MAXSTRING);
   const char* pilotName = result;
 
   // Configure settings
+  setting.outputMode = outputMode;
   setting.Mode = gxMode;
   setting.outputModeVario = outputModeVario;
   setting.outputFANET = outputFANET;
@@ -1764,7 +1771,8 @@ void readPGXCFSentence(const char* data)
   setting.outputFLARM = outputFLARM;
   setting.customGPSConfig = customGPSConfig;
   setting.AircraftType = aircraftType;
-  setting.myDevIdOverride = deviceId;
+  setting.myDevId = myDevId;
+  setting.myDevIdType = myDevIdType;
   setting.PilotName = pilotName;
 
   // Write settings, configure uBLox if needed and re boot
@@ -2432,7 +2440,7 @@ void setup() {
   #endif
 
 
-  setting.myDevId = "";
+  // setting.myDevId = ""; //MyDevID is now stored on file because it's used together with the addressType
 #ifdef GSM_MODULE
 xGsmMutex = xSemaphoreCreateMutex();
 #endif
@@ -3852,10 +3860,27 @@ bool setupUbloxConfig(){
         continue;
       }
     } else {
+      // Configure uBlox based on the attached version
+      log_i("ublox: Getting version");
+      uint8_t payloadCfg[MAX_PAYLOAD_SIZE];
+      ubxPacket customCfg = {UBX_CLASS_MON, UBX_MON_VER, 0, 0, 0, payloadCfg, 0, 0, SFE_UBLOX_PACKET_VALIDITY_NOT_DEFINED, SFE_UBLOX_PACKET_VALIDITY_NOT_DEFINED};
+      if (ublox.sendCommand(&customCfg) != SFE_UBLOX_STATUS_DATA_RECEIVED){
+        log_e("ublox: error getting version");
+        continue;
+      }
+
+      uint8_t ubloxType = payloadCfg[33] - '0';
+      if (ubloxType<6) {
+        ubloxType = 6;
+      } else if (ubloxType>10) {
+        ubloxType = 10;
+      }
+      log_i("ublox: Version %d detected", ubloxType);
+
+
       // Set required constellations
       log_i("ublox: Retreive constellations that are enabled");
-      uint8_t payloadCfg[MAX_PAYLOAD_SIZE];
-      ubxPacket customCfg = {UBX_CLASS_CFG, UBX_CFG_GNSS, 0, 0, 0, payloadCfg, 0, 0, SFE_UBLOX_PACKET_VALIDITY_NOT_DEFINED, SFE_UBLOX_PACKET_VALIDITY_NOT_DEFINED};
+      customCfg = {UBX_CLASS_CFG, UBX_CFG_GNSS, 0, 0, 0, payloadCfg, 0, 0, SFE_UBLOX_PACKET_VALIDITY_NOT_DEFINED, SFE_UBLOX_PACKET_VALIDITY_NOT_DEFINED};
       if (ublox.sendCommand(&customCfg) != SFE_UBLOX_STATUS_DATA_RECEIVED){
         log_e("ublox: error getting parameter UBX-CFG-GNSS");
         continue;
@@ -3871,8 +3896,8 @@ bool setupUbloxConfig(){
           if (gnssId == 0x02 && payloadCfg[8+8*ncb] == 0x00) {
             shouldHardReset = true;
           }
-          // Enable GPS=0x00 SBAS=0x01 Galileo=0x02 QZSS=0x05 Glonass=0x06, disable others
-          if (gnssId == 0x00 || gnssId == 0x01 || gnssId == 0x02 || gnssId == 0x05 || gnssId == 0x06)  {
+          // Enable GPS=0x00 SBAS=0x01 Galileo=0x02 QZSS=0x05 Glonass=0x06, disable glonass for uBlox <8
+          if (gnssId == 0x00 || gnssId == 0x01 || gnssId == 0x02 || gnssId == 0x05 || (gnssId == 0x06 && ubloxType >= 8))  {
             payloadCfg[8+8*ncb] = 0x01;
           } else {
             payloadCfg[8+8*ncb] = 0x00;
@@ -3885,31 +3910,13 @@ bool setupUbloxConfig(){
       }
       delay(550);
 
-      // Configure uBlox based on the attached version
-      log_i("ublox: Getting version");
-      customCfg = {UBX_CLASS_MON, UBX_MON_VER, 0, 0, 0, payloadCfg, 0, 0, SFE_UBLOX_PACKET_VALIDITY_NOT_DEFINED, SFE_UBLOX_PACKET_VALIDITY_NOT_DEFINED};
-      if (ublox.sendCommand(&customCfg) != SFE_UBLOX_STATUS_DATA_RECEIVED){
-        log_e("ublox: error getting version");
-        continue;
-      }
-
-      uint8_t ubloxType = payloadCfg[33] - '0';
-      if (ubloxType<6) {
-        ubloxType = 6;
-      } else if (ubloxType>10) {
-        ubloxType = 10;
-      }
-      log_i("ublox: Version %d detected", ubloxType);
-
       // COnfigure ublox based on the attached version
       uint8_t *setNMEA=NULL;
       uint8_t lenNMEA=0;
       if (ubloxType == 6 || ubloxType == 7){
         setNMEA = setNMEA_U6_7;
         lenNMEA = sizeof(setNMEA_U6_7);
-      }
-
-      if (ubloxType >= 8 ){
+      } else {
         setNMEA = setNMEA_U8_9_10;
         lenNMEA = sizeof(setNMEA_U8_9_10);
       }
@@ -3956,24 +3963,18 @@ bool setupUbloxConfig(){
           continue;
       }
 
-      log_i("ublox: Configured for customGPP");
+      log_i("ublox: Configured for customGPS");
     }
 
-    // Set baudrate faster because we handle more messages in case of strat
+    // Set baudrate faster because we handle more messages
     ublox.setSerialRate(GPSBAUDRATE, COM_PORT_UART1);
     NMeaSerial.updateBaudRate(GPSBAUDRATE);
-    delay(500);
+    delay(1500);
 
     if (!ublox.saveConfiguration(3000)){
       log_e("ublox: error saving config");
       continue;
     }else{
-      if (setting.customGPSConfig && shouldHardReset){
-        /* If Galileo was previously disabled, and now enabled, UBX_CFG_GNSS must be followed by UBX_CFG_CF (saveConfiguration) and then followed by UBX_CFG_RST */
-        delay(50);
-        log_i("Hard reset to enable Galileo");
-        ublox.hardReset();
-      }
       log_i("!!! setup ublox successfully");
       return true;
     }
@@ -4037,10 +4038,12 @@ void taskStandard(void *pvParameters){
   uint8_t radioChip = RADIO_SX1276;
   if ((setting.boardType == eBoard::T_BEAM_SX1262) || (setting.boardType == eBoard::T_BEAM_S3CORE)) radioChip = RADIO_SX1262;
 
-  // Set the device to the given deviceId when requested
-  // When they are the same, capable receivers won't see two aircraft at the same location
-  if (setting.myDevIdOverride > 0){
-    fmac.setSoftAddr(setting.myDevIdOverride);
+  // When the requested Address type is ICAO then the devId of the device must be set to your mode-s address
+  // See Flarm Dataport Specification for details
+  // When devId is not set, take the HW Address (default) and this is done automatically
+  fanet.setAddressType(setting.myDevIdType);
+  if (setting.myDevId.length() == 6) {
+    fmac.setAddr(strtol(setting.myDevId.c_str(), NULL, 16));
   }
 
   fanet.begin(PinLora_SCK, PinLora_MISO, PinLora_MOSI, PinLora_SS,PinLoraRst, PinLoraDI0,PinLoraGPIO,frequency,14,radioChip);
@@ -4467,7 +4470,7 @@ void taskStandard(void *pvParameters){
             MyFanetData.speed = status.GPS_speed; //speed in cm/s --> we need km/h
             if (MyFanetData.speed < 1.0) MyFanetData.speed = 1.0;
           }
-          MyFanetData.addressType = ADDRESSTYPE_OGN;
+          MyFanetData.addressType = fanet.getAddressType();
           if ((status.GPS_speed <= 5.0) && (status.vario.bHasVario)){
             MyFanetData.heading = status.varioHeading;
           }else{

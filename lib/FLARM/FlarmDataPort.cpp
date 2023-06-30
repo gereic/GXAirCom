@@ -84,7 +84,7 @@ int FlarmDataPort::writeFlarmData(char *buffer, size_t size,FlarmtrackingData *m
     Serial.print("relNorth=");Serial.println(relNorth);
     Serial.print("relEast=");Serial.println(relEast);
     */
-    snprintf(buffer,size,"$PFLAA,0,%d,%d,%d,2,%s,%d,0,%.01f,%.01f,%X",(int32_t)round(relNorth),(int32_t)round(relEast),(int32_t)round(relVert),movePilotData->DevId.c_str(),(int32_t)round(movePilotData->heading),currentSpeed,movePilotData->climb,uint8_t(movePilotData->aircraftType));
+    snprintf(buffer,size,"$PFLAA,0,%d,%d,%d,%d,%s,%d,0,%.01f,%.01f,%X",(int32_t)round(relNorth),(int32_t)round(relEast),(int32_t)round(relVert),movePilotData->addressType, movePilotData->DevId.c_str(),(int32_t)round(movePilotData->heading),currentSpeed,movePilotData->climb,uint8_t(movePilotData->aircraftType));
     return addChecksum(buffer,size);
     //String movingpilotData = "$PFLAA,0," + String((int32_t)round(relNorth)) + "," + String((int32_t)round(relEast)) + "," + String((int32_t)round(relVert)) + ",2," +
     //		                    movePilotData->DevId + "," + (int32_t)round(movePilotData->heading) + ",0,"  +

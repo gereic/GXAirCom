@@ -104,6 +104,7 @@ typedef struct {
 
 typedef struct {
     uint8_t identifier[3];
+    uint8_t addressType; // Address type 0=Stateless Random, 1=Official ICAO, 2=stableFlarm
     int type; // 1=Glider, ...
     int thre_m_per_sec; // typ. 2m/s
     int no_tracking_mode; // 0=off
