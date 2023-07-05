@@ -32,8 +32,11 @@
 #include <AceButton.h>
 #include <ArduinoJson.h>
 #include "../lib/GxMqtt/GxMqtt.h"
-
 //#include <esp_task_wdt.h>
+
+#ifdef BOARD_HAS_PMU
+#include "XPowersLib.h"
+#endif
 
 
 //#define GXTEST
@@ -195,6 +198,30 @@ AXP20X_Class axp;
 #define AXP_IRQ 35
 volatile bool AXP192_Irq = false;
 volatile float BattCurrent = 0.0;
+
+// trying to implement PMU with XPowersLib
+#ifdef BOARD_HAS_PMU
+#ifndef CONFIG_PMU_SDA
+#define CONFIG_PMU_SDA 21
+#endif
+
+#ifndef CONFIG_PMU_SCL
+#define CONFIG_PMU_SCL 22
+#endif
+
+#ifndef CONFIG_PMU_IRQ
+#define CONFIG_PMU_IRQ 35
+#endif
+
+// Use the XPowersLibInterface standard to use the xpowers API
+XPowersLibInterface *PMU = NULL;
+
+bool pmu_flag = 0;
+
+const uint8_t i2c_sda = CONFIG_PMU_SDA;
+const uint8_t i2c_scl = CONFIG_PMU_SCL;
+const uint8_t pmu_irq_pin = CONFIG_PMU_IRQ;
+#endif
 
 //bool newStationConnected = false;
 
@@ -410,6 +437,361 @@ void sendFanetWeatherData2WI(FanetLora::weatherData *weatherData,uint8_t wiIndex
 bool setupUbloxConfig(void);
 #endif
 
+#ifdef BOARD_HAS_PMU
+void setupPMU();
+void setFlagPMU();
+
+void setFlagPMU()
+{
+    pmu_flag = true;
+}
+
+void setupPMU(){
+  if (!PMU) {
+        PMU = new XPowersAXP2101(Wire, i2c_sda, i2c_scl);
+        if (!PMU->init()) {
+            Serial.printf("Warning: Failed to find AXP2101 power management\n");
+            delete PMU;
+            PMU = NULL;
+        } else {
+            Serial.printf("AXP2101 PMU init succeeded, using AXP2101 PMU\n");
+        }
+    }
+
+    if (!PMU) {
+        PMU = new XPowersAXP192(Wire, i2c_sda, i2c_scl);
+        if (!PMU->init()) {
+            Serial.printf("Warning: Failed to find AXP192 power management\n");
+            delete PMU;
+            PMU = NULL;
+        } else {
+            Serial.printf("AXP192 PMU init succeeded, using AXP192 PMU\n");
+        }
+    }
+
+    if (!PMU) {
+        PMU = new XPowersAXP202(Wire, i2c_sda, i2c_scl);
+        if (!PMU->init()) {
+            Serial.printf("Warning: Failed to find AXP202 power management\n");
+            delete PMU;
+            PMU = NULL;
+        } else {
+            Serial.printf("AXP202 PMU init succeeded, using AXP202 PMU\n");
+        }
+    }
+
+
+    if (!PMU) {
+        Serial.println("PMU not detected, please check.."); while (1)delay(50);
+    }
+
+
+
+    //The following AXP192 power supply setting voltage is based on esp32 T-beam
+    if (PMU->getChipModel() == XPOWERS_AXP192) {
+
+        // lora radio power channel
+        PMU->setPowerChannelVoltage(XPOWERS_LDO2, 3300);
+        PMU->enablePowerOutput(XPOWERS_LDO2);
+
+
+        // oled module power channel,
+        // disable it will cause abnormal communication between boot and AXP power supply,
+        // do not turn it off
+        PMU->setPowerChannelVoltage(XPOWERS_DCDC1, 3300);
+        // enable oled power
+        PMU->enablePowerOutput(XPOWERS_DCDC1);
+
+        // gnss module power channel
+        PMU->setPowerChannelVoltage(XPOWERS_LDO3, 3300);
+        // PMU->enablePowerOutput(XPOWERS_LDO3);
+
+
+        //protected oled power source
+        PMU->setProtectedChannel(XPOWERS_DCDC1);
+        //protected esp32 power source
+        PMU->setProtectedChannel(XPOWERS_DCDC3);
+
+        //disable not use channel
+        PMU->disablePowerOutput(XPOWERS_DCDC2);
+
+        //disable all axp chip interrupt
+        PMU->disableIRQ(XPOWERS_AXP192_ALL_IRQ);
+
+
+        //
+        /*  Set the constant current charging current of AXP192
+            opt:
+            XPOWERS_AXP192_CHG_CUR_100MA,
+            XPOWERS_AXP192_CHG_CUR_190MA,
+            XPOWERS_AXP192_CHG_CUR_280MA,
+            XPOWERS_AXP192_CHG_CUR_360MA,
+            XPOWERS_AXP192_CHG_CUR_450MA,
+            XPOWERS_AXP192_CHG_CUR_550MA,
+            XPOWERS_AXP192_CHG_CUR_630MA,
+            XPOWERS_AXP192_CHG_CUR_700MA,
+            XPOWERS_AXP192_CHG_CUR_780MA,
+            XPOWERS_AXP192_CHG_CUR_880MA,
+            XPOWERS_AXP192_CHG_CUR_960MA,
+            XPOWERS_AXP192_CHG_CUR_1000MA,
+            XPOWERS_AXP192_CHG_CUR_1080MA,
+            XPOWERS_AXP192_CHG_CUR_1160MA,
+            XPOWERS_AXP192_CHG_CUR_1240MA,
+            XPOWERS_AXP192_CHG_CUR_1320MA,
+        */
+        PMU->setChargerConstantCurr(XPOWERS_AXP192_CHG_CUR_550MA);
+
+
+    }
+    // The following AXP202 power supply voltage setting is based on esp32 T-Watch
+    else if (PMU->getChipModel() == XPOWERS_AXP202) {
+
+        PMU->disablePowerOutput(XPOWERS_DCDC2); //not elicited
+
+        //Display backlight
+        PMU->setPowerChannelVoltage(XPOWERS_LDO2, 3300);
+        PMU->enablePowerOutput(XPOWERS_LDO2);
+
+        // Shiled Vdd
+        PMU->setPowerChannelVoltage(XPOWERS_LDO3, 3300);
+        PMU->enablePowerOutput(XPOWERS_LDO3);
+
+        // S7xG GNSS Vdd
+        PMU->setPowerChannelVoltage(XPOWERS_LDO4, 1800);
+        PMU->enablePowerOutput(XPOWERS_LDO4);
+
+
+        //
+        /*  Set the constant current charging current of AXP202
+            opt:
+            XPOWERS_AXP202_CHG_CUR_100MA,
+            XPOWERS_AXP202_CHG_CUR_190MA,
+            XPOWERS_AXP202_CHG_CUR_280MA,
+            XPOWERS_AXP202_CHG_CUR_360MA,
+            XPOWERS_AXP202_CHG_CUR_450MA,
+            XPOWERS_AXP202_CHG_CUR_550MA,
+            XPOWERS_AXP202_CHG_CUR_630MA,
+            XPOWERS_AXP202_CHG_CUR_700MA,
+            XPOWERS_AXP202_CHG_CUR_780MA,
+            XPOWERS_AXP202_CHG_CUR_880MA,
+            XPOWERS_AXP202_CHG_CUR_960MA,
+            XPOWERS_AXP202_CHG_CUR_1000MA,
+            XPOWERS_AXP202_CHG_CUR_1080MA,
+            XPOWERS_AXP202_CHG_CUR_1160MA,
+            XPOWERS_AXP202_CHG_CUR_1240MA,
+            XPOWERS_AXP202_CHG_CUR_1320MA,
+        */
+        PMU->setChargerConstantCurr(XPOWERS_AXP202_CHG_CUR_550MA);
+
+    }
+    // The following AXP192 power supply voltage setting is based on esp32s3 T-beam
+    else if (PMU->getChipModel() == XPOWERS_AXP2101) {
+
+        // gnss module power channel
+        PMU->setPowerChannelVoltage(XPOWERS_ALDO4, 3300);
+        PMU->enablePowerOutput(XPOWERS_ALDO4);
+
+        // lora radio power channel
+        PMU->setPowerChannelVoltage(XPOWERS_ALDO3, 3300);
+        PMU->enablePowerOutput(XPOWERS_ALDO3);
+
+        // m.2 interface
+        PMU->setPowerChannelVoltage(XPOWERS_DCDC3, 3300);
+        PMU->enablePowerOutput(XPOWERS_DCDC3);
+
+        // PMU->setPowerChannelVoltage(XPOWERS_DCDC4, 3300);
+        // PMU->enablePowerOutput(XPOWERS_DCDC4);
+
+        //not use channel
+        PMU->disablePowerOutput(XPOWERS_DCDC2); //not elicited
+        PMU->disablePowerOutput(XPOWERS_DCDC5); //not elicited
+        PMU->disablePowerOutput(XPOWERS_DLDO1); //Invalid power channel, it does not exist
+        PMU->disablePowerOutput(XPOWERS_DLDO2); //Invalid power channel, it does not exist
+        PMU->disablePowerOutput(XPOWERS_VBACKUP);
+
+        //disable all axp chip interrupt
+        PMU->disableIRQ(XPOWERS_AXP2101_ALL_IRQ);
+
+        /*  Set the constant current charging current of AXP2101
+            opt:
+            XPOWERS_AXP2101_CHG_CUR_100MA,
+            XPOWERS_AXP2101_CHG_CUR_125MA,
+            XPOWERS_AXP2101_CHG_CUR_150MA,
+            XPOWERS_AXP2101_CHG_CUR_175MA,
+            XPOWERS_AXP2101_CHG_CUR_200MA,
+            XPOWERS_AXP2101_CHG_CUR_300MA,
+            XPOWERS_AXP2101_CHG_CUR_400MA,
+            XPOWERS_AXP2101_CHG_CUR_500MA,
+            XPOWERS_AXP2101_CHG_CUR_600MA,
+            XPOWERS_AXP2101_CHG_CUR_700MA,
+            XPOWERS_AXP2101_CHG_CUR_800MA,
+            XPOWERS_AXP2101_CHG_CUR_900MA,
+            XPOWERS_AXP2101_CHG_CUR_1000MA,
+        */
+        PMU->setChargerConstantCurr(XPOWERS_AXP2101_CHG_CUR_500MA);
+
+    }
+
+    Serial.println("=======================================================================\n");
+    if (PMU->isChannelAvailable(XPOWERS_DCDC1)) {
+        Serial.printf("DC1  : %s   Voltage:%u mV \n",  PMU->isPowerChannelEnable(XPOWERS_DCDC1)  ? "+" : "-",  PMU->getPowerChannelVoltage(XPOWERS_DCDC1));
+    }
+    if (PMU->isChannelAvailable(XPOWERS_DCDC2)) {
+        Serial.printf("DC2  : %s   Voltage:%u mV \n",  PMU->isPowerChannelEnable(XPOWERS_DCDC2)  ? "+" : "-",  PMU->getPowerChannelVoltage(XPOWERS_DCDC2));
+    }
+    if (PMU->isChannelAvailable(XPOWERS_DCDC3)) {
+        Serial.printf("DC3  : %s   Voltage:%u mV \n",  PMU->isPowerChannelEnable(XPOWERS_DCDC3)  ? "+" : "-",  PMU->getPowerChannelVoltage(XPOWERS_DCDC3));
+    }
+    if (PMU->isChannelAvailable(XPOWERS_DCDC4)) {
+        Serial.printf("DC4  : %s   Voltage:%u mV \n",  PMU->isPowerChannelEnable(XPOWERS_DCDC4)  ? "+" : "-",  PMU->getPowerChannelVoltage(XPOWERS_DCDC4));
+    }
+    if (PMU->isChannelAvailable(XPOWERS_LDO2)) {
+        Serial.printf("LDO2 : %s   Voltage:%u mV \n",  PMU->isPowerChannelEnable(XPOWERS_LDO2)   ? "+" : "-",  PMU->getPowerChannelVoltage(XPOWERS_LDO2));
+    }
+    if (PMU->isChannelAvailable(XPOWERS_LDO3)) {
+        Serial.printf("LDO3 : %s   Voltage:%u mV \n",  PMU->isPowerChannelEnable(XPOWERS_LDO3)   ? "+" : "-",  PMU->getPowerChannelVoltage(XPOWERS_LDO3));
+    }
+    if (PMU->isChannelAvailable(XPOWERS_LDO4)) {
+        Serial.printf("LDO4 : %s   Voltage:%u mV \n",  PMU->isPowerChannelEnable(XPOWERS_LDO4)   ? "+" : "-",  PMU->getPowerChannelVoltage(XPOWERS_LDO4));
+    }
+    if (PMU->isChannelAvailable(XPOWERS_LDO5)) {
+        Serial.printf("LDO5 : %s   Voltage:%u mV \n",  PMU->isPowerChannelEnable(XPOWERS_LDO5)   ? "+" : "-",  PMU->getPowerChannelVoltage(XPOWERS_LDO5));
+    }
+    if (PMU->isChannelAvailable(XPOWERS_ALDO1)) {
+        Serial.printf("ALDO1: %s   Voltage:%u mV \n",  PMU->isPowerChannelEnable(XPOWERS_ALDO1)  ? "+" : "-",  PMU->getPowerChannelVoltage(XPOWERS_ALDO1));
+    }
+    if (PMU->isChannelAvailable(XPOWERS_ALDO2)) {
+        Serial.printf("ALDO2: %s   Voltage:%u mV \n",  PMU->isPowerChannelEnable(XPOWERS_ALDO2)  ? "+" : "-",  PMU->getPowerChannelVoltage(XPOWERS_ALDO2));
+    }
+    if (PMU->isChannelAvailable(XPOWERS_ALDO3)) {
+        Serial.printf("ALDO3: %s   Voltage:%u mV \n",  PMU->isPowerChannelEnable(XPOWERS_ALDO3)  ? "+" : "-",  PMU->getPowerChannelVoltage(XPOWERS_ALDO3));
+    }
+    if (PMU->isChannelAvailable(XPOWERS_ALDO4)) {
+        Serial.printf("ALDO4: %s   Voltage:%u mV \n",  PMU->isPowerChannelEnable(XPOWERS_ALDO4)  ? "+" : "-",  PMU->getPowerChannelVoltage(XPOWERS_ALDO4));
+    }
+    if (PMU->isChannelAvailable(XPOWERS_BLDO1)) {
+        Serial.printf("BLDO1: %s   Voltage:%u mV \n",  PMU->isPowerChannelEnable(XPOWERS_BLDO1)  ? "+" : "-",  PMU->getPowerChannelVoltage(XPOWERS_BLDO1));
+    }
+    if (PMU->isChannelAvailable(XPOWERS_BLDO2)) {
+        Serial.printf("BLDO2: %s   Voltage:%u mV \n",  PMU->isPowerChannelEnable(XPOWERS_BLDO2)  ? "+" : "-",  PMU->getPowerChannelVoltage(XPOWERS_BLDO2));
+    }
+    Serial.println("=======================================================================\n");
+
+
+    //Set up the charging voltage, AXP2101/AXP192 4.2V gear is the same
+    // XPOWERS_AXP192_CHG_VOL_4V2 = XPOWERS_AXP2101_CHG_VOL_4V2
+    PMU->setChargeTargetVoltage(XPOWERS_AXP192_CHG_VOL_4V2);
+
+    // Set VSY off voltage as 2600mV , Adjustment range 2600mV ~ 3300mV
+    PMU->setSysPowerDownVoltage(2600);
+
+    // Get the VSYS shutdown voltage
+    uint16_t vol = PMU->getSysPowerDownVoltage();
+    Serial.printf("->  getSysPowerDownVoltage:%u\n", vol);
+
+
+
+    // Set the time of pressing the button to turn off
+    PMU->setPowerKeyPressOffTime(XPOWERS_POWEROFF_4S);
+    uint8_t opt = PMU->getPowerKeyPressOffTime();
+    Serial.print("PowerKeyPressOffTime:");
+    switch (opt) {
+    case XPOWERS_POWEROFF_4S: Serial.println("4 Second");
+        break;
+    case XPOWERS_POWEROFF_6S: Serial.println("6 Second");
+        break;
+    case XPOWERS_POWEROFF_8S: Serial.println("8 Second");
+        break;
+    case XPOWERS_POWEROFF_10S: Serial.println("10 Second");
+        break;
+    default:
+        break;
+    }
+
+    // Set the button power-on press time
+    PMU->setPowerKeyPressOnTime(XPOWERS_POWERON_128MS);
+    opt = PMU->getPowerKeyPressOnTime();
+    Serial.print("PowerKeyPressOnTime:");
+    switch (opt) {
+    case XPOWERS_POWERON_128MS: Serial.println("128 Ms");
+        break;
+    case XPOWERS_POWERON_512MS: Serial.println("512 Ms");
+        break;
+    case XPOWERS_POWERON_1S: Serial.println("1 Second");
+        break;
+    case XPOWERS_POWERON_2S: Serial.println("2 Second");
+        break;
+    default:
+        break;
+    }
+
+    Serial.println("===========================================================================");
+
+    // It is necessary to disable the detection function of the TS pin on the board
+    // without the battery temperature detection function, otherwise it will cause abnormal charging
+    PMU->disableTSPinMeasure();
+
+    // Enable internal ADC detection
+    PMU->enableBattDetection();
+    PMU->enableVbusVoltageMeasure();
+    PMU->enableBattVoltageMeasure();
+    PMU->enableSystemVoltageMeasure();
+
+
+    /*
+      The default setting is CHGLED is automatically controlled by the PMU.
+    - XPOWERS_CHG_LED_OFF,
+    - XPOWERS_CHG_LED_BLINK_1HZ,
+    - XPOWERS_CHG_LED_BLINK_4HZ,
+    - XPOWERS_CHG_LED_ON,
+    - XPOWERS_CHG_LED_CTRL_CHG,
+    * */
+    //PMU->setChargingLedMode(XPOWERS_CHG_LED_OFF);
+
+
+    pinMode(pmu_irq_pin, INPUT);
+    attachInterrupt(pmu_irq_pin, setFlagPMU, FALLING);
+
+    // Clear all interrupt flags
+    PMU->clearIrqStatus();
+
+
+    /*
+    // call specific interrupt request
+
+    uint64_t pmuIrqMask = 0;
+
+    if (PMU->getChipModel() == XPOWERS_AXP192) {
+
+        pmuIrqMask = XPOWERS_AXP192_VBUS_INSERT_IRQ     | XPOWERS_AXP192_VBUS_REMOVE_IRQ |      //BATTERY
+                     XPOWERS_AXP192_BAT_INSERT_IRQ      | XPOWERS_AXP192_BAT_REMOVE_IRQ  |      //VBUS
+                     XPOWERS_AXP192_PKEY_SHORT_IRQ      | XPOWERS_AXP192_PKEY_LONG_IRQ   |      //POWER KEY
+                     XPOWERS_AXP192_BAT_CHG_START_IRQ   | XPOWERS_AXP192_BAT_CHG_DONE_IRQ ;     //CHARGE
+    } else if (PMU->getChipModel() == XPOWERS_AXP2101) {
+
+        pmuIrqMask = XPOWERS_AXP2101_BAT_INSERT_IRQ     | XPOWERS_AXP2101_BAT_REMOVE_IRQ      |   //BATTERY
+                     XPOWERS_AXP2101_VBUS_INSERT_IRQ    | XPOWERS_AXP2101_VBUS_REMOVE_IRQ     |   //VBUS
+                     XPOWERS_AXP2101_PKEY_SHORT_IRQ     | XPOWERS_AXP2101_PKEY_LONG_IRQ       |   //POWER KEY
+                     XPOWERS_AXP2101_BAT_CHG_DONE_IRQ   | XPOWERS_AXP2101_BAT_CHG_START_IRQ;      //CHARGE
+    }
+    // Enable the required interrupt function
+    PMU->enableIRQ(pmuIrqMask);
+
+    */
+
+    // Call the interrupt request through the interface class
+    PMU->disableInterrupt(XPOWERS_ALL_INT);
+
+    PMU->enableInterrupt(XPOWERS_USB_INSERT_INT |
+                         XPOWERS_USB_REMOVE_INT |
+                         XPOWERS_BATTERY_INSERT_INT |
+                         XPOWERS_BATTERY_REMOVE_INT |
+                         XPOWERS_PWR_BTN_CLICK_INT |
+                         XPOWERS_CHARGE_START_INT |
+                         XPOWERS_CHARGE_DONE_INT);
+}
+#endif
+
 void sendFanetWeatherData2WU(FanetLora::weatherData *weatherData,uint8_t wuIndex){
   if ((status.bInternetConnected) && (status.bTimeOk)){
     WeatherUnderground wu;
@@ -541,12 +923,13 @@ void checkLoraChip(){
   digitalWrite(PinLora_SS,LOW);
   SPI.beginTransaction(_spiSettings);  
   SPI.transfer(0x42); //read reg 0x42
-  uint8_t v = SPI.transfer(0x00);
+  uint8_t v = SPI.transfer(0x42); //changed to 0x42
   digitalWrite(PinLora_SS,HIGH);
   SPI.endTransaction();
-  //log_i("Lora-Chip-Version=%02X",v);
-  if (v == 0x12){
-    log_i("Lora-Chip SX1276 found --> Board is a T-Beam with SX1276");    
+  log_i("Lora-Chip-Version=%02X",v);
+  if (v == 0x34){
+    setting.boardType = eBoard::T_BEAM;
+    log_i("Lora-Chip SX1276 found --> Board is a T-Beam with SX1276");
   }else{
     setting.boardType = eBoard::T_BEAM_SX1262;
     log_i("Lora-Chip SX1262 found --> Board is a T-Beam with SX1262");
@@ -595,7 +978,7 @@ void checkBoardType(){
       //ok we have a T-Beam !! 
       //check, if we have an OLED
       setting.boardType = eBoard::T_BEAM;
-      log_i("AXP192 found");
+      log_i("AXP192 has been found");
       checkLoraChip();
       setting.displayType = NO_DISPLAY;
       i2cOLED.beginTransmission(OLED_SLAVE_ADDRESS);
@@ -1832,6 +2215,11 @@ void setup() {
   //  26, 13          <<< For 26MHz XTAL
   //  24, 12          <<< For 24MHz XTAL
 
+
+  #ifdef BOARD_HAS_PMU
+    setupPMU();
+  #endif
+
   #ifdef BOARD_HAS_PSRAM
   if (psramFound()){
     psRamSize = ESP.getPsramSize();
@@ -1865,7 +2253,7 @@ void setup() {
     setCpuFrequencyMhz(uint32_t(setting.CPUFrequency));
   }
   log_i("set CPU-Speed to %dMHz",getCpuFrequencyMhz());
-  //setting.boardType = BOARD_UNKNOWN;
+  //setting.boardType = eBoard::UNKNOWN;
   if (setting.boardType == eBoard::UNKNOWN){
     checkBoardType();
   }  
@@ -3209,6 +3597,14 @@ String setStringSize(String s,uint8_t sLen){
 }
 
 float readBattvoltage(){
+  #ifdef BOARD_HAS_PMU
+  if (!PMU){
+    log_e("PMU not initialized");
+  }else{
+    log_i("voltage %d", PMU->getBattVoltage());
+    return (float)PMU->getBattVoltage();
+  }
+  #endif
   // multisample ADC
   const byte NO_OF_SAMPLES = 5;
   uint32_t adc_reading = 0;
@@ -3231,6 +3627,16 @@ float readBattvoltage(){
 }
 
 bool printBattVoltage(uint32_t tAct){
+  #ifdef BOARD_HAS_PMU
+  if (!PMU){
+    log_e("PMU not initialized");
+  }else{
+      status.vBatt = PMU->getBattVoltage();
+      status.BattPerc = PMU->getBatteryPercent();
+      return true;
+  }
+  #endif
+    
   static uint32_t tBatt = millis() - 5000;
   if ((tAct - tBatt) >= 5000){
     tBatt = tAct;
