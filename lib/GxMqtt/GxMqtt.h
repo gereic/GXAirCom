@@ -14,9 +14,13 @@
 #include <PubSubClient.h>
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
+#include <Update.h>
+#include <ArduinoJson.h>
 #include "main.h"
 
 #define GXMQTTMAXSTRING 255
+
+extern bool WebUpdateRunning;
 
 class GxMqtt {
 public:
@@ -32,12 +36,28 @@ protected:
 private:
     void callback(char* topic, byte* payload, unsigned int length);
     void connect();
+    void subscribe();
     void sendOnlineTopic(uint8_t state);
+    void sendInfo();
+    void sendGPS();
+    void sendUpdateCmd();
     PubSubClient *pPubSubClient = NULL;
     Client *pClient;
     SemaphoreHandle_t *xMutex;
-    char myTopic[100];
-    char stateTopic[100];
+    char willTopic[50];
+    char myTopic[50];
+    char stateTopic[50];
+    char updStateTopic[50];
+    char cmdTopic[50];
+    char updTopic[50];
+    char infoTopic[50];
+    uint8_t updCmd[5];
+    char updstate[100];
     char lastCmd[GXMQTTMAXSTRING];
+    uint32_t msgCnt;
+    bool restartNow = false;
+    uint8_t connState = 0;
+    uint32_t fileLen = 0;
+    uint32_t rFileLen = 0;
 };
 #endif

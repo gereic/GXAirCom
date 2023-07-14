@@ -11,6 +11,7 @@ enum eBoard {
     TTGO_TCALL_800 = 6,
     HELTEC_WIRELESS_STICK_LITE = 7,
     HELTEC_WIRELESS_STICK = 8,
+    T_BEAM_S3CORE = 9,
     UNKNOWN = 255
 };
 

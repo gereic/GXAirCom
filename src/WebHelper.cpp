@@ -69,11 +69,11 @@ void sendPageHeader(uint8_t client_num){
   doc.clear();
   doc["myDevId"] = setting.myDevId;
   doc["appname"] = String(APPNAME "-" VERSION);
-  doc["buildDate"] = "build-date: " + String(compile_date);
+  doc["buildDate"] = "build:" + String(compile_date) + " sdk:" + String(ESP.getSdkVersion());
   if (setting.Mode == eMode::GROUND_STATION){
-    doc["pilot"] = "station: " + setting.PilotName;
+    doc["pilot"] = "station: " + setting.PilotName + " [" + setting.myDevId + "]";
   }else{
-    doc["pilot"] = "pilot: " + setting.PilotName;
+    doc["pilot"] = "pilot: " + setting.PilotName + " [" + setting.myDevId + "]";
   }
   doc["myIP"] = status.myIP;
   serializeJson(doc, msg_buf);

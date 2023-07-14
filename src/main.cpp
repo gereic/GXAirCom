@@ -13,8 +13,13 @@
 #include "WebHelper.h"
 #include "fileOps.h"
 #include <SPIFFS.h>
+#ifdef BLUETOOTH
 #include <ble.h>
+#include "esp_bt_main.h"
+#endif
+#ifdef OLED
 #include <icons.h>
+#endif
 #include <Ogn.h>
 #include "SparkFun_Ublox_Arduino_Library.h"
 #include <TimeLib.h>
@@ -24,7 +29,6 @@
 
 #include "esp_system.h"
 #include "esp_spi_flash.h"
-#include "esp_bt_main.h"
 #include "driver/adc.h"
 //#include "Update.h"
 #include "gxUpdater.h"
@@ -33,8 +37,13 @@
 #include <ArduinoJson.h>
 #include "../lib/GxMqtt/GxMqtt.h"
 
-//#include <esp_task_wdt.h>
-
+#ifdef PMU2101
+  //#define XPOWERS_CHIP_AXP2101
+  #include "XPowersLib.h"
+  #include <Adafruit_SH110X.h>  
+  //XPowersPMU PMU;
+  XPowersLibInterface *PMU = NULL;
+#endif
 
 //#define GXTEST
 //#define FLARMTEST
@@ -88,6 +97,8 @@
 #include <Weather.h>
 #include <WeatherUnderground.h>
 #include <Windy.h>
+#endif
+
 
 #define uS_TO_S_FACTOR 1000000uL  /* Conversion factor for micro seconds to seconds */
 //#define uS_TO_ms_FACTOR 1000000uL  /* Conversion factor for micro seconds to seconds */
@@ -103,7 +114,6 @@
 RTC_DATA_ATTR int iSunRise = -1;
 RTC_DATA_ATTR int iSunSet = -1;
 
-#endif
 
 //Libraries for OLED Display
 #include <Wire.h>
@@ -115,7 +125,15 @@ TwoWire i2cOLED = TwoWire(1);
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
+
+#ifdef SH1106G
+Adafruit_SH1106G display = Adafruit_SH1106G(SCREEN_WIDTH, SCREEN_HEIGHT, &i2cOLED);
+#else
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &i2cOLED);
+#endif
+
+
+
 
 #endif
 
@@ -136,10 +154,10 @@ beeper Beeper(BEEP_VELOCITY_DEFAULT_SINKING_THRESHOLD,BEEP_VELOCITY_DEFAULT_CLIM
 int freq = 2000;
 int channel = 0;
 int resolution = 8;
-uint8_t wifiCMD = 0;
 
 
 #endif
+uint8_t wifiCMD = 0;
 
 bool WebUpdateRunning = false;
 bool bPowerOff = false;
@@ -193,7 +211,7 @@ volatile uint32_t ppsMillis = 0;
 
 AXP20X_Class axp;
 #define AXP_IRQ 35
-volatile bool AXP192_Irq = false;
+volatile bool PMU_Irq = false;
 volatile float BattCurrent = 0.0;
 
 //bool newStationConnected = false;
@@ -369,10 +387,12 @@ void checkLoraChip();
 // Forward reference to prevent Arduino compiler becoming confused.
 void handleEvent(ace_button::AceButton*, uint8_t, uint8_t);
 void readFuelSensor(uint32_t tAct);
-void setupAXP192();
+void setupPMU();
 void taskStandard(void *pvParameters);
 void taskBackGround(void *pvParameters);
+#ifdef BLUETOOTH
 void taskBluetooth(void *pvParameters);
+#endif
 void taskMemory(void *pvParameters);
 void setupWifi();
 void IRAM_ATTR ppsHandler(void);
@@ -404,12 +424,47 @@ void handleUpdate(uint32_t tAct);
 void printChipInfo(void);
 void setAllTime(tm &timeinfo);
 void checkExtPowerOff(uint32_t tAct);
+#ifdef GSMODULE
 void sendFanetWeatherData2WU(FanetLora::weatherData *weatherData,uint8_t wuIndex);
 void sendFanetWeatherData2WI(FanetLora::weatherData *weatherData,uint8_t wiIndex);
+#endif
 #ifdef AIRMODULE
 bool setupUbloxConfig(void);
 #endif
 
+
+void i2cScanner(){
+  byte error, address;
+  int nDevices;
+ 
+  log_i("Scanning...");
+ 
+  nDevices = 0;
+  for(address = 1; address < 127; address++ )
+  {
+    // The i2c_scanner uses the return value of
+    // the Write.endTransmisstion to see if
+    // a device did acknowledge to the address.
+    i2cOLED.beginTransmission(address);
+    error = i2cOLED.endTransmission();
+ 
+    if (error == 0)
+    {
+      log_i("I2C device found at address 0x%02X !",address);
+      nDevices++;
+    }
+    else if (error==4)
+    {
+      log_i("Unknown error at address 0x%02X !",address);
+    }    
+  }
+  if (nDevices == 0)
+    log_i("No I2C devices found");
+  else
+    log_i("done");
+}
+
+#ifdef GSMODULE
 void sendFanetWeatherData2WU(FanetLora::weatherData *weatherData,uint8_t wuIndex){
   if ((status.bInternetConnected) && (status.bTimeOk)){
     WeatherUnderground wu;
@@ -456,6 +511,7 @@ void sendFanetWeatherData2WI(FanetLora::weatherData *weatherData,uint8_t wiIndex
     wi.sendData(setting.FntWiUpload[wiIndex].ID,setting.FntWiUpload[wiIndex].KEY,&wiData);
   }
 }
+#endif
 
 void readFuelSensor(uint32_t tAct){
   static uint32_t tRead = millis();
@@ -595,7 +651,7 @@ void checkBoardType(){
       //ok we have a T-Beam !! 
       //check, if we have an OLED
       setting.boardType = eBoard::T_BEAM;
-      log_i("AXP192 found");
+      log_i("AXP192 has been found");
       checkLoraChip();
       setting.displayType = NO_DISPLAY;
       i2cOLED.beginTransmission(OLED_SLAVE_ADDRESS);
@@ -673,13 +729,19 @@ void oledPowerOn(){
   }
 
   //initialize OLED
+  #ifdef SH1106G
+  if(!display.begin(OLED_SLAVE_ADDRESS,false)) { // Address 0x3C for 128x32
+  #else
   if(!display.begin(SSD1306_SWITCHCAPVCC, OLED_SLAVE_ADDRESS, false, false)) { // Address 0x3C for 128x32
+  #endif
     log_e("SSD1306 allocation failed");
     for(;;); // Don't proceed, loop forever
   }
   //set display to full contrast
+  #ifndef SH1106G
   display.ssd1306_command(SSD1306_SETCONTRAST);
   display.ssd1306_command(0xFF);
+  #endif
   //added the possibility to invert BW .. whould be nice to put it in the settings TODO
   display.invertDisplay(0);
   status.displayStat = eDisplayState::DISPLAY_STAT_ON;
@@ -692,9 +754,11 @@ void oledPowerOff(){
   display.clearDisplay();
   log_i("set display to off");
   //display.ssd1306_command(SSD1306_DISPLAYOFF);
+  #ifndef SH1106G
   display.ssd1306_command(0x8D); //into charger pump set mode
   display.ssd1306_command(0x10); //turn off charger pump
   display.ssd1306_command(0xAE); //set OLED sleep  
+  #endif
   status.displayStat = eDisplayState::DISPLAY_STAT_OFF; //Display if off now
 }
 
@@ -1364,12 +1428,197 @@ void sendData2Client(char *buffer,int iLen){
 }
 
 
-static void IRAM_ATTR AXP192_Interrupt_handler() {
-  AXP192_Irq = true;
-  log_v("AXP192 IRQ");
+static void IRAM_ATTR PMU_Interrupt_handler() {
+  PMU_Irq = true;
+  //log_i("PMU IRQ");
 }
 
-void setupAXP192(){
+void setupPMU(){
+
+#ifdef PMU2101
+  bool result;
+  status.bHasPMU = false;
+  if (!PMU){
+    PMU = new XPowersAXP2101(Wire,42,41,AXP2101_SLAVE_ADDRESS);
+    if (!PMU->init()) {
+        Serial.println("Warning: Failed to find AXP2101 power management");
+        delete PMU;
+        PMU = NULL;
+    } else {
+        Serial.println("AXP2101 PMU init succeeded, using AXP2101 PMU");
+    }    
+  }
+  if (!PMU) {
+      return;
+  } 
+  //t-beam m.2 inface
+  //gps
+  PMU->setPowerChannelVoltage(XPOWERS_ALDO4, 3300);
+  PMU->enablePowerOutput(XPOWERS_ALDO4);
+
+  // lora
+  PMU->setPowerChannelVoltage(XPOWERS_ALDO3, 3300);
+  PMU->enablePowerOutput(XPOWERS_ALDO3);   
+
+  // In order to avoid bus occupation, during initialization, the SD card and QMC sensor are powered off and restarted
+  if (ESP_SLEEP_WAKEUP_UNDEFINED == esp_sleep_get_wakeup_cause()) {
+      Serial.println("Power off and restart ALDO BLDO..");
+      PMU->disablePowerOutput(XPOWERS_ALDO1);
+      PMU->disablePowerOutput(XPOWERS_ALDO2);
+      PMU->disablePowerOutput(XPOWERS_BLDO1);
+      delay(250);
+  }
+
+  // Sensor
+  PMU->setPowerChannelVoltage(XPOWERS_ALDO1, 3300);
+  PMU->enablePowerOutput(XPOWERS_ALDO1);
+
+  PMU->setPowerChannelVoltage(XPOWERS_ALDO2, 3300);
+  PMU->enablePowerOutput(XPOWERS_ALDO2);
+
+  //Sdcard
+
+  PMU->setPowerChannelVoltage(XPOWERS_BLDO1, 3300);
+  PMU->enablePowerOutput(XPOWERS_BLDO1);
+
+  PMU->setPowerChannelVoltage(XPOWERS_BLDO2, 3300);
+  PMU->enablePowerOutput(XPOWERS_BLDO2);
+
+  //face m.2
+  PMU->setPowerChannelVoltage(XPOWERS_DCDC3, 3300);
+  PMU->enablePowerOutput(XPOWERS_DCDC3);
+
+  PMU->setPowerChannelVoltage(XPOWERS_DCDC4, XPOWERS_AXP2101_DCDC4_VOL2_MAX);
+  PMU->enablePowerOutput(XPOWERS_DCDC4);
+
+  PMU->setPowerChannelVoltage(XPOWERS_DCDC5, 3300);
+  PMU->enablePowerOutput(XPOWERS_DCDC5);
+
+
+  //not use channel
+  PMU->disablePowerOutput(XPOWERS_DCDC2);
+  // PMU->disablePowerOutput(XPOWERS_DCDC4);
+  // PMU->disablePowerOutput(XPOWERS_DCDC5);
+  PMU->disablePowerOutput(XPOWERS_DLDO1);
+  PMU->disablePowerOutput(XPOWERS_DLDO2);
+  PMU->disablePowerOutput(XPOWERS_VBACKUP);
+
+  // Set constant current charge current limit
+  PMU->setChargerConstantCurr(XPOWERS_AXP2101_CHG_CUR_500MA);
+
+  // Set charge cut-off voltage
+  PMU->setChargeTargetVoltage(XPOWERS_AXP2101_CHG_VOL_4V2);
+
+  pinMode(40, INPUT_PULLUP);
+  attachInterrupt(40,PMU_Interrupt_handler, FALLING);
+
+  // Disable all interrupts
+  PMU->disableIRQ(XPOWERS_AXP2101_ALL_IRQ);
+  // Clear all interrupt flags
+  PMU->clearIrqStatus();
+  // Enable the required interrupt function
+  PMU->enableIRQ(
+      //XPOWERS_AXP2101_BAT_INSERT_IRQ    | XPOWERS_AXP2101_BAT_REMOVE_IRQ      |   //BATTERY
+      //XPOWERS_AXP2101_VBUS_INSERT_IRQ   | XPOWERS_AXP2101_VBUS_REMOVE_IRQ     |   //VBUS
+      XPOWERS_AXP2101_PKEY_SHORT_IRQ    | XPOWERS_AXP2101_PKEY_LONG_IRQ       //|   //POWER KEY
+      //XPOWERS_AXP2101_BAT_CHG_DONE_IRQ  | XPOWERS_AXP2101_BAT_CHG_START_IRQ       //CHARGE
+      // XPOWERS_AXP2101_PKEY_NEGATIVE_IRQ | XPOWERS_AXP2101_PKEY_POSITIVE_IRQ   |   //POWER KEY
+  );
+
+
+  PMU->enableSystemVoltageMeasure();
+  PMU->enableVbusVoltageMeasure();
+  PMU->enableBattVoltageMeasure();
+  // It is necessary to disable the detection function of the TS pin on the board
+  // without the battery temperature detection function, otherwise it will cause abnormal charging
+  PMU->disableTSPinMeasure();
+
+  /*
+  Serial.printf("=========================================\n");
+  if (PMU->isChannelAvailable(XPOWERS_DCDC1)) {
+      Serial.printf("DC1  : %s   Voltage: %04u mV \n",  PMU->isPowerChannelEnable(XPOWERS_DCDC1)  ? "+" : "-",  PMU->getPowerChannelVoltage(XPOWERS_DCDC1));
+  }
+  if (PMU->isChannelAvailable(XPOWERS_DCDC2)) {
+      Serial.printf("DC2  : %s   Voltage: %04u mV \n",  PMU->isPowerChannelEnable(XPOWERS_DCDC2)  ? "+" : "-",  PMU->getPowerChannelVoltage(XPOWERS_DCDC2));
+  }
+  if (PMU->isChannelAvailable(XPOWERS_DCDC3)) {
+      Serial.printf("DC3  : %s   Voltage: %04u mV \n",  PMU->isPowerChannelEnable(XPOWERS_DCDC3)  ? "+" : "-",  PMU->getPowerChannelVoltage(XPOWERS_DCDC3));
+  }
+  if (PMU->isChannelAvailable(XPOWERS_DCDC4)) {
+      Serial.printf("DC4  : %s   Voltage: %04u mV \n",  PMU->isPowerChannelEnable(XPOWERS_DCDC4)  ? "+" : "-",  PMU->getPowerChannelVoltage(XPOWERS_DCDC4));
+  }
+  if (PMU->isChannelAvailable(XPOWERS_DCDC5)) {
+      Serial.printf("DC5  : %s   Voltage: %04u mV \n",  PMU->isPowerChannelEnable(XPOWERS_DCDC5)  ? "+" : "-",  PMU->getPowerChannelVoltage(XPOWERS_DCDC5));
+  }
+  if (PMU->isChannelAvailable(XPOWERS_LDO2)) {
+      Serial.printf("LDO2 : %s   Voltage: %04u mV \n",  PMU->isPowerChannelEnable(XPOWERS_LDO2)   ? "+" : "-",  PMU->getPowerChannelVoltage(XPOWERS_LDO2));
+  }
+  if (PMU->isChannelAvailable(XPOWERS_LDO3)) {
+      Serial.printf("LDO3 : %s   Voltage: %04u mV \n",  PMU->isPowerChannelEnable(XPOWERS_LDO3)   ? "+" : "-",  PMU->getPowerChannelVoltage(XPOWERS_LDO3));
+  }
+  if (PMU->isChannelAvailable(XPOWERS_ALDO1)) {
+      Serial.printf("ALDO1: %s   Voltage: %04u mV \n",  PMU->isPowerChannelEnable(XPOWERS_ALDO1)  ? "+" : "-",  PMU->getPowerChannelVoltage(XPOWERS_ALDO1));
+  }
+  if (PMU->isChannelAvailable(XPOWERS_ALDO2)) {
+      Serial.printf("ALDO2: %s   Voltage: %04u mV \n",  PMU->isPowerChannelEnable(XPOWERS_ALDO2)  ? "+" : "-",  PMU->getPowerChannelVoltage(XPOWERS_ALDO2));
+  }
+  if (PMU->isChannelAvailable(XPOWERS_ALDO3)) {
+      Serial.printf("ALDO3: %s   Voltage: %04u mV \n",  PMU->isPowerChannelEnable(XPOWERS_ALDO3)  ? "+" : "-",  PMU->getPowerChannelVoltage(XPOWERS_ALDO3));
+  }
+  if (PMU->isChannelAvailable(XPOWERS_ALDO4)) {
+      Serial.printf("ALDO4: %s   Voltage: %04u mV \n",  PMU->isPowerChannelEnable(XPOWERS_ALDO4)  ? "+" : "-",  PMU->getPowerChannelVoltage(XPOWERS_ALDO4));
+  }
+  if (PMU->isChannelAvailable(XPOWERS_BLDO1)) {
+      Serial.printf("BLDO1: %s   Voltage: %04u mV \n",  PMU->isPowerChannelEnable(XPOWERS_BLDO1)  ? "+" : "-",  PMU->getPowerChannelVoltage(XPOWERS_BLDO1));
+  }
+  if (PMU->isChannelAvailable(XPOWERS_BLDO2)) {
+      Serial.printf("BLDO2: %s   Voltage: %04u mV \n",  PMU->isPowerChannelEnable(XPOWERS_BLDO2)  ? "+" : "-",  PMU->getPowerChannelVoltage(XPOWERS_BLDO2));
+  }
+  Serial.printf("=========================================\n");
+  */
+
+  // Set the time of pressing the button to turn off
+  PMU->setPowerKeyPressOffTime(XPOWERS_POWEROFF_8S); //to switch really off without off-screen.
+  /*
+  uint8_t opt = PMU->getPowerKeyPressOffTime();
+  Serial.print("PowerKeyPressOffTime:");
+  switch (opt) {
+  case XPOWERS_POWEROFF_4S: Serial.println("4 Second");
+      break;
+  case XPOWERS_POWEROFF_6S: Serial.println("6 Second");
+      break;
+  case XPOWERS_POWEROFF_8S: Serial.println("8 Second");
+      break;
+  case XPOWERS_POWEROFF_10S: Serial.println("10 Second");
+      break;
+  default:
+      break;
+  }  
+  opt = PMU->getPowerKeyPressOnTime();
+  Serial.print("PowerKeyPressONTime:");
+  switch (opt) {
+  case XPOWERS_POWERON_128MS: Serial.println("128ms");
+      break;
+  case XPOWERS_POWERON_512MS: Serial.println("512ms");
+      break;
+  case XPOWERS_POWERON_1S: Serial.println("1s");
+      break;
+  case XPOWERS_POWERON_2S: Serial.println("2s");
+      break;
+  default:
+      break;
+  }  
+  */
+  
+  status.bHasPMU = true;
+#else
+  int ret = axp.begin(i2cOLED);
+  if (ret == AXP_FAIL) {
+    log_e("PMU error begin");
+    status.bHasPMU = false;
+  }else{
+    log_e("PMU found");
+  }
   i2cOLED.beginTransmission(AXP192_SLAVE_ADDRESS);
   if (i2cOLED.endTransmission() == 0) {
     if (!axp.begin(i2cOLED, AXP192_SLAVE_ADDRESS)){
@@ -1390,22 +1639,23 @@ void setupAXP192(){
       pinMode(AXP_IRQ, INPUT_PULLUP);
 
       attachInterrupt(digitalPinToInterrupt(AXP_IRQ),
-                      AXP192_Interrupt_handler, FALLING);
+                      PMU_Interrupt_handler, FALLING);
 
       axp.enableIRQ(AXP202_PEK_LONGPRESS_IRQ | AXP202_PEK_SHORTPRESS_IRQ, true);
       axp.clearIRQ();
       //axp.setChgLEDMode(AXP20X_LED_BLINK_1HZ);
       log_i("init AXP192 --> ready");
-      status.bHasAXP192 = true;
+      status.bHasPMU = true;
     }else{
       log_e("AXP192 error begin");
-      status.bHasAXP192 = false;
+      status.bHasPMU = false;
     }
 
   }else{
     log_e("AXP192 not found");
-    status.bHasAXP192 = false;
+    status.bHasPMU = false;
   }
+#endif  
 }
 
 void IRAM_ATTR ppsHandler(void){
@@ -1604,7 +1854,6 @@ void printSettings(){
   log_i("Board-Type=%d",setting.boardType);
   log_i("Display-Type=%d",setting.displayType);
   log_i("Display-Rotation=%d",setting.displayRotation);
-  log_i("AXP192=%d",uint8_t(status.bHasAXP192));
   log_i("Mode=%d",setting.Mode);
   log_i("Fanet-Mode=%d",setting.fanetMode);
   log_i("Fanet-Pin=%d",setting.fanetpin);
@@ -1819,7 +2068,6 @@ void setup() {
   sMqttState[0] = 0; //zero-Termination of String !!
   status.GPS_Date[0] = 0; //clear string
   status.GPS_Time[0] = 0; //clear string
-  
   log_i("SDK-Version=%s",ESP.getSdkVersion());
   log_i("CPU-Speed=%dMHz",getCpuFrequencyMhz());
   log_i("XTAL-Freq=%dMHz",getXtalFrequencyMhz());
@@ -1831,7 +2079,6 @@ void setup() {
   //  40, 20, 10      <<< For 40MHz XTAL
   //  26, 13          <<< For 26MHz XTAL
   //  24, 12          <<< For 24MHz XTAL
-
   #ifdef BOARD_HAS_PSRAM
   if (psramFound()){
     psRamSize = ESP.getPsramSize();
@@ -1851,8 +2098,9 @@ void setup() {
   //esp_reset_reason_t reason = esp_reset_reason();
   // Make sure we can read the file system
   if( !SPIFFS.begin(true)){
+  //if( !SPIFFS.begin(false)){
     log_e("Error mounting SPIFFS");
-    while(1);
+    //while(1);
   }
   log_i("SPIFFS total=%d used=%d free=%d",SPIFFS.totalBytes(),SPIFFS.usedBytes(),SPIFFS.totalBytes()-SPIFFS.usedBytes());
 
@@ -1865,7 +2113,10 @@ void setup() {
     setCpuFrequencyMhz(uint32_t(setting.CPUFrequency));
   }
   log_i("set CPU-Speed to %dMHz",getCpuFrequencyMhz());
-  //setting.boardType = BOARD_UNKNOWN;
+  //setting.boardType = eBoard::UNKNOWN;
+  if (FWTYPE == 7){
+    setting.boardType = T_BEAM_S3CORE;
+  } 
   if (setting.boardType == eBoard::UNKNOWN){
     checkBoardType();
   }  
@@ -1925,11 +2176,13 @@ void setup() {
         log_i("time to sleep = %d --> %02d:%02d:%02d",tSleep,tSleep/60/60,(tSleep/60)%60,(tSleep)%60);
         esp_sleep_enable_timer_wakeup((uint64_t)tSleep * uS_TO_S_FACTOR); //set Timer for wakeup      
         esp_wifi_stop();
+        #ifdef BLUETOOTH
         esp_bluedroid_disable();
         esp_bluedroid_deinit();
         esp_bt_controller_disable();
         esp_bt_controller_deinit();
         esp_bt_mem_release(ESP_BT_MODE_BTDM);
+        #endif
         //adc_power_off();
         //adc_power_release();
         esp_deep_sleep_start();
@@ -1944,8 +2197,11 @@ void setup() {
   //pinMode(BUTTON2, INPUT_PULLUP);
 
   printSettings();
+  if (FWTYPE == 7){
+    setting.boardType = T_BEAM_S3CORE;
+  }   
   analogReadResolution(10); // Default of 12 is not very linear. Recommended to use 10 or 11 depending on needed resolution.
-  status.bHasAXP192 = false;    
+  status.bHasPMU = false;    
   for (uint8_t i = 0; i < NUMBUTTONS; i++) {
     //init buttons
     sButton[i].PinButton = -1;
@@ -2001,7 +2257,7 @@ void setup() {
     }      
 
     i2cOLED.begin(PinOledSDA, PinOledSCL);
-    setupAXP192();
+    setupPMU();
     //for new T-Beam output 4 is red led
 
     break;
@@ -2053,7 +2309,7 @@ void setup() {
     }      
 
     i2cOLED.begin(PinOledSDA, PinOledSCL);
-    setupAXP192();
+    setupPMU();
     //for new T-Beam output 4 is red led
 
     break;
@@ -2327,6 +2583,44 @@ void setup() {
     pinMode(PinADCVoltage, INPUT);
 
     break;
+  case eBoard::T_BEAM_S3CORE:
+    log_i("Board=T_BEAM-S3CORE");
+    setting.displayType = eDisplay::NO_DISPLAY;
+    PinGPSRX = 9;
+    PinGPSTX = 8;
+    //wakeup GPS
+    pinMode(7,OUTPUT);
+    digitalWrite(7,LOW);
+    
+    PinPPS = 6;
+
+    PinLoraRst = 5;
+    PinLoraDI0 = 1;
+    PinLoraGPIO = 4;
+    PinLora_SS = 10;
+    PinLora_MISO = 13;
+    PinLora_MOSI = 11;
+    PinLora_SCK = 12;
+
+    PinOledRst = -1;
+    PinOledSDA = 17; //OLED + BARO + RTC
+    PinOledSCL = 18; //OLED + BARO + RTC
+    //PinOledSDA = 42; //PMU
+    //PinOledSCL = 41; //PMU
+
+    PinBaroSDA = 41;
+    PinBaroSCL = 42;  
+    i2cOLED.begin(PinOledSDA, PinOledSCL);
+    setupPMU();   
+    /*
+    Wire.begin(PinBaroSDA, PinBaroSCL);
+    while(1){
+      i2cScanner(); 
+      delay(5000);
+    }
+    */
+
+    break;    
   case eBoard::UNKNOWN:
     log_e("unknown Board --> please correct");
     break;
@@ -2381,7 +2675,9 @@ void setup() {
   if (setting.Mode == eMode::GROUND_STATION){
     //if ((reason2 == ESP_SLEEP_WAKEUP_TIMER) && (setting.gs.PowerSave == eGsPower::GS_POWER_BATT_LIFE)){
       if ((setting.gs.PowerSave == eGsPower::GS_POWER_BATT_LIFE) || (setting.gs.PowerSave == eGsPower::GS_POWER_SAFE)){
+      #ifdef OLED
       printBattVoltage(millis()); //read Battery-level
+      #endif
       log_i("Batt %dV; %d%%",status.vBatt,status.BattPerc);
       if ((status.vBatt >= BATTPINOK) && (status.BattPerc < (setting.minBattPercent + setting.restartBattPercent)) && (status.BattPerc < 80)){
         //go again to sleep
@@ -2389,11 +2685,13 @@ void setup() {
         log_i("batt-voltage to less (%d%%) --> going to sleep again for 60min.",status.BattPerc);
         esp_sleep_enable_timer_wakeup((uint64_t)BATTSLEEPTIME * uS_TO_S_FACTOR); //set Timer for wakeup      
         esp_wifi_stop();
+        #ifdef BLUETOOTH
         esp_bluedroid_disable();
         esp_bluedroid_deinit();
         esp_bt_controller_disable();
         esp_bt_controller_deinit();
         esp_bt_mem_release(ESP_BT_MODE_BTDM);
+        #endif
         //adc_power_off();
         //adc_power_release();
         esp_deep_sleep_start();
@@ -2423,9 +2721,10 @@ xOutputMutex = xSemaphoreCreateMutex();
     //adding logger task
     #ifdef LOGGER
       xTaskCreatePinnedToCore(taskLogger, "taskLogger", 6500, NULL, 4, &xHandleLogger, ARDUINO_RUNNING_CORE1); //background Logger
-    #endif  
-
+    #endif
+    #ifndef S3CORE  //still in progress
     xTaskCreatePinnedToCore(taskBaro, "taskBaro", 6500, NULL, 9, &xHandleBaro, ARDUINO_RUNNING_CORE1); //high priority task
+    #endif
   }
 #endif  
   //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
@@ -2436,7 +2735,9 @@ xOutputMutex = xSemaphoreCreateMutex();
   xTaskCreatePinnedToCore(taskEInk, "taskEInk", 6500, NULL, 8, &xHandleEInk, ARDUINO_RUNNING_CORE1); //background EInk
 #endif  
   xTaskCreatePinnedToCore(taskBackGround, "taskBackGround", 6500, NULL, 5, &xHandleBackground, ARDUINO_RUNNING_CORE1); //background task
+  #ifdef BLUETOOTH
   xTaskCreatePinnedToCore(taskBluetooth, "taskBluetooth", 4096, NULL, 7, &xHandleBluetooth, ARDUINO_RUNNING_CORE1);
+  #endif
 
 #ifdef GSMODULE  
   if (setting.Mode == eMode::GROUND_STATION){
@@ -2527,11 +2828,19 @@ bool initModem(){
     log_e("modem-connection not OK");
     return false;
   }
-  log_i("restarting modem...");  
-  if (!modem.restart()){
+  bool bRet = false;
+  for (int i = 0;i <3;i++){
+    log_i("restarting modem...");  
+    if (modem.restart()){
+      bRet = true;
+      break;
+    }
+  }
+  if (!bRet){
     log_e("restarting modem failed");
     return false; 
   }
+
   #ifdef TINY_GSM_MODEM_SIM7000
   log_i("set NetworkMode to %d",setting.gsm.NetworkMode);
   modem.setNetworkMode(setting.gsm.NetworkMode); //set mode
@@ -2753,7 +3062,8 @@ void taskWeather(void *pvParameters){
   tSendData = millis();
   tLastWindSpeed = millis();
   tWindOk = millis();
-  status.weather.bWindInvalid = false;
+  status.weather.error.value = 0;
+  status.weather.error.bits.notStarted = true;
   while (1){
     uint32_t tAct = millis();
     if (setting.wd.mode.bits.enable){
@@ -2761,12 +3071,15 @@ void taskWeather(void *pvParameters){
       weather.run();
       if (weather.getValues(&wData)){
         //log_i("wdata:wDir=%f;wSpeed=%f,temp=%f,h=%f,p=%f",wData.WindDir,wData.WindSpeed,wData.temp,wData.Humidity,wData.Pressure);
-        if (status.weather.vaneVAlue != wData.vaneValue){ //we check, if analog-value is changing, when there is an error, we get always 1023 for analog-read
+        //if ((status.weather.vaneVAlue != wData.vaneValue) || (wData.vaneValue < 1023)){ //we check, if analog-value is changing, when there is an error, we get always 1023 for analog-read
+        if ((wData.vaneValue != 0x03FF) || (setting.wd.anemometer.AnemometerType != eAnemometer::DAVIS)){ //0x03FF=1023 we check, if analog-value is changing, when there is an error, we get always 1023 for analog-read
           tWindOk = tAct;
+          status.weather.error.bits.VanevalueInvalid = false;
+          status.weather.error.bits.notStarted = false; //we got the first valid value
         }
         status.weather.vaneVAlue =  wData.vaneValue;
-        if ((timeOver(tAct,tWindOk,3600000uL)) && (setting.wd.anemometer.AnemometerType == eAnemometer::DAVIS)) { //when more than one hour we get always the same value --> problem with wind-sensor
-          status.weather.bWindInvalid = true;
+        if (timeOver(tAct,tWindOk,3600000uL)) { //when more than one hour we get always the same value --> problem with wind-sensor
+          status.weather.error.bits.VanevalueInvalid = true;
         }
         if (wData.WindSpeed > 0.01){
           tLastWindSpeed = tAct;
@@ -2832,7 +3145,7 @@ void taskWeather(void *pvParameters){
       }
       if (timeOver(tAct,tUploadData,setting.wd.WUUploadIntervall)){
         tUploadData = tAct;
-        if ((status.bInternetConnected) && (status.bTimeOk)){
+        if ((status.bInternetConnected) && (status.bTimeOk) && (status.weather.error.value == 0)){
           if (setting.WUUpload.enable){
             WeatherUnderground wu;
             #ifdef GSM_MODULE
@@ -2900,7 +3213,7 @@ void taskWeather(void *pvParameters){
           doc["DT"] = buff;
           doc["wDir"] = String(avg[0].Winddir,2);
           doc["vaneValue"] = String(status.weather.vaneVAlue);
-          doc["bWInvalid"] = status.weather.bWindInvalid ? "1" : "0";
+          doc["error"] = String(status.weather.error.value);
           doc["wSpeed"] = String(avg[0].WindSpeed,2);
           doc["wGust"] = String(avg[0].WindGust,2);
           if (wData.bTemp) doc["temp"] = String(avg[0].temp,2);
@@ -2910,7 +3223,7 @@ void taskWeather(void *pvParameters){
           //Serial.print("WD=");Serial.println(pWd);
           wdCount++;
         }
-        if (setting.wd.sendFanet){
+        if ((setting.wd.sendFanet) && (status.weather.error.value == 0)){
           
           fanetWeatherData.lat = setting.gs.lat;
           fanetWeatherData.lon = setting.gs.lon;
@@ -3017,10 +3330,13 @@ void taskBaro(void *pvParameters){
     digitalWrite(PinBuzzer,LOW);
     ledcAttachPin(PinBuzzer, channel);
   }  
-  Wire.begin(PinBaroSDA,PinBaroSCL,400000u);
-  //i2cZero.begin(PinBaroSDA,PinBaroSCL,400000u);  //init i2c for Baro 
   baro.useMPU(setting.vario.useMPU);
+  #ifdef S3CORE
+  Wire.begin(PinBaroSDA,PinBaroSCL,400000u);
+  uint8_t baroSensor = baro.begin(&i2cOLED);
+  #else
   uint8_t baroSensor = baro.begin(&Wire);
+  #endif
   //uint8_t baroSensor = baro.begin(&i2cZero);
   baro.setKalmanSettings(setting.vario.sigmaP,setting.vario.sigmaA);
   if (baroSensor > 0){
@@ -3133,6 +3449,8 @@ void taskMemory(void *pvParameters) {
   }
 }
 
+#ifdef BLUETOOTH
+
 void taskBluetooth(void *pvParameters) {
   // BLEServer *pServer;
   //Put a 10 second delay before Seral BT start to allow settings to work.
@@ -3197,6 +3515,8 @@ void taskBluetooth(void *pvParameters) {
   log_i("stop task"); 
   vTaskDelete(xHandleBluetooth); //delete bluetooth task
 }
+#endif
+
 
 String setStringSize(String s,uint8_t sLen){
   uint8_t actLen = (uint8_t)s.length();
@@ -3230,11 +3550,16 @@ float readBattvoltage(){
   return vBatt;
 }
 
+#ifdef OLED
 bool printBattVoltage(uint32_t tAct){
   static uint32_t tBatt = millis() - 5000;
   if ((tAct - tBatt) >= 5000){
     tBatt = tAct;
-    if (status.bHasAXP192){
+    if (status.bHasPMU){
+      #ifdef PMU2101
+        status.BattCharging = PMU->isCharging();
+        status.vBatt = PMU->getBattVoltage();
+      #else
       status.BattCharging = axp.isChargeing();
       //log_i("chargingstate=%d",status.BattCharging);
       if (axp.isBatteryConnect()) {
@@ -3243,6 +3568,7 @@ bool printBattVoltage(uint32_t tAct){
         //log_w("no Batt");
         status.vBatt = 0;
       }
+      #endif
     }else{
       status.vBatt = uint16_t(readBattvoltage()*1000);      
     }
@@ -3266,8 +3592,6 @@ bool printBattVoltage(uint32_t tAct){
     return false;
   }
 }
-
-#ifdef OLED
 
 void drawSignal(int16_t x, int16_t y,uint8_t strength) {
   if ((strength <= 9) && (strength >= 3)){
@@ -4261,7 +4585,7 @@ void taskStandard(void *pvParameters){
     PinGPSRX = 34;
     PinGPSTX = 12;
   }else if (setting.boardType != BOARD_TTGO_TSIM_7000){
-    if (status.bHasAXP192){
+    if (status.bHasPMU){
       PinGPSRX = 34;
       PinGPSTX = 39;
     }else{
@@ -4299,7 +4623,7 @@ void taskStandard(void *pvParameters){
   long frequency = FREQUENCY868;
   fanet.setRFMode(setting.RFMode);
   uint8_t radioChip = RADIO_SX1276;
-  if (setting.boardType == eBoard::T_BEAM_SX1262) radioChip = RADIO_SX1262;
+  if ((setting.boardType == eBoard::T_BEAM_SX1262) || (setting.boardType == eBoard::T_BEAM_S3CORE)) radioChip = RADIO_SX1262;
   fanet.begin(PinLora_SCK, PinLora_MISO, PinLora_MOSI, PinLora_SS,PinLoraRst, PinLoraDI0,PinLoraGPIO,frequency,14,radioChip);
   fanet.setGPS(status.bHasGPS);
   #ifdef GSMODULE
@@ -4468,9 +4792,11 @@ void taskStandard(void *pvParameters){
       ogn.run(status.bInternetConnected);
     } 
     checkFlyingState(tAct);
+    #ifdef OLED
     if (printBattVoltage(tAct)){
       bBatPowerOk = true;
     }
+    #endif
     if (sOutputData.length() > 0){
       String s;
       xSemaphoreTake( xOutputMutex, portMAX_DELAY );
@@ -4493,11 +4819,11 @@ void taskStandard(void *pvParameters){
       delete cstr; //delete allocated String
     }
 
-    //#ifdef AIRMODULE
+    #ifdef AIRMODULE
     //if (setting.Mode == eMode::AIR_MODULE){
     readGPS();
     //}
-    //#endif    
+    #endif    
     sendFlarmData(tAct);
     #ifdef OLED
     if (status.displayType == OLED0_96){
@@ -4659,6 +4985,7 @@ void taskStandard(void *pvParameters){
     }
     FanetLora::weatherData weatherData;
     if (fanet.getWeatherData(&weatherData)){
+#ifdef GSMODULE
       if (setting.Mode == eMode::GROUND_STATION){
         //check if we forward the weather-data to WU
         for (int i = 0; i < MAXFNTUPLOADSTATIONS;i++){
@@ -4673,7 +5000,7 @@ void taskStandard(void *pvParameters){
           }
         }
       }
-      
+#endif      
       if (setting.OGNLiveTracking.bits.fwdWeather){
         Ogn::weatherData wData;
         wData.devId = fanet.getDevId(weatherData.devId);
@@ -4872,7 +5199,22 @@ void taskStandard(void *pvParameters){
     }
     #endif
 
-    if (AXP192_Irq){
+    if (PMU_Irq){
+      //log_i("PMU IRQ");
+      #ifdef PMU2101
+      uint64_t mask =  PMU->getIrqStatus(); //read irqStatus
+      //Serial.print("IRQ Mask:0b");
+      //Serial.println(mask,BIN);
+      if (PMU->isPekeyLongPressIrq()){
+        sButton[0].state = ace_button::AceButton::kEventLongPressed;
+        //log_i("PMU LongPress");
+      }
+      if (PMU->isPekeyShortPressIrq()){
+        sButton[0].state = ace_button::AceButton::kEventClicked;
+        //log_i("PMU ShortPress");
+      }
+      PMU->clearIrqStatus();
+      #else
       if (axp.readIRQ() == AXP_PASS) {
         if (axp.isPEKLongtPressIRQ()) {
           sButton[0].state = ace_button::AceButton::kEventLongPressed;
@@ -4882,7 +5224,8 @@ void taskStandard(void *pvParameters){
         }
         axp.clearIRQ();
       }
-      AXP192_Irq = false;
+      #endif
+      PMU_Irq = false;
     }
 
     delay(1);
@@ -4909,7 +5252,11 @@ void taskStandard(void *pvParameters){
 }
 
 void powerOff(){
+  #ifdef PMU2101
+  PMU->clearIrqStatus();
+  #else
   axp.clearIRQ();
+  #endif
   bPowerOff = true;
   delay(100);
 
@@ -5002,7 +5349,22 @@ void powerOff(){
   
   log_i("switch power-supply off");  
   delay(100);
-  if (status.bHasAXP192){
+  if (status.bHasPMU){
+    #ifdef PMU2101
+    PMU->setChargingLedMode(XPOWERS_CHG_LED_OFF);
+    PMU->disablePowerOutput(XPOWERS_ALDO1);
+    PMU->disablePowerOutput(XPOWERS_ALDO2);
+    PMU->disablePowerOutput(XPOWERS_ALDO3);
+    PMU->disablePowerOutput(XPOWERS_ALDO4);
+    PMU->disablePowerOutput(XPOWERS_BLDO1);
+    PMU->disablePowerOutput(XPOWERS_BLDO2);
+    PMU->disablePowerOutput(XPOWERS_DCDC3);
+    PMU->disablePowerOutput(XPOWERS_DCDC4);
+    PMU->disablePowerOutput(XPOWERS_DCDC5);
+    delay(20);
+    esp_sleep_enable_ext0_wakeup(GPIO_NUM_40, 0); // 1 = High, 0 = Low
+    PMU->shutdown();
+    #else
     // switch all off
     axp.setChgLEDMode(AXP20X_LED_OFF);
     axp.setPowerOutPut(AXP192_LDO2, AXP202_OFF); //LORA
@@ -5015,9 +5377,11 @@ void powerOff(){
     }else{
       axp.setPowerOutPut(AXP192_DCDC1, AXP202_OFF); //OLED-Display 3V3
     }
-    
     delay(20);
     esp_sleep_enable_ext0_wakeup((gpio_num_t) AXP_IRQ, 0); // 1 = High, 0 = Low
+    #endif
+    
+
   }else if ((sButton[0].PinButton >= 0) && (PinExtPowerOnOff < 0)){
     while (!digitalRead(sButton[0].PinButton)){
       log_i("wait until power-button is released");
@@ -5038,11 +5402,15 @@ void powerOff(){
 
   //Serial.end();
   esp_wifi_stop();
+  #ifdef BLUETOOTH
+  #ifndef S3CORE
   esp_bluedroid_disable();
   esp_bluedroid_deinit();
   esp_bt_controller_disable();
   esp_bt_controller_deinit();
   esp_bt_mem_release(ESP_BT_MODE_BTDM);
+  #endif
+  #endif
   if (PinLora_SCK >= 0) pinMode(PinLora_SCK,INPUT);
   if (PinLoraRst >= 0) pinMode(PinLoraRst,INPUT);
   if (PinLora_MISO >= 0) pinMode(PinLora_MISO,INPUT);
@@ -5131,6 +5499,7 @@ void handleUpdate(uint32_t tAct){
       esp_restart();
     }
   }
+  /*
   if ((setting.bAutoupdate) && (status.bInternetConnected)){
     if ((status.updateState == 0) && (timeOver(tAct,tStartAutoUpdate,10000))){
       status.updateState = 50; //auto-update
@@ -5138,6 +5507,7 @@ void handleUpdate(uint32_t tAct){
   }else{
     tStartAutoUpdate = tAct;
   }
+  */
   if (status.updateState == 1){
     status.updateState = 2;      
     if (updater.checkVersion()){
@@ -5558,7 +5928,7 @@ void taskBackGround(void *pvParameters){
         tBattEmpty = millis();
       }
     }else{
-      if (status.bHasAXP192){ //power off only if we have an AXP192, otherwise, we can't switch on again.
+      if (status.bHasPMU){ //power off only if we have an AXP192, otherwise, we can't switch on again.
         if ((status.vBatt < battEmpty) && (status.vBatt >= BATTPINOK)) { // if Batt-voltage is below 1V, maybe the resistor is missing.
           if (timeOver(tAct,tBattEmpty,60000)){ //min 60sek. below
             log_i("Batt empty voltage=%d.%dV",status.vBatt/1000,status.vBatt%1000);

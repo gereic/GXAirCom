@@ -409,6 +409,16 @@ struct SettingsData{
   bool bAutoupdate; //auto-update to new Version
 };
 
+struct wdErrorBits
+{
+    unsigned VanevalueInvalid:1, b1:1, b2:1, b3:1, b4:1, b5:1, b6:1, notStarted:1;
+};
+union uWdError
+{
+    wdErrorBits bits;
+    uint8_t value;
+};
+
 struct weatherStatus{
   bool bTemp; //temp exists
   float temp = NAN; //temp [°C]
@@ -423,7 +433,7 @@ struct weatherStatus{
   float rain1h = NAN; // rain this hour [l/h]
   float rain1d = NAN; // rain this day [l/h]
   int vaneVAlue = 0;
-  bool bWindInvalid = false;
+  uWdError error;
 };
 
 struct commandData{
@@ -465,7 +475,7 @@ struct statusData{
   uint16_t fanetRx;
   uint16_t legTx;
   uint16_t legRx;
-  bool bHasAXP192;
+  bool bHasPMU;
   VarioStatus vario;
   bool bWUBroadCast;
   uint32_t tGPSCycle;

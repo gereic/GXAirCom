@@ -126,8 +126,10 @@ BATT_VOLT_PIN 34   ---|____|----|----|____|-----
 TEMP_PIN 22
 
 ******** Anemometer (Davis 6410) *********
-WINDDIR_PIN 36
-WINDSPEED_PIN 37  (use external Pull)
+GND (red)
+3V3 (yellow)
+WINDDIR_PIN 36 (green)
+WINDSPEED_PIN 37  (use external Pull) (black)
 
 ******** Anemometer (TX20) *********
 DATA_PIN 37

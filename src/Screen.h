@@ -18,11 +18,11 @@ extern struct statusData status;
 #include <Fonts/FreeSansBold12pt7b.h>
 #include <Fonts/FreeMonoBold9pt7b.h>
 #include <Fonts/FreeMonoBold24pt7b.h>
-#include <Fonts/NotoSans6pt7b.h>
-#include <Fonts/NotoSansBold6pt7b.h>
-#include <Fonts/gnuvarioe14pt7b.h>
-#include <Fonts/gnuvarioe18pt7b.h>
-#include <Fonts/gnuvarioe23pt7b.h>
+#include "Fonts/NotoSans6pt7b.h"
+#include "Fonts/NotoSansBold6pt7b.h"
+#include "Fonts/gnuvarioe14pt7b.h"
+#include "Fonts/gnuvarioe18pt7b.h"
+#include "Fonts/gnuvarioe23pt7b.h"
 #include "main.h"
 #include <icons.h>
 #include <string.h>

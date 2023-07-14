@@ -5,25 +5,110 @@ extern struct statusData status;
 
 GxMqtt::GxMqtt(){
   xMutex = NULL;
+  updCmd[0] = 0;
+  updstate[0] = 0;
 }
 
 void GxMqtt::callback(char* topic, byte* payload, unsigned int length) {
-  Serial.print("Message arrived [");
-  Serial.print(topic);
-  Serial.print("] ");
-  for (int i=0;i<length;i++) {
-    Serial.print((char)payload[i]);
-    if (i < GXMQTTMAXSTRING){
-      lastCmd[i] = (char)payload[i];
+  //Serial.print(topic);
+  //Serial.print("=");
+  //Serial.printf("%s\n",(char *)&payload[0]);
+  if (!strcmp(&cmdTopic[0],topic)){
+    //Serial.println("!! CMD !!");
+    if (length < sizeof(lastCmd)){ //check, if payload fits
+      memcpy(&lastCmd[0],payload,length); //copy payload
+      lastCmd[length] = 0; //set zero-termination
+    } 
+  }else if (!strcmp(&updTopic[0],topic)){
+    memcpy(updCmd,payload,sizeof(updCmd));
+    uint8_t cmd= payload[0] & 0x0F;
+    uint8_t highNibble = (payload[0] & 0xF0) >> 4;  
+    static uint8_t updateState = 0; 
+    static uint8_t msgIndex = 0; 
+    if (cmd == 0x01){
+      //Serial.printf("upd start len=%d\n",length);
+      WebUpdateRunning = true;
+      Update.end(true); //end any update
+      fileLen = ((uint32_t)payload[1] << 24) + ((uint32_t)payload[2] << 16) + ((uint32_t)payload[3] << 8) + (uint32_t)payload[4];
+      rFileLen = 0;
+      if (highNibble == 0x00){
+        if (!Update.begin(0x30000,U_SPIFFS)) {
+          Update.printError(Serial);
+        }else{
+          updateState = 1; //startOk
+        }
+        snprintf(updstate,sizeof(updstate),"start update spiffs len=%d",fileLen);
+        Serial.println(updstate);
+        //sendState(updstate);
+      }else if (highNibble == 0x01){
+        uint32_t free_space = (ESP.getFreeSketchSpace() - 0x1000) & 0xFFFFF000;
+        if (!Update.begin(free_space,U_FLASH)) {
+          Update.printError(Serial);
+        }else{
+          updateState = 1; //startOk
+        }       
+        snprintf(updstate,sizeof(updstate),"start update flash len=%d",fileLen);
+        Serial.println(updstate);
+        //sendState(updstate);
+
+      }
+      //pPubSubClient->publish(&updStateTopic[0],payload,5,false);
+      msgCnt = 1;
+      msgIndex = 1;
+    }else if (cmd == 0x02){
+      //Serial.printf("upd %d len=%d\n",highNibble,length);
+      rFileLen+=length-2;
+      if (updateState == 1){
+        updateState = 2;
+      }
+      if (updateState == 2){
+        if (msgIndex == highNibble){
+          if (Update.write(&payload[2], length-2) != (length-2)) {
+            Update.printError(Serial);
+          }
+          msgIndex++;
+          msgIndex = msgIndex & 0x0F; //only 4 Bits      
+          snprintf(updstate,sizeof(updstate),"update %d%% finished",payload[1]);
+          Serial.println(updstate);
+        }else{
+          snprintf(updstate,sizeof(updstate),"wrong msgindex %d=%d",msgIndex,highNibble);
+          Serial.println(updstate);
+        }
+      }else{
+        Serial.println("error, update not started");
+      }
+      //sendState(updstate);
+      //pPubSubClient->publish(&updStateTopic[0],payload,2,false);
+      msgCnt++;
+    }else if (cmd == 0x03){
+      msgCnt++;
+      if (updateState == 2){
+        updateState = 3;
+      }
+      if (updateState == 3){
+        Serial.printf("upd end msgCnt=%d,len=%d\n",msgCnt,length);
+        uint32_t rMsgCnt = ((uint32_t)payload[1] << 24) + ((uint32_t)payload[2] << 16) + ((uint32_t)payload[3] << 8) + (uint32_t)payload[4];
+        if ((rMsgCnt == msgCnt) && (fileLen == rFileLen)){
+          //pPubSubClient->publish(&updStateTopic[0],payload,1,false);
+          if (!Update.end(true)){
+            Update.printError(Serial);
+          } else {
+            Serial.printf("Update complete msgCnt=%d:%d len=%d:%d\n",msgCnt,rMsgCnt,fileLen,rFileLen);  
+            restartNow = true;    
+            snprintf(updstate,sizeof(updstate),"Update complete");
+            sendState(updstate);
+          }
+        }else{
+          snprintf(updstate,sizeof(updstate),"Update error msgCnt=%d:%d len=%d:%d",msgCnt,rMsgCnt,fileLen,rFileLen);
+          //sendState(updstate);
+          //pPubSubClient->publish(&updStateTopic[0],payload,5,false);
+        }
+      }else{
+        Serial.println("error update was not started");
+      }
     }
-  }
-  if (length < GXMQTTMAXSTRING){
-    lastCmd[length] = 0;
-  }else{
-    lastCmd[GXMQTTMAXSTRING-1] = 0;
-  }
-  
-  Serial.println();
+    
+  } 
 }
 
 
@@ -46,18 +131,20 @@ bool GxMqtt::begin(SemaphoreHandle_t *_xMutex,Client *_client){
     pClient = _client;
   }
   pPubSubClient = new PubSubClient(*pClient);
+  pPubSubClient->setBufferSize(11000); //set packetsize to 11000Bytes
   pPubSubClient->setServer(setting.mqtt.server.c_str(), setting.mqtt.port);
   pPubSubClient->setCallback([this] (char* topic, byte* payload, unsigned int length) { this->callback(topic, payload, length); });
   pPubSubClient->setKeepAlive(900); //set timeout to 15min
+  
   return true;
 }
 
 void GxMqtt::sendTopic(const char* topic,const char* payload, boolean retained){
   char sendTopic[100];
   snprintf(sendTopic,sizeof(sendTopic),"%s/%s",myTopic,topic);
-  xSemaphoreTake( *xMutex, portMAX_DELAY );
+  //xSemaphoreTake( *xMutex, portMAX_DELAY );
   pPubSubClient->publish(sendTopic,payload,retained);
-  xSemaphoreGive( *xMutex );
+  //xSemaphoreGive( *xMutex );
 }
 
 void GxMqtt::sendState(const char *c){
@@ -76,17 +163,60 @@ int16_t GxMqtt::getLastCmd(char *c,uint16_t len){
   return ret;
 }
 
-void GxMqtt::connect() {
+void GxMqtt::sendInfo(){
+  static uint32_t tOld = millis() - 60000;
+  uint32_t tAct = millis();
+  uint32_t tDiff = tAct - tOld;
+  if (tDiff >= 60000){
+    StaticJsonDocument<500> doc; //Memory pool
+    char msg_buf[500];
+    doc.clear();
+    doc["battPerc"] = status.BattPerc;
+    doc["battV"] = float(status.vBatt)/1000.0;
+    serializeJson(doc, msg_buf);
+    sendTopic("info",msg_buf,false); //send topic info
+    tOld = tAct;
+  }
+}
+
+void GxMqtt::sendGPS(){
+  StaticJsonDocument<500> doc; //Memory pool
+  char msg_buf[500];
+  doc.clear();
+  doc["lat"] = status.GPS_Lat;
+  doc["lon"] = status.GPS_Lon;
+  doc["alt"] = status.GPS_alt;
+  serializeJson(doc, msg_buf);
+  sendTopic("gps",msg_buf,false); //send topic gps
+}
+
+void GxMqtt::subscribe(){
+    pPubSubClient->publish(willTopic,"1",true); //retained
+    pPubSubClient->publish(stateTopic,"");
+    sendTopic("name",setting.PilotName.c_str(),false); //send topic name
+    sendTopic("version",VERSION,false); //send topic version
+    sendGPS();
+    pPubSubClient->subscribe(cmdTopic);
+    //subscribe to update topic    
+    pPubSubClient->subscribe(updTopic);
+    log_i("subscription finished");
+    connState = 100;
+}
+
+ void GxMqtt::connect() {
   log_i("Attempting MQTT connection...");
+  connState = 0;
   // Attempt to connect
   char myDevId[100];
-  char willTopic[100];
-  char cmdTopic[100];
   snprintf(myDevId,sizeof(myDevId),"GXAirCom-%s",setting.myDevId.c_str());
   snprintf(willTopic,sizeof(willTopic),"GXAirCom/%s/online",setting.myDevId.c_str());
-  snprintf(cmdTopic,sizeof(cmdTopic),"GXAirCom/%s/cmd",setting.myDevId.c_str());
   snprintf(stateTopic,sizeof(stateTopic),"GXAirCom/%s/state",setting.myDevId.c_str());
+  snprintf(cmdTopic,sizeof(cmdTopic),"GXAirCom/%s/cmd",setting.myDevId.c_str());
   snprintf(myTopic,sizeof(myTopic),"GXAirCom/%s",setting.myDevId.c_str());
+  snprintf(updTopic,sizeof(updTopic),"GXAirCom/%s/upd/cmd",setting.myDevId.c_str());
+  snprintf(updStateTopic,sizeof(updStateTopic),"GXAirCom/%s/upd/state",setting.myDevId.c_str());
+  snprintf(infoTopic,sizeof(infoTopic),"GXAirCom/%s/info",setting.myDevId.c_str());
+  
   bool bRet;
   if (setting.mqtt.pw.length() == 0){
     //log_i("connect without user and password");
@@ -98,35 +228,54 @@ void GxMqtt::connect() {
   
   if (bRet) {
     log_i("connected as %s",myDevId);
-    delay(2000); //wait 2 seconds until will-topic is sent
-    pPubSubClient->publish(willTopic,"1",true); //retained
-    pPubSubClient->publish(stateTopic,"");
-    //log_i("subscribe to topic %s",cmdTopic);
-    pPubSubClient->subscribe(cmdTopic);
+    connState = 10;
   } else {
     log_i("failed, rc=%d --> try again in 1min",pPubSubClient->state());
   }
 }
 
-
+void GxMqtt::sendUpdateCmd(){
+  if (updCmd[0]){
+    pPubSubClient->publish(&updStateTopic[0],updCmd,5,false);
+    if (updstate){
+      sendState(updstate);
+      updstate[0] = 0;
+    }    
+    updCmd[0] = 0;
+  }
+}
 
 void GxMqtt::run(bool bNetworkOk){
   uint32_t tAct = millis();
-  static uint32_t tOld = millis() - 60000;
+  static uint32_t tOld = millis();
+  static uint32_t tRestart = millis();
   if (bNetworkOk){
     //log_i("client connected");
     xSemaphoreTake( *xMutex, portMAX_DELAY );
-    if ((tAct - tOld) >= 60000){
+    if ((tAct - tOld) >= 5000){
       if (!pPubSubClient->connected()){
         connect(); //we try to connect
         tOld = millis();
-      }    
+      }else if (connState == 10){
+        subscribe();
+      }   
     }
     pPubSubClient->loop();
+     if (connState == 100){ //full-connected
+      sendUpdateCmd();
+      sendInfo();
+    }
     //pClient->print("");  
     xSemaphoreGive( *xMutex );
   }else{
-    tOld = tAct - 55000;
+    tOld = tAct;
+  }
+  if (restartNow){
+    if ((tAct - tRestart) >= 3000){
+      ESP.restart();
+    }    
+  }else{
+    tRestart = tAct;
   }
 }
 

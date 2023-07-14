@@ -196,8 +196,8 @@ void write_configFile(SettingsData* pSetting){
   preferences.putUChar("GSPS",pSetting->gs.PowerSave);
   preferences.putUChar("GSANEO",pSetting->wd.anemometer.AnemometerType);
   preferences.putUChar("WDANEOADSGAIN",pSetting->wd.anemometer.AnemometerAdsGain);
-  preferences.putUChar("WDANEOADSVDIVR1",pSetting->wd.anemometer.AnemometerAdsVDivR1);
-  preferences.putUChar("WDANEOADSVDIVR2",pSetting->wd.anemometer.AnemometerAdsVDivR2);
+  preferences.putFloat("WDANEOADSVDIVR1",pSetting->wd.anemometer.AnemometerAdsVDivR1);
+  preferences.putFloat("WDANEOADSVDIVR2",pSetting->wd.anemometer.AnemometerAdsVDivR2);
   preferences.putFloat("WDANEOADSWSMINV", pSetting->wd.anemometer.AnemometerAdsWSpeedMinVoltage);
   preferences.putFloat("WDANEOADSWSMAXV", pSetting->wd.anemometer.AnemometerAdsWSpeedMaxVoltage);
   preferences.putFloat("WDANEOADSWDMINV", pSetting->wd.anemometer.AnemometerAdsWDirMinVoltage);
