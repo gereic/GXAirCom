@@ -1779,6 +1779,7 @@ void readPGXCFSentence(const char* data)
   // Write settings, configure uBLox if needed and re boot
   log_i("write config-to file");
   write_configFile(&setting);
+  // Do not restarts GPS  to avoid a long time beofre GPS constallation is found 
   if (!hasCustomGPSConfigSet) {
     log_i("Setup ublox");
     setupUbloxConfig();
