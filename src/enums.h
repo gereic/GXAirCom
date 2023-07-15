@@ -15,6 +15,13 @@ enum eBoard {
     UNKNOWN = 255
 };
 
+/* PMU */
+enum ePMU {
+  NOPMU = 0,  
+  AXP192 = 1,
+  AXP2101 = 2
+};
+
 /* aneometer */
 enum eAnemometer {
     DAVIS = 0,

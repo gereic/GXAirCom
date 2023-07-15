@@ -20,6 +20,7 @@ bool Baro::initBME280(void){
   uint8_t error;
   sensorAdr = 0x76;
   bool ret = false;
+  xSemaphoreTake( *xMutexI2C, portMAX_DELAY );
   for (sensorAdr = 0x76; sensorAdr <= 0x77; sensorAdr++)
   {
     //log_i("check device at address 0x%X !",sensorAdr);
@@ -36,7 +37,7 @@ bool Baro::initBME280(void){
       
     }
   }
-  
+  xSemaphoreGive( *xMutexI2C );
   if (!ret) return false;
   
   char sensType ='P';
@@ -45,12 +46,14 @@ bool Baro::initBME280(void){
   log_i("found sensor BM%C280 on adr 0x%X",sensType,sensorAdr);
   sensorType = SENSORTYPE_BME280; //init to no sensor connected
   //sensor found --> set sampling
+  xSemaphoreTake( *xMutexI2C, portMAX_DELAY );
   bme.setSampling(Adafruit_BME280::MODE_NORMAL, // mode
                   Adafruit_BME280::SAMPLING_X1, // temperature
                   Adafruit_BME280::SAMPLING_X4, // pressure
                   Adafruit_BME280::SAMPLING_NONE, // humidity
                   Adafruit_BME280::FILTER_X16,  //filter
                   Adafruit_BME280::STANDBY_MS_0_5);  //duration
+  xSemaphoreGive( *xMutexI2C );
   return true;
 }
 
@@ -513,7 +516,8 @@ bool Baro::initMS5611(void){
   return true;
 }
 
-uint8_t Baro::begin(TwoWire *pi2c){
+uint8_t Baro::begin(TwoWire *pi2c,SemaphoreHandle_t *_xMutex){
+  xMutexI2C = _xMutex;
   uint8_t ret = 0;
   pI2c = pi2c;
   sensorType = SENSORTYPE_NONE; //init to no sensor connected
@@ -528,13 +532,6 @@ uint8_t Baro::begin(TwoWire *pi2c){
   }else{
     return 0;
   }
-  /*
-  if (!initBME280()){
-    if (!initMS5611()){
-      return false;
-    }
-  }
-  */
   xMutex = xSemaphoreCreateMutex();
   //Serial.print("size of data:"); Serial.println(sizeof(logData));  
   memset(&logData,0,sizeof(logData));
@@ -917,7 +914,9 @@ void Baro::runMS5611(uint32_t tAct){
 void Baro::runBME280(uint32_t tAct){
   static uint32_t tOld = millis();
   if ((tAct - tOld) >= 10){
+    xSemaphoreTake( *xMutexI2C, portMAX_DELAY );
     bme.readADCValues();
+    xSemaphoreGive( *xMutexI2C );
     if (countReadings < 10){
       countReadings++;
     }else{

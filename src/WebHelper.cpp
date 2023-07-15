@@ -141,7 +141,7 @@ void onWebSocketEvent(uint8_t client_num,
           doc["compiledate"] = String(compile_date);
           doc["bHasVario"] = (uint8_t)status.vario.bHasVario;       
           doc["bHasMPU"] = (uint8_t)status.vario.bHasMPU;   
-          doc["VisWeather"] = (uint8_t)(setting.wd.mode.bits.enable | status.bWUBroadCast);
+          doc["VisWeather"] = (uint8_t)((setting.wd.mode.bits.enable | status.bWUBroadCast) & setting.Mode == eMode::GROUND_STATION);
           doc["board"] = setting.boardType;
           doc["Frequ"] = setting.CPUFrequency;
           doc["disp"] = setting.displayType;

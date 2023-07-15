@@ -475,7 +475,7 @@ struct statusData{
   uint16_t fanetRx;
   uint16_t legTx;
   uint16_t legRx;
-  bool bHasPMU;
+  ePMU PMU;
   VarioStatus vario;
   bool bWUBroadCast;
   uint32_t tGPSCycle;

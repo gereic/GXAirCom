@@ -72,7 +72,7 @@ class Baro {
     };    
 public:
     Baro(); //constructor
-    uint8_t begin(TwoWire *pi2c);
+    uint8_t begin(TwoWire *pi2c,SemaphoreHandle_t *_xMutex);
     void setKalmanSettings(float sigmaP,float sigmaA);
     void useMPU(bool bUseMPU);
     void run(void);
@@ -134,6 +134,7 @@ private:
     double _sigmaP;
     double _sigmaA;
     int axMin,axMax,ayMin,ayMax,azMin,azMax;
+    SemaphoreHandle_t *xMutexI2C;
 };
 
 
