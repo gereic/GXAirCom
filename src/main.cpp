@@ -1769,6 +1769,7 @@ void readPGXCFSentence(const char* data)
   setting.outputFANET = outputFANET;
   setting.outputGPS = outputGPS;
   setting.outputFLARM = outputFLARM;
+  bool hasCustomGPSConfigSet = setting.customGPSConfig;
   setting.customGPSConfig = customGPSConfig;
   setting.AircraftType = aircraftType;
   setting.myDevId = myDevId;
@@ -1778,8 +1779,12 @@ void readPGXCFSentence(const char* data)
   // Write settings, configure uBLox if needed and re boot
   log_i("write config-to file");
   write_configFile(&setting);
-  log_i("Setup ublox");
-  setupUbloxConfig();
+  if (!hasCustomGPSConfigSet) {
+    log_i("Setup ublox");
+    setupUbloxConfig();
+  } else {
+    log_i("Skipping setup ublox");
+  }
   log_i("reboot");
   ESP.restart();
 }
