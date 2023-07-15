@@ -1245,7 +1245,7 @@ void setupPMU(){
 
     PMU->setPowerChannelVoltage(XPOWERS_DCDC1, 3300);//       AXP192 power-on value: 3300
     //protected oled power source
-    PMU->setProtectedChannel(XPOWERS_DCDC1);
+    //PMU->setProtectedChannel(XPOWERS_DCDC1);
     // enable oled power
     PMU->enablePowerOutput(XPOWERS_DCDC1);
 
@@ -2910,7 +2910,8 @@ void taskBaro(void *pvParameters){
   #ifdef S3CORE
   uint8_t baroSensor = baro.begin(&i2cOne,&xI2C1Mutex);
   #else
-  uint8_t baroSensor = baro.begin(&i2cZero,&xI2C0Mutex);
+  Wire.begin(PinBaroSDA,PinBaroSCL,400000); //init i2c
+  uint8_t baroSensor = baro.begin(&Wire,&xI2C0Mutex);
   #endif
   baro.setKalmanSettings(setting.vario.sigmaP,setting.vario.sigmaA);
   if (baroSensor > 0){
