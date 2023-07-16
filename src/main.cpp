@@ -109,8 +109,8 @@ RTC_DATA_ATTR int iSunRise = -1;
 RTC_DATA_ATTR int iSunSet = -1;
 
 #include <Wire.h>
-TwoWire i2cZero = TwoWire(0);
-TwoWire i2cOne = TwoWire(1);
+TwoWire *pI2cZero = &Wire;
+TwoWire *pI2cOne = &Wire1;
 SemaphoreHandle_t xI2C1Mutex;
 SemaphoreHandle_t xI2C0Mutex;
 SemaphoreHandle_t *PMUMutex = NULL;
@@ -407,8 +407,8 @@ void i2cScanner(){
     // The i2c_scanner uses the return value of
     // the Write.endTransmisstion to see if
     // a device did acknowledge to the address.
-    i2cOne.beginTransmission(address);
-    error = i2cOne.endTransmission();
+    pI2cOne->beginTransmission(address);
+    error = pI2cOne->endTransmission();
  
     if (error == 0)
     {
@@ -574,8 +574,8 @@ void checkLoraChip(){
 uint8_t checkI2C(){
   uint8_t nDevices = 0;
   for (int i = 1;i < 127; i++){
-    i2cOne.beginTransmission(i);
-    uint8_t err = i2cOne.endTransmission();
+    pI2cOne->beginTransmission(i);
+    uint8_t err = pI2cOne->endTransmission();
     if (err == 0) {
       nDevices++;
       //log_i("I2C Device found at %02X",i);
@@ -605,19 +605,19 @@ void checkBoardType(){
   log_i("start checking board-type");  
   PinOledSDA = 21;
   PinOledSCL = 22;
-  i2cOne.begin(PinOledSDA, PinOledSCL);
+  pI2cOne->begin(PinOledSDA, PinOledSCL);
   uint8_t i2cDevices = checkI2C();
   if (i2cDevices < 10){
-    i2cOne.beginTransmission(AXP192_SLAVE_ADDRESS);
-    if (i2cOne.endTransmission() == 0) {
+    pI2cOne->beginTransmission(AXP192_SLAVE_ADDRESS);
+    if (pI2cOne->endTransmission() == 0) {
       //ok we have a T-Beam !! 
       //check, if we have an OLED
       setting.boardType = eBoard::T_BEAM;
       log_i("AXP192 has been found");
       checkLoraChip();
       setting.displayType = NO_DISPLAY;
-      i2cOne.beginTransmission(OLED_SLAVE_ADDRESS);
-      if (i2cOne.endTransmission() == 0) {
+      pI2cOne->beginTransmission(OLED_SLAVE_ADDRESS);
+      if (pI2cOne->endTransmission() == 0) {
         //we have found also the OLED
         setting.displayType = OLED0_96;
         log_i("OLED found");
@@ -628,8 +628,8 @@ void checkBoardType(){
       esp_restart(); //we need to restart
     }
     //no AXP192 --> maybe T-Beam V07 or T3 V1.6
-    i2cOne.beginTransmission(OLED_SLAVE_ADDRESS);
-    if (i2cOne.endTransmission() == 0) {
+    pI2cOne->beginTransmission(OLED_SLAVE_ADDRESS);
+    if (pI2cOne->endTransmission() == 0) {
       //we have found the OLED
       setting.boardType = eBoard::T_BEAM_V07;
       setting.displayType = OLED0_96;
@@ -644,15 +644,15 @@ void checkBoardType(){
   PinOledSDA = 4;
   PinOledSCL = 15;
   PinOledRst = 16;
-  i2cOne.begin(PinOledSDA, PinOledSCL);
+  pI2cOne->begin(PinOledSDA, PinOledSCL);
   i2cDevices = checkI2C();
   pinMode(PinOledRst, OUTPUT);
   digitalWrite(PinOledRst, LOW);
   delay(100);
   digitalWrite(PinOledRst, HIGH);
   delay(100);
-  i2cOne.beginTransmission(OLED_SLAVE_ADDRESS);
-  if (i2cOne.endTransmission() == 0) {
+  pI2cOne->beginTransmission(OLED_SLAVE_ADDRESS);
+  if (pI2cOne->endTransmission() == 0) {
     //we have found also the OLED
     setting.displayType = OLED0_96;
     log_i("OLED found");
@@ -1112,10 +1112,10 @@ void setupPMU(){
   if (!PMU){
     if (setting.boardType == eBoard::T_BEAM_S3CORE){
       PMUMutex = &xI2C0Mutex;
-      PMU = new XPowersAXP2101(i2cZero,42,41,AXP2101_SLAVE_ADDRESS);
+      PMU = new XPowersAXP2101(*pI2cZero,42,41,AXP2101_SLAVE_ADDRESS);
     }else{
       PMUMutex = &xI2C1Mutex;
-      PMU = new XPowersAXP2101(i2cOne,PinOledSDA,PinOledSCL,AXP2101_SLAVE_ADDRESS);
+      PMU = new XPowersAXP2101(*pI2cOne,PinOledSDA,PinOledSCL,AXP2101_SLAVE_ADDRESS);
     }
     
     if (!PMU->init()) {
@@ -1129,7 +1129,7 @@ void setupPMU(){
   }
   if (!PMU){
     PMUMutex = &xI2C1Mutex;
-    PMU = new XPowersAXP192(i2cOne,PinOledSDA,PinOledSCL,AXP192_SLAVE_ADDRESS);
+    PMU = new XPowersAXP192(*pI2cOne,PinOledSDA,PinOledSCL,AXP192_SLAVE_ADDRESS);
     if (!PMU->init()) {
         //Serial.println("Warning: Failed to find AXP192 power management");
         delete PMU;
@@ -1835,7 +1835,7 @@ void setup() {
       pinMode(PinFuelSensor, INPUT);
     }      
 
-    i2cOne.begin(PinOledSDA, PinOledSCL);
+    pI2cOne->begin(PinOledSDA, PinOledSCL);
     setupPMU();
     //for new T-Beam output 4 is red led
 
@@ -1887,7 +1887,7 @@ void setup() {
       pinMode(PinFuelSensor, INPUT);
     }      
 
-    i2cOne.begin(PinOledSDA, PinOledSCL);
+    pI2cOne->begin(PinOledSDA, PinOledSCL);
     setupPMU();
     //for new T-Beam output 4 is red led
 
@@ -1926,7 +1926,7 @@ void setup() {
     // Lilygo T3 v2.1.1.6 extra button on 0
     sButton[1].PinButton = 0;
 
-    i2cOne.begin(PinOledSDA, PinOledSCL);
+    pI2cOne->begin(PinOledSDA, PinOledSCL);
     // voltage-divier 100kOhm and 100kOhm
     // vIn = (R1+R2)/R2 * VOut
     adcVoltageMultiplier = 2.12f;
@@ -1953,7 +1953,7 @@ void setup() {
 
     PinBuzzer = 0;
 
-    i2cOne.begin(PinOledSDA, PinOledSCL);
+    pI2cOne->begin(PinOledSDA, PinOledSCL);
     // voltage-divier 100kOhm and 100kOhm
     // vIn = (R1+R2)/R2 * VOut
     adcVoltageMultiplier = 2.5f; // not sure if it is ok ?? don't have this kind of board
@@ -1982,7 +1982,7 @@ void setup() {
       PinOledRst = 16;
       PinOledSDA = 4;
       PinOledSCL = 15;
-      i2cOne.begin(PinOledSDA, PinOledSCL);
+      pI2cOne->begin(PinOledSDA, PinOledSCL);
     }
 
     PinBuzzer = 17;
@@ -2077,7 +2077,7 @@ void setup() {
     PinOledRst = 16;
     PinOledSDA = 4;
     PinOledSCL = 15;
-    i2cOne.begin(PinOledSDA, PinOledSCL);
+    pI2cOne->begin(PinOledSDA, PinOledSCL);
 
     PinExtPower = 21;
     break;
@@ -2189,12 +2189,12 @@ void setup() {
 
     PinBaroSDA = 17;
     PinBaroSCL = 18;  
-    i2cOne.begin(PinBaroSDA, PinBaroSCL);
+    pI2cOne->begin(PinBaroSDA, PinBaroSCL);
     PinPMU_Irq = 40;
     PinBuzzer = 48;
     setupPMU();   
     /*
-    i2cZero.begin(PinBaroSDA, PinBaroSCL);
+    pI2cZero->begin(PinBaroSDA, PinBaroSCL);
     while(1){
       i2cScanner(); 
       delay(5000);
@@ -2616,11 +2616,11 @@ void taskWeather(void *pvParameters){
   Windy::wData wiData;
   weatherAvg avg[2];
   bool bFirstWData = false;
-  i2cZero.begin(PinBaroSDA,PinBaroSCL,200000u); //init i2c
+  pI2cZero->begin(PinBaroSDA,PinBaroSCL,200000u); //init i2c
   Weather weather;
   weather.setTempOffset(setting.wd.tempOffset);
   weather.setWindDirOffset(setting.wd.windDirOffset);
-  if (!weather.begin(&i2cZero,setting,PinOneWire,PinWindDir,PinWindSpeed,PinRainGauge)){    
+  if (!weather.begin(pI2cZero,setting,PinOneWire,PinWindDir,PinWindSpeed,PinRainGauge)){    
   
   }
   if ((setting.WUUpload.enable) && (!setting.wd.mode.bits.enable)){
@@ -2908,10 +2908,10 @@ void taskBaro(void *pvParameters){
   }  
   baro.useMPU(setting.vario.useMPU);
   #ifdef S3CORE
-  uint8_t baroSensor = baro.begin(&i2cOne,&xI2C1Mutex);
+  uint8_t baroSensor = baro.begin(pI2cOne,&xI2C1Mutex);
   #else
-  Wire.begin(PinBaroSDA,PinBaroSCL,400000); //init i2c
-  uint8_t baroSensor = baro.begin(&Wire,&xI2C0Mutex);
+  pI2cZero->begin(PinBaroSDA,PinBaroSCL,400000); //init i2c
+  uint8_t baroSensor = baro.begin(pI2cZero,&xI2C0Mutex);
   #endif
   baro.setKalmanSettings(setting.vario.sigmaP,setting.vario.sigmaA);
   if (baroSensor > 0){
@@ -4439,7 +4439,7 @@ void taskOled(void *pvParameters){
     return;
   }
   Oled display;
-  display.begin(&i2cOne,PinOledRst,&xI2C1Mutex);
+  display.begin(pI2cOne,PinOledRst,&xI2C1Mutex);
   while(1){
     display.run();
     delay(10);
