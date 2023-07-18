@@ -559,8 +559,6 @@ AsyncFileResponse::AsyncFileResponse(File content, const String& path, const Str
     char* filename = (char*)path.c_str() + filenameStart;
     snprintf(buf, sizeof (buf), "attachment; filename=\"%s\"", filename);
     addHeader("Content-Disposition", buf);
-  } else {
-    //snprintf(buf, sizeof (buf), "inline; filename=\"%s\"", filename);
   }
 }
 
