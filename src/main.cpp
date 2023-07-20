@@ -17,7 +17,8 @@
 #include "esp_bt_main.h"
 #endif
 #include <Ogn.h>
-#include "SparkFun_Ublox_Arduino_Library.h"
+//#include "SparkFun_Ublox_Arduino_Library.h"
+#include <SparkFun_u-blox_GNSS_Arduino_Library.h>
 #include <TimeLib.h>
 #include <sys/time.h>
 //#include <HTTPClient.h>
@@ -3638,7 +3639,7 @@ void sendLK8EX(uint32_t tAct){
 
 #ifdef AIRMODULE
 bool setupUbloxConfig(){
-  SFE_UBLOX_GPS ublox;
+  SFE_UBLOX_GNSS ublox;
   ublox.begin(NMeaSerial);
   ublox.factoryReset();
   delay(2000); //wait for hardware again !!
