@@ -405,41 +405,16 @@ uint8_t setNMEA_U6_7[] PROGMEM = {0x00, 0x23, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00
                                   0x00, 0x00, 0x00, 0x00};
 
  /* https://content.arduino.cc/assets/Arduino-MKR-GPS-Shield_u-blox8-M8_ReceiverDescrProtSpec_UBX-13003221_Public.pdf 198 */
-// uint8_t setNMEA_U8_9_10[] PROGMEM = {0x00, 0x40, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00,  /* NMEA protocol v4.00 extended */
-//                                      0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
-//                                      0x00, 0x00, 0x00, 0x00};
 uint8_t setNMEA_U8_9_10[] PROGMEM = {0x00, 0x40, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00,  /* NMEA protocol v4.00 extended for Galileo */
                                      0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
                                      0x00, 0x00, 0x00, 0x00};
 
- /* customGPS Setup: configure SBAS */
-uint8_t setSBAS[] PROGMEM = {0x01, 0x03, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00}; /* disable integrity, enable auto-scan */
-
- /* customGPS Setup: configure PMS */
-uint8_t setPMS[] PROGMEM = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; /* Full power */
-
- /* customGPS Setup: Rate 200ms */
-uint8_t setCFGRATE[] PROGMEM = {0xC8, 0x00, 0x01, 0x00, 0x01, 0x00};
-
 /* UBX-CFG-MSG (NMEA Standard Messages) */
-uint8_t setCFG[16][8] PROGMEM = {
-  {0xF0, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00}, // GGA - Global positioning system fix data
-  {0xF0, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, // GLL - Latitude and longitude, with time of position fix and status
-  {0xF0, 0x02, 0x00, 0x05, 0x00, 0x05, 0x00, 0x00}, // GSA - GNSS DOP and Active Satellites
-	{0xF0, 0x03, 0x00, 0x05, 0x00, 0x05, 0x00, 0x00}, // GSV - GNSS Satellites in View
-	{0xF0, 0x04, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00}, // RMC - Recommended Minimum data
-	{0xF0, 0x05, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00}, // VTG - Course over ground and Ground speed
-	{0xF0, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, // GRS - GNSS Range Residuals
-	{0xF0, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, // GST - GNSS Pseudo Range Error Statistics
-	{0xF0, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, // ZDA - Time and Date<
-	{0xF0, 0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, // GBS - GNSS Satellite Fault Detection
-	{0xF0, 0x0A, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, // DTM - Datum Reference
-	{0xF0, 0x0D, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, // GNS - GNSS fix data
-	{0xF0, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, // VLW - Dual ground/water distance
+uint8_t setCFG[3][8] PROGMEM = {
 	{0xF1, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, // Ublox - Lat/Long Position Data
 	{0xF1, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, // Ublox - Satellite Status
 	{0xF1, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, // Ublox - Time of Day and Clock Information
-} ;
+};
 
 
 
@@ -3884,39 +3859,42 @@ bool setupUbloxConfig(){
       log_i("ublox: Version %d detected", ubloxType);
 
 
-      // Set required constellations
+      // Set required constellations, if it can be set it's tried, else it's ok if it fails
       log_i("ublox: Retreive constellations that are enabled");
       customCfg = {UBX_CLASS_CFG, UBX_CFG_GNSS, 0, 0, 0, payloadCfg, 0, 0, SFE_UBLOX_PACKET_VALIDITY_NOT_DEFINED, SFE_UBLOX_PACKET_VALIDITY_NOT_DEFINED};
+      bool constellationsReceived = true;
       if (ublox.sendCommand(&customCfg) != SFE_UBLOX_STATUS_DATA_RECEIVED){
-        log_e("ublox: error getting parameter UBX-CFG-GNSS");
-        continue;
+        log_e("ublox: error getting parameter UBX-CFG-GNSS, also not trying to set it");
+        constellationsReceived=false;
       }
 
-      log_i("ublox: GNSS payload 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x", customCfg.cls, customCfg.id, customCfg.len, customCfg.counter, customCfg.startingSpot);
-      for (uint8_t ncb = 0; ncb < payloadCfg[3]; ncb++){
-        log_i("ublox: GNSS block 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x",
-          payloadCfg[4+8*ncb], payloadCfg[5+8*ncb], payloadCfg[6+8*ncb], payloadCfg[7+8*ncb],
-          payloadCfg[8+8*ncb], payloadCfg[9+8*ncb], payloadCfg[10+8*ncb], payloadCfg[11+8*ncb]);
+      if (constellationsReceived) {
+        log_i("ublox: GNSS payload 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x", customCfg.cls, customCfg.id, customCfg.len, customCfg.counter, customCfg.startingSpot);
+        for (uint8_t ncb = 0; ncb < payloadCfg[3]; ncb++){
+          log_i("ublox: GNSS block 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x",
+            payloadCfg[4+8*ncb], payloadCfg[5+8*ncb], payloadCfg[6+8*ncb], payloadCfg[7+8*ncb],
+            payloadCfg[8+8*ncb], payloadCfg[9+8*ncb], payloadCfg[10+8*ncb], payloadCfg[11+8*ncb]);
 
-          uint8_t gnssId = payloadCfg[4+8*ncb];
-          if (gnssId == 0x02 && payloadCfg[8+8*ncb] == 0x00) {
-            shouldHardReset = true;
-          }
-          // Enable GPS=0x00 SBAS=0x01 Galileo=0x02 QZSS=0x05 Glonass=0x06, disable glonass for uBlox <8
-          if (gnssId == 0x00 || gnssId == 0x01 || gnssId == 0x02 || gnssId == 0x05 || (gnssId == 0x06 && ubloxType >= 8))  {
-            payloadCfg[8+8*ncb] = 0x01;
-          } else {
-            payloadCfg[8+8*ncb] = 0x00;
-          }
+            uint8_t gnssId = payloadCfg[4+8*ncb];
+            if (gnssId == 0x02 && payloadCfg[8+8*ncb] == 0x00) {
+              shouldHardReset = true;
+            }
+            // Enable GPS=0x00 SBAS=0x01 Galileo=0x02 Beidou=0x03 QZSS=0x05 Disable: Glonass=0x06
+            if (gnssId == 0x00 || gnssId == 0x01 || gnssId == 0x02 || gnssId == 0x03 || gnssId == 0x05)  {
+              payloadCfg[8+8*ncb] = 0x01;
+            } else {
+              payloadCfg[8+8*ncb] = 0x00;
+            }
+        }
+        log_i("ublox: enable required constellations");
+        if (ublox.sendCommand(&customCfg) != SFE_UBLOX_STATUS_DATA_SENT){
+          log_e("ublox: error setting parameter UBX_CFG_GNSS");
+        }
+        delay(550);
       }
-      log_i("ublox: enable required constellations");
-      if (ublox.sendCommand(&customCfg) != SFE_UBLOX_STATUS_DATA_SENT){
-        log_e("ublox: error setting parameter UBX_CFG_GNSS");
-        continue;
-      }
-      delay(550);
 
-      // COnfigure ublox based on the attached version
+
+      // Configure ublox based on the attached version
       uint8_t *setNMEA=NULL;
       uint8_t lenNMEA=0;
       if (ubloxType == 6 || ubloxType == 7){
@@ -3932,35 +3910,33 @@ bool setupUbloxConfig(){
         customCfg = {UBX_CLASS_CFG, UBX_CFG_NMEA, lenNMEA, 0, 0, setNMEA, 0, 0, SFE_UBLOX_PACKET_VALIDITY_NOT_DEFINED, SFE_UBLOX_PACKET_VALIDITY_NOT_DEFINED};
         if (ublox.sendCommand(&customCfg) != SFE_UBLOX_STATUS_DATA_SENT){
           log_e("ublox: error setting parameter UBX-CFG-NMEA");
+          continue;
         }
       }
 
-      if (ubloxType >= 8){
-        log_i("ublox: setting parameter UBX-CFG-PMS");
-        customCfg = {UBX_CLASS_CFG, UBX_CFG_PMS, sizeof(setPMS), 0, 0, setPMS, 0, 0, SFE_UBLOX_PACKET_VALIDITY_NOT_DEFINED, SFE_UBLOX_PACKET_VALIDITY_NOT_DEFINED};
-        if (ublox.sendCommand(&customCfg) != SFE_UBLOX_STATUS_DATA_SENT){
-          log_e("ublox: error setting parameter UBX-CFG-PMS");
-        }
-      }
-
-      log_i("ublox: setting parameter UBX-CFG-SBAS");
-      customCfg = {UBX_CLASS_CFG, UBX_CFG_SBAS, sizeof(setSBAS), 0, 0, setSBAS, 0, 0, SFE_UBLOX_PACKET_VALIDITY_NOT_DEFINED, SFE_UBLOX_PACKET_VALIDITY_NOT_DEFINED};
-      if (ublox.sendCommand(&customCfg) != SFE_UBLOX_STATUS_DATA_SENT){
-        log_e("ublox: error setting parameter UBX-CFG-SBAS");
-      }
+      // Set on best efford
+      ublox.enableNMEAMessage(UBX_NMEA_GGA,COM_PORT_UART1, 0x01, defaultMaxWait);
+      ublox.disableNMEAMessage(UBX_NMEA_GLL,COM_PORT_UART1);
+      ublox.enableNMEAMessage(UBX_NMEA_GSA,COM_PORT_UART1, 0x05, defaultMaxWait);
+      ublox.enableNMEAMessage(UBX_NMEA_GSV,COM_PORT_UART1, 0x05, defaultMaxWait);
+      ublox.enableNMEAMessage(UBX_NMEA_RMC,COM_PORT_UART1, 0x01, defaultMaxWait);
+      ublox.enableNMEAMessage(UBX_NMEA_VTG,COM_PORT_UART1, 0x01, defaultMaxWait);
+      ublox.disableNMEAMessage(UBX_NMEA_GRS,COM_PORT_UART1);
+      ublox.disableNMEAMessage(UBX_NMEA_GST,COM_PORT_UART1);
+      ublox.disableNMEAMessage(UBX_NMEA_ZDA,COM_PORT_UART1);
+      ublox.disableNMEAMessage(UBX_NMEA_GBS,COM_PORT_UART1);
+      ublox.disableNMEAMessage(UBX_NMEA_DTM,COM_PORT_UART1);
+      ublox.disableNMEAMessage(UBX_NMEA_GNS,COM_PORT_UART1);
+      ublox.disableNMEAMessage(UBX_NMEA_VLW,COM_PORT_UART1);
 
       for (uint8_t i=0; i<sizeof(setCFG) / 8; i++) {
         log_i("ublox: setting parameter UBX-CFG-MSG 0x%02x", setCFG[i][1]);
-        customCfg = {UBX_CLASS_CFG, UBX_CFG_MSG, sizeof(setCFG) / 16, 0, 0, setCFG[i], 0, 0, SFE_UBLOX_PACKET_VALIDITY_NOT_DEFINED, SFE_UBLOX_PACKET_VALIDITY_NOT_DEFINED};
-        if (ublox.sendCommand(&customCfg) != SFE_UBLOX_STATUS_DATA_SENT){
-          log_e("ublox: error setting parameter UBX-CFG-MSG");
-        }
-        delay(10);
+        customCfg = {UBX_CLASS_CFG, UBX_CFG_MSG, sizeof(setCFG) / 3, 0, 0, setCFG[i], 0, 0, SFE_UBLOX_PACKET_VALIDITY_NOT_DEFINED, SFE_UBLOX_PACKET_VALIDITY_NOT_DEFINED};
+        ublox.sendCommand(&customCfg);
       }
 
       log_i("ublox: setting parameter UBX-CFG-RATE");
-      customCfg = {UBX_CLASS_CFG, UBX_CFG_RATE, sizeof(setCFGRATE), 0, 0, setCFGRATE, 0, 0, SFE_UBLOX_PACKET_VALIDITY_NOT_DEFINED, SFE_UBLOX_PACKET_VALIDITY_NOT_DEFINED};
-      if (ublox.sendCommand(&customCfg) != SFE_UBLOX_STATUS_DATA_SENT){
+      if (!ublox.setNavigationFrequency(5, defaultMaxWait)){
         log_e("ublox: error setting parameter UBX-CFG-RATE");
       }
 
@@ -3981,6 +3957,11 @@ bool setupUbloxConfig(){
       log_e("ublox: error saving config");
       continue;
     }else{
+      if(shouldHardReset) {
+        // log_e("ublox:Should hard reset after ebable of Galileo");
+        // Not quite sure yet if this is really needed.
+        // ublox.hardReset();
+      }
       log_i("!!! setup ublox successfully");
       return true;
     }
