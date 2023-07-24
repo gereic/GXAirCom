@@ -116,8 +116,8 @@ SemaphoreHandle_t xI2C1Mutex;
 SemaphoreHandle_t xI2C0Mutex;
 SemaphoreHandle_t *PMUMutex = NULL;
 
-#ifdef AIRMODULE
 #include <MicroNMEA.h>
+#ifdef AIRMODULE
 //Libraries for Vario
 #include <Baro.h>
 #include <beeper.h>
@@ -449,7 +449,7 @@ void i2cScanner(){
     log_i("done");
 }
 
-#if defined(GSMODULE)
+#ifdef GSMODULE
 void sendFanetWeatherData2WU(FanetLora::weatherData *weatherData,uint8_t wuIndex){
   if ((status.bInternetConnected) && (status.bTimeOk)){
     WeatherUnderground wu;
@@ -1756,8 +1756,10 @@ void readPGXCFSentence(const char* data)
   write_configFile(&setting);
   // Do not restarts GPS  to avoid a long time beofre GPS constallation is found 
   if (!hasCustomGPSConfigSet) {
+#if defined(AIRMODULE)
     log_i("Setup ublox");
     setupUbloxConfig();
+#endif
   } else {
     log_i("Skipping setup ublox");
   }
