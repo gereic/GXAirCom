@@ -67,7 +67,8 @@ void GxMqtt::callback(char* topic, byte* payload, unsigned int length) {
             Update.printError(Serial);
           }
           msgIndex++;
-          msgIndex = msgIndex & 0x0F; //only 4 Bits      
+          msgIndex = msgIndex & 0x0F; //only 4 Bits  
+          msgCnt++;              
           snprintf(updstate,sizeof(updstate),"update %d%% finished",payload[1]);
           Serial.println(updstate);
         }else{
@@ -79,24 +80,24 @@ void GxMqtt::callback(char* topic, byte* payload, unsigned int length) {
       }
       //sendState(updstate);
       //pPubSubClient->publish(&updStateTopic[0],payload,2,false);
-      msgCnt++;
     }else if (cmd == 0x03){
       msgCnt++;
       if (updateState == 2){
         updateState = 3;
       }
       if (updateState == 3){
-        Serial.printf("upd end msgCnt=%d,len=%d\n",msgCnt,length);
         uint32_t rMsgCnt = ((uint32_t)payload[1] << 24) + ((uint32_t)payload[2] << 16) + ((uint32_t)payload[3] << 8) + (uint32_t)payload[4];
+        Serial.printf("upd end msgCnt=%d:%d,len=%d\n",msgCnt,rMsgCnt,length);
         if ((rMsgCnt == msgCnt) && (fileLen == rFileLen)){
           //pPubSubClient->publish(&updStateTopic[0],payload,1,false);
-          if (!Update.end(true)){
-            Update.printError(Serial);
-          } else {
+          if (Update.end(true)){
             Serial.printf("Update complete msgCnt=%d:%d len=%d:%d\n",msgCnt,rMsgCnt,fileLen,rFileLen);  
             restartNow = true;    
             snprintf(updstate,sizeof(updstate),"Update complete");
             sendState(updstate);
+          } else {
+            Serial.printf("Update error\n");  
+            Update.printError(Serial);
           }
         }else{
           snprintf(updstate,sizeof(updstate),"Update error msgCnt=%d:%d len=%d:%d",msgCnt,rMsgCnt,fileLen,rFileLen);
@@ -142,9 +143,7 @@ bool GxMqtt::begin(SemaphoreHandle_t *_xMutex,Client *_client){
 void GxMqtt::sendTopic(const char* topic,const char* payload, boolean retained){
   char sendTopic[100];
   snprintf(sendTopic,sizeof(sendTopic),"%s/%s",myTopic,topic);
-  //xSemaphoreTake( *xMutex, portMAX_DELAY );
   pPubSubClient->publish(sendTopic,payload,retained);
-  //xSemaphoreGive( *xMutex );
 }
 
 void GxMqtt::sendState(const char *c){
@@ -251,22 +250,24 @@ void GxMqtt::run(bool bNetworkOk){
   static uint32_t tRestart = millis();
   if (bNetworkOk){
     //log_i("client connected");
-    xSemaphoreTake( *xMutex, portMAX_DELAY );
-    if ((tAct - tOld) >= 5000){
-      if (!pPubSubClient->connected()){
-        connect(); //we try to connect
-        tOld = millis();
-      }else if (connState == 10){
-        subscribe();
-      }   
+    //log_i("take mutex");
+    if (xSemaphoreTake( *xMutex, ( TickType_t ) 500 ) == pdTRUE ){
+      if ((tAct - tOld) >= 5000){
+        if (!pPubSubClient->connected()){
+          connect(); //we try to connect
+          tOld = millis();
+        }else if (connState == 10){
+          subscribe();
+        }   
+      }
+      pPubSubClient->loop();
+      if (connState == 100){ //full-connected
+        sendUpdateCmd();
+        sendInfo();
+      }
+      //log_i("give mutex");
+      xSemaphoreGive( *xMutex );
     }
-    pPubSubClient->loop();
-     if (connState == 100){ //full-connected
-      sendUpdateCmd();
-      sendInfo();
-    }
-    //pClient->print("");  
-    xSemaphoreGive( *xMutex );
   }else{
     tOld = tAct;
   }

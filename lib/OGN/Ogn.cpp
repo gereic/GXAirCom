@@ -50,8 +50,11 @@ void Ogn::sendLoginMsg(void){
     //String login ="user " + _user + " pass " + calcPass(_user) + " vers " + _version + " filter m/10\r\n";
     String login ="user " + _user + " pass " + calcPass(_user) + " vers " + _version + "\r\n";
     log_i("%s",login.c_str());
+    //log_i("take mutex");
     xSemaphoreTake( *xMutex, portMAX_DELAY );
     client->print(login);
+    client->flush();
+    //log_i("give mutex");
     xSemaphoreGive( *xMutex );
 }
 
@@ -80,16 +83,18 @@ void Ogn::connect2Server(uint32_t tAct){
     connected = false;
     if ((tAct - tConnRetry) >= 5000){
         tConnRetry = tAct;
+        //log_i("take mutex");
         xSemaphoreTake( *xMutex, portMAX_DELAY );
         client->stop();
-        xSemaphoreGive( *xMutex );
-        //sntp_setoperatingmode(SNTP_OPMODE_POLL);
-        //sntp_setservername(0, "pool.ntp.org");
-        //sntp_init();
+        client->flush();
+        ////log_i("give mutex");
+        //xSemaphoreGive( *xMutex );
         //init and get the time
-        configTime(0, 0, "pool.ntp.org");
-        xSemaphoreTake( *xMutex, portMAX_DELAY );
+        //configTime(0, 0, "pool.ntp.org");
+        ////log_i("take mutex");
+        //xSemaphoreTake( *xMutex, portMAX_DELAY );
         int ret = client->connect("aprs.glidernet.org", 14580);
+        //log_i("give mutex");
         xSemaphoreGive( *xMutex );
         if (ret) {
             sendLoginMsg();
@@ -204,8 +209,11 @@ void Ogn::sendNameData(String devId,String name,float snr){
     char buff[200];
     sprintf (buff,"%s%s>OGNFNT,qAS,%s:>%sh Name=\"%s\" %0.1fdB\r\n"
     ,"FNT",devId.c_str(),_user.c_str(),sTime.c_str(),name.c_str(),snr);
+    //log_i("take mutex");
     xSemaphoreTake( *xMutex, portMAX_DELAY );
-    client->print(buff);                
+    client->print(buff); 
+    client->flush();   
+    //log_i("give mutex");            
     xSemaphoreGive( *xMutex );
     //log_i("%s",buff);
 
@@ -262,9 +270,11 @@ void Ogn::sendWeatherData(weatherData *wData){
     sprintf (buff," %0.1fdB\r\n",wData->snr);
     send += buff;
 
-
+    //log_i("take mutex");
     xSemaphoreTake( *xMutex, portMAX_DELAY );
-    client->print(send.c_str());                
+    client->print(send.c_str()); 
+    client->flush();
+    //log_i("give mutex");               
     xSemaphoreGive( *xMutex );
     //log_i("%s",send.c_str());
 
@@ -291,8 +301,11 @@ void Ogn::sendGroundTrackingData(time_t timestamp,float lat,float lon,float alt,
   }
   sprintf (buff,"%s%s>OGNFNT,qAS,%s:/%sh%02d%02d.%02d%c\\%03d%02d.%02d%cn%s !W%01d%01d! id%02X%s FNT%X %0.1fdB\r\n" //3F OGN-Tracker and device 15
   ,getOrigin(adressType).c_str(),devId.c_str(),_user.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,(lat < 0)?'S':'N',lonDeg,lonMin/1000,lonMin/10 %100,(lon < 0)?'W':'E',altBuff,int(latMin %10),int(latMin %10),getSenderDetails(true,aircraft_t::STATIC_OBJECT,adressType),devId.c_str(),state,snr);
+  //log_i("take mutex");
   xSemaphoreTake( *xMutex, portMAX_DELAY );
-  client->print(buff);                
+  client->print(buff);
+  client->flush();
+  //log_i("give mutex");                
   xSemaphoreGive( *xMutex );
   //log_i("%s",buff);
 
@@ -358,8 +371,11 @@ void Ogn::sendTrackingData(time_t timestamp,float lat,float lon,float alt,float 
     //sprintf (buff,"%s%s>OGNFNT,qAS,%s:/%sh%02d%02d.%02d%c%c%03d%02d.%02d%c%c%03d/%03d/A=%06d !W%01d%01d! id%02X%s %+04.ffpm FNT1%d %0.1fdB\r\n"
     //            ,getOrigin(adressType).c_str(),devId.c_str(),_user.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,(lat < 0)?'S':'N',AprsIcon[aircraftType][0],lonDeg,lonMin/1000,lonMin/10 %100,(lon < 0)?'W':'E',AprsIcon[aircraftType][1],int(heading),int(speed * 0.53996),int(alt * 3.28084),int(latMin %10),int(latMin %10),getSenderDetails(Onlinetracking,aircraftType,adressType),devId.c_str(),climb*196.85f,getFANETAircraftType(aircraftType),snr);
     //Serial.print(buff);
+    //log_i("take mutex");
     xSemaphoreTake( *xMutex, portMAX_DELAY );
-    client->print(buff);                    
+    client->print(buff);
+    client->flush();
+    //log_i("give mutex");                    
     xSemaphoreGive( *xMutex );
 }
 
@@ -393,8 +409,11 @@ void Ogn::sendReceiverStatus(String sTime){
         sStatus += String(_BattVoltage,2) + "V "; //send batt-voltage
     }
     sStatus += "\r\n";
+    //log_i("take mutex");
     xSemaphoreTake( *xMutex, portMAX_DELAY );
     client->print(sStatus);
+    client->flush();
+    //log_i("give mutex");
     xSemaphoreGive( *xMutex );
     if (initOk < 10) initOk = 10; //now we can send, because we have sent GPS-Position
     //log_i("%s",sStatus.c_str());
@@ -421,8 +440,11 @@ void Ogn::sendReceiverBeacon(String sTime){
 
     //sprintf (buff,"%s>APRS,TCPIP*,qAC,%s:/%sh%02d%02d.%02d%cI%03d%02d.%02d%c&%03d/%03d/A=%06d\r\n"
     //            ,_user.c_str(),_servername.c_str(),sTime.c_str(),latDeg,latMin/1000,latMin/10 %100,(_lat < 0)?'S':'N',lonDeg,lonMin/1000,lonMin/10 %100,(_lon < 0)?'W':'E',int(_heading),int(_speed * 0.53996),int(_alt * 3.28084));
+    //log_i("take mutex");
     xSemaphoreTake( *xMutex, portMAX_DELAY );
-    client->print(buff); 
+    client->print(buff);
+    client->flush();
+    //log_i("give mutex"); 
     xSemaphoreGive( *xMutex );
     if (initOk < 5) initOk = 5; //now we can send, because we have sent GPS-Position
     //log_i("%s",buff);
@@ -487,28 +509,34 @@ void Ogn::sendStatus(uint32_t tAct){
 
 void Ogn::readClient(){
   String line = "";
-  xSemaphoreTake( *xMutex, portMAX_DELAY );
-  while (client->available()){
-    char c = client->read(); //read 1 character 
-    
-    line += c; //read 1 character
-    if (c == '\n'){
-        checkLine(line);
-        line = "";
-    }
+  if (client->available()){
+    //log_i("take mutex");
+    xSemaphoreTake( *xMutex, portMAX_DELAY );
+    while (client->available()){
+        char c = client->read(); //read 1 character 
+        
+        line += c; //read 1 character
+        if (c == '\n'){
+            checkLine(line);
+            line = "";
+        }
 
+    }
+    //log_i("give mutex");
+    xSemaphoreGive( *xMutex );
   }
-  xSemaphoreGive( *xMutex );
 }
 
 void Ogn::checkClientConnected(uint32_t tAct){
     static uint32_t tCheck = tAct;
     if ((tAct - tCheck) >= 10000){
         tCheck = tAct;
+        //log_i("take mutex");
         xSemaphoreTake( *xMutex, portMAX_DELAY );
         if (!client->connected()){
             connected = false;        
         }
+        //log_i("give mutex");
         xSemaphoreGive( *xMutex );
     }
 }
@@ -527,7 +555,8 @@ void Ogn::sendTestMsg(uint32_t tAct){
                 ,_user.c_str(),sTime.c_str());
 
     xSemaphoreTake( *xMutex, portMAX_DELAY );
-    client->print(buff);                
+    client->print(buff);   
+    client->flush();             
     xSemaphoreGive( *xMutex );
     log_i("%s",buff);
   }

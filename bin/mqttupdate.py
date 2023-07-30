@@ -7,13 +7,14 @@ from struct import *
 #filename="firmware_v5.3.5_GsNoBluetoothSim7000.bin"
 #filename="firmware_v5.3.5_sim7000_psRam.bin"
 #filename="firmware_v5.3.5_psRam.bin"
-filename="spiffs_v5.3.5.bin" #file to send
-#filename="firmware_v5.3.5_GsNoBluetooth.bin"
+#filename="spiffs_v5.3.5.bin" #file to send
+filename="firmware_v5.4.0_GsSim7000.bin"
 
-DevId="08E440"
+DevId="08B668"
 SERVERIP="192.168.0.10"
 PORT=1883
-#DevId="08B668"
+#DevId="08B668" #PGV-NW
+#DevId="08E440" #Prochenberg
 #SERVERIP="remote.getronix.at"
 #PORT=21883
 
@@ -52,14 +53,16 @@ def on_message(client, userdata, msg):
 #    #client.mid_value=mid
 #    #client.puback_flag=True  
 
-def wait_for(client,msgType,period=0.25,wait_time=40,running_loop=False):
+def wait_for(client,msgValue,period=0.25,wait_time=40,running_loop=False):
   client.running_loop=running_loop #if using external loop
   wcount=0  
   while True:
     #print("waiting"+ msgType)
     if client.puback_flag:
-      
-      return True
+      if client.mid_value == msgValue:
+        return True
+      else:
+        client.puback_flag = False
     #if msgType=="PUBACK":
     #    if client.on_publish:        
     #        if client.puback_flag:
@@ -91,23 +94,26 @@ def send_end(msgCnt):
    c_publish(client,topic,end,qos)
 
 def c_publish(client,topic,out_message,qos):
+  #global sysCmd
   wcount=0
   while True:
     client.puback_flag=False
+    #if (wcount == 5):
+    #  client.publish(sysCmd,"#SYC VER?\r",0)#publish
     res,mid=client.publish(topic,out_message,qos)#publish
     if res==0: #published ok
-      if wait_for(client,"PUBACK",running_loop=True):
+      if wait_for(client,out_message[0],running_loop=True):
         if client.mid_value == out_message[0]:
           return True
         else:
           print("wrong return-message")
-          return False
+          #return False
       #else:
       #  raise SystemExit("not got puback so quitting")
     time.sleep(0.25)
     wcount+=1
     print("resending package {}".format(wcount))
-    if wcount>5:
+    if wcount>10:
       #print("return from publish loop taken too long")
       raise SystemExit("no answer from device --> Update aborted")
       return False
@@ -116,6 +122,7 @@ def c_publish(client,topic,out_message,qos):
 topic = "GXAirCom/" + DevId + "/upd/cmd"
 status = "GXAirCom/" + DevId + "/state"
 updState = "GXAirCom/" + DevId + "/upd/state"
+sysCmd = "GXAirCom/" + DevId + "/cmd"
 filesize = os.path.getsize(filename)
 print("sending file {0} size={1} to device {2}".format(filename,filesize,DevId))
 fo=open(filename,"rb")

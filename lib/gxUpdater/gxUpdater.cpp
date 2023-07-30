@@ -160,6 +160,12 @@ bool gxUpdater::doUpdate(bool spiffs){
       sFilename += "_sim800_nopsRam.bin";
     }else if (FWTYPE == 6){
       sFilename += "_ttgo-lora32-v1.bin";
+    }else if (FWTYPE == 7){
+      sFilename += "_T-Beam-S3Core.bin";
+    }else if (FWTYPE == 11){
+      sFilename += "_Gs.bin";
+    }else if (FWTYPE == 12){
+      sFilename += "_GsSim7000.bin";
     }
     log_i("updating firmwawre:%s",sFilename.c_str());
     command = U_FLASH;

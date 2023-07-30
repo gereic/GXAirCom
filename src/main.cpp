@@ -2485,6 +2485,13 @@ bool connectModem(){
     log_e("no network");
     return false;
   } 
+  modem.streamWrite("AT+CPSI?\r\n");
+  int i = 0;
+  while(i < 2){
+    String s = modem.stream.readStringUntil('\n');
+    Serial.println(s);  
+    i++;
+  }
   status.gsm.SignalQuality = modem.getSignalQuality();
   //log_i("signal quality %d",status.gsm.SignalQuality);
   status.gsm.sOperator = modem.getOperator();
@@ -2569,6 +2576,13 @@ bool initModem(){
     log_i("set PreferredMode to %d",setting.gsm.PreferredMode);
     modem.setPreferredMode(setting.gsm.PreferredMode); //set preferred mode
   }
+  /*
+  log_i("set Band");
+  modem.sendAT("+CBANDCFG=\"NB-IOT\",8");
+  modem.waitResponse(); 
+  modem.sendAT("+CBANDCFG=\"CAT-M\",3,20");  
+  modem.waitResponse();
+  */
   #endif
   modem.sleepEnable(false); //set sleepmode off
   modem.sendAT(GF("+CMGF=1"));
@@ -2579,36 +2593,38 @@ bool initModem(){
 
 void PowerOffModem(){
   status.modemstatus = eModemState::DISCONNECTED;
-  xSemaphoreTake( xGsmMutex, portMAX_DELAY );
-  
-  log_i("stop gprs connection");
-  modem.gprsDisconnect();
-  log_i("switch radio off");
-  modem.radioOff();  
+  while(1){
+    if (xSemaphoreTake( xGsmMutex, ( TickType_t ) 500 ) == pdTRUE ){
+      log_i("stop gprs connection");
+      modem.gprsDisconnect();
+      log_i("switch radio off");
+      modem.radioOff();  
 
-  #ifdef TINY_GSM_MODEM_SIM7000
-    digitalWrite(5,HIGH);
-    //Power-off SIM7000-module
-    modem.sleepEnable(false); // required in case sleep was activated and will apply after reboot
-    for (int i = 0; i < 10;i++){
-      log_i("power off modem");
-      if (modem.poweroff()) break;
-      delay(1000);
+      #ifdef TINY_GSM_MODEM_SIM7000
+        digitalWrite(5,HIGH);
+        //Power-off SIM7000-module
+        modem.sleepEnable(false); // required in case sleep was activated and will apply after reboot
+        for (int i = 0; i < 10;i++){
+          log_i("power off modem");
+          if (modem.poweroff()) break;
+          delay(1000);
+        }
+      #else
+        //on SIM800L we can't complete power down the module
+        //it restarts itself all the time --> we set the module to sleep-mode
+        log_i("set modem to sleep-mode");
+        modem.sendAT(GF("+CSCLK=2"));
+        delay(1000);
+      #endif
+      digitalWrite(PinGsmRst,LOW);
+      if (PinGsmPower >= 0){
+        // Turn off the Modem power first
+        digitalWrite(PinGsmPower, LOW);
+      }
+      xSemaphoreGive( xGsmMutex );
+      break;
     }
-  #else
-    //on SIM800L we can't complete power down the module
-    //it restarts itself all the time --> we set the module to sleep-mode
-    log_i("set modem to sleep-mode");
-    modem.sendAT(GF("+CSCLK=2"));
-    delay(1000);
-  #endif
-  digitalWrite(PinGsmRst,LOW);
-  if (PinGsmPower >= 0){
-    // Turn off the Modem power first
-    digitalWrite(PinGsmPower, LOW);
   }
-  xSemaphoreGive( xGsmMutex );
-
 }
 
 #ifdef TINY_GSM_MODEM_SIM7000
@@ -2699,39 +2715,40 @@ void taskGsm(void *pvParameters){
     //String gps_raw = modem.getGPSraw();
     //log_i("GPS-Position:%s",gps_raw.c_str());
     //xSemaphoreGive( xGsmMutex );
-    if (timeOver(tAct,tCheckConn,GSM_CHECK_TIME_CON)){
+    if ((timeOver(tAct,tCheckConn,GSM_CHECK_TIME_CON)) && (status.modemstatus != eModemState::CONNECTED)){
       tCheckConn = tAct;
       //log_i("%d Check GSM-Connection",tCheckConn);
-      xSemaphoreTake( xGsmMutex, portMAX_DELAY );
-      //log_i("%d Check GSM-Connection",tCheckConn);
-      if (modem.isGprsConnected()){
-        status.modemstatus = eModemState::CONNECTED;
-        //xLastWakeTime = xTaskGetTickCount (); //get actual tick-count
-        tCheckConn = millis();
-        status.gsm.SignalQuality = modem.getSignalQuality();
-        if (status.gsm.sOperator.length() == 0){
-          status.gsm.sOperator = modem.getOperator();
-        }
-        #ifdef TINY_GSM_MODEM_SIM7000
-        bool bAutoreport;
-        if (modem.getNetworkSystemMode(bAutoreport,status.gsm.networkstat)){        
-          //log_i("network system mode %d",status.gsm.networkstat);
+      if (xSemaphoreTake( xGsmMutex, ( TickType_t ) 500) == pdTRUE ){
+        //log_i("%d Check GSM-Connection",tCheckConn);
+        if (modem.isGprsConnected()){
+          status.modemstatus = eModemState::CONNECTED;
+          //xLastWakeTime = xTaskGetTickCount (); //get actual tick-count
+          tCheckConn = millis();
+          status.gsm.SignalQuality = modem.getSignalQuality();
+          if (status.gsm.sOperator.length() == 0){
+            status.gsm.sOperator = modem.getOperator();
+          }
+          #ifdef TINY_GSM_MODEM_SIM7000
+          bool bAutoreport;
+          if (modem.getNetworkSystemMode(bAutoreport,status.gsm.networkstat)){        
+            //log_i("network system mode %d",status.gsm.networkstat);
+          }else{
+            log_e("can't get Networksystemmode");
+          }
+          #endif
         }else{
-          log_e("can't get Networksystemmode");
-        }
-        #endif
-      }else{
-        status.modemstatus = eModemState::CONNECTING;
-        if (modem.isNetworkConnected()){  
-          connectGPRS();
-          status.myIP = modem.getLocalIP();
-          log_i("connected successfully IP:%s",status.myIP.c_str());
-        }else{
-          initModem(); //init modem
-          connectModem(); //connect modem to network
-        }
-      }          
-      xSemaphoreGive( xGsmMutex );
+          status.modemstatus = eModemState::CONNECTING;
+          if (modem.isNetworkConnected()){  
+            connectGPRS();
+            status.myIP = modem.getLocalIP();
+            log_i("connected successfully IP:%s",status.myIP.c_str());
+          }else{
+            initModem(); //init modem
+            connectModem(); //connect modem to network
+          }
+        }          
+        xSemaphoreGive( xGsmMutex );
+      }
     }
     if (bGsmOff) break; //we need GSM for webupdate
     //delay(1);
@@ -3996,6 +4013,23 @@ void taskStandard(void *pvParameters){
   tFanetData.rssi = 0;
   MyFanetData.rssi = 0;
 
+  GxMqtt *pMqtt = NULL;
+  static uint8_t myWdCount = 0;
+  if (setting.mqtt.mode.bits.enable){
+    pMqtt = new(GxMqtt);
+    #ifdef GSM_MODULE
+    if (setting.wifi.connect == eWifiMode::CONNECT_NONE){
+      pMqtt->begin(&xGsmMutex,&GsmMqttClient);
+      //pMqtt->begin(&xGsmMutex,NULL);
+    }else{
+      pMqtt->begin();
+    }
+    #else
+    pMqtt->begin();
+    #endif
+    
+  }  
+
   #ifdef AIRMODULE
   if (PinGPSRX >= 0){
     NMeaSerial.begin(GPSBAUDRATE,SERIAL_8N1,PinGPSRX,PinGPSTX,false);
@@ -4187,6 +4221,23 @@ void taskStandard(void *pvParameters){
       }
       ogn.run(status.bInternetConnected);
     } 
+    if (pMqtt){
+      pMqtt->run(status.bInternetConnected);
+      char cmd[100];
+      if (pMqtt->getLastCmd(cmd,100)){
+        checkReceivedLine(cmd);
+      }
+      if (sMqttState[0]){
+        xSemaphoreTake( xOutputMutex, portMAX_DELAY );
+        pMqtt->sendState(sMqttState);
+        sMqttState[0] = 0;
+        xSemaphoreGive(xOutputMutex);
+      }      
+      if ((myWdCount != wdCount) && (setting.mqtt.mode.bits.sendWeather)) {
+        pMqtt->sendTopic("WD",pWd,false);
+        myWdCount = wdCount;
+      }
+    }    
     checkFlyingState(tAct);
     if (printBattVoltage(tAct)){
       bBatPowerOk = true;
@@ -4964,6 +5015,7 @@ void taskBackGround(void *pvParameters){
   Dusk2Dawn dusk2dawn(setting.gs.lat,setting.gs.lon, 0);
   uint8_t actDay = 0;
   #endif
+  /*
   GxMqtt *pMqtt = NULL;
   static uint8_t myWdCount = 0;
   if (setting.mqtt.mode.bits.enable){
@@ -4971,6 +5023,7 @@ void taskBackGround(void *pvParameters){
     #ifdef GSM_MODULE
     if (setting.wifi.connect == eWifiMode::CONNECT_NONE){
       pMqtt->begin(&xGsmMutex,&GsmMqttClient);
+      //pMqtt->begin(&xGsmMutex,NULL);
     }else{
       pMqtt->begin();
     }
@@ -4979,6 +5032,7 @@ void taskBackGround(void *pvParameters){
     #endif
     
   }
+  */
 
   setupWifi();
   #ifdef GSM_MODULE
@@ -4996,6 +5050,7 @@ void taskBackGround(void *pvParameters){
       Web_loop();
     }
     handleUpdate(tAct);
+    /*
     if (pMqtt){
       pMqtt->run(status.bInternetConnected);
       char cmd[100];
@@ -5012,7 +5067,8 @@ void taskBackGround(void *pvParameters){
         pMqtt->sendTopic("WD",pWd,false);
         myWdCount = wdCount;
       }
-    } 
+    }
+    */ 
     #ifdef GSMODULE  
     if (setting.Mode == eMode::GROUND_STATION){
       if (status.bTimeOk == true){
@@ -5112,44 +5168,43 @@ void taskBackGround(void *pvParameters){
       if (timeOver(tAct,tGetTime,GETNTPINTERVALL)){
         log_i("get ntp-time");
         byte ret = -1;
-        xSemaphoreTake( xGsmMutex, portMAX_DELAY );
-        ret = modem.NTPServerSync("pool.ntp.org",0);
-        xSemaphoreGive( xGsmMutex );
-        //log_i("ret=%d",ret);
-        if (ret >= 0){
-          int year3 = 0;
-          int month3 = 0;
-          int day3 = 0;
-          int hour3 = 0;
-          int min3 = 0;
-          int sec3 = 0;
-          float timezone = 0;
-          xSemaphoreTake( xGsmMutex, portMAX_DELAY );
-          bool bret = modem.getNetworkTime(&year3, &month3, &day3, &hour3, &min3, &sec3,&timezone);
-          xSemaphoreGive( xGsmMutex );
-          //log_i("h=%d,min=%d,sec=%d,day=%d,month=%d,year=%d,ret=%d",hour3,min3, sec3, day3,month3, year3,bret);
-          if (bret){
-            //log_i("set time");
-            adjustTime(0);
-            struct tm timeinfo;
-            timeinfo.tm_year = year3 - 1900;
-            timeinfo.tm_mon = month3-1;
-            timeinfo.tm_mday = day3;
-            timeinfo.tm_hour = hour3;
-            timeinfo.tm_min = min3;
-            timeinfo.tm_sec = sec3;
-            setAllTime(timeinfo);
+        if (xSemaphoreTake( xGsmMutex, ( TickType_t ) 500) == pdTRUE ){
+          ret = modem.NTPServerSync("pool.ntp.org",0);
+          //log_i("ret=%d",ret);
+          if (ret >= 0){
+            int year3 = 0;
+            int month3 = 0;
+            int day3 = 0;
+            int hour3 = 0;
+            int min3 = 0;
+            int sec3 = 0;
+            float timezone = 0;
+            bool bret = modem.getNetworkTime(&year3, &month3, &day3, &hour3, &min3, &sec3,&timezone);
+            log_i("tz=%f,h=%d,min=%d,sec=%d,day=%d,month=%d,year=%d,ret=%d",timezone,hour3,min3, sec3, day3,month3, year3,bret);
+            if (bret){
+              //log_i("set time");
+              adjustTime(0);
+              struct tm timeinfo;
+              timeinfo.tm_year = year3 - 1900;
+              timeinfo.tm_mon = month3-1;
+              timeinfo.tm_mday = day3;
+              timeinfo.tm_hour = hour3;
+              timeinfo.tm_min = min3;
+              timeinfo.tm_sec = sec3;
+              setAllTime(timeinfo);
 
-            //setTime(hour3,min3, sec3, day3,month3, year3);
-            
-            //log_i("timestatus = %d",timeStatus());
-          }
-        }        
-        tGetTime = tAct;
-        //log_i("print time");        
-        if (printLocalTime() == true){
-          status.bTimeOk = true;
-        } 
+              //setTime(hour3,min3, sec3, day3,month3, year3);
+              
+              //log_i("timestatus = %d",timeStatus());
+            }
+          }        
+          xSemaphoreGive( xGsmMutex );
+          tGetTime = tAct;
+          //log_i("print time");        
+          if (printLocalTime() == true){
+            status.bTimeOk = true;
+          } 
+        }
       }
     #endif
     }else{
