@@ -1376,8 +1376,12 @@ uint16_t FanetMac::numTrackingNeighbors(void)
 	return num;
 }
 
-MacAddr FanetMac::readAddr(void)
+MacAddr FanetMac::readAddr(bool getHwAddr)
 {
+	// If the address is already set, return it
+	if ((_myAddr.id != 0 || _myAddr.manufacturer != 0) && !getHwAddr) {
+		return _myAddr;
+	}
 	uint64_t chipmacid = ESP.getEfuseMac();
   log_i("ESP32ChipID=%04X%08X",(uint16_t)(chipmacid>>32),(uint32_t)chipmacid);//print chip-id
 	//Serial.printf("MAC:");Serial.println(uint64ToString(chipmacid)); // six octets
@@ -1410,6 +1414,12 @@ bool FanetMac::setAddr(MacAddr addr)
 	return (flash_ret == HAL_OK);
 	*/
 	return false;
+}
+
+bool FanetMac::setAddr(uint32_t addr)
+{
+	_myAddr = MacAddr((addr >> 16) & 0xff, addr & 0xffff);
+	return true;
 }
 
 FanetMac fmac = FanetMac();

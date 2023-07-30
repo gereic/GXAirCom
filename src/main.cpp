@@ -116,8 +116,8 @@ SemaphoreHandle_t xI2C1Mutex;
 SemaphoreHandle_t xI2C0Mutex;
 SemaphoreHandle_t *PMUMutex = NULL;
 
-#ifdef AIRMODULE
 #include <MicroNMEA.h>
+#ifdef AIRMODULE
 //Libraries for Vario
 #include <Baro.h>
 #include <beeper.h>
@@ -387,6 +387,7 @@ void handleUpdate(uint32_t tAct);
 void printChipInfo(void);
 void setAllTime(tm &timeinfo);
 void checkExtPowerOff(uint32_t tAct);
+void writePGXCFSentence();
 #ifdef GSMODULE
 void sendFanetWeatherData2WU(FanetLora::weatherData *weatherData,uint8_t wuIndex);
 void sendFanetWeatherData2WI(FanetLora::weatherData *weatherData,uint8_t wiIndex);
@@ -395,13 +396,34 @@ void sendFanetWeatherData2WI(FanetLora::weatherData *weatherData,uint8_t wiIndex
 bool setupUbloxConfig(void);
 #endif
 
+constexpr uint32_t commonBaudRates[] = {9600, 19200, 38400, 57600, 115200};
+constexpr uint8_t  commonBaudRatesSize = sizeof(commonBaudRates) / sizeof(commonBaudRates[0]);
+
+/* customGPS Setup: set NMEA protocol version and numbering for u-blox 6 & 7 */
+uint8_t setNMEA_U6_7[] PROGMEM = {0x00, 0x23, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00,  /* NMEA protocol v2.3 extended */
+                                  0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
+                                  0x00, 0x00, 0x00, 0x00};
+
+ /* https://content.arduino.cc/assets/Arduino-MKR-GPS-Shield_u-blox8-M8_ReceiverDescrProtSpec_UBX-13003221_Public.pdf 198 */
+uint8_t setNMEA_U8_9_10[] PROGMEM = {0x00, 0x40, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00,  /* NMEA protocol v4.00 extended for Galileo */
+                                     0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
+                                     0x00, 0x00, 0x00, 0x00};
+
+/* UBX-CFG-MSG (NMEA Standard Messages) */
+uint8_t setCFG[3][8] PROGMEM = {
+	{0xF1, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, // Ublox - Lat/Long Position Data
+	{0xF1, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, // Ublox - Satellite Status
+	{0xF1, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, // Ublox - Time of Day and Clock Information
+};
+
+
 
 void i2cScanner(){
   byte error, address;
   int nDevices;
- 
+
   log_i("Scanning...");
- 
+
   nDevices = 0;
   for(address = 1; address < 127; address++ )
   {
@@ -410,7 +432,7 @@ void i2cScanner(){
     // a device did acknowledge to the address.
     pI2cOne->beginTransmission(address);
     error = pI2cOne->endTransmission();
- 
+
     if (error == 0)
     {
       log_i("I2C device found at address 0x%02X !",address);
@@ -419,7 +441,7 @@ void i2cScanner(){
     else if (error==4)
     {
       log_i("Unknown error at address 0x%02X !",address);
-    }    
+    }
   }
   if (nDevices == 0)
     log_i("No I2C devices found");
@@ -810,6 +832,7 @@ void sendFlarmData(uint32_t tAct){
           tFanetData.altitude = fanet.neighbours[i].altitude;
           tFanetData.climb = fanet.neighbours[i].climb;
           tFanetData.devId = fanet.neighbours[i].devId;
+          tFanetData.addressType = fanet.neighbours[i].addressType;
           tFanetData.heading = fanet.neighbours[i].heading;
           tFanetData.lat = fanet.neighbours[i].lat;
           tFanetData.lon = fanet.neighbours[i].lon;
@@ -1118,7 +1141,7 @@ void setupPMU(){
       PMUMutex = &xI2C1Mutex;
       PMU = new XPowersAXP2101(*pI2cOne,PinOledSDA,PinOledSCL,AXP2101_SLAVE_ADDRESS);
     }
-    
+
     if (!PMU->init()) {
         //Serial.println("Warning: Failed to find AXP2101 power management");
         delete PMU;
@@ -1126,7 +1149,7 @@ void setupPMU(){
     } else {
         log_i("AXP2101 PMU init succeeded, using AXP2101 PMU");
         status.PMU = ePMU::AXP2101;
-    }    
+    }
   }
   if (!PMU){
     PMUMutex = &xI2C1Mutex;
@@ -1138,14 +1161,14 @@ void setupPMU(){
     } else {
         log_i("AXP192 PMU init succeeded, using AXP192 PMU");
         status.PMU = ePMU::AXP192;
-    }    
-  }  
+    }
+  }
   if (!PMU) {
       status.PMU = ePMU::NOPMU;
       PMUMutex = NULL;
       log_e("failed to found any PMU (AXP192, AXP2101)");
       return;
-  } 
+  }
 
   if (status.PMU == ePMU::AXP2101){
     //t-beam m.2 inface
@@ -1155,7 +1178,7 @@ void setupPMU(){
 
     // lora
     PMU->setPowerChannelVoltage(XPOWERS_ALDO3, 3300);
-    PMU->enablePowerOutput(XPOWERS_ALDO3);   
+    PMU->enablePowerOutput(XPOWERS_ALDO3);
 
     // In order to avoid bus occupation, during initialization, the SD card and QMC sensor are powered off and restarted
     if (ESP_SLEEP_WAKEUP_UNDEFINED == esp_sleep_get_wakeup_cause()) {
@@ -1254,7 +1277,7 @@ void setupPMU(){
     PMU->setProtectedChannel(XPOWERS_DCDC3);
 
     //disable not use channel
-    PMU->disablePowerOutput(XPOWERS_DCDC2);    
+    PMU->disablePowerOutput(XPOWERS_DCDC2);
 
     pinMode(PinPMU_Irq, INPUT_PULLUP);
     attachInterrupt(PinPMU_Irq,PMU_Interrupt_handler, FALLING);
@@ -1270,7 +1293,7 @@ void setupPMU(){
         XPOWERS_AXP192_PKEY_SHORT_IRQ    | XPOWERS_AXP192_PKEY_LONG_IRQ       //|   //POWER KEY
         //XPOWERS_AXP2101_BAT_CHG_DONE_IRQ  | XPOWERS_AXP2101_BAT_CHG_START_IRQ       //CHARGE
         // XPOWERS_AXP2101_PKEY_NEGATIVE_IRQ | XPOWERS_AXP2101_PKEY_POSITIVE_IRQ   |   //POWER KEY
-    );  
+    );
   }
 }
 
@@ -1444,7 +1467,9 @@ void printSettings(){
   log_i("OUTPUT FLARM=%d",setting.outputFLARM);
   log_i("OUTPUT GPS=%d",setting.outputGPS);
   log_i("OUTPUT FANET=%d",setting.outputFANET);
-  
+  log_i("Device ID=%s",setting.myDevId);
+  log_i("Device Address Type=%d",setting.myDevIdType);
+
   log_i("WIFI connect=%d",setting.wifi.connect);
   log_i("WIFI SSID=%s",setting.wifi.ssid.c_str());
   log_i("WIFI PW=%s",setting.wifi.password.c_str());
@@ -1625,6 +1650,123 @@ void testLegacy(){
 }
 #endif
 
+/**
+ * @brief Write a $PGXAC sentence to buffer, this can be used by Stratux (or other device) to validate
+ * (part) of it's configuration.
+ *
+ */
+void writePGXCFSentence() {
+  char buffer[MAXSTRING];
+  // $PGXCF,<version>,<Output Serial>,<eMode>,<eOutputVario>,<output Fanet>,<output GPS>,<output FLARM>,<customGPSConfig>,<Aircraft Type>,<Address>,<Pilot Name>
+  int8_t version = 1;
+  snprintf(buffer, MAXSTRING, "$PGXCF,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%s,%s",
+    version,
+    setting.outputMode,
+    setting.Mode, setting.outputModeVario,
+    setting.outputFANET, setting.outputGPS, setting.outputFLARM,
+    setting.customGPSConfig, setting.AircraftType,
+    setting.myDevIdType, setting.myDevId.c_str(), setting.PilotName.c_str());
+  size_t size = flarmDataPort.addChecksum(buffer, MAXSTRING);
+  sendData2Client(buffer, size);
+}
+
+/**
+ * @brief Parse a $PGXCF sentence and set the configuration accordingly
+ * This is mainly used for automation of GxAirCom configuration
+ * @param data incomming NMEA sentence
+*/
+void readPGXCFSentence(const char* data)
+{
+  char result[MAXSTRING];
+  // Parse $PGXCF,<version>,<Output Serial>,<eMode>,<eOutputVario>,<output Fanet>,<output GPS>,<output FLARM>,<customGPSConfig>,<Aircraft Type (hex)>,<Address Type>,<Address (hex)>, <Pilot Name>
+  // $PGXCF,1,0,0,1,0,1,1,1,5,1,F23456,Pilot Name*76 // enable customGPS config mode with ICAO address type
+  // $PGXCF,1,3,0,1,0,1,1,0,5,2,,GXAirCom*4A  // Enable default GXAirCom with FLARM address type default hardware Id
+
+  // NMEA type (PGXCF)
+  data = MicroNMEA::parseField(data, &result[0], MAXSTRING); if (data == NULL) return;
+
+  // Version
+  data = MicroNMEA::parseField(data, &result[0], MAXSTRING); if (data == NULL) return;
+
+  // only version 1 is supported
+  if (strtol(result, NULL, 10) != 1) return;
+
+  // Output mode
+  data = MicroNMEA::parseField(data, &result[0], MAXSTRING); if (data == NULL) return;
+  eOutput outputMode = (eOutput)strtol(result, NULL, 10);
+
+  // GXAircomMode
+  data = MicroNMEA::parseField(data, &result[0], MAXSTRING); if (data == NULL) return;
+  eMode gxMode = (eMode)strtol(result, NULL, 10);
+
+  // eOutputVario
+  data = MicroNMEA::parseField(data, &result[0], MAXSTRING); if (data == NULL) return;
+  eOutputVario outputModeVario = (eOutputVario)strtol(result, NULL, 10);
+
+  // output Fanet
+  data = MicroNMEA::parseField(data, &result[0], MAXSTRING); if (data == NULL) return;
+  bool outputFANET = result[0] != '0';
+
+  // output GPS
+  data = MicroNMEA::parseField(data, &result[0], MAXSTRING); if (data == NULL) return;
+  bool outputGPS = result[0] != '0';
+
+  // output FLARM
+  data = MicroNMEA::parseField(data, &result[0], MAXSTRING); if (data == NULL) return;
+  bool outputFLARM = result[0] != '0';
+
+  // customGPSConfig
+  data = MicroNMEA::parseField(data, &result[0], MAXSTRING); if (data == NULL) return;
+  bool customGPSConfig = result[0] != '0';
+
+  // Aircraft type
+  data = MicroNMEA::parseField(data, &result[0], MAXSTRING); if (data == NULL) return;
+  uint8_t aircraftType = strtol(result, NULL, 16);
+
+  // Address Type 1=ADDRESSTYPE_FLARM or 2=ADDRESSTYPE_ICAO
+  data = MicroNMEA::parseField(data, &result[0], MAXSTRING); if (data == NULL) return;
+  uint8_t myDevIdType = atoi(result) == 0x01?ADDRESSTYPE_ICAO:ADDRESSTYPE_FLARM;
+
+  // Address
+  data = MicroNMEA::parseField(data, &result[0], MAXSTRING); if (data == NULL) return;
+  uint32_t devId = strtol(result, NULL, 16);
+  MacAddr address = devId==0?fmac.readAddr(true):fanet.getMacFromDevId(devId);
+  String myDevId = fanet.getDevId(fanet.getDevIdFromMac(&address));;
+
+  // Pilot Name
+  data = MicroNMEA::parseField(data, &result[0], MAXSTRING);
+  const char* pilotName = result;
+
+  // Configure settings
+  setting.outputMode = outputMode;
+  setting.Mode = gxMode;
+  setting.outputModeVario = outputModeVario;
+  setting.outputFANET = outputFANET;
+  setting.outputGPS = outputGPS;
+  setting.outputFLARM = outputFLARM;
+  bool hasCustomGPSConfigSet = setting.customGPSConfig;
+  setting.customGPSConfig = customGPSConfig;
+  setting.AircraftType = aircraftType;
+  setting.myDevId = myDevId;
+  setting.myDevIdType = myDevIdType;
+  setting.PilotName = pilotName;
+
+  // Write settings, configure uBLox if needed and re boot
+  log_i("write config-to file");
+  write_configFile(&setting);
+  // Do not restarts GPS  to avoid a long time beofre GPS constallation is found 
+  if (!hasCustomGPSConfigSet) {
+#if defined(AIRMODULE)
+    log_i("Setup ublox");
+    setupUbloxConfig();
+#endif
+  } else {
+    log_i("Skipping setup ublox");
+  }
+  log_i("reboot");
+  ESP.restart();
+}
+
 void setup() {
   
   
@@ -1779,9 +1921,9 @@ void setup() {
 
   //pinMode(BUTTON2, INPUT_PULLUP);
 
-  printSettings(); 
+  printSettings();
   analogReadResolution(10); // Default of 12 is not very linear. Recommended to use 10 or 11 depending on needed resolution.
-  status.PMU = ePMU::NOPMU; 
+  status.PMU = ePMU::NOPMU;
   for (uint8_t i = 0; i < NUMBUTTONS; i++) {
     //init buttons
     sButton[i].PinButton = -1;
@@ -2171,7 +2313,7 @@ void setup() {
     //wakeup GPS
     pinMode(7,OUTPUT);
     digitalWrite(7,LOW);
-    
+
     PinPPS = 6;
 
     PinLoraRst = 5;
@@ -2189,20 +2331,20 @@ void setup() {
     //PinOledSCL = 41; //PMU
 
     PinBaroSDA = 17;
-    PinBaroSCL = 18;  
+    PinBaroSCL = 18;
     pI2cOne->begin(PinBaroSDA, PinBaroSCL);
     PinPMU_Irq = 40;
     PinBuzzer = 48;
-    setupPMU();   
+    setupPMU();
     /*
     pI2cZero->begin(PinBaroSDA, PinBaroSCL);
     while(1){
-      i2cScanner(); 
+      i2cScanner();
       delay(5000);
     }
     */
 
-    break;    
+    break;
   case eBoard::UNKNOWN:
     log_e("unknown Board --> please correct");
     break;
@@ -2281,7 +2423,7 @@ void setup() {
   #endif
 
 
-  setting.myDevId = "";
+  // setting.myDevId = ""; //MyDevID is now stored on file because it's used together with the addressType
 #ifdef GSM_MODULE
 xGsmMutex = xSemaphoreCreateMutex();
 #endif
@@ -2408,7 +2550,7 @@ bool initModem(){
   }
   bool bRet = false;
   for (int i = 0;i <3;i++){
-    log_i("restarting modem...");  
+    log_i("restarting modem...");
     if (modem.restart()){
       bRet = true;
       break;
@@ -2621,7 +2763,7 @@ void taskWeather(void *pvParameters){
   Weather weather;
   weather.setTempOffset(setting.wd.tempOffset);
   weather.setWindDirOffset(setting.wd.windDirOffset);
-  if (!weather.begin(pI2cZero,setting,PinOneWire,PinWindDir,PinWindSpeed,PinRainGauge)){    
+  if (!weather.begin(pI2cZero,setting,PinOneWire,PinWindDir,PinWindSpeed,PinRainGauge)){
   
   }
   if ((setting.WUUpload.enable) && (!setting.wd.mode.bits.enable)){
@@ -2906,7 +3048,7 @@ void taskBaro(void *pvParameters){
     pinMode(PinBuzzer, OUTPUT);
     digitalWrite(PinBuzzer,LOW);
     ledcAttachPin(PinBuzzer, channel);
-  }  
+  }
   baro.useMPU(setting.vario.useMPU);
   #ifdef S3CORE
   uint8_t baroSensor = baro.begin(pI2cOne,&xI2C1Mutex);
@@ -3411,6 +3553,12 @@ void checkReceivedLine(char *ch_str){
     status.vario.bHasVario = true;
     status.ClimbRate = climb;
     //log_i("Climb=%.1f",climb);
+  }else if (!strncmp(ch_str,"$PGXCF,?",8)){
+      // Handle request for configuration request
+      writePGXCFSentence();
+  }else if (!strncmp(ch_str,"$PGXCF,",7)){
+      // Handle configuration setting
+      readPGXCFSentence(ch_str);
   }else{
     log_i("unknown message=%s",ch_str);
   }
@@ -3644,49 +3792,180 @@ bool setupUbloxConfig(){
   ublox.factoryReset();
   delay(2000); //wait for hardware again !!
   for (int i = 0; i < 3; i++){
+    uint8_t tryBaudPos=0;
+    do {
+      log_i("ublox: Trying baudRate=%d %d/%d",commonBaudRates[tryBaudPos],tryBaudPos,commonBaudRatesSize);
+      NMeaSerial.updateBaudRate(commonBaudRates[tryBaudPos]);
+      delay(500);
+    } while (!ublox.isConnected() && (++tryBaudPos < commonBaudRatesSize));
+    if (tryBaudPos >= commonBaudRatesSize) {
+      log_e("ublox: Could not connect to GPS with any baudRate");
+      continue;
+    }
     if (!ublox.isConnected()){
       log_e("ublox: GPS not connected");
       continue;
     }
+    log_i("ublox: GPS connected at %d", commonBaudRates[tryBaudPos]);
     if (!ublox.setUART1Output(COM_TYPE_NMEA)){
       log_e("ublox: error setting uart1 output");
       continue;
     }
-    //disable nmea sentencess
-    if (!ublox.disableNMEAMessage(UBX_NMEA_GLL,COM_PORT_UART1)){
-      log_e("ublox: error setting parameter %d",UBX_NMEA_GLL);
-      continue;
-    }
-    if (!ublox.disableNMEAMessage(UBX_NMEA_GSV,COM_PORT_UART1)){
-      log_e("ublox: error setting parameter %d",UBX_NMEA_GSV);
-      continue;
-    }
-    if (!ublox.disableNMEAMessage(UBX_NMEA_VTG,COM_PORT_UART1)){
-      log_e("ublox: error setting parameter %d",UBX_NMEA_VTG);
-      continue;
-    }
-    //xcguide uses GSA für GPS-Fix
-    if (!ublox.disableNMEAMessage(UBX_NMEA_GSA,COM_PORT_UART1)){
-      log_e("ublox: error setting parameter %d",UBX_NMEA_GSA);
-      continue;
+
+    bool shouldHardReset = false;
+    if (!setting.customGPSConfig){
+      //disable nmea sentencess
+      if (!ublox.disableNMEAMessage(UBX_NMEA_GLL,COM_PORT_UART1)){
+        log_e("ublox: error setting parameter %d",UBX_NMEA_GLL);
+        continue;
+      }
+      if (!ublox.disableNMEAMessage(UBX_NMEA_GSV,COM_PORT_UART1)){
+        log_e("ublox: error setting parameter %d",UBX_NMEA_GSV);
+        continue;
+      }
+      if (!ublox.disableNMEAMessage(UBX_NMEA_VTG,COM_PORT_UART1)){
+        log_e("ublox: error setting parameter %d",UBX_NMEA_VTG);
+        continue;
+      }
+      //xcguide uses GSA für GPS-Fix
+      if (!ublox.disableNMEAMessage(UBX_NMEA_GSA,COM_PORT_UART1)){
+        log_e("ublox: error setting parameter %d",UBX_NMEA_GSA);
+        continue;
+      }
+
+      //enable nmea-sentences
+      if (!ublox.enableNMEAMessage(UBX_NMEA_GGA,COM_PORT_UART1)){
+        log_e("ublox: error setting parameter %d",UBX_NMEA_GGA);
+        continue;
+      }
+      if (!ublox.enableNMEAMessage(UBX_NMEA_RMC,COM_PORT_UART1)){
+        log_e("ublox: error setting parameter %d",UBX_NMEA_RMC);
+        continue;
+      }
+    } else {
+      // Configure uBlox based on the attached version
+      log_i("ublox: Getting version");
+      uint8_t payloadCfg[MAX_PAYLOAD_SIZE];
+      ubxPacket customCfg = {UBX_CLASS_MON, UBX_MON_VER, 0, 0, 0, payloadCfg, 0, 0, SFE_UBLOX_PACKET_VALIDITY_NOT_DEFINED, SFE_UBLOX_PACKET_VALIDITY_NOT_DEFINED};
+      if (ublox.sendCommand(&customCfg) != SFE_UBLOX_STATUS_DATA_RECEIVED){
+        log_e("ublox: error getting version");
+        continue;
+      }
+
+      uint8_t ubloxType = payloadCfg[33] - '0';
+      if (ubloxType<6) {
+        ubloxType = 6;
+      } else if (ubloxType>10) {
+        ubloxType = 10;
+      }
+      log_i("ublox: Version %d detected", ubloxType);
+
+
+      // Set required constellations, if it can be set it's tried, else it's ok if it fails
+      log_i("ublox: Retreive constellations that are enabled");
+      customCfg = {UBX_CLASS_CFG, UBX_CFG_GNSS, 0, 0, 0, payloadCfg, 0, 0, SFE_UBLOX_PACKET_VALIDITY_NOT_DEFINED, SFE_UBLOX_PACKET_VALIDITY_NOT_DEFINED};
+      bool constellationsReceived = true;
+      if (ublox.sendCommand(&customCfg) != SFE_UBLOX_STATUS_DATA_RECEIVED){
+        log_e("ublox: error getting parameter UBX-CFG-GNSS, also not trying to set it");
+        constellationsReceived=false;
+      }
+
+      if (constellationsReceived) {
+        log_i("ublox: GNSS payload 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x", customCfg.cls, customCfg.id, customCfg.len, customCfg.counter, customCfg.startingSpot);
+        for (uint8_t ncb = 0; ncb < payloadCfg[3]; ncb++){
+          log_i("ublox: GNSS block 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x",
+            payloadCfg[4+8*ncb], payloadCfg[5+8*ncb], payloadCfg[6+8*ncb], payloadCfg[7+8*ncb],
+            payloadCfg[8+8*ncb], payloadCfg[9+8*ncb], payloadCfg[10+8*ncb], payloadCfg[11+8*ncb]);
+
+            uint8_t gnssId = payloadCfg[4+8*ncb];
+            if (gnssId == 0x02 && payloadCfg[8+8*ncb] == 0x00) {
+              shouldHardReset = true;
+            }
+            // Enable GPS=0x00 SBAS=0x01 Galileo=0x02 Beidou=0x03 QZSS=0x05 Disable: Glonass=0x06
+            if (gnssId == 0x00 || gnssId == 0x01 || gnssId == 0x02 || gnssId == 0x03 || gnssId == 0x05)  {
+              payloadCfg[8+8*ncb] = 0x01;
+            } else {
+              payloadCfg[8+8*ncb] = 0x00;
+            }
+        }
+        log_i("ublox: enable required constellations");
+        if (ublox.sendCommand(&customCfg) != SFE_UBLOX_STATUS_DATA_SENT){
+          log_e("ublox: error setting parameter UBX_CFG_GNSS");
+        }
+        delay(550);
+      }
+
+
+      // Configure ublox based on the attached version
+      uint8_t *setNMEA=NULL;
+      uint8_t lenNMEA=0;
+      if (ubloxType == 6 || ubloxType == 7){
+        setNMEA = setNMEA_U6_7;
+        lenNMEA = sizeof(setNMEA_U6_7);
+      } else {
+        setNMEA = setNMEA_U8_9_10;
+        lenNMEA = sizeof(setNMEA_U8_9_10);
+      }
+
+      if (setNMEA != NULL){
+        log_i("ublox: setting parameter UBX-CFG-NMEA");
+        customCfg = {UBX_CLASS_CFG, UBX_CFG_NMEA, lenNMEA, 0, 0, setNMEA, 0, 0, SFE_UBLOX_PACKET_VALIDITY_NOT_DEFINED, SFE_UBLOX_PACKET_VALIDITY_NOT_DEFINED};
+        if (ublox.sendCommand(&customCfg) != SFE_UBLOX_STATUS_DATA_SENT){
+          log_e("ublox: error setting parameter UBX-CFG-NMEA");
+          continue;
+        }
+      }
+
+      // Set on best efford
+      ublox.enableNMEAMessage(UBX_NMEA_GGA,COM_PORT_UART1, 0x01, defaultMaxWait);
+      ublox.disableNMEAMessage(UBX_NMEA_GLL,COM_PORT_UART1);
+      ublox.enableNMEAMessage(UBX_NMEA_GSA,COM_PORT_UART1, 0x05, defaultMaxWait);
+      ublox.enableNMEAMessage(UBX_NMEA_GSV,COM_PORT_UART1, 0x05, defaultMaxWait);
+      ublox.enableNMEAMessage(UBX_NMEA_RMC,COM_PORT_UART1, 0x01, defaultMaxWait);
+      ublox.enableNMEAMessage(UBX_NMEA_VTG,COM_PORT_UART1, 0x01, defaultMaxWait);
+      ublox.disableNMEAMessage(UBX_NMEA_GRS,COM_PORT_UART1);
+      ublox.disableNMEAMessage(UBX_NMEA_GST,COM_PORT_UART1);
+      ublox.disableNMEAMessage(UBX_NMEA_ZDA,COM_PORT_UART1);
+      ublox.disableNMEAMessage(UBX_NMEA_GBS,COM_PORT_UART1);
+      ublox.disableNMEAMessage(UBX_NMEA_DTM,COM_PORT_UART1);
+      ublox.disableNMEAMessage(UBX_NMEA_GNS,COM_PORT_UART1);
+      ublox.disableNMEAMessage(UBX_NMEA_VLW,COM_PORT_UART1);
+
+      for (uint8_t i=0; i<sizeof(setCFG) / 8; i++) {
+        log_i("ublox: setting parameter UBX-CFG-MSG 0x%02x", setCFG[i][1]);
+        customCfg = {UBX_CLASS_CFG, UBX_CFG_MSG, sizeof(setCFG) / 3, 0, 0, setCFG[i], 0, 0, SFE_UBLOX_PACKET_VALIDITY_NOT_DEFINED, SFE_UBLOX_PACKET_VALIDITY_NOT_DEFINED};
+        ublox.sendCommand(&customCfg);
+      }
+
+      log_i("ublox: setting parameter UBX-CFG-RATE");
+      if (!ublox.setNavigationFrequency(5, defaultMaxWait)){
+        log_e("ublox: error setting parameter UBX-CFG-RATE");
+      }
+
+      if (!ublox.setDynamicModel(DYN_MODEL_AIRBORNE2g)) {
+          log_e("ublox: error setting parameter UBX-CFG-NAV5");
+          continue;
+      }
+
+      log_i("ublox: Configured for customGPS");
     }
 
-    //enable nmea-sentences
-    if (!ublox.enableNMEAMessage(UBX_NMEA_GGA,COM_PORT_UART1)){
-      log_e("ublox: error setting parameter %d",UBX_NMEA_GGA);
-      continue;
-    }
-    if (!ublox.enableNMEAMessage(UBX_NMEA_RMC,COM_PORT_UART1)){
-      log_e("ublox: error setting parameter %d",UBX_NMEA_RMC);
-      continue;
-    }
+    // Set baudrate faster because we handle more messages
+    ublox.setSerialRate(GPSBAUDRATE, COM_PORT_UART1);
+    NMeaSerial.updateBaudRate(GPSBAUDRATE);
+    delay(1500);
+
     if (!ublox.saveConfiguration(3000)){
       log_e("ublox: error saving config");
       continue;
     }else{
+      if(shouldHardReset) {
+        // log_e("ublox:Should hard reset after ebable of Galileo");
+        // Not quite sure yet if this is really needed.
+        // ublox.hardReset();
+      }
       log_i("!!! setup ublox successfully");
       return true;
-      break;      
     }
   }
   return false;
@@ -3720,7 +3999,7 @@ void taskStandard(void *pvParameters){
   #ifdef AIRMODULE
   if (PinGPSRX >= 0){
     NMeaSerial.begin(GPSBAUDRATE,SERIAL_8N1,PinGPSRX,PinGPSTX,false);
-    log_i("GPS Baud=9600,8N1,RX=%d,TX=%d",PinGPSRX,PinGPSTX);
+    log_i("GPS Baud=%d,8N1,RX=%d,TX=%d",GPSBAUDRATE,PinGPSRX,PinGPSTX);
     //clear serial buffer
     while (NMeaSerial.available())
       NMeaSerial.read();
@@ -3747,6 +4026,15 @@ void taskStandard(void *pvParameters){
   fanet.setRFMode(setting.RFMode);
   uint8_t radioChip = RADIO_SX1276;
   if ((setting.boardType == eBoard::T_BEAM_SX1262) || (setting.boardType == eBoard::T_BEAM_S3CORE)) radioChip = RADIO_SX1262;
+
+  // When the requested Address type is ICAO then the devId of the device must be set to your mode-s address
+  // See Flarm Dataport Specification for details
+  // When devId is not set, take the HW Address (default) and this is done automatically
+  fanet.setAddressType(setting.myDevIdType);
+  if (setting.myDevId.length() == 6) {
+    fmac.setAddr(strtol(setting.myDevId.c_str(), NULL, 16));
+  }
+
   fanet.begin(PinLora_SCK, PinLora_MISO, PinLora_MOSI, PinLora_SS,PinLoraRst, PinLoraDI0,PinLoraGPIO,frequency,14,radioChip);
   fanet.setGPS(status.bHasGPS);
   #ifdef GSMODULE
@@ -3801,7 +4089,7 @@ void taskStandard(void *pvParameters){
         ogn.begin("FNB" + setting.myDevId,VERSION "." APPNAME);
       }
     #endif
-  } 
+  }
 
   tLoop = micros();
   while(1){    
@@ -3929,7 +4217,7 @@ void taskStandard(void *pvParameters){
     //if (setting.Mode == eMode::AIR_MODULE){
     readGPS();
     //}
-    #endif    
+    #endif
     sendFlarmData(tAct);
     if (sendFanetData == 1){
       log_i("sending msgtype 1");
@@ -4049,7 +4337,7 @@ void taskStandard(void *pvParameters){
           }
         }
       }
-#endif      
+#endif
       if (setting.OGNLiveTracking.bits.fwdWeather){
         Ogn::weatherData wData;
         wData.devId = fanet.getDevId(weatherData.devId);
@@ -4171,7 +4459,7 @@ void taskStandard(void *pvParameters){
             MyFanetData.speed = status.GPS_speed; //speed in cm/s --> we need km/h
             if (MyFanetData.speed < 1.0) MyFanetData.speed = 1.0;
           }
-          MyFanetData.addressType = ADDRESSTYPE_OGN;
+          MyFanetData.addressType = fanet.getAddressType();
           if ((status.GPS_speed <= 5.0) && (status.vario.bHasVario)){
             MyFanetData.heading = status.varioHeading;
           }else{
@@ -4314,7 +4602,7 @@ void powerOff(){
     if (xHandleOled != NULL) tOled = eTaskGetState(xHandleOled);
     if (xHandleStandard != NULL) tStandard = eTaskGetState(xHandleStandard);
     if (xHandleWeather != NULL) tWeather = eTaskGetState(xHandleWeather);    
-    if ((tLogger == eDeleted) && (tBaro == eDeleted) && (tEInk == eDeleted) && (tWeather == eDeleted) && (tStandard == eDeleted) && (tOled == eDeleted)) break; //now all tasks are stopped    
+    if ((tLogger == eDeleted) && (tBaro == eDeleted) && (tEInk == eDeleted) && (tWeather == eDeleted) && (tStandard == eDeleted) && (tOled == eDeleted)) break; //now all tasks are stopped
     log_i("logger=%d,baro=%d,eink=%d,oled=%d,standard=%d,weather=%d",tLogger,tBaro,tEInk,tOled,tStandard,tWeather);
     delay(1000);
   }
@@ -4555,7 +4843,7 @@ void handleUpdate(uint32_t tAct){
     WebUpdateRunning = true;
     status.updateState = 63;
   }else if ((status.updateState == 63) && (timeOver(millis(),tWait,500))) { //update to version
-    if (updater.updateVersion()){ //update to newest version  
+    if (updater.updateVersion()){ //update to newest version
       add2OutputString("update complete\r\n");
       status.updateState = 200;
       status.tRestart = millis();

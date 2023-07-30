@@ -34,6 +34,7 @@ enum class eFlarmAircraftType {
 
 typedef struct {
   String DevId;
+  uint8_t addressType;
   float lat; //latitude
   float lon; //longitude
   uint16_t altitude; //altitude [m]

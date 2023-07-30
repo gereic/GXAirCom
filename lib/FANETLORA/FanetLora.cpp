@@ -61,6 +61,7 @@ bool FanetLora::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int8_t res
   flarmAircraftConfig.identifier[2] = uint8_t(_myData.devId >> 16);
   flarmAircraftConfig.identifier[1] = uint8_t(_myData.devId >> 8);
   flarmAircraftConfig.identifier[0] = uint8_t(_myData.devId >> 0);
+  flarmAircraftConfig.addressType = _myData.addressType;
   flarmAircraftConfig.airborne_mode = 1; //on ground
   flarmAircraftConfig.no_tracking_mode = false;
   flarmAircraftConfig.private_mode = false;
@@ -419,6 +420,15 @@ void FanetLora::setPilotname(String name){
 void FanetLora::setAircraftType(aircraft_t type){
     _myData.aircraftType = type;
     flarmAircraftConfig.type = getFlarmAircraftType(_myData.aircraftType); //set aircraftType for Flarm
+}
+
+void FanetLora::setAddressType(uint8_t addressType){
+    _myData.addressType = addressType;
+    flarmAircraftConfig.addressType = _myData.addressType; //set addressType for Flarm
+}
+
+uint8_t FanetLora::getAddressType(){
+    return _myData.addressType;
 }
 
 int16_t FanetLora::getNextNeighbor(uint8_t index){

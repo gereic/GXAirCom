@@ -126,7 +126,7 @@ void flarm_create_packet(AircraftState *aircraft, uint8_t *packet) {
   packet[0] = aircraft->config->identifier[0];
   packet[1] = aircraft->config->identifier[1];
   packet[2] = aircraft->config->identifier[2];
-  packet[3] = 0x20;
+  packet[3] = (aircraft->config->addressType << 4) & 0x30; // Shift left and ensure within range
   // Scale the vertical speed; scaled result can be in the range -512..511.
   // 511 corresponds to 51.1m/s (scaling=0) ... 408.8m/s (scaling=3).
   int velUScaled = aircraft->gps->vel_u_cm_s / 10;
