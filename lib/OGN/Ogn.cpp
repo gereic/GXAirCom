@@ -453,17 +453,13 @@ void Ogn::sendReceiverBeacon(String sTime){
 String Ogn::getActTimeString(time_t timestamp){
   struct tm timeinfo;
   char buff[20];
-  //log_i("%d %d %d %d:%d:%d",year(),month(),day(),hour(),minute(),second());
-  //log_i("%d",uint32_t(timestamp));
   gmtime_r(&timestamp, &timeinfo);
   sprintf (buff,"%02d%02d%02d",timeinfo.tm_hour,timeinfo.tm_min,timeinfo.tm_sec);
-  //sprintf (buff,"%02d%02d%02d",hour(timestamp),minute(timestamp),second(timestamp));
-  //log_i("%s",buff);
+  log_i("%s",buff);
   return String(buff);
 }
 
 String Ogn::getActTimeString(){
-  //struct tm timeinfo;
   char buff[20];
   if (timeStatus() == timeSet){
       //log_i("%d %d %d %d:%d:%d",year(),month(),day(),hour(),minute(),second());
@@ -473,14 +469,6 @@ String Ogn::getActTimeString(){
   }else{
       return "";
   }
-  /*
-  if(getLocalTime(&timeinfo)){
-      strftime(buff, 20, "%H%M%S", &timeinfo);
-      return String(buff);
-  }else{
-      return "";
-  }
-  */
 }
 
 void Ogn::sendStatus(uint32_t tAct){
