@@ -69,7 +69,7 @@ void sendPageHeader(uint8_t client_num){
   doc.clear();
   doc["myDevId"] = setting.myDevId;
   doc["appname"] = String(APPNAME "-" VERSION);
-  doc["buildDate"] = "build:" + String(compile_date) + " sdk:" + String(ESP.getSdkVersion());
+  doc["buildDate"] = "build:" + String(compile_date) + " sdk:" + String(ESP.getSdkVersion()) + + " img:" + ENV;
   if (setting.Mode == eMode::GROUND_STATION){
     doc["pilot"] = "station: " + setting.PilotName + " [" + setting.myDevId + "]";
   }else{

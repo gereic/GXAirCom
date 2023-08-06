@@ -455,7 +455,7 @@ String Ogn::getActTimeString(time_t timestamp){
   char buff[20];
   gmtime_r(&timestamp, &timeinfo);
   sprintf (buff,"%02d%02d%02d",timeinfo.tm_hour,timeinfo.tm_min,timeinfo.tm_sec);
-  log_i("%s",buff);
+  //log_i("%s",buff);
   return String(buff);
 }
 

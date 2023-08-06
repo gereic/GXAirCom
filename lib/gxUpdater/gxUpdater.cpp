@@ -147,26 +147,7 @@ bool gxUpdater::doUpdate(bool spiffs){
     log_i("updating spiffs:%s",sFilename.c_str());
     command = U_SPIFFS;
   } else{
-    sFilename = RELEASEDIR "firmware_" + _version;
-    if (FWTYPE == 1){
-      sFilename += "_psRam.bin";
-    }else if (FWTYPE == 2){
-      sFilename += "_nopsRam.bin";
-    }else if (FWTYPE == 3){
-      sFilename += "_sim800.bin";
-    }else if (FWTYPE == 4){
-      sFilename += "_sim7000_psRam.bin";
-    }else if (FWTYPE == 5){
-      sFilename += "_sim800_nopsRam.bin";
-    }else if (FWTYPE == 6){
-      sFilename += "_ttgo-lora32-v1.bin";
-    }else if (FWTYPE == 7){
-      sFilename += "_T-Beam-S3Core.bin";
-    }else if (FWTYPE == 11){
-      sFilename += "_Gs.bin";
-    }else if (FWTYPE == 12){
-      sFilename += "_GsSim7000.bin";
-    }
+    sFilename = RELEASEDIR "firmware_" + _version + "_" + ENV + ".bin";
     log_i("updating firmwawre:%s",sFilename.c_str());
     command = U_FLASH;
   }
