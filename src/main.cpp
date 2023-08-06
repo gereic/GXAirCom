@@ -3585,17 +3585,17 @@ char* readSerial(){
   static char lineBuffer[512];
   static uint16_t recBufferIndex = 0;
   
-  while(Serial.available()){
-    if (recBufferIndex >= (512-1)) recBufferIndex = 0; //Buffer overrun
-    lineBuffer[recBufferIndex] = Serial.read();
-    if (lineBuffer[recBufferIndex] == '\n'){
+  int16_t thisChar;
+  while((thisChar = Serial.read())!=-1){
+    if ((recBufferIndex >= (512-1)) || thisChar=='$' || thisChar=='!') recBufferIndex = 0; //Buffer overrun, $ and ! are start of NMEA-String
+    lineBuffer[recBufferIndex] = thisChar;
+    if (lineBuffer[recBufferIndex] == '\n' && recBufferIndex>10){
       recBufferIndex++;
       lineBuffer[recBufferIndex] = 0; //zero-termination
       recBufferIndex = 0;
       return &lineBuffer[0];
-    }else{
-      recBufferIndex++;
-    }  
+    }
+    recBufferIndex++;
   }
   return NULL;
 }
@@ -3646,12 +3646,13 @@ void readGPS(){
   }
   if ((setting.Mode == eMode::AIR_MODULE) || ((abs(setting.gs.lat) <= 0.1) && (abs(setting.gs.lon) <= 0.1))) {
     //in Ground-Station-Mode you have to setup GPS-Position manually
-    while(NMeaSerial.available()){
-      if (recBufferIndex >= 255) recBufferIndex = 0; //Buffer overrun
-      lineBuffer[recBufferIndex] = NMeaSerial.read();
+    int16_t thisChar;
+    while((thisChar = NMeaSerial.read())!=-1){
+      if ((recBufferIndex >= (255-2)) || thisChar=='$' || thisChar=='!') recBufferIndex = 0; //Buffer overrun, $ and ! are start of NMEA-String
+      lineBuffer[recBufferIndex] = thisChar;
       //log_i("GPS %c",lineBuffer[recBufferIndex]);
       nmea.process(lineBuffer[recBufferIndex]);
-      if (lineBuffer[recBufferIndex] == '\n'){
+      if ((lineBuffer[recBufferIndex] == '\n' || lineBuffer[recBufferIndex] == '\r') && recBufferIndex>10){ // Each message is minimum 10 characters
         lineBuffer[recBufferIndex] = '\r';
         recBufferIndex++;
         lineBuffer[recBufferIndex] = '\n';
@@ -3664,12 +3665,8 @@ void readGPS(){
           status.bHasGPS = true;
           fanet.setGPS(status.bHasGPS);          
         }
-        
-      }else{
-        if (lineBuffer[recBufferIndex] != '\r'){
-          recBufferIndex++;
-        }
       }
+      recBufferIndex++;
     }  
   }
   if (timeOver(millis(),tGpsOk,10000)){
