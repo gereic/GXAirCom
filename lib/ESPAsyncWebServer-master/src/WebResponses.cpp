@@ -524,18 +524,14 @@ AsyncFileResponse::AsyncFileResponse(FS &fs, const String& path, const String& c
   else
     _contentType = contentType;
 
-  int filenameStart = path.lastIndexOf('/') + 1;
-  char buf[26+path.length()-filenameStart];
-  char* filename = (char*)path.c_str() + filenameStart;
-
   if(download) {
+    int filenameStart = path.lastIndexOf('/') + 1;
+    char buf[26+path.length()-filenameStart];
+    char* filename = (char*)path.c_str() + filenameStart;
     // set filename and force download
     snprintf(buf, sizeof (buf), "attachment; filename=\"%s\"", filename);
-  } else {
-    // set filename and force rendering
-    snprintf(buf, sizeof (buf), "inline; filename=\"%s\"", filename);
+    addHeader("Content-Disposition", buf);
   }
-  addHeader("Content-Disposition", buf);
 }
 
 AsyncFileResponse::AsyncFileResponse(File content, const String& path, const String& contentType, bool download, AwsTemplateProcessor callback): AsyncAbstractResponse(callback){
@@ -557,16 +553,13 @@ AsyncFileResponse::AsyncFileResponse(File content, const String& path, const Str
   else
     _contentType = contentType;
 
-  int filenameStart = path.lastIndexOf('/') + 1;
-  char buf[26+path.length()-filenameStart];
-  char* filename = (char*)path.c_str() + filenameStart;
-
   if(download) {
+    int filenameStart = path.lastIndexOf('/') + 1;
+    char buf[26+path.length()-filenameStart];
+    char* filename = (char*)path.c_str() + filenameStart;
     snprintf(buf, sizeof (buf), "attachment; filename=\"%s\"", filename);
-  } else {
-    snprintf(buf, sizeof (buf), "inline; filename=\"%s\"", filename);
+    addHeader("Content-Disposition", buf);
   }
-  addHeader("Content-Disposition", buf);
 }
 
 size_t AsyncFileResponse::_fillBuffer(uint8_t *data, size_t len){
