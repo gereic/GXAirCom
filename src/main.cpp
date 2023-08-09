@@ -2074,6 +2074,10 @@ void setup() {
     // vIn = (R1+R2)/R2 * VOut
     adcVoltageMultiplier = 2.12f;
     pinMode(PinADCVoltage, INPUT);
+    if (setting.Mode == eMode::GROUND_STATION){
+      PinWindDir = 36;
+      PinWindSpeed = 39;
+    }    
     break;
   /*
   case BOARD_TTGO_T3_V1_6:
@@ -5030,7 +5034,7 @@ void taskBackGround(void *pvParameters){
     
   }
   */
-
+  //setting.wifi.ssid = "";
   setupWifi();
   #ifdef GSM_MODULE
     if (setting.wifi.connect == eWifiMode::CONNECT_NONE){      
