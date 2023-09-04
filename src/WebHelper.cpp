@@ -347,6 +347,7 @@ void onWebSocketEvent(uint8_t client_num,
           webSocket.sendTXT(client_num, msg_buf);
 
           doc.clear();
+          doc["WUUlProv"] = setting.WUUpload.WeatherUploadProvider;
           doc["WUUlEnable"] = setting.WUUpload.enable;
           doc["WUUlID"] = setting.WUUpload.ID;
           doc["WUUlKEY"] = setting.WUUpload.KEY;
@@ -532,6 +533,7 @@ void onWebSocketEvent(uint8_t client_num,
 
         //weather-underground upload
         if (root.containsKey("WUUlEnable")) newSetting.WUUpload.enable = doc["WUUlEnable"].as<bool>();
+        if (root.containsKey("WUUlProv")) newSetting.WUUpload.WeatherUploadProvider = eWeatherUploadProvider(doc["WUUlProv"].as<uint8_t>()); 
         if (root.containsKey("WUUlID")) newSetting.WUUpload.ID = doc["WUUlID"].as<String>();
         if (root.containsKey("WUUlKEY")) newSetting.WUUpload.KEY = doc["WUUlKEY"].as<String>();
         //Windy upload

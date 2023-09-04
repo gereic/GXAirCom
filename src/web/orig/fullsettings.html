@@ -82,6 +82,7 @@ function setVis(){
       document.getElementById("tWu").innerHTML='Weather Underground Upload';
       document.getElementById("tWu2").innerHTML='enable sending weather-data to WU';
       document.getElementById("VisWU").style.display=''; /*set weather-underground upload invisible*/
+      document.getElementById("VisWUHFSel").style.display='none'; /*set weather-underground/holfuy selector invisible*/
       document.getElementById("tWi").innerHTML='windy Upload';
       document.getElementById("tWi2").innerHTML='enable sending weather-data to windy';
       document.getElementById("VisWI").style.display=''; /*set windy upload invisible*/
@@ -101,9 +102,10 @@ function setVis(){
         document.getElementById("VisADS1015Exp").style.display=''; //enable ADS1015 expert-settings
       }    
     }else{
-      document.getElementById("tWu").innerHTML='Broadcast weather-underground data to FANET';
-      document.getElementById("tWu2").innerHTML='enable sending wu-data to FANET';
+      document.getElementById("tWu").innerHTML='Broadcast weather data to FANET';
+      document.getElementById("tWu2").innerHTML='enable sending weather data to FANET';
       document.getElementById("VisWU").style.display=''; /*set weather-underground visible*/
+      document.getElementById("VisWUHFSel").style.display=''; /*set WU/Holfuy selector visible*/
       document.getElementById("VisWI").style.display='none'; /*set windy upload invisible*/
     }
     document.getElementById("VisMqtt").style.display='';  /*enable Mqtt settings*/
@@ -525,6 +527,7 @@ getValue(obj,
     "sFWD",
     "wdTempOffset",
     "wdWDirOffset",
+    "WUUProv",
     "WUUlEnable",
     "WUUlID",
     "WUUlKEY",
@@ -744,6 +747,7 @@ function sendValues(){
     "sFWD",
     "wdTempOffset",
     "wdWDirOffset",
+    "WUUlProv",
     "WUUlEnable",
     "WUUlID",
     "WUUlKEY",
@@ -1486,11 +1490,18 @@ function onMessage(evt) {
             <td><input type="checkbox" id="WUUlEnable"></td>
           </tr>
           <tr>
-            <th>ID</th>
+            <th id="VisWUHFSel">weather data provider</th>
+            <td><select id="WUUlProv">
+              <option value="0">WeatherUnderground</option>
+              <option value="1">Holfuy</option>
+            </select></td>
+          </tr>
+          <tr>
+            <th>Station ID</th>
             <td><input type="text" id="WUUlID"></td>
           </tr>
           <tr>
-            <th>KEY</th>
+            <th>KEY / Password</th>
             <td><input type="text" id="WUUlKEY"></td>
           </tr>
         </tbody>      

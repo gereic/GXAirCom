@@ -25,9 +25,7 @@
 //temp [°F]
 //baro 
 
-class WeatherUnderground {
-public:
-  typedef struct {
+struct weatherUndergroundData {
     bool bWind = false;
     float lat;
     float lon;
@@ -44,12 +42,16 @@ public:
     bool bRain = false;
     float rain1h;
     float raindaily;
-  } wData;
+  } ;
+
+class WeatherUnderground {
+public:
+   weatherUndergroundData *wData;
 
     WeatherUnderground(); //constructor
     ~WeatherUnderground(); //destructor
-    bool sendData(String ID,String KEY,wData *data); //send Data to WU with Station-ID and Station-Key
-    bool getData(String ID,String KEY,wData *data); //get Data from WU with Station-ID and API-Key
+    bool sendData(String ID,String KEY,weatherUndergroundData *data); //send Data to WU with Station-ID and Station-Key
+    bool getData(String ID,String KEY,weatherUndergroundData *data); //get Data from WU with Station-ID and API-Key
     void setClient(Client *_client);
     void setMutex(SemaphoreHandle_t *_xMutex);
 

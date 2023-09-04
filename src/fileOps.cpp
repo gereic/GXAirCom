@@ -122,6 +122,8 @@ void load_configFile(SettingsData* pSetting){
   pSetting->WUUpload.enable = preferences.getUChar("WUUlEnable",0);
   pSetting->WUUpload.ID = preferences.getString("WUUlID","");
   pSetting->WUUpload.KEY = preferences.getString("WUUlKEY","");
+  pSetting->WUUpload.WeatherUploadProvider = eWeatherUploadProvider(preferences.getUChar("WUUlProv",eWeatherUploadProvider::WEATHER_UNDERGROUND_PROVIDER));
+
 
   //windy-upload
   pSetting->WindyUpload.enable = preferences.getUChar("WIUlEnable",0);
@@ -278,6 +280,7 @@ void write_configFile(SettingsData* pSetting){
   preferences.putUChar("WUUlEnable",pSetting->WUUpload.enable);
   preferences.putString("WUUlID",pSetting->WUUpload.ID);
   preferences.putString("WUUlKEY",pSetting->WUUpload.KEY);
+  preferences.putUChar("WUUlProv",pSetting->WUUpload.WeatherUploadProvider);
 
   //windy-upload
   preferences.putUChar("WIUlEnable",pSetting->WindyUpload.enable);

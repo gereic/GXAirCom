@@ -91,6 +91,7 @@ XPowersLibInterface *PMU = NULL;
 #include <Dusk2Dawn.h> //for sunset and sunrise-functions
 #include <Weather.h>
 #include <WeatherUnderground.h>
+#include <Holfuy.h>
 #include <Windy.h>
 #endif
 
@@ -453,7 +454,7 @@ void i2cScanner(){
 void sendFanetWeatherData2WU(FanetLora::weatherData *weatherData,uint8_t wuIndex){
   if ((status.bInternetConnected) && (status.bTimeOk)){
     WeatherUnderground wu;
-    WeatherUnderground::wData wuData;
+    weatherUndergroundData wuData;
     #ifdef GSM_MODULE
       if (setting.wifi.connect == eWifiMode::CONNECT_NONE){
         wu.setClient(&GsmWUClient);
@@ -2776,7 +2777,7 @@ void taskWeather(void *pvParameters){
   log_i("starting weather-task ");  
   Weather::weatherData wData;
   Weather::weatherData wFntData;
-  WeatherUnderground::wData wuData;
+  weatherUndergroundData wuData;
   Windy::wData wiData;
   weatherAvg avg[2];
   bool bFirstWData = false;
@@ -2991,15 +2992,28 @@ void taskWeather(void *pvParameters){
       if (timeOver(tAct,tUploadData,setting.wd.WUUploadIntervall)){ //get Data from WU        
         tUploadData = tAct;
         if (status.bInternetConnected){
-          WeatherUnderground::wData wuData;
-          WeatherUnderground wu;
-          #ifdef GSM_MODULE
-            if (setting.wifi.connect == eWifiMode::CONNECT_NONE){
-              wu.setClient(&GsmWUClient);
-              wu.setMutex(&xGsmMutex);
-            }
-          #endif
-          bDataOk = wu.getData(setting.WUUpload.ID,setting.WUUpload.KEY,&wuData);
+          weatherUndergroundData wuData;
+          if (setting.WUUpload.WeatherUploadProvider == WEATHER_UNDERGROUND_PROVIDER) {
+            WeatherUnderground wu;
+            #ifdef GSM_MODULE
+              if (setting.wifi.connect == eWifiMode::CONNECT_NONE){
+                wu.setClient(&GsmWUClient);
+                wu.setMutex(&xGsmMutex);
+              }
+            #endif
+            bDataOk = wu.getData(setting.WUUpload.ID,setting.WUUpload.KEY,&wuData);
+            
+          } else {
+            Holfuy wu;
+            #ifdef GSM_MODULE
+              if (setting.wifi.connect == eWifiMode::CONNECT_NONE){
+                wu.setClient(&GsmWUClient);
+                wu.setMutex(&xGsmMutex);
+              }
+            #endif
+            bDataOk = wu.getData(setting.WUUpload.ID,setting.WUUpload.KEY,&wuData);
+          }
+          
           if (bDataOk){
             status.weather.bTemp = wuData.bTemp;
             status.weather.temp = wuData.temp;

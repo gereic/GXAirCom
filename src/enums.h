@@ -134,5 +134,10 @@ enum eAdsAneometerPin{
   ADS_VREF_PIN = 3
 };
 
+enum eWeatherUploadProvider{
+  WEATHER_UNDERGROUND_PROVIDER = 0,
+  HOLFUY_PROVIDER = 1
+};
+
 
 #endif
