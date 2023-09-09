@@ -137,18 +137,35 @@ bool Holfuy::getData(String ID,String KEY,weatherUndergroundData *data){ //get D
     data->bPress = false;
   }
 
+  if (doc["daily"]["sum_rain"].as<float>() > 0) {
+      char path_15m[1024]; //make this big enough to hold the resulting string
 
-  // s = doc["observations"][0]["metric"]["precipRate"].as<String>();
-  // if (s != "null"){
-  //   data->bRain = true;
-  //   data->rain1h = doc["observations"][0]["metric"]["precipRate"].as<float>();
-  //   data->raindaily = doc["observations"][0]["metric"]["precipTotal"].as<float>();
-  // }else{
-  log_i("rain data from holfuy unknown yet - need to calculate 1h values!?");
-  data->bRain = false;
-  data->rain1h = 0.0;
-  data->raindaily = 0.0;
-  //}
+      sprintf(path_15m,"/live/?s=%s&pw=%s&m=JSON&tu=C&su=km/h&loc&avg=1",
+          ID.c_str(),
+          KEY.c_str()
+          );
+      payload = Holfuy::httpRequest(serverName, path_15m);
+
+      if (payload == "") {
+        data->bRain = false;
+        data->rain1h = 0.0;
+        data->raindaily = 0.0;
+      } else {
+        DynamicJsonDocument doc_15m(2048);
+        deserializeJson(doc_15m, payload);
+
+        data->raindaily = doc["daily"]["sum_rain"].as<float>();
+        data->rain1h = doc_15m["rain"].as<float>() * 4;
+
+        data->bRain = true;
+      }
+  } else {
+    // we actually don't know if it just didn't rain or we don't have a rain sensor.
+    data->bRain = false;
+    data->rain1h = 0;
+    data->raindaily = 0;
+  }  
+
   return true;
 }
 
