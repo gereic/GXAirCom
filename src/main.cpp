@@ -2951,14 +2951,14 @@ void taskWeather(void *pvParameters){
           pWd = &msg_buf[0];
           snprintf (buff,sizeof(buff)-1,"%04d-%02d-%02dT%02d:%02d:%02d+00:00",year(),month(),day(),hour(),minute(),second()); // ISO 8601
           doc["DT"] = buff;
-          doc["wDir"] = String(avg[0].Winddir,2);
-          doc["vaneValue"] = String(status.weather.vaneVAlue);
-          doc["error"] = String(status.weather.error.value);
-          doc["wSpeed"] = String(avg[0].WindSpeed,2);
-          doc["wGust"] = String(avg[0].WindGust,2);
-          if (wData.bTemp) doc["temp"] = String(avg[0].temp,2);
-          if (wData.bHumidity) doc["hum"] = String(avg[0].Humidity,2);
-          if (wData.bPressure) doc["press"] = String(avg[0].Pressure,2);
+          doc["wDir"] = round(100 * avg[0].Winddir) / 100;
+          doc["vaneValue"] = round(100 * status.weather.vaneVAlue) / 100;
+          doc["error"] = status.weather.error.value;
+          doc["wSpeed"] = round(100 * avg[0].WindSpeed) / 100;
+          doc["wGust"] = round(100 * avg[0].WindGust) / 100;
+          if (wData.bTemp) doc["temp"] = round(100 * avg[0].temp) / 100;
+          if (wData.bHumidity) doc["hum"] = round(100 * avg[0].Humidity) / 100;
+          if (wData.bPressure) doc["press"] = round(100 * avg[0].Pressure) / 100;
           serializeJson(doc, msg_buf);
           //Serial.print("WD=");Serial.println(pWd);
           wdCount++;
