@@ -176,6 +176,7 @@ SCL 14
 
 #define GSM_CHECK_TIME_CON 60000
 #define GSM_CHECK_TIME_SMS 5000
+#define GSM_MAX_BAUD 230400
 
 #define OLED_SLAVE_ADDRESS (0x3C)
 
@@ -344,6 +345,8 @@ struct GsmSettings{
   String pwd;
   eGsmNetworkMode NetworkMode;
   eGsmPreferedMode PreferredMode;
+  String NB_IOT_Band;
+  String CAT_M_Band;
 };
 
 struct WifiSettings{
@@ -450,6 +453,7 @@ struct gsmStatus{
   int16_t SignalQuality; //signalquality
   int16_t networkstat; //networkstatus
   String sOperator; //Operator
+  uint32_t baud;
 };
 
 struct statusData{
@@ -505,6 +509,7 @@ struct statusData{
   uint8_t calibAccStat;
   uint8_t FanetMsgCount;
   String lastFanetMsg;
+  uint8_t MqttStat;
 };
 
 #endif

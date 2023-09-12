@@ -543,6 +543,8 @@ getValue(obj,
     "GSMPWD",
     "GSMMODE",
     "GSMPREF",
+    "NBIOT",
+    "CATM",
     ]
   );
   obj['F2WuF'] = [ FntIdHex2Dec(_value("F2WuF0")).toString(),
@@ -774,6 +776,8 @@ function sendValues(){
     "GSMPWD",
     "GSMMODE",
     "GSMPREF",
+    "NBIOT",
+    "CATM",
     ],
     2,
     noType
@@ -1652,6 +1656,14 @@ function onMessage(evt) {
               <option value="2">NB-IOT</option>
               <option value="3">CAT-M and NB-IOT</option>
             </select></td>
+          </tr>
+          <tr>
+            <th>NB-IOT Band (leave empty for all bands)</th>
+            <td><input type="text" id="NBIOT"></td>
+          </tr>
+          <tr>
+            <th>CAT_M Band (leave empty for all bands)</th>
+            <td><input type="text" id="CATM"></td>
           </tr>
         </tbody>      
       </table>

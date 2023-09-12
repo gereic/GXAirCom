@@ -93,7 +93,7 @@ void GxMqtt::callback(char* topic, byte* payload, unsigned int length) {
           if (Update.end(true)){
             Serial.printf("Update complete msgCnt=%d:%d len=%d:%d\n",msgCnt,rMsgCnt,fileLen,rFileLen);  
             restartNow = true;    
-            snprintf(updstate,sizeof(updstate),"Update complete");
+            snprintf(updstate,sizeof(updstate),"Update complete --> restarting");
             sendState(updstate);
           } else {
             Serial.printf("Update error\n");  
@@ -226,7 +226,7 @@ void GxMqtt::subscribe(){
   }
   
   if (bRet) {
-    log_i("connected as %s",myDevId);
+    log_i("connected as %s",myDevId);    
     connState = 10;
   } else {
     log_i("failed, rc=%d --> try again in 1min",pPubSubClient->state());
@@ -248,6 +248,7 @@ void GxMqtt::run(bool bNetworkOk){
   uint32_t tAct = millis();
   static uint32_t tOld = millis();
   static uint32_t tRestart = millis();
+  static uint32_t tRestartModem = millis();
   if (bNetworkOk){
     //log_i("client connected");
     //log_i("take mutex");
@@ -264,12 +265,21 @@ void GxMqtt::run(bool bNetworkOk){
       if (connState == 100){ //full-connected
         sendUpdateCmd();
         sendInfo();
+        tRestartModem = tAct;
       }
       //log_i("give mutex");
       xSemaphoreGive( *xMutex );
     }
+    if ((tAct - tRestartModem) >= 600000){ //10min.
+      log_e("no MQTT-connection after 10min --> restart");
+      restartNow = true; //we have not MQTT-connection --> restart ESP, because we need to reconnect wifi or modem
+      tRestartModem = tAct;
+    }
+    status.MqttStat = connState;
   }else{
     tOld = tAct;
+    tRestartModem = tAct;
+    status.MqttStat = 0;
   }
   if (restartNow){
     if ((tAct - tRestart) >= 3000){

@@ -134,6 +134,8 @@ void load_configFile(SettingsData* pSetting){
   pSetting->gsm.pwd = preferences.getString("GSMKEY","");
   pSetting->gsm.NetworkMode = eGsmNetworkMode(preferences.getUChar("GSMMODE",eGsmNetworkMode::GSM_NW_AUTO));
   pSetting->gsm.PreferredMode = eGsmPreferedMode(preferences.getUChar("GSMPREF",eGsmPreferedMode::GSM_PREF_NOT_SET));
+  pSetting->gsm.NB_IOT_Band = preferences.getString("NBIOT","");
+  pSetting->gsm.CAT_M_Band = preferences.getString("CATM","");
   //fuel-sensor
   pSetting->bHasFuelSensor = preferences.getUChar("fuelSensor",0);
 
@@ -290,7 +292,8 @@ void write_configFile(SettingsData* pSetting){
   preferences.putString("GSMKEY",pSetting->gsm.pwd);
   preferences.putUChar("GSMMODE",pSetting->gsm.NetworkMode);
   preferences.putUChar("GSMPREF",pSetting->gsm.PreferredMode);
-
+  preferences.putString("NBIOT",pSetting->gsm.NB_IOT_Band);
+  preferences.putString("CATM",pSetting->gsm.CAT_M_Band);
   //fuel-sensor
   preferences.putUChar("fuelSensor",pSetting->bHasFuelSensor);
 

@@ -388,6 +388,7 @@ void printChipInfo(void);
 void setAllTime(tm &timeinfo);
 void checkExtPowerOff(uint32_t tAct);
 void writePGXCFSentence();
+double round2(double value);
 #ifdef GSMODULE
 void sendFanetWeatherData2WU(FanetLora::weatherData *weatherData,uint8_t wuIndex);
 void sendFanetWeatherData2WI(FanetLora::weatherData *weatherData,uint8_t wiIndex);
@@ -416,7 +417,11 @@ uint8_t setCFG[3][8] PROGMEM = {
 	{0xF1, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, // Ublox - Time of Day and Clock Information
 };
 
-
+// rounds a number to 2 decimal places
+// example: round(3.14159) -> 3.14
+double round2(double value) {
+   return (int)(value * 100 + 0.5) / 100.0;
+}
 
 void i2cScanner(){
   byte error, address;
@@ -1786,7 +1791,8 @@ void setup() {
   status.bHasGPS = false;
   fanet.setGPS(false);
   status.tRestart = 0;
-  sMqttState[0] = 0; //zero-Termination of String !!
+  sMqttState[0] = 0; //zero-Termination of String !
+  status.MqttStat = 0;
   status.GPS_Date[0] = 0; //clear string
   status.GPS_Time[0] = 0; //clear string
   xI2C0Mutex = xSemaphoreCreateMutex(); // create Mutex for I2C0
@@ -2483,19 +2489,34 @@ bool connectGPRS(){
   return modem.gprsConnect(setting.gsm.apn.c_str(), setting.gsm.user.c_str(), setting.gsm.pwd.c_str());
 }
 
-bool connectModem(){
-  log_i("Waiting for network...");
-  if (!modem.waitForNetwork(600000L)){
-    log_e("no network");
-    return false;
-  } 
-  modem.streamWrite("AT+CPSI?\r\n");
+void readModem2Serial(const char* GsmConstStr,uint32_t timeout_ms){
+  modem.streamWrite(GsmConstStr);
+  for (uint32_t start = millis(); millis() - start < timeout_ms;) {
+    Serial.println(modem.stream.readString());  
+    delay(100);
+  }
+  /*
+  uint32_t tStart = millis();
   int i = 0;
   while(i < 2){
     String s = modem.stream.readStringUntil('\n');
     Serial.println(s);  
     i++;
   }
+  */  
+}
+
+bool connectModem(){
+  log_i("Waiting for network...");
+  if (!modem.waitForNetwork(600000L)){
+    log_e("no network");
+    return false;
+  } 
+  
+  //readModem2Serial("AT+CPSI?\r\n",2000);
+  //readModem2Serial("AT+IPR=?\r\n",2000); //read baud-rates
+  //readModem2Serial("AT+IPR?\r\n",2000); //read actual baud-rate
+  
   status.gsm.SignalQuality = modem.getSignalQuality();
   //log_i("signal quality %d",status.gsm.SignalQuality);
   status.gsm.sOperator = modem.getOperator();
@@ -2530,7 +2551,7 @@ bool factoryResetModem(){
     log_e("modem-connection not OK");
     return false;
   } 
-  log_i("set factory-settings");
+  //log_i("set factory-settings");
   modem.sendAT(GF("&F"));  // Factory settings
   modem.waitResponse();
   if (!modem.testAT()){
@@ -2540,6 +2561,19 @@ bool factoryResetModem(){
   modem.sendAT(GF("&W"));  // Factory settings
   modem.waitResponse();
   return true;
+}
+
+bool TestModemconnection(unsigned long baud){
+  log_i("Modem switch baudrate to %d",baud);
+  GsmSerial.begin(baud,SERIAL_8N1,PinGsmRx,PinGsmTx,false); //baud, config, rx, tx, invert
+  log_i("test modem connection");
+  if (modem.testAT()){
+    status.gsm.baud = baud; //set baudrate in status
+    log_i("modem connection ok");
+    return true;
+  }else{
+    return false;
+  }
 }
 
 bool initModem(){
@@ -2553,12 +2587,21 @@ bool initModem(){
     delay(1000);
     digitalWrite(PinGsmRst,HIGH);
     delay(6000); //wait until modem is ok now
-  }  
-  log_i("test modem-connection");
-  if (!modem.testAT()){
-    log_e("modem-connection not OK");
-    return false;
   }
+  #ifdef TINY_GSM_MODEM_SIM7000
+    //on SIM7000 be use other baudrate !!
+    if (!TestModemconnection(115200)){      
+      if (!TestModemconnection(GSM_MAX_BAUD)){
+        log_e("modem-connection not OK");
+        return false;
+      }
+    }
+  #else
+    if (!TestModemconnection(115200)){
+      log_e("modem-connection not OK");
+      return false;
+    }
+  #endif
   bool bRet = false;
   for (int i = 0;i <3;i++){
     log_i("restarting modem...");
@@ -2571,27 +2614,46 @@ bool initModem(){
     log_e("restarting modem failed");
     return false; 
   }
-
+  
   #ifdef TINY_GSM_MODEM_SIM7000
+
+  if (status.gsm.baud != GSM_MAX_BAUD){
+    log_i("GSM-Modem switch baudrate to %d",GSM_MAX_BAUD);
+    modem.setBaud(GSM_MAX_BAUD); //set Baudrate to 921600
+    GsmSerial.begin(GSM_MAX_BAUD,SERIAL_8N1,PinGsmRx,PinGsmTx,false); //baud, config, rx, tx, invert
+    status.gsm.baud = GSM_MAX_BAUD;
+  }
+  //readModem2Serial("AT+COPS=?\r\n",50000);
   log_i("set NetworkMode to %d",setting.gsm.NetworkMode);
   modem.setNetworkMode(setting.gsm.NetworkMode); //set mode
   if (setting.gsm.PreferredMode > 0){
     delay(500);
     log_i("set PreferredMode to %d",setting.gsm.PreferredMode);
     modem.setPreferredMode(setting.gsm.PreferredMode); //set preferred mode
+  }else{
+    modem.setPreferredMode(3); //set preferred mode to CAT-M and NB-IoT
   }
-  /*
-  log_i("set Band");
-  modem.sendAT("+CBANDCFG=\"NB-IOT\",8");
-  modem.waitResponse(); 
-  modem.sendAT("+CBANDCFG=\"CAT-M\",3,20");  
+
+  if (setting.gsm.NB_IOT_Band.length() > 0){
+    modem.sendAT(String("+CBANDCFG=\"NB-IOT\"," + setting.gsm.NB_IOT_Band).c_str());
+  }else{
+    modem.sendAT("+CBANDCFG=\"NB-IOT\",3,5,8,20,28"); //set to default bands
+  }
   modem.waitResponse();
-  */
+  if (setting.gsm.CAT_M_Band.length() > 0){
+    modem.sendAT(String("+CBANDCFG=\"CAT-M\"," + setting.gsm.CAT_M_Band).c_str());
+  }else{
+    modem.sendAT("+CBANDCFG=\"CAT-M\",3,5,8,20,28"); //set to default bands
+  }
+  modem.waitResponse();
+  //readModem2Serial("AT+CBANDCFG=?\r\n",2000);
+  //readModem2Serial("AT+CBANDCFG?\r\n",2000);  
   #endif
   modem.sleepEnable(false); //set sleepmode off
   modem.sendAT(GF("+CMGF=1"));
   modem.waitResponse();  
   modem.sendAT("+CNETLIGHT=0"); //turn off net-light to redure Power
+  modem.waitResponse();  
   return true;
 }
 
@@ -2618,6 +2680,7 @@ void PowerOffModem(){
         //it restarts itself all the time --> we set the module to sleep-mode
         log_i("set modem to sleep-mode");
         modem.sendAT(GF("+CSCLK=2"));
+
         delay(1000);
       #endif
       digitalWrite(PinGsmRst,LOW);
@@ -2639,14 +2702,6 @@ void setupSim7000Gps(){
   modem.enableGPS(); //enable GPS
   xSemaphoreGive( xGsmMutex );
   command.getGpsPos = 2; //setup GPS finished --> waiting for GPS-Position
-  //modem.disableGPS(); //disable GPS
-  //modem.sendAT(GF("+CGNSCFG=1")); //Turn on GNSS NMEA data out put to USB’s NMEA port
-  //modem.sendAT(GF("+CGNSCFG=2")); //Turn on GNSS NMEA data out put to UART3 port
-  //modem.waitResponse();
-  // CMD:AT+SGPIO=0,4,1,1
-  // Only in version 20200415 is there a function to control GPS power
-  //modem.sendAT(GF("+CGNSMOD=1,1,1,1")); //GNSS Work Mode Set
-  //modem.waitResponse();  
 }
 #endif
 
@@ -2670,7 +2725,7 @@ void taskGsm(void *pvParameters){
   // Set preferred message format to text mode
 
   xSemaphoreTake( xGsmMutex, portMAX_DELAY );
-  factoryResetModem();
+  //factoryResetModem();
   initModem();
   xSemaphoreGive( xGsmMutex );
   if (setting.wifi.connect != eWifiMode::CONNECT_NONE){
@@ -2951,14 +3006,14 @@ void taskWeather(void *pvParameters){
           pWd = &msg_buf[0];
           snprintf (buff,sizeof(buff)-1,"%04d-%02d-%02dT%02d:%02d:%02d+00:00",year(),month(),day(),hour(),minute(),second()); // ISO 8601
           doc["DT"] = buff;
-          doc["wDir"] = String(avg[0].Winddir,2);
-          doc["vaneValue"] = String(status.weather.vaneVAlue);
-          doc["error"] = String(status.weather.error.value);
-          doc["wSpeed"] = String(avg[0].WindSpeed,2);
-          doc["wGust"] = String(avg[0].WindGust,2);
-          if (wData.bTemp) doc["temp"] = String(avg[0].temp,2);
-          if (wData.bHumidity) doc["hum"] = String(avg[0].Humidity,2);
-          if (wData.bPressure) doc["press"] = String(avg[0].Pressure,2);
+          doc["wDir"] = round2(avg[0].Winddir);
+          doc["vaneValue"] = status.weather.vaneVAlue;
+          doc["error"] = status.weather.error.value;
+          doc["wSpeed"] = round2(avg[0].WindSpeed);
+          doc["wGust"] = round2(avg[0].WindGust);
+          if (wData.bTemp) doc["temp"] = round2(avg[0].temp);
+          if (wData.bHumidity) doc["hum"] = round2(avg[0].Humidity);
+          if (wData.bPressure) doc["press"] = round2(avg[0].Pressure);
           serializeJson(doc, msg_buf);
           //Serial.print("WD=");Serial.println(pWd);
           wdCount++;
@@ -3517,6 +3572,10 @@ void checkSystemCmd(char *ch_str){
       log_e("ESP Restarting !");
       esp_restart();
     }
+  }
+  if (line.indexOf("#SYC NETSTAT?") >= 0){
+    //log_i("sending 2 client");
+    add2OutputString("#SYC INET=" + String(status.bInternetConnected) + ",MODEM=" + String(status.modemstatus) + ",MQTT=" + String(status.MqttStat) + "\r\n");
   }
   if (line.indexOf("#SYC RFMODE?") >= 0){
     //log_i("sending 2 client");
@@ -4918,89 +4977,6 @@ void handleUpdate(uint32_t tAct){
     
   }
 }
-
-#ifdef GSM_MODULE
-
-/*
-void sendStatus(){
-  //modem.sendAT(GF("+CMGS=\"","06509946563")); //Number for sending SMS
-  log_i("send status");
-  String sStatus = "WDIR=" + String(status.weather.WindDir,1) + "\r\nWSPEED=" + String(status.weather.WindSpeed,1) + "\r\nWGUST=" + String(status.weather.WindGust,1) + "\r\nTEMP=" + String(status.weather.temp,1) + "\r\nPRESS=" + String(status.weather.Pressure,1);
-  if (!modem.sendSMS("00436769440910",sStatus.c_str())){
-    log_i("error sending SMS");
-  }
-
-}
-
-void readSMS(){
-  //log_i("read SMS");
-  xSemaphoreTake( xGsmMutex, portMAX_DELAY );
-  //log_i("check SMS");
-  String data;
-  //modem.sendAT(GF("+CMGL=\"REC UNREAD\""));  //don't change status of SMS
-  uint8_t NewSms = 0;
-  uint8_t index;
-  GsmSerial.setTimeout(5000);
-  modem.sendAT(GF("+CMGL=\"ALL\""));  //don't change status of SMS
-  String Text = "";
-  String sNumber = "";
-  int32_t pos = 0;
-  while(1) {
-    data = modem.stream.readStringUntil('\n');
-    pos = data.indexOf('\r');
-    if (pos >= 0){
-      //log_i("cr found");
-      data.replace("\r","");
-    } 
-    String sRet = "";
-    pos = getStringValue(data,String("+CMGL: "),String(",\""),0,&sRet);
-    if (pos >= 0){     
-     if (NewSms == 0){
-      index = atoi(sRet.c_str());
-      pos += 3;
-      log_i("pos=%d",pos);
-      pos = getStringValue(data,String("\",\""),String("\""),pos,&sNumber);
-      if (pos >= 0){
-        log_i("index=%d,number=%s",index,sNumber.c_str());
-      }      
-      NewSms = 1; //new SMS received
-      Text = ""; //clear Text
-     }else{
-       NewSms = 2;
-     }
-    }else{
-      if (NewSms == 1){
-        Text = data;
-        NewSms = 2;
-      }
-    }
-
-    log_i("%s",data.c_str());
-    if (data.length() <= 0){
-      break;
-    }
-  }
-  if (NewSms > 0){
-    log_i("SMS=%s",Text.c_str());
-    if (Text == "status"){
-      //send status
-      sendStatus();      
-    }else if (Text == "update"){
-      //do online update !!
-      log_i("do update");
-    }
-
-    
-    //delete SMS
-    log_i("delete SMS %d",index);
-    modem.sendAT(GF("+CMGD="), index); //delete SMS
-    modem.waitResponse();
-  }
-  GsmSerial.setTimeout(1000);
-  xSemaphoreGive( xGsmMutex );
-}
-*/
-#endif
 
 void taskBackGround(void *pvParameters){
   static uint32_t tWifiCheck = millis();

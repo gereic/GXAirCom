@@ -7,14 +7,20 @@ from struct import *
 #filename="firmware_v5.3.5_GsNoBluetoothSim7000.bin"
 #filename="firmware_v5.3.5_sim7000_psRam.bin"
 #filename="firmware_v5.3.5_psRam.bin"
-#filename="spiffs_v5.3.5.bin" #file to send
-filename="firmware_v5.4.0_GsSim7000.bin"
+#filename="spiffs_v5.4.0.bin" #file to send
 
-DevId="08B668"
+DevId="08B668" #PGV-NW
+filename="firmware_v5.4.0_GsSim7000.bin"
+#DevId="08C494" #GX-TEST
+#filename="firmware_v5.4.0_GsSim7000.bin"
+#DevId="08A7E4" #GetroniX
+#filename="firmware_v5.4.0_Gs.bin"
+
 SERVERIP="192.168.0.10"
 PORT=1883
 #DevId="08B668" #PGV-NW
 #DevId="08E440" #Prochenberg
+#DevId="08C494" #GX-TEST
 #SERVERIP="remote.getronix.at"
 #PORT=21883
 
@@ -53,7 +59,7 @@ def on_message(client, userdata, msg):
 #    #client.mid_value=mid
 #    #client.puback_flag=True  
 
-def wait_for(client,msgValue,period=0.25,wait_time=40,running_loop=False):
+def wait_for(client,msgValue,period=0.25,wait_time=80,running_loop=False):
   client.running_loop=running_loop #if using external loop
   wcount=0  
   while True:
