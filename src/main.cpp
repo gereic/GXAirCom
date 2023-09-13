@@ -4674,12 +4674,13 @@ void taskStandard(void *pvParameters){
 }
 
 void powerOff(){
-  xSemaphoreTake( *PMUMutex, portMAX_DELAY );
-  PMU->clearIrqStatus();
-  xSemaphoreGive(*PMUMutex);
+  if (status.PMU != ePMU::NOPMU){
+    xSemaphoreTake( *PMUMutex, portMAX_DELAY );
+    PMU->clearIrqStatus();
+    xSemaphoreGive(*PMUMutex);
+  }
   bPowerOff = true;
   delay(100);
-
 
   esp_wifi_set_mode(WIFI_MODE_NULL);
   esp_wifi_stop();
@@ -5073,9 +5074,9 @@ void taskBackGround(void *pvParameters){
             /*  Time is returned in minutes elapsed since midnight. If no sunrises or
             *  sunsets are expected, a "-1" is returned.
             */
-            iSunRise = dusk2dawn.sunrise(year(), month(), day(), false);
+            iSunRise = dusk2dawn.sunrise(year(), month(), day(), false) + setting.gs.sunriseOffset;
             //iSunRise = 900;
-            iSunSet = dusk2dawn.sunset(year(), month(), day(), false);
+            iSunSet = dusk2dawn.sunset(year(), month(), day(), false) + setting.gs.sunsetOffset;
             if (iSunRise < 0) iSunRise += 1440;
             if (iSunSet < 0) iSunSet += 1440;
             char time1[] = "00:00";

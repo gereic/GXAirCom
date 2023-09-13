@@ -278,6 +278,8 @@ void onWebSocketEvent(uint8_t client_num,
           doc["gsGeoAlt"] = setting.gs.geoidAlt;
           doc["gsScr"] = setting.gs.SreenOption;
           doc["gsPs"] = setting.gs.PowerSave;
+          doc["GsSrO"] = setting.gs.sunriseOffset;
+          doc["GsSsO"] = setting.gs.sunsetOffset;
           doc["wdAnemo"] = setting.wd.anemometer.AnemometerType;
           doc["wdAnemoAdsGain"] = setting.wd.anemometer.AnemometerAdsGain;
           doc["wdAnemoAdsWSpeedMinVoltage"] = setting.wd.anemometer.AnemometerAdsWSpeedMinVoltage;
@@ -465,6 +467,8 @@ void onWebSocketEvent(uint8_t client_num,
         if (root.containsKey("gsGeoAlt")) newSetting.gs.geoidAlt = doc["gsGeoAlt"].as<float>();
         if (root.containsKey("gsScr")) newSetting.gs.SreenOption = eScreenOption(doc["gsScr"].as<uint8_t>());
         if (root.containsKey("gsPs")) newSetting.gs.PowerSave = eGsPower(doc["gsPs"].as<uint8_t>());
+        if (root.containsKey("GsSrO")) newSetting.gs.sunriseOffset = eGsPower(doc["GsSrO"].as<int32_t>());
+        if (root.containsKey("GsSsO")) newSetting.gs.sunsetOffset = eGsPower(doc["GsSsO"].as<int32_t>());
         //aneometer settings
         if (root.containsKey("wdAnemo")) newSetting.wd.anemometer.AnemometerType = eAnemometer(doc["wdAnemo"].as<uint8_t>());
         if (root.containsKey("wdAnemoAdsGain")) newSetting.wd.anemometer.AnemometerAdsGain = eAnemometer(doc["wdAnemoAdsGain"].as<uint8_t>());

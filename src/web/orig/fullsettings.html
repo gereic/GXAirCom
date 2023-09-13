@@ -30,6 +30,8 @@ function setVis(){
     document.getElementById("accCalib3").style.display=''; /*set calibration of ACC to invisible*/
     document.getElementById("accCalib4").style.display=''; /*set calibration of ACC to invisible*/
   }
+  document.getElementById("VisGsSrO").style.display='none';
+  document.getElementById("VisGsSsO").style.display='none';
   document.getElementById("VisFrequ").style.display='none'; /*set Frequency-settings invisible*/
   document.getElementById("VisAWUS").style.display='none'; /*set advanced weahter upload settings invisible    */
   document.getElementById("VisAWFFNT").style.display='none'; /*set advanced weahter upload settings invisible   */   
@@ -53,7 +55,12 @@ function setVis(){
   document.getElementById("VisADS1015").style.display='none'; //set ADS1015 settings invisible
   if (document.getElementById("setView").value == SETTING_EXPERT){ /*we are expert user*/
     document.getElementById("VisFrequ").style.display=''; /*set Frequency-settings visible*/
+
   }
+  if (document.getElementById("gsPs").value == 1){ /*set offset for sunset and sunrise visible */
+    document.getElementById("VisGsSrO").style.display='';
+    document.getElementById("VisGsSsO").style.display='';
+  }  
   if (document.getElementById("useMPU").checked){
     document.getElementById("KfP").innerHTML='Kalman filter pressure-value (default 0.3)';
     document.getElementById("KfA").innerHTML='Kalman filter accelerator-value (default 0.3)';
@@ -476,6 +483,8 @@ getValue(obj,
     "gsGeoAlt",
     "gsScr",
     "gsPs",
+    "GsSrO",
+    "GsSsO",
     "MinBatPerc",
     "restartBattPerc",
     "wdAnemo",
@@ -620,6 +629,8 @@ function sendValues(){
     "gsGeoAlt",
     "gsScr",
     "gsPs",
+    "GsSrO",
+    "GsSsO",
     "MinBatPerc",
     "restartBattPerc",
     ], 1
@@ -1218,13 +1229,20 @@ function onMessage(evt) {
           </tr>
           <tr>
             <th>Power option</th>
-            <td><select id="gsPs">
+            <td><select onchange="setVis()" id="gsPs">
               <option value="0">always on</option>
               <option value="1">only on between sunrise and sunset</option>
               <option value="2">battery life algorithm mode</option>
             </select></td>
           </tr>
-          <tr>
+          <tr id="VisGsSrO">
+            <th>offset sunrise [min.]</th>
+            <td><input type="number" id="GsSrO" step="1"></td>
+          </tr>
+          <tr id="VisGsSsO">
+            <th>offset sunset [min.]</th>
+            <td><input type="number" id="GsSsO" step="1"></td>
+          </tr>          <tr>
             <th>min. battery capacity [&#037;]</th>
             <td><input type="number" id="MinBatPerc" min="0" max="50" step="1"></td>
           </tr>

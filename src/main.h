@@ -324,6 +324,8 @@ struct GSSettings{
   float geoidAlt; //geoidaltitude for Legacy
   eScreenOption SreenOption; //energy-option for display
   eGsPower PowerSave; //powersave-option
+  int sunriseOffset; //sunrise offset [min]
+  int sunsetOffset; //sunrise offset [min]
 };
 
 struct WeatherSettings{
