@@ -6,6 +6,7 @@
 
 #include "Screen.h"
 #include "tools.h"
+#include <icons.h>
 
 
 //GxEPD2_BW<GxEPD2_290, GxEPD2_290::HEIGHT> e_ink(GxEPD2_290(EINK_CS, EINK_DC, EINK_RST, EINK_BUSY));
@@ -545,7 +546,7 @@ void Screen::drawMainScreen(void){
   //actData.SatCount = 9;
   actData.flightTime = status.flightTime;
   actData.flying = status.flying;
-  actData.wifi = (status.wifiStat) ? true : false;
+  actData.wifi = (status.wifiSTA.state) ? true : false;
   actData.bluetooth = status.bluetoothStat;
   if (status.bMuting){
       actData.volume = 0;

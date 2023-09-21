@@ -351,12 +351,23 @@ struct GsmSettings{
   String CAT_M_Band;
 };
 
+	struct WifiModeBits
+	{
+			unsigned switchOffApWhenStaConnected:1, b1:1, b2:1, b3:1, b4:1, b5:1, b6:1, b7:1;
+	};
+	union uWifiMode
+	{
+			WifiModeBits bits;
+			uint8_t mode;
+	};
+
 struct WifiSettings{
   String appw; //access-point-Password
   String ssid; //WIFI SSID
   String password; //WIFI PASSWORD
   eWifiMode connect; //1 connect to wifi, 2 connect to wifi and try to stay connected
   uint32_t tWifiStop; //time after wifi will be stopped to save energy 0 --> never
+  uWifiMode uMode; //wifi-mode
 };
 
 	struct OgnModeBits
@@ -458,9 +469,21 @@ struct gsmStatus{
   uint32_t baud;
 };
 
+struct statusNetwork{
+  eConnectionState state = IDLE;
+  String ip = "";
+};
+
+struct statusWifi{
+  eConnectionState state = IDLE;
+  String ip = "";
+  int8_t Rssi;
+};
+
 struct statusData{
   uint8_t displayType;
-  String myIP; //my IP-Adress
+  statusNetwork wifiAP;
+  statusWifi wifiSTA;
   uint16_t vBatt; //battery-voltage 1/1000V
   uint8_t BattPerc; //battery-percent
   bool BattCharging;
@@ -490,14 +513,12 @@ struct statusData{
   uint32_t tLoop; //current Loop-time
   uint32_t tMaxLoop; //max Loop-time
   bool flying;
-  uint8_t wifiStat;
-  int8_t wifiRssi;
   uint8_t bluetoothStat;
   uint32_t flightTime; //flight-time in sek.
   bool bMuting; //muting beeper
   bool bPowerOff;
   weatherStatus weather;
-  eModemState modemstatus; //status of mobile-device (sim800)
+  eConnectionState modemstatus; //status of mobile-device (sim800)
   bool bInternetConnected;
   bool bTimeOk;
   gsmStatus gsm;
@@ -513,5 +534,21 @@ struct statusData{
   String lastFanetMsg;
   uint8_t MqttStat;
 };
+
+//define wifi-events on for old framework
+#if ESP_IDF_VERSION_MAJOR < 4
+  #define ARDUINO_EVENT_WIFI_READY SYSTEM_EVENT_WIFI_READY
+  #define ARDUINO_EVENT_WIFI_STA_START SYSTEM_EVENT_STA_START
+  #define ARDUINO_EVENT_WIFI_STA_STOP SYSTEM_EVENT_STA_STOP
+  #define ARDUINO_EVENT_WIFI_STA_CONNECTED SYSTEM_EVENT_STA_CONNECTED
+  #define ARDUINO_EVENT_WIFI_STA_DISCONNECTED SYSTEM_EVENT_STA_DISCONNECTED
+  #define ARDUINO_EVENT_WIFI_STA_GOT_IP SYSTEM_EVENT_STA_GOT_IP
+  #define ARDUINO_EVENT_WIFI_STA_LOST_IP SYSTEM_EVENT_STA_LOST_IP
+  #define ARDUINO_EVENT_WIFI_AP_START SYSTEM_EVENT_AP_START
+  #define ARDUINO_EVENT_WIFI_AP_STOP SYSTEM_EVENT_AP_STOP
+  #define ARDUINO_EVENT_WIFI_AP_STACONNECTED SYSTEM_EVENT_AP_STACONNECTED
+  #define ARDUINO_EVENT_WIFI_AP_STADISCONNECTED SYSTEM_EVENT_AP_STADISCONNECTED
+  #define ARDUINO_EVENT_WIFI_AP_STAIPASSIGNED SYSTEM_EVENT_AP_STAIPASSIGNED
+#endif
 
 #endif

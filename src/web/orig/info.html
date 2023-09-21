@@ -49,6 +49,28 @@ function setVis(){
     document.getElementById("VisgpsCourse").style.display='';
   }
 }
+
+function getWifiRssi(sValue){
+  value = parseInt(sValue);
+  if ((value <=  -90) || (value == 0)) {
+    return "no connection " + sValue + "dBm";
+  }else if (value <=  -80){
+    return "Unreliable signal strength " + sValue + "dBm";
+  }else if (value <=  -70){
+    return "Not a strong signal " + sValue + "dBm";
+  }else if (value <=  -76){
+    return "Reliable signal strength " + sValue + "dBm";
+  }else if (value <=  -60){
+    return "Good signal strength " + sValue + "dBm";
+  }else if (value <=  -50){
+    return "excellent signal strength " + sValue + "dBm";
+  }else if (value <=  -30){
+    return "excellent signal strength " + sValue + "dBm";
+  }else{
+    return "excellent signal strength " + sValue + "dBm";
+  }  
+}
+
 /* Called when a message is received from the server*/
 function onMessage(evt) {
     /* Print out our received message*/
@@ -130,29 +152,8 @@ function onMessage(evt) {
           text = text +  " (" + myObj[key] + ")";
           document.getElementById(key).value = text;
           continue;
-        }else if (key == "wifiRssi"){
-          var text = "";
-          var value = parseInt(myObj[key]);
-          if ((value <=  -90) || (value == 0)) {
-            text = "no connection ";
-          }else if (value <=  -80){
-            text = "Unreliable signal strength ";
-          }else if (value <=  -70){
-            text = "Not a strong signal ";
-          }else if (value <=  -76){
-            text = "Reliable signal strength ";
-          }else if (value <=  -60){
-            text = "Good signal strength ";
-          }else if (value <=  -50){
-            text = "excellent signal strength ";
-          }else if (value <=  -30){
-            text = "excellent signal strength ";
-          }else{
-            text = "excellent signal strength ";
-          }
-          text = text +  myObj[key] + "dBm";
-          document.getElementById(key).value = text;
-          continue;
+        }else if (key == "wifiSTARssi"){
+          myObj[key] = getWifiRssi(myObj[key]);          
         }
         var e = document.getElementById(key);
         if (e == null) continue;
@@ -253,10 +254,6 @@ function onMessage(evt) {
             <td><input type="text" id="Battperc" disabled></td>
           </tr>
           <tr>
-            <th>Wifi RSSI</th>
-            <td><input type="text" id="wifiRssi" disabled></td>
-          </tr>
-          <tr>
             <th>current loop-time [us]</th>
             <td><input type="text" id="tLoop" disabled></td>
           </tr>
@@ -276,6 +273,44 @@ function onMessage(evt) {
             <th>Live-Counter</th>
             <td><input type="text" id="counter" disabled></td>
           </tr>
+        </tbody>      
+      </table>
+    </fieldset>
+    <p></p>
+    <p></p>
+    <fieldset>
+      <legend><b>Wifi-Station</b></legend>
+      <table style="width:100&#37;">
+        <tbody>
+          <tr>
+            <th>state</th>
+            <td><input type="text" id="wifiSTAState" disabled></td>
+          </tr>	
+          <tr>
+            <th>ip</th>
+            <td><input type="text" id="wifiSTAIp" disabled></td>
+          </tr>	
+          <tr>
+            <th>signal</th>
+            <td><input type="text" id="wifiSTARssi" disabled></td>
+          </tr>
+        </tbody>      
+      </table>
+    </fieldset>
+    <p></p>
+    <p></p>
+    <fieldset>
+      <legend><b>Wifi-Access-Point</b></legend>
+      <table style="width:100&#37;">
+        <tbody>
+          <tr>
+            <th>state</th>
+            <td><input type="text" id="wifiAPState" disabled></td>
+          </tr>	
+          <tr>
+            <th>ip</th>
+            <td><input type="text" id="wifiAPIp" disabled></td>
+          </tr>	
         </tbody>      
       </table>
     </fieldset>

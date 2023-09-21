@@ -53,6 +53,10 @@ function setVis(){
   document.getElementById("VisAutoUpdate").style.display='none';  /*disable autoupdate*/
   document.getElementById("VisADS1015Exp").style.display='none';
   document.getElementById("VisADS1015").style.display='none'; //set ADS1015 settings invisible
+  document.getElementById("VisWifiOff").style.display='none';  
+  if (document.getElementById("wificonnect").value != 2){
+    document.getElementById("VisWifiOff").style.display=''; //show wifi-off
+  }
   if (document.getElementById("setView").value == SETTING_EXPERT){ /*we are expert user*/
     document.getElementById("VisFrequ").style.display=''; /*set Frequency-settings visible*/
 
@@ -146,10 +150,12 @@ function setVis(){
   if (document.getElementById("wificonnect").value == 0){
     document.getElementById("VisWifiSsid").style.display='none';
     document.getElementById("VisWifiPwd").style.display='none';
+    document.getElementById("VisWifiApOff").style.display='none';
   }else{
     document.getElementById("VisWifiSsid").style.display='';
     document.getElementById("VisWifiPwd").style.display='';
     document.getElementById("VisExtPowerSw").style.display = '';
+    document.getElementById("VisWifiApOff").style.display='';
   }
   document.getElementById("wdModeEnable").checked = wsMode & wsModeEn;
   document.getElementById("wdModeHasBME").checked = wsMode & wsModeBme;
@@ -245,7 +251,21 @@ function setMQTTMode(mode){
 }
 
 
+function getWifiMode(){
+  var Ret = 0;
+  if (document.getElementById("wifiModeApOff").checked) Ret += 1;
+  return Ret;
+}
 
+function setWifiMode(mode){
+  console.log("Wifi-Mode=" + mode);
+  e = document.getElementById("wifiModeApOff");
+  if (mode & 1){
+    e.checked = true;
+  }else{
+    e.checked = false;
+  }
+}
 
 function getOGNMode(){
   var Ret = 0;
@@ -587,6 +607,7 @@ getValue(obj,
             _value("F2WiK3"),
             _value("F2WiK4")];
   obj['ognlive'] = getOGNMode();
+  obj['WIFI_MODE'] = getWifiMode();
   obj['RFM'] = getRfMode();
   obj['MqttMode'] = getMQTTMode();
   obj['WsMode'] = getWsMode();
@@ -729,6 +750,7 @@ function sendValues(){
 
   var obj = {  
   ognlive : getOGNMode(),
+  WIFI_MODE : getWifiMode(),
   RFM : getRfMode(),
   MqttMode : getMQTTMode(),
   WsMode : getWsMode(),
@@ -848,6 +870,9 @@ function parseJson(data){
     }else if (key == "ognlive"){
       setOGNMode(myObj[key]);
       continue;
+    }else if (key == "WIFI_MODE"){
+      setWifiMode(myObj[key]);
+      continue;      
     }else if (key == "MqttMode"){
       setMQTTMode(myObj[key]);
       continue;          
@@ -1168,15 +1193,8 @@ function onMessage(evt) {
               <option value="2">stay connected (60sec. reconnect)</option>
             </select></td>
           </tr>
-          <tr id="VisWifiSsid">
-            <th>WIFI SSID</th>
-            <td><input type="text" id="ssid"></td>
-          </tr>
-          <tr id="VisWifiPwd">
-            <th>WIFI Password</th>
-            <td><input type="text" id="password"></td>
-          </tr>
-          <tr>
+          <tr id="VisWifiApOff"><th>switch AP off when Wifi connected:</th><td><input type="checkbox" id="wifiModeApOff" ></td></tr>
+          <tr id="VisWifiOff">
             <th>Wifi off</th>
             <td><select id="wifioff">
               <option value="0">always on</option>
@@ -1186,6 +1204,14 @@ function onMessage(evt) {
               <option value="300">5min.</option>
               <option value="600">10min.</option>
             </select></td>
+          </tr>
+          <tr id="VisWifiSsid">
+            <th>WIFI SSID</th>
+            <td><input type="text" id="ssid"></td>
+          </tr>
+          <tr id="VisWifiPwd">
+            <th>WIFI Password</th>
+            <td><input type="text" id="password"></td>
           </tr>
         </tbody>      
       </table>

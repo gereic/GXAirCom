@@ -24,7 +24,6 @@ extern struct statusData status;
 #include "Fonts/gnuvarioe18pt7b.h"
 #include "Fonts/gnuvarioe23pt7b.h"
 #include "main.h"
-#include <icons.h>
 #include <string.h>
 #include "../lib/FANETLORA/FanetLora.h"
 

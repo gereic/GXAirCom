@@ -75,11 +75,28 @@ void sendPageHeader(uint8_t client_num){
   }else{
     doc["pilot"] = "pilot: " + setting.PilotName + " [" + setting.myDevId + "]";
   }
-  doc["myIP"] = status.myIP;
+  doc["myIP"] = status.wifiSTA.ip;
   serializeJson(doc, msg_buf);
   webSocket.sendTXT(client_num, msg_buf);
 }
 
+String getEthState(eConnectionState state){
+  switch (state){
+    case IDLE:
+      return "idle";
+    case STARTED:
+      return "started";
+    case CONNECTING:
+      return "connecting";
+    case CONNECTED:
+      return "connected";
+    case FULL_CONNECTED:
+      return "full connected";
+    case DISCONNECTED:
+      return "disconnected";
+  }
+  return "";
+}
 
 
 // Callback: receiving any WebSocket message
@@ -141,7 +158,7 @@ void onWebSocketEvent(uint8_t client_num,
           doc["compiledate"] = String(compile_date);
           doc["bHasVario"] = (uint8_t)status.vario.bHasVario;       
           doc["bHasMPU"] = (uint8_t)status.vario.bHasMPU;   
-          doc["VisWeather"] = (uint8_t)((setting.wd.mode.bits.enable | status.bWUBroadCast) & setting.Mode == eMode::GROUND_STATION);
+          doc["VisWeather"] = (uint8_t)((setting.wd.mode.bits.enable | status.bWUBroadCast) & (setting.Mode == eMode::GROUND_STATION));
           doc["board"] = setting.boardType;
           doc["Frequ"] = setting.CPUFrequency;
           doc["disp"] = setting.displayType;
@@ -152,14 +169,21 @@ void onWebSocketEvent(uint8_t client_num,
           webSocket.sendTXT(client_num, msg_buf);
 
           doc.clear();
-          doc["wifiRssi"] = String(status.wifiRssi);
-          doc["wifiStat"] = String(status.wifiStat);
+          doc["wifiAPState"] = getEthState(status.wifiAP.state);
+          doc["wifiAPIp"] = status.wifiAP.ip;
+          doc["wifiSTARssi"] = String(status.wifiSTA.Rssi);
+          doc["wifiSTAIp"] = status.wifiSTA.ip;
+          doc["wifiSTAState"] = getEthState(status.wifiSTA.state);
         #ifdef GSM_MODULE
           doc["GSMRssi"] = status.gsm.SignalQuality;
           doc["GSMStat"] = status.modemstatus;
           doc["GSMMode"] = status.gsm.networkstat;
           doc["GSMCOPS"] = status.gsm.sOperator;
         #endif
+          serializeJson(doc, msg_buf);
+          webSocket.sendTXT(client_num, msg_buf);
+
+          doc.clear();
           doc["climbrate"] = String(status.ClimbRate,1);
           doc["vTemp"] = String(status.varioTemp,1);
           serializeJson(doc, msg_buf);
@@ -264,6 +288,7 @@ void onWebSocketEvent(uint8_t client_num,
           doc.clear();
           doc["appw"] = setting.wifi.appw;
           doc["wificonnect"] = (uint8_t)setting.wifi.connect;
+          doc["WIFI_MODE"] = setting.wifi.uMode.mode;
           doc["ssid"] = setting.wifi.ssid;
           doc["password"] = setting.wifi.password;
           doc["wifioff"] = setting.wifi.tWifiStop;
@@ -440,6 +465,7 @@ void onWebSocketEvent(uint8_t client_num,
         if (root.containsKey("setView")) newSetting.settingsView = doc["setView"].as<uint8_t>();                  
         if (root.containsKey("appw")) newSetting.wifi.appw = doc["appw"].as<String>();          
         if (root.containsKey("wificonnect")) newSetting.wifi.connect = eWifiMode(doc["wificonnect"].as<uint8_t>());
+        if (root.containsKey("WIFI_MODE")) newSetting.wifi.uMode.mode = doc["WIFI_MODE"].as<uint8_t>();
         if (root.containsKey("ssid")) newSetting.wifi.ssid = doc["ssid"].as<String>();
         if (root.containsKey("password")) newSetting.wifi.password = doc["password"].as<String>();
         if (root.containsKey("board")) newSetting.boardType = eBoard(doc["board"].as<uint8_t>());          
@@ -756,12 +782,20 @@ static void handle_update_progress_cb(AsyncWebServerRequest *request, String fil
   }
 }
 
+#ifdef useSpiffsWebsite
 void loadFromSPIFFS(AsyncWebServerRequest *request,String path,String dataType = "text/html") {
-  //request->send(SPIFFS, "/index.html", "text/html",false,processor);
   AsyncWebServerResponse *response = request->beginResponse(SPIFFS, path, dataType, false);
   response->addHeader("Content-Encoding", "gzip");
   request->send(response);
 }
+#else
+void loadFromFlash(AsyncWebServerRequest *request,const uint8_t * content, size_t len,String dataType = "text/html") {
+  AsyncWebServerResponse *response = request->beginResponse_P(200, dataType,content, len);
+  response->addHeader("Content-Encoding", "gzip");
+  request->send(response);   
+}
+#endif
+
 
 void Web_setup(void){
   for (int i = 0;i < MAXCLIENTS;i++) clientPages[i] = 0;
@@ -770,77 +804,48 @@ void Web_setup(void){
     #ifdef useSpiffsWebsite      
       loadFromSPIFFS(request,request->url() + ".html.gz");
     #else
-      const char* dataType = "text/html";
-      AsyncWebServerResponse *response = request->beginResponse_P(200, dataType,fwupdate_html_gz, fwupdate_html_gz_len);
-      response->addHeader("Content-Encoding", "gzip");
-      request->send(response); 
+      loadFromFlash(request,fwupdate_html_gz,fwupdate_html_gz_len);
     #endif
   });
   // handler for the /update form POST (once file upload finishes)
   server.on("/fwupdate", HTTP_POST, [](AsyncWebServerRequest *request){
       request->send(200);
     }, handle_update_progress_cb);
-  server.on("/settings.html", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(SPIFFS, request->url(), "text/html",false,processor);
-  });
   server.on("/fullsettings.html", HTTP_GET, [](AsyncWebServerRequest *request){
     #ifdef useSpiffsWebsite
       loadFromSPIFFS(request,request->url() + ".gz");
     #else
-      const char* dataType = "text/html";
-      AsyncWebServerResponse *response = request->beginResponse_P(200, dataType,fullsettings_html_gz, fullsettings_html_gz_len);
-      response->addHeader("Content-Encoding", "gzip");
-      request->send(response); 
+      loadFromFlash(request,fullsettings_html_gz,fullsettings_html_gz_len);
     #endif    
-  });
-  server.on("/setgeneral.html", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(SPIFFS, request->url(), "text/html",false,processor);
-  });
-  server.on("/setgs.html", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(SPIFFS, request->url(), "text/html",false,processor);
-  });
-  server.on("/setoutput.html", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(SPIFFS, request->url(), "text/html",false,processor);
-  });
-  server.on("/setwifi.html", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(SPIFFS, request->url(), "text/html",false,processor);
-  });
-  server.on("/developmenue.html", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(SPIFFS, request->url(), "text/html",false,processor);
   });
   server.on("/index.html", HTTP_GET, [](AsyncWebServerRequest *request){
     #ifdef useSpiffsWebsite
       loadFromSPIFFS(request,request->url() + ".gz");
     #else
-      const char* dataType = "text/html";
-      AsyncWebServerResponse *response = request->beginResponse_P(200, dataType,index_html_gz, index_html_gz_len);
-      response->addHeader("Content-Encoding", "gzip");
-      request->send(response); 
+      loadFromFlash(request,index_html_gz,index_html_gz_len);
     #endif
   });
   server.on("/sendmessage.html", HTTP_GET, [](AsyncWebServerRequest *request){
     #ifdef useSpiffsWebsite
       loadFromSPIFFS(request,request->url() + ".gz");
     #else
-      const char* dataType = "text/html";
-      AsyncWebServerResponse *response = request->beginResponse_P(200, dataType,sendmessage_html_gz, sendmessage_html_gz_len);
-      response->addHeader("Content-Encoding", "gzip");
-      request->send(response); 
+      loadFromFlash(request,sendmessage_html_gz,sendmessage_html_gz_len);
     #endif
   });
   server.on("/neighbours.html", HTTP_GET, [](AsyncWebServerRequest *request){
     #ifdef useSpiffsWebsite
       loadFromSPIFFS(request,request->url() + ".gz");
     #else
-      const char* dataType = "text/html";
-      AsyncWebServerResponse *response = request->beginResponse_P(200, dataType,neighbours_html_gz, neighbours_html_gz_len);
-      response->addHeader("Content-Encoding", "gzip");
-      request->send(response);     
+      loadFromFlash(request,neighbours_html_gz,neighbours_html_gz_len);
     #endif
   });
   // new igc track logger page
   server.on("/igclogs.html", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(SPIFFS, "/igclogs.html", "text/html",false,processor);
+    #ifdef useSpiffsWebsite
+      loadFromSPIFFS(request,request->url() + ".gz");
+    #else
+      loadFromFlash(request,igclogs_html_gz,igclogs_html_gz_len);
+    #endif
   });
   server.on("/download", HTTP_GET, [](AsyncWebServerRequest *request){
     SD_file_download(request);
@@ -854,20 +859,14 @@ void Web_setup(void){
     #ifdef useSpiffsWebsite
       loadFromSPIFFS(request,"/index.html.gz");
     #else
-      const char* dataType = "text/html";
-      AsyncWebServerResponse *response = request->beginResponse_P(200, dataType,index_html_gz, index_html_gz_len);
-      response->addHeader("Content-Encoding", "gzip");
-      request->send(response); 
+      loadFromFlash(request,index_html_gz,index_html_gz_len);
     #endif
   });
   server.on("/info.html", HTTP_GET, [](AsyncWebServerRequest *request){
     #ifdef useSpiffsWebsite
       loadFromSPIFFS(request,request->url() + ".gz");
     #else
-      const char* dataType = "text/html";
-      AsyncWebServerResponse *response = request->beginResponse_P(200, dataType,info_html_gz, info_html_gz_len);
-      response->addHeader("Content-Encoding", "gzip");
-      request->send(response); 
+      loadFromFlash(request,info_html_gz,info_html_gz_len);
     #endif
   });
   server.on("/msgtype1.html", HTTP_GET, [](AsyncWebServerRequest *request){
@@ -892,34 +891,35 @@ void Web_setup(void){
     #ifdef useSpiffsWebsite
       loadFromSPIFFS(request,request->url() + ".gz");
     #else
-      const char* dataType = "text/html";
-      AsyncWebServerResponse *response = request->beginResponse_P(200, dataType,weather_html_gz, weather_html_gz_len);
-      response->addHeader("Content-Encoding", "gzip");
-      request->send(response); 
+      loadFromFlash(request,weather_html_gz,weather_html_gz_len);
     #endif
   });  
   server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request){
     #ifdef useSpiffsWebsite
       loadFromSPIFFS(request,request->url() + ".gz","text/css");
     #else
+      loadFromFlash(request,style_css_gz,style_css_gz_len,"text/css");
+      /*
       const char* dataType = "text/css";
       AsyncWebServerResponse *response = request->beginResponse_P(200, dataType,style_css_gz, style_css_gz_len);
       response->addHeader("Content-Encoding", "gzip");
       request->send(response); 
+      */
     #endif
   });
   server.on("/scripts.js", HTTP_GET, [](AsyncWebServerRequest *request){
     #ifdef useSpiffsWebsite
       loadFromSPIFFS(request,request->url() + ".gz","text/javascript");
     #else
-      const char* dataType = "text/javascript";
-      AsyncWebServerResponse *response = request->beginResponse_P(200, dataType,scripts_js_gz, scripts_js_gz_len);
-      response->addHeader("Content-Encoding", "gzip");
-      request->send(response); 
+      loadFromFlash(request,scripts_js_gz,scripts_js_gz_len,"text/javascript");
     #endif
   });
   server.on("/communicator.html", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(SPIFFS, request->url(), "text/html",false,processor);
+    #ifdef useSpiffsWebsite
+      loadFromSPIFFS(request,request->url() + ".gz");
+    #else
+      loadFromFlash(request,communicator_html_gz,communicator_html_gz_len);
+    #endif
   });
 
 
@@ -1149,16 +1149,21 @@ void sendPage(uint8_t pageNr){
 
       doc.clear();
       bSend = false;
-      if (mStatus.wifiRssi != status.wifiRssi){
+      if (mStatus.wifiSTA.Rssi != status.wifiSTA.Rssi){
         bSend = true;
-        mStatus.wifiRssi = status.wifiRssi;
-        doc["wifiRssi"] = String(status.wifiRssi);
+        mStatus.wifiSTA.Rssi = status.wifiSTA.Rssi;
+        doc["wifiSTARssi"] = String(status.wifiSTA.Rssi);
       }    
-      if (mStatus.wifiStat != status.wifiStat){
+      if (mStatus.wifiSTA.state != status.wifiSTA.state){
         bSend = true;
-        mStatus.wifiStat = status.wifiStat;
-        doc["wifiStat"] = String(status.wifiStat);
+        mStatus.wifiSTA.state = status.wifiSTA.state;
+        doc["wifiSTAState"] = getEthState(status.wifiSTA.state);
       }    
+      if (mStatus.wifiSTA.ip != status.wifiSTA.ip){
+        bSend = true;
+        mStatus.wifiSTA.ip = status.wifiSTA.ip;
+        doc["wifiSTAIp"] = status.wifiSTA.ip;
+      }
       #ifdef GSM_MODULE
       if (mStatus.gsm.SignalQuality != status.gsm.SignalQuality){
         bSend = true;

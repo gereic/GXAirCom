@@ -270,17 +270,17 @@ void GxMqtt::run(bool bNetworkOk){
       //log_i("give mutex");
       xSemaphoreGive( *xMutex );
     }
-    if ((tAct - tRestartModem) >= 600000){ //10min.
-      log_e("no MQTT-connection after 10min --> restart");
-      restartNow = true; //we have not MQTT-connection --> restart ESP, because we need to reconnect wifi or modem
-      tRestartModem = tAct;
-    }
     status.MqttStat = connState;
   }else{
     tOld = tAct;
-    tRestartModem = tAct;
+    //tRestartModem = tAct;
     status.MqttStat = 0;
   }
+  if ((tAct - tRestartModem) >= 600000){ //10min. no MQTT-connection, maybe no network-connection
+    log_e("no MQTT-connection after 10min --> restart");
+    restartNow = true; //we have not MQTT-connection --> restart ESP, because we need to reconnect wifi or modem
+    tRestartModem = tAct;
+  }  
   if (restartNow){
     if ((tAct - tRestart) >= 3000){
       ESP.restart();

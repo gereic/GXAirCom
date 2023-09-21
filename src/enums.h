@@ -107,12 +107,14 @@ enum eFnMode{
   FN_AIR_TRACKING = 1,
 };
 
-
-/* state of modem */
-enum eModemState{
-  DISCONNECTED = 0,
-  CONNECTING = 1,
-  CONNECTED = 2
+//connection-state of wifi and AP
+enum eConnectionState {
+    IDLE = 0,
+    STARTED = 10,
+    CONNECTING = 20,
+    CONNECTED = 30,
+    FULL_CONNECTED = 50,
+    DISCONNECTED = 100
 };
 
 /* state of display */

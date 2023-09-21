@@ -12,7 +12,7 @@
 #include <CalcTools.h>
 #include <Logger.h>
 
-#define useSpiffsWebsite
+//#define useSpiffsWebsite
 
 #ifndef useSpiffsWebsite
 #include "./web/website.h"

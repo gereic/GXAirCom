@@ -9,7 +9,6 @@ extern FanetLora fanet;
 
 #include <Arduino.h>
 #include "enums.h"
-#include "icons.h"
 #include "main.h"
 #include <Wire.h>
 #include <Adafruit_GFX.h>
@@ -36,7 +35,7 @@ private:
   
   void PowerOn(void);
   void PowerOff(void);
-  void drawWifiStat(int wifiStat);
+  void drawWifiStat(eConnectionState wifiStat);
   void printGPSData(uint32_t tAct);
   String setStringSize(String s,uint8_t sLen);
   void drawAircraftType(int16_t x, int16_t y, uint8_t AircraftType);

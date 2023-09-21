@@ -1,5 +1,7 @@
 #include "oled.h"
 #include "tools.h"
+#include "icons.h"
+#include "icons2.h"
 #include <FanetLora.h>
 
 Oled::Oled(){
@@ -100,16 +102,16 @@ void Oled::PowerOff(void){
   bDisplayOn = false;
 }
 
-void Oled::drawWifiStat(int wifiStat)
+void Oled::drawWifiStat(eConnectionState wifiStat)
 {
-  if (wifiStat==1) 
+  if (wifiStat!=IDLE) 
   {
     
     WIFI_bits[2]=0xC4;
     WIFI_bits[6]=0xC9;
     display->drawXBitmap(85,0,WIFI_bits,WIFI_width,WIFI_height,WHITE);
   }
-  if (wifiStat==2) 
+  if (wifiStat==FULL_CONNECTED) 
   { 
     WIFI_bits[2]=0x4;
     WIFI_bits[6]=0x9;
@@ -266,7 +268,7 @@ void Oled::printGPSData(uint32_t tAct){
   drawSatCount(18,0,(status.GPS_NumSat > 9) ? 9 : status.GPS_NumSat);
   drawspeaker(47,0);
   drawflying(67,0,status.flying);
-  drawWifiStat(status.wifiStat);
+  drawWifiStat(status.wifiSTA.state);
   drawBluetoothstat(101,0);
   drawBatt(111, 0,(status.BattCharging) ? 255 : status.BattPerc);
 
@@ -393,7 +395,7 @@ void Oled::DrawRadarScreen(uint32_t tAct,eRadarDispMode mode){
   display->clearDisplay();
   drawAircraftType(0,0,setting.AircraftType);
   drawSatCount(18,0,(status.GPS_NumSat > 9) ? 9 : status.GPS_NumSat);
-  drawWifiStat(status.wifiStat);
+  drawWifiStat(status.wifiSTA.state);
   drawBluetoothstat(101,0);
   drawBatt(111, 0,(status.BattCharging) ? 255 : status.BattPerc);
 
@@ -475,7 +477,7 @@ void Oled::printWeather(uint32_t tAct){
     display->setTextSize(1);
     display->setCursor(0,0);
     display->print(setting.PilotName);
-    drawWifiStat(status.wifiStat);
+    drawWifiStat(status.wifiSTA.state);
     drawBluetoothstat(101,0);
     drawBatt(111, 0,(status.BattCharging) ? 255 : status.BattPerc);
     if (status.gsm.bHasGSM){
@@ -526,7 +528,7 @@ void Oled::printScanning(uint32_t tAct){
   }
   PowerOn();
   display->clearDisplay();
-  drawWifiStat(status.wifiStat);
+  drawWifiStat(status.wifiSTA.state);
   drawBluetoothstat(101,0);
   drawBatt(111, 0,(status.BattCharging) ? 255 : status.BattPerc);
   switch (icon)
@@ -635,7 +637,7 @@ void Oled::printGSData(uint32_t tAct){
   char buf[10];
   PowerOn();
   display->clearDisplay();
-  drawWifiStat(status.wifiStat);
+  drawWifiStat(status.wifiSTA.state);
   drawBluetoothstat(101,0);
   drawBatt(111, 0,(status.BattCharging) ? 255 : status.BattPerc);
 
