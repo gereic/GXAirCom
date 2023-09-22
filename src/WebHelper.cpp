@@ -69,7 +69,8 @@ void sendPageHeader(uint8_t client_num){
   doc.clear();
   doc["myDevId"] = setting.myDevId;
   doc["appname"] = String(APPNAME "-" VERSION);
-  doc["buildDate"] = "build:" + String(compile_date) + " sdk:" + String(ESP.getSdkVersion()) + + " img:" + ENV;
+  doc["buildDate"] = "build:" + compile_date + " sdk:" + String(ESP.getSdkVersion()) + + " img:" + ENV;
+  //doc["buildDate"] = "build:" + String(IsoDate) + " sdk:" + String(ESP.getSdkVersion()) + + " img:" + ENV;
   if (setting.Mode == eMode::GROUND_STATION){
     doc["pilot"] = "station: " + setting.PilotName + " [" + setting.myDevId + "]";
   }else{
@@ -155,7 +156,7 @@ void onWebSocketEvent(uint8_t client_num,
 
         }else if (clientPages[client_num] == 2){ //info
           doc["myDevId"] = setting.myDevId;
-          doc["compiledate"] = String(compile_date);
+          doc["compiledate"] = compile_date;
           doc["bHasVario"] = (uint8_t)status.vario.bHasVario;       
           doc["bHasMPU"] = (uint8_t)status.vario.bHasMPU;   
           doc["VisWeather"] = (uint8_t)((setting.wd.mode.bits.enable | status.bWUBroadCast) & (setting.Mode == eMode::GROUND_STATION));

@@ -29,7 +29,7 @@ extern FanetLora::weatherData fanetWeatherData;
 extern String fanetString;
 extern uint32_t fanetReceiver;
 extern uint8_t sendFanetData;
-extern const char compile_date[];
+extern String compile_date;
 
 extern TaskHandle_t xHandleStandard;
 extern bool WebUpdateRunning;

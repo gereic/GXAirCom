@@ -57,12 +57,12 @@ void GxMqtt::callback(char* topic, byte* payload, unsigned int length) {
       msgIndex = 1;
     }else if (cmd == 0x02){
       //Serial.printf("upd %d len=%d\n",highNibble,length);
-      rFileLen+=length-2;
       if (updateState == 1){
         updateState = 2;
       }
       if (updateState == 2){
         if (msgIndex == highNibble){
+          rFileLen+=length-2;
           if (Update.write(&payload[2], length-2) != (length-2)) {
             Update.printError(Serial);
           }
@@ -193,7 +193,15 @@ void GxMqtt::subscribe(){
     pPubSubClient->publish(willTopic,"1",true); //retained
     pPubSubClient->publish(stateTopic,"");
     sendTopic("name",setting.PilotName.c_str(),false); //send topic name
-    sendTopic("version",VERSION,false); //send topic version
+    StaticJsonDocument<500> doc; //Memory pool
+    char msg_buf[500];
+    doc.clear();
+    doc["appVersion"] = VERSION;
+    doc["buildDate"] = String(compile_date);
+    doc["sdkVersion"] = String(ESP.getSdkVersion());
+    doc["img"] = ENV;
+    serializeJson(doc, msg_buf);
+    sendTopic("version",msg_buf,false); //send topic version
     sendGPS();
     pPubSubClient->subscribe(cmdTopic);
     //subscribe to update topic    

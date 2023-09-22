@@ -21,6 +21,7 @@
 #define GXMQTTMAXSTRING 255
 
 extern bool WebUpdateRunning;
+extern String compile_date;
 
 class GxMqtt {
 public:

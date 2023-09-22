@@ -35,6 +35,8 @@
 #include "../lib/GxMqtt/GxMqtt.h"
 
 #include "XPowersLib.h"
+#include "TimeDefs.h"
+
 XPowersLibInterface *PMU = NULL;
 
 //#define GXTEST
@@ -148,9 +150,7 @@ struct commandData command;
 String host_name = "";
 String bleMsg = "";
 
-const char compile_date[] = __DATE__ " " __TIME__;
-
-//WebServer server(80);
+String compile_date = String(BUILD_DATE_YEAR_CH0) + String(BUILD_DATE_YEAR_CH1) + String(BUILD_DATE_YEAR_CH2) + String(BUILD_DATE_YEAR_CH3) + "-" + String(BUILD_DATE_MONTH_CH0) + String(BUILD_DATE_MONTH_CH1) + "-" + String(BUILD_DATE_DAY_CH0) + String(BUILD_DATE_DAY_CH1) + "T" + String(BUILD_TIME_HOUR_CH0) + String(BUILD_TIME_HOUR_CH1) + ":" + String(BUILD_TIME_MIN_CH0) + String(BUILD_TIME_MIN_CH1) + ":" + String(BUILD_TIME_SEC_CH0) + String(BUILD_TIME_SEC_CH1);
 
 FanetLora fanet;
 //NmeaOut nmeaout;

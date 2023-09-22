@@ -7,20 +7,18 @@ from struct import *
 #filename="firmware_v5.3.5_GsNoBluetoothSim7000.bin"
 #filename="firmware_v5.3.5_sim7000_psRam.bin"
 #filename="firmware_v5.3.5_psRam.bin"
-filename="spiffs_v5.4.0.bin" #file to send
+#filename="spiffs_v5.4.0.bin" #file to send
 
 #DevId="08B668" #PGV-NW
 #filename="firmware_v5.4.0_GsSim7000.bin"
 #DevId="08C494" #GX-TEST
-#filename="firmware_v5.4.0_GsSim7000.bin"
-DevId="08A7E4" #GetroniX
-#filename="firmware_v5.4.0_Gs.bin"
+#DevId="08A7E4" #GetroniX
+DevId="08F968" #FMG Abetzberg
+#DevId="089144" #Prochenberg
+filename="firmware_v5.4.0_Gs.bin"
 
 SERVERIP="192.168.0.10"
 PORT=1883
-#DevId="08B668" #PGV-NW
-#DevId="08E440" #Prochenberg
-#DevId="08C494" #GX-TEST
 #SERVERIP="remote.getronix.at"
 #PORT=21883
 
