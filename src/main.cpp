@@ -186,7 +186,7 @@ IPAddress gateway(0,0,0,0);
 IPAddress subnet(255,255,255,0);
 
 volatile bool ppsTriggered = false;
-volatile uint32_t ppsMillis = 0;
+volatile uint32_t gtPPS = 0;
 
 volatile bool PMU_Irq = false;
 volatile float BattCurrent = 0.0;
@@ -717,7 +717,6 @@ void setAllTime(tm &timeinfo){
   setTime(t); //set time of timelib
   timeval epoch = {(int32_t)t, 0};
   settimeofday((const timeval*)&epoch, 0); //set time on RTC of ESP32
-
 }
 
 void printChipInfo(void){
@@ -1303,7 +1302,7 @@ void setupPMU(){
 }
 
 void IRAM_ATTR ppsHandler(void){
-  ppsMillis = millis();
+  gtPPS = millis();
   ppsTriggered = true;
 }
 
@@ -1658,7 +1657,7 @@ void writePGXCFSentence() {
     setting.outputMode,
     setting.Mode, setting.outputModeVario,
     setting.outputFANET, setting.outputGPS, setting.outputFLARM,
-    setting.customGPSConfig, setting.AircraftType,
+    setting.gps.customGPSConfig, setting.AircraftType,
     setting.myDevIdType, setting.myDevId.c_str(), setting.PilotName.c_str());
   size_t size = flarmDataPort.addChecksum(buffer, MAXSTRING);
   sendData2Client(buffer, size);
@@ -1738,8 +1737,8 @@ void readPGXCFSentence(const char* data)
   setting.outputFANET = outputFANET;
   setting.outputGPS = outputGPS;
   setting.outputFLARM = outputFLARM;
-  bool hasCustomGPSConfigSet = setting.customGPSConfig;
-  setting.customGPSConfig = customGPSConfig;
+  bool hasCustomGPSConfigSet = setting.gps.customGPSConfig;
+  setting.gps.customGPSConfig = customGPSConfig;
   setting.AircraftType = aircraftType;
   setting.myDevId = myDevId;
   setting.myDevIdType = myDevIdType;
@@ -3870,7 +3869,7 @@ bool setupUbloxConfig(){
     }
 
     bool shouldHardReset = false;
-    if (!setting.customGPSConfig){
+    if (!setting.gps.customGPSConfig){
       //disable nmea sentencess
       if (!ublox.disableNMEAMessage(UBX_NMEA_GLL,COM_PORT_UART1)){
         log_e("ublox: error setting parameter %d",UBX_NMEA_GLL);
@@ -4010,6 +4009,8 @@ bool setupUbloxConfig(){
     // Set baudrate faster because we handle more messages
     ublox.setSerialRate(GPSBAUDRATE, COM_PORT_UART1);
     NMeaSerial.updateBaudRate(GPSBAUDRATE);
+    setting.gps.Baud = GPSBAUDRATE;
+    write_gpsBaud();
     delay(1500);
 
     if (!ublox.saveConfiguration(3000)){
@@ -4070,8 +4071,8 @@ void taskStandard(void *pvParameters){
 
   #ifdef AIRMODULE
   if (PinGPSRX >= 0){
-    NMeaSerial.begin(GPSBAUDRATE,SERIAL_8N1,PinGPSRX,PinGPSTX,false);
-    log_i("GPS Baud=%d,8N1,RX=%d,TX=%d",GPSBAUDRATE,PinGPSRX,PinGPSTX);
+    NMeaSerial.begin(setting.gps.Baud,SERIAL_8N1,PinGPSRX,PinGPSTX,false);
+    log_i("GPS Baud=%d,8N1,RX=%d,TX=%d",setting.gps.Baud,PinGPSRX,PinGPSTX);
     //clear serial buffer
     while (NMeaSerial.available())
       NMeaSerial.read();
@@ -4472,7 +4473,7 @@ void taskStandard(void *pvParameters){
     if ((setting.Mode == eMode::AIR_MODULE) || ((abs(setting.gs.lat) <= 0.1) && (abs(setting.gs.lon) <= 0.1))){ //in GS-Mode we use the GPS, if in settings disabled
       if ((PinPPS < 0) && (!status.bExtGps)){
         if ((tAct - tOldPPS) >= 1000){
-          ppsMillis = millis();
+          gtPPS = millis();
           ppsTriggered = true;
         }
       }
@@ -4567,7 +4568,7 @@ void taskStandard(void *pvParameters){
             sendAWTrackingdata(&MyFanetData);
             sendTraccarTrackingdata(&MyFanetData);
           }
-          fanet.setMyTrackingData(&MyFanetData,geoidalt/1000.,ppsMillis); //set Data on fanet
+          fanet.setMyTrackingData(&MyFanetData,geoidalt/1000.,gtPPS); //set Data on fanet
         }else{
           status.GPS_Fix = 0;
           status.GPS_speed = 0.0;
@@ -4596,7 +4597,7 @@ void taskStandard(void *pvParameters){
     }else{
       if ((PinPPS < 0) && (!status.bExtGps)){
         if ((tAct - tOldPPS) >= 1000){
-          ppsMillis = millis();
+          gtPPS = millis();
           ppsTriggered = true;
           
         }
@@ -4612,7 +4613,7 @@ void taskStandard(void *pvParameters){
         MyFanetData.addressType = ADDRESSTYPE_OGN;
         MyFanetData.heading = 0;
         MyFanetData.aircraftType = fanet.getAircraftType();        
-        fanet.setMyTrackingData(&MyFanetData,status.GPS_geoidAlt,ppsMillis); //set Data on fanet
+        fanet.setMyTrackingData(&MyFanetData,status.GPS_geoidAlt,gtPPS); //set Data on fanet
 
       }
     }

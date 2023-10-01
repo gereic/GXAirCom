@@ -15,11 +15,17 @@
 #include "LoRa.h"
 #include "../FLARM/FlarmRadio.h"
 
+extern volatile uint32_t gtPPS;
+extern volatile uint32_t gtReceived;
+
+
 /* Debug */
 #define MAC_debug_mode				0
 //#define MAC_debug_mode				100
 #define RX_DEBUG 0
 #define TX_DEBUG 0
+//#define FREQUENCYTEST
+
 
 
 //define the pins used by the LoRa transceiver module
@@ -108,12 +114,18 @@
 #define LORA_TIME 5000
 #define FSK_TIME 2000
 
-#define LEGACY_RANGE 50
-#define LEGACY_SEND_TIME 50
+#define LEGACY_RANGE 30
+#define LEGACY_SEND_TIME 30
+/*
 #define LEGACY_8682_BEGIN		400
 #define LEGACY_8682_END			800
 #define LEGACY_8684_BEGIN		850
 #define LEGACY_8684_END			1200
+*/
+#define LEGACY_8682_BEGIN		480
+#define LEGACY_8682_END			820
+#define LEGACY_8684_BEGIN		870	
+#define LEGACY_8684_END			1230
 
 #define MODE_LORA 1
 #define MODE_FSK_8682 2

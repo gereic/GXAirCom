@@ -7,6 +7,7 @@
 
 // flag to indicate that a packet was received
 volatile bool receivedFlag = false;
+volatile uint32_t gtReceived = 0;
 
 // disable interrupt when it's not needed
 volatile bool enableInterrupt = true;
@@ -17,6 +18,7 @@ void IRAM_ATTR setFlag(void)
     if (!enableInterrupt) {
         return;
     }
+    if (!receivedFlag) gtReceived = millis();
     receivedFlag = true;
 }
 
@@ -683,6 +685,14 @@ void LoRaClass::checkRet(int16_t value){
 }
 
 int16_t LoRaClass::switchFSK(float frequency){
+  //Bitrate=100kHz
+  //BT0.5
+  //BW=117khz
+  // preamble len 24 Bit
+  //Sync-Word-Len 7Byte --> 56 Bit
+  //Msg-Len 52 bytes --> 416 Bit
+  //total 496Bit --> airtime 0.00496s (~5ms)
+  
   //uint32_t tBegin = micros();
   _freq = frequency;
   int16_t ret = 0;

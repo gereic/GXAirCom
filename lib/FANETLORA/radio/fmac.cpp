@@ -284,6 +284,40 @@ void FanetMac::frameReceived(int length)
   if (_actMode != MODE_LORA){			
 		time_t tUnix;
 		time(&tUnix);
+		#ifdef FREQUENCYTEST
+		if (gtPPS != 0){
+			static uint32_t tWait = millis();
+			static uint32_t tmax = 0;
+			static uint32_t tmin = 1000;
+			uint32_t tdiff = 0;
+			uint32_t tPPS = millis()-_ppsMillis;
+			uint32_t tDiff2 = gtReceived - gtPPS;
+			tPPS = tDiff2;
+			if (tPPS < 2000){
+				if (_actMode == MODE_FSK_8682){
+					if (tmin > tPPS) tmin = tPPS;
+					if (tmax < tPPS) tmax = tPPS;
+				}else{
+					if (tPPS > 400){
+						if (tmin > tPPS) tmin = tPPS;
+					}else{
+						if (tmax < tPPS) tmax = tPPS;
+					}	
+					tdiff = tmin - tmax;				
+				}
+				if (tmin > tmax){
+					tdiff = tmin - tmax;
+				}else{
+					tdiff = tmax - tmin;
+				}
+			}
+			char Buffer[500];	
+			int len = 0;	
+			len += sprintf(Buffer+len,"min=%d;max=%d;diff=%d,%d,%d,%d,%d",tmin,tmax,tdiff,tDiff2,tPPS,gtPPS,gtReceived);		
+			len += sprintf(Buffer+len,"\n");
+			Serial.print(Buffer);
+		}
+		#endif
 		#if RX_DEBUG > 0
 			static uint32_t tmax = 0;
 			static uint32_t tmin = 1000;
@@ -431,6 +465,11 @@ void FanetMac::frameReceived(int length)
 				//if ((air.addr != 0) && (air.aircraft_type != 0)){
 				//if ((pkt->zero0 == 0) && (pkt->zero1 == 0) && (pkt->_unk2 == 0) && (pkt->zero2 == 0)){
 			  bOk = true;
+				/*
+				if (tOffset != 0){
+					log_i("index=%d,tOffset=%d",i,tOffset);
+				}
+				*/
 				break;
 			//}else if (ret == -2){
 				//unknown message
@@ -438,13 +477,13 @@ void FanetMac::frameReceived(int length)
 			}
 			//log_i("Legacy-Packet not valid ts=%d;offset=%d",tNow,tOffset);
 			if (i == 0){
-				tOffset = -1;
-			}else if (i == 1){
 				tOffset = 1;
+			}else if (i == 1){
+				tOffset = -1;
 			}else if (i == 2){
-				tOffset = -2;
-			}else if (i == 3){
 				tOffset = 2;
+			}else if (i == 3){
+				tOffset = -2;
 			}
 		}
 		if (bOk){
@@ -639,6 +678,18 @@ void FanetMac::stateWrapper()
 	*/
 	uint8_t ppsDiff = fmac._ppsCount - ppsCount;  //we have to calc diff here, because in if, it will be calculated as int
 	if (fmac.bHasGPS){
+		#ifdef FREQUENCYTEST
+		fmac._RfMode.bits.LegRx = true;
+		fmac._RfMode.bits.LegTx = false;
+		fmac._RfMode.bits.FntRx = false;
+		fmac._RfMode.bits.FntTx = false;
+		if (1 == 1){
+			//only listen for Flarm
+			if (fmac._actMode != MODE_FSK_8684){
+				fmac.switchMode(MODE_FSK_8684);
+			}
+		}else
+		#endif 
 		if (fmac._RfMode.bits.FntRx && fmac._RfMode.bits.LegRx){
 			if (fmac._actMode == MODE_LORA){
 				if ((ppsDiff) > actPPsDiff){
@@ -673,6 +724,7 @@ void FanetMac::stateWrapper()
 				}
 			}else if (fmac._actMode == MODE_FSK_8684){
 				if (((millis() - ppsMillis) >= (LEGACY_8684_END + LEGACY_RANGE)) && ((ppsDiff) >= 1)){
+				//if ((millis() - ppsMillis) > LEGACY_8684_END){
 					fmac.switchMode(MODE_LORA); //Back to Lora again
 					#if RX_DEBUG > 5
 					log_i("**** %d finisched FSK-Mode %d",millis(),millis() - ppsMillis,fmac._ppsCount);

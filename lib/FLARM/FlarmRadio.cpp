@@ -166,6 +166,7 @@ void flarm_create_packet(AircraftState *aircraft, uint8_t *packet) {
     pkt_parity += flarm_parity(*(((unsigned char *) pkt) + ndx));
   }
   pkt->parity = (pkt_parity % 2);
+  //pkt->parity = 0; //from V7 it is always 0
 }
 
 uint8_t flarm_parity(uint32_t x) {
@@ -506,27 +507,21 @@ int8_t flarm_decode(void *flarm_pkt, ufo_t *this_aircraft, ufo_t *fop) {
   float geo_separ = this_aircraft->geoid_separation;
   uint32_t timestamp = (uint32_t) this_aircraft->timestamp;
   int ndx;
+  uint8_t origParity = pkt->parity;
+  //check parity of frame !! --> don't include parity-bit
   uint8_t pkt_parity=0;
-
-  //check parity of frame !!
+  pkt->parity = 0; //reset parity
   for (ndx = 0; ndx < sizeof (flarm_packet_t); ndx++) {
     pkt_parity += flarm_parity(*(((unsigned char *) pkt) + ndx));
   }
-  if (pkt_parity % 2) {
-    log_i("bad parity of decoded packet: %02X",pkt_parity % 2);        
-    //char Buffer[500];	
-    //sprintf(Buffer,"adr=%06X;adrType=%d,lat=%.06f,lon=%.06f,alt=%.01f,speed=%.01f,course=%.01f,climb=%.01f\n", fop->addr,fop->addr_type,fop->latitude,fop->longitude,fop->altitude,fop->speed,fop->course,fop->vs);
-    //log_e("%s",&Buffer[0]);
-    return -1;
-  }
+  pkt_parity = pkt_parity % 2;
 
-  
   if (pkt->addr == 0){
     log_e("addr = 0");
     return -8;    
   }
   if (pkt->aircraft_type == 0){
-    //log_e("aircraft_type = 0");
+    log_e("aircraft_type = 0");
     return -9;    
   }
   if (pkt->zero0 != 0){
@@ -541,6 +536,16 @@ int8_t flarm_decode(void *flarm_pkt, ufo_t *this_aircraft, ufo_t *fop) {
     //log_e("unknown message zero2=%02X",pkt->zero2);
     return -13;
   }
+
+  bool bParityErr = false;
+  //if (pkt->parity) {  //from V7 it is always 0
+  if (origParity != pkt_parity) {
+    log_e("bad parity of decoded packet: %02X!=%02X",origParity,pkt_parity);        
+    bParityErr = true;
+    //return -1;
+  }
+  
+
   //log_i("%d unk0=%02X,unk1=%02X,unk2=%02X,unk3=%02X,onground=%02X,AirBorne=%d",millis(),pkt->zero0,pkt->zero1,pkt->_unk2,pkt->zero2,pkt->onGround,pkt->airborne);
 
   //Serial.printf("onGround=%d,unk0=%d,unk1=%d,unk2=%d,unk3=%d\r\n",pkt->onGround,pkt->_unk0,pkt->_unk1,pkt->_unk2,pkt->zero2);
@@ -600,15 +605,12 @@ int8_t flarm_decode(void *flarm_pkt, ufo_t *this_aircraft, ufo_t *fop) {
   fop->ew[0] = pkt->ew[0]; fop->ew[1] = pkt->ew[1];
   fop->ew[2] = pkt->ew[2]; fop->ew[3] = pkt->ew[3];
 
-  /*
-  if (pkt->parity != 0){
-    log_i("bad parity of decoded packet");
+ if (bParityErr){
     char Buffer[500];	
     sprintf(Buffer,"adr=%06X;adrType=%d,lat=%.06f,lon=%.06f,alt=%.01f,speed=%.01f,course=%.01f,climb=%.01f\n", fop->addr,fop->addr_type,fop->latitude,fop->longitude,fop->altitude,fop->speed,fop->course,fop->vs);
     log_e("%s",&Buffer[0]);
     return -1;
-  }
-  */
+ }
 
   if ((pkt->turnrate != TURN_RATE_ON_GROUND) && (pkt->turnrate != TURN_RATE_RIGHT_TURN) && (pkt->turnrate != TURN_RATE_NO_TURN) && (pkt->turnrate != TURN_RATE_LEFT_TURN)){
     log_e("unknown message turnrate=%02X",pkt->turnrate);

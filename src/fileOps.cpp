@@ -20,7 +20,8 @@ void load_configFile(SettingsData* pSetting){
   pSetting->PilotName = preferences.getString("PILOTNAME","");
   pSetting->myDevId = preferences.getString("myDevId",""); 
   pSetting->myDevIdType = preferences.getULong("myDevIdType",2); // Default FLARM
-  pSetting->customGPSConfig = preferences.getBool("customGPSConfig",false);
+  pSetting->gps.customGPSConfig = preferences.getBool("customGPSConfig",false);
+  pSetting->gps.Baud = preferences.getULong("GPSBAud",9600);
   pSetting->wifi.uMode.mode = preferences.getUChar("WIFI_MODE",0); //
   pSetting->wifi.connect = eWifiMode(preferences.getUChar("WIFI_CONNECT",eWifiMode::CONNECT_NONE)); //
   pSetting->wifi.ssid = preferences.getString("WIFI_SSID","");
@@ -184,7 +185,7 @@ void write_configFile(SettingsData* pSetting){
   preferences.putString("PILOTNAME",pSetting->PilotName);
   preferences.putString("myDevId",pSetting->myDevId);
   preferences.putULong("myDevIdType",pSetting->myDevIdType);
-  preferences.putBool("customGPSConfig",pSetting->customGPSConfig);
+  preferences.putBool("customGPSConfig",pSetting->gps.customGPSConfig);
   preferences.putUChar("WIFI_MODE",pSetting->wifi.uMode.mode); //
   preferences.putUChar("WIFI_CONNECT",pSetting->wifi.connect); //
   preferences.putString("WIFI_SSID",pSetting->wifi.ssid);
@@ -395,5 +396,12 @@ void write_battOffset(void){
 void write_battMinPerc(void){
   preferences.begin("settings", false);
   preferences.putUChar("BattMinPerc",setting.minBattPercent);
+  preferences.end();
+}
+
+void write_gpsBaud(void){
+  log_i("write new GPS-Baudrate=%d",setting.gps.Baud);
+  preferences.begin("settings", false);
+  preferences.putULong("GPSBAud",setting.gps.Baud);
   preferences.end();
 }

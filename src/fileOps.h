@@ -22,4 +22,5 @@ void write_LoraPower(void);
 void write_fuelsensor(void);
 void write_battOffset(void);
 void write_battMinPerc(void);
+void write_gpsBaud(void);
 #endif

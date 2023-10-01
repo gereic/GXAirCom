@@ -370,6 +370,11 @@ struct WifiSettings{
   uWifiMode uMode; //wifi-mode
 };
 
+struct GPSSettings{
+  bool customGPSConfig; // When enable, GPS is configured with additional like SBAS, 5HZ, Galileo and a few others from the default
+  uint32_t Baud; //GPS-Baudrate
+};
+
 	struct OgnModeBits
 	{
 			unsigned liveTracking:1, sendWeather:1, fwdWeather:1, fwdName:1, b4:1, b5:1, b6:1, b7:1;
@@ -392,8 +397,8 @@ struct SettingsData{
   uint8_t minBattPercent;
   uint8_t restartBattPercent;
   uint8_t myDevIdType; // Address type 0=Stateless Random, 1=Official ICAO, 2=stableFlarm, FF=Not overridden
-  bool customGPSConfig; // When enable, GPS is configured with additional like SBAS, 5HZ, Galileo and a few others from the default
   String myDevId; //my device-ID
+  GPSSettings gps;
   eOutputVario outputModeVario;
   uint8_t outputFLARM;
   uint8_t outputGPS;
