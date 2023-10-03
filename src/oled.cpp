@@ -265,25 +265,25 @@ void Oled::printGPSData(uint32_t tAct){
   display->setCursor(0,0);
   drawAircraftType(0,0,setting.AircraftType);
   
-  drawSatCount(18,0,(status.GPS_NumSat > 9) ? 9 : status.GPS_NumSat);
+  drawSatCount(18,0,(status.gps.NumSat > 9) ? 9 : status.gps.NumSat);
   drawspeaker(47,0);
   drawflying(67,0,status.flying);
   drawWifiStat(status.wifiSTA.state);
   drawBluetoothstat(101,0);
-  drawBatt(111, 0,(status.BattCharging) ? 255 : status.BattPerc);
+  drawBatt(111, 0,(status.battery.charging) ? 255 : status.battery.percent);
 
   display->setTextSize(3);
 
   display->setCursor(0,20);
-  display->print(setStringSize(String(status.ClimbRate,1) + "ms",7));
+  display->print(setStringSize(String(status.vario.ClimbRate,1) + "ms",7));
 
   display->setTextSize(2);
 
   display->setCursor(0,46);
-  display->print(setStringSize(String(status.GPS_alt,0) + "m",4));
+  display->print(setStringSize(String(status.gps.alt,0) + "m",4));
 
   display->setCursor(65,46);
-  display->print(setStringSize(String(status.GPS_speed,0) + "kh",5));
+  display->print(setStringSize(String(status.gps.speed,0) + "kh",5));
 
   display->display();
 
@@ -394,10 +394,10 @@ void Oled::DrawRadarScreen(uint32_t tAct,eRadarDispMode mode){
   String s = "";
   display->clearDisplay();
   drawAircraftType(0,0,setting.AircraftType);
-  drawSatCount(18,0,(status.GPS_NumSat > 9) ? 9 : status.GPS_NumSat);
+  drawSatCount(18,0,(status.gps.NumSat > 9) ? 9 : status.gps.NumSat);
   drawWifiStat(status.wifiSTA.state);
   drawBluetoothstat(101,0);
-  drawBatt(111, 0,(status.BattCharging) ? 255 : status.BattPerc);
+  drawBatt(111, 0,(status.battery.charging) ? 255 : status.battery.percent);
 
   
   display->setTextSize(1);
@@ -416,7 +416,7 @@ void Oled::DrawRadarScreen(uint32_t tAct,eRadarDispMode mode){
   {
   case eRadarDispMode::CLOSEST:
     display->print("CLOSEST");
-    if (status.GPS_Fix == 0){
+    if (status.gps.Fix == 0){
       display->setCursor(60,16);
       display->print("NO GPS-FIX");
       break;
@@ -429,7 +429,7 @@ void Oled::DrawRadarScreen(uint32_t tAct,eRadarDispMode mode){
     break;
   case eRadarDispMode::LIST:
     display->print("LIST");
-    if (status.GPS_Fix == 0){
+    if (status.gps.Fix == 0){
       display->setCursor(60,16);
       display->print("NO GPS-FIX");
       break;
@@ -441,7 +441,7 @@ void Oled::DrawRadarScreen(uint32_t tAct,eRadarDispMode mode){
     break;
   case eRadarDispMode::FRIENDS:
     display->print("FRIENDS");
-    if (status.GPS_Fix == 0){
+    if (status.gps.Fix == 0){
       display->setCursor(50,16);
       display->print("NO GPS-FIX");
       break;
@@ -479,7 +479,7 @@ void Oled::printWeather(uint32_t tAct){
     display->print(setting.PilotName);
     drawWifiStat(status.wifiSTA.state);
     drawBluetoothstat(101,0);
-    drawBatt(111, 0,(status.BattCharging) ? 255 : status.BattPerc);
+    drawBatt(111, 0,(status.battery.charging) ? 255 : status.battery.percent);
     if (status.gsm.bHasGSM){
       drawSignal(60,0,status.gsm.SignalQuality);
     }    
@@ -488,7 +488,7 @@ void Oled::printWeather(uint32_t tAct){
     switch(screen)
     {
       case 0: //battery-voltage
-        s = String(status.vBatt / 1000.,2) + "V";
+        s = String(status.battery.voltage / 1000.,2) + "V";
         break;
       case 1: //wind dir
         s = "  " + getWDir(status.weather.WindDir);
@@ -530,7 +530,7 @@ void Oled::printScanning(uint32_t tAct){
   display->clearDisplay();
   drawWifiStat(status.wifiSTA.state);
   drawBluetoothstat(101,0);
-  drawBatt(111, 0,(status.BattCharging) ? 255 : status.BattPerc);
+  drawBatt(111, 0,(status.battery.charging) ? 255 : status.battery.percent);
   switch (icon)
   {
   case 0: 
@@ -639,7 +639,7 @@ void Oled::printGSData(uint32_t tAct){
   display->clearDisplay();
   drawWifiStat(status.wifiSTA.state);
   drawBluetoothstat(101,0);
-  drawBatt(111, 0,(status.BattCharging) ? 255 : status.BattPerc);
+  drawBatt(111, 0,(status.battery.charging) ? 255 : status.battery.percent);
 
 
   //show rx-count

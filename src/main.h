@@ -309,12 +309,17 @@ struct MqttSettings{
   String pw = "";
 };
 
-struct VarioStatus{
+struct statusVario{
   bool bHasVario;
   bool bHasMPU;
   int16_t accel[3];
   int16_t gyro[3];
   float acc_Z;
+  float pressure = NAN;
+  float alt;
+  float temp = NAN;
+  float Heading;
+  float ClimbRate;
 };
 
 struct GSSettings{
@@ -485,36 +490,41 @@ struct statusWifi{
   int8_t Rssi;
 };
 
+struct statusGPS{
+  bool bHasGPS;
+  bool bExtGps = false;
+  uint8_t NumSat;
+  uint8_t Fix;
+  double Lat;
+  double Lon;
+  float alt;
+  float speed;
+  float course;
+  float geoidAlt;
+  char Date[10];
+  char Time[10];  
+  uint32_t tCycle;  
+};
+
+struct statusBat{
+  bool charging;  
+  uint16_t voltage; //battery-voltage 1/1000V
+  uint8_t percent; //battery-percent
+};
+
 struct statusData{
   uint8_t displayType;
   statusNetwork wifiAP;
   statusWifi wifiSTA;
-  uint16_t vBatt; //battery-voltage 1/1000V
-  uint8_t BattPerc; //battery-percent
-  bool BattCharging;
-  uint8_t GPS_Fix;
-  double GPS_Lat;
-  double GPS_Lon;
-  float GPS_alt;
-  float GPS_speed;
-  float GPS_course;
-  float GPS_geoidAlt;
-  char GPS_Date[10];
-  char GPS_Time[10];
-  float pressure = NAN;
-  float varioAlt;
-  float varioTemp = NAN;
-  float varioHeading;
-  uint8_t GPS_NumSat;
-  float ClimbRate;
+  statusBat battery;
+  statusGPS gps;
   uint16_t fanetTx;
   uint16_t fanetRx;
   uint16_t legTx;
   uint16_t legRx;
   ePMU PMU;
-  VarioStatus vario;
+  statusVario vario;
   bool bWUBroadCast;
-  uint32_t tGPSCycle;
   uint32_t tLoop; //current Loop-time
   uint32_t tMaxLoop; //max Loop-time
   bool flying;
@@ -528,8 +538,6 @@ struct statusData{
   bool bTimeOk;
   gsmStatus gsm;
   eDisplayState displayStat; //stat of display
-  bool bHasGPS;
-  bool bExtGps = false;
   uint8_t updateState; //state of update
   String sNewVersion;
   uint32_t tRestart;

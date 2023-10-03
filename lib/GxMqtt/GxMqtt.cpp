@@ -170,8 +170,8 @@ void GxMqtt::sendInfo(){
     StaticJsonDocument<500> doc; //Memory pool
     char msg_buf[500];
     doc.clear();
-    doc["battPerc"] = status.BattPerc;
-    doc["battV"] = float(status.vBatt)/1000.0;
+    doc["battPerc"] = status.battery.percent;
+    doc["battV"] = float(status.battery.voltage)/1000.0;
     serializeJson(doc, msg_buf);
     sendTopic("info",msg_buf,false); //send topic info
     tOld = tAct;
@@ -182,9 +182,9 @@ void GxMqtt::sendGPS(){
   StaticJsonDocument<500> doc; //Memory pool
   char msg_buf[500];
   doc.clear();
-  doc["lat"] = status.GPS_Lat;
-  doc["lon"] = status.GPS_Lon;
-  doc["alt"] = status.GPS_alt;
+  doc["lat"] = status.gps.Lat;
+  doc["lon"] = status.gps.Lon;
+  doc["alt"] = status.gps.alt;
   serializeJson(doc, msg_buf);
   sendTopic("gps",msg_buf,false); //send topic gps
 }

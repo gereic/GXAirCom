@@ -828,7 +828,7 @@ void sendFlarmData(uint32_t tAct){
 
   if (timeOver(tAct,tSend,FLARM_UPDATE_RATE)){
     tSend = tAct;
-    if (status.GPS_Fix){
+    if (status.gps.Fix){
       Fanet2FlarmData(&fanet._myData,&myFlarmData);
       for (int i = 0; i < MAXNEIGHBOURS; i++){
         //if ((fanet.neighbours[i].devId) && (fanet.neighbours[i].type == 0x11)){ //we have a ID an we are flying !!
@@ -871,7 +871,7 @@ void checkFlyingState(uint32_t tAct){
   static uint32_t tFlightTime = millis();
   if (status.flying){
     //flying
-    if ((!status.GPS_Fix) || (status.GPS_speed < MIN_FLIGHT_SPEED)){
+    if ((!status.gps.Fix) || (status.gps.speed < MIN_FLIGHT_SPEED)){
       if (timeOver(tAct,tOk,MIN_GROUND_TIME)){
         status.flying = false;
       }
@@ -885,7 +885,7 @@ void checkFlyingState(uint32_t tAct){
     }
   }else{
     //on ground
-    if ((status.GPS_Fix) && (status.GPS_NumSat >= 4) && (status.GPS_speed > MIN_FLIGHT_SPEED)){ //minimum 4 satelites to get accurade position and speed
+    if ((status.gps.Fix) && (status.gps.NumSat >= 4) && (status.gps.speed > MIN_FLIGHT_SPEED)){ //minimum 4 satelites to get accurade position and speed
       if (timeOver(tAct,tOk,MIN_FLIGHT_TIME)){
         tFlightTime = tAct;
         status.flightTime = 0;
@@ -1777,13 +1777,13 @@ void setup() {
   status.bTimeOk = false;
   status.modemstatus = eConnectionState::DISCONNECTED;
   command.ConfigGPS = 0;
-  status.bHasGPS = false;
+  status.gps.bHasGPS = false;
   fanet.setGPS(false);
   status.tRestart = 0;
   sMqttState[0] = 0; //zero-Termination of String !
   status.MqttStat = 0;
-  status.GPS_Date[0] = 0; //clear string
-  status.GPS_Time[0] = 0; //clear string
+  status.gps.Date[0] = 0; //clear string
+  status.gps.Time[0] = 0; //clear string
   xI2C0Mutex = xSemaphoreCreateMutex(); // create Mutex for I2C0
   xI2C1Mutex = xSemaphoreCreateMutex(); // create Mutex for I2C1
   log_i("SDK-Version=%s",ESP.getSdkVersion());
@@ -2400,11 +2400,11 @@ void setup() {
     //if ((reason2 == ESP_SLEEP_WAKEUP_TIMER) && (setting.gs.PowerSave == eGsPower::GS_POWER_BATT_LIFE)){
       if ((setting.gs.PowerSave == eGsPower::GS_POWER_BATT_LIFE) || (setting.gs.PowerSave == eGsPower::GS_POWER_SAFE)){
       printBattVoltage(millis()); //read Battery-level
-      log_i("Batt %dV; %d%%",status.vBatt,status.BattPerc);
-      if ((status.vBatt >= BATTPINOK) && (status.BattPerc < (setting.minBattPercent + setting.restartBattPercent)) && (status.BattPerc < 80)){
+      log_i("Batt %dV; %d%%",status.battery.voltage,status.battery.percent);
+      if ((status.battery.voltage >= BATTPINOK) && (status.battery.percent < (setting.minBattPercent + setting.restartBattPercent)) && (status.battery.percent < 80)){
         //go again to sleep
         printLocalTime();
-        log_i("batt-voltage to less (%d%%) --> going to sleep again for 60min.",status.BattPerc);
+        log_i("batt-voltage to less (%d%%) --> going to sleep again for 60min.",status.battery.percent);
         esp_sleep_enable_timer_wakeup((uint64_t)BATTSLEEPTIME * uS_TO_S_FACTOR); //set Timer for wakeup      
         //esp_wifi_stop();
         #ifdef BLUETOOTH
@@ -3023,7 +3023,7 @@ void taskWeather(void *pvParameters){
           fanetWeatherData.Humidity = avg[0].Humidity;
           fanetWeatherData.Baro = avg[0].Pressure;      
           fanetWeatherData.bStateOfCharge = true;
-          fanetWeatherData.Charge = status.BattPerc;
+          fanetWeatherData.Charge = status.battery.percent;
           //testWeatherData.Charge = 44;
           sendWeatherData = true;
         }
@@ -3080,7 +3080,7 @@ void taskWeather(void *pvParameters){
       if (timeOver(tAct,tSendData,setting.wd.FanetUploadInterval)){
         tSendData = tAct;
         if (bDataOk){
-          fanetWeatherData.Charge = status.BattPerc;
+          fanetWeatherData.Charge = status.battery.percent;
           sendWeatherData = true;
         }
       }
@@ -3188,11 +3188,11 @@ void taskBaro(void *pvParameters){
         baro.getMPUValues(&status.vario.accel[0],&status.vario.gyro[0],&status.vario.acc_Z);
       }
       if (baro.isNewVAlues()){
-        baro.getValues(&status.pressure,&status.varioAlt,&status.ClimbRate,&status.varioTemp);
-        status.varioTemp = status.varioTemp + setting.vario.tempOffset;
-        status.varioHeading = baro.getHeading();
+        baro.getValues(&status.vario.pressure,&status.vario.alt,&status.vario.ClimbRate,&status.vario.temp);
+        status.vario.temp = status.vario.temp + setting.vario.tempOffset;
+        status.vario.Heading = baro.getHeading();
         #ifdef USE_BEEPER
-        Beeper.setVelocity(status.ClimbRate);
+        Beeper.setVelocity(status.vario.ClimbRate);
         #endif
       }
       #ifdef USE_BEEPER
@@ -3341,20 +3341,20 @@ bool printBattVoltage(uint32_t tAct){
     if (status.PMU != ePMU::NOPMU){
       //log_i("read Batt-voltage");
       xSemaphoreTake( *PMUMutex, portMAX_DELAY );
-      status.BattCharging = PMU->isCharging();
-      status.vBatt = PMU->getBattVoltage();
+      status.battery.charging = PMU->isCharging();
+      status.battery.voltage = PMU->getBattVoltage();
       xSemaphoreGive( *PMUMutex );
     }else{
-      status.vBatt = uint16_t(readBattvoltage()*1000);      
+      status.battery.voltage = uint16_t(readBattvoltage()*1000);      
     }
-    //log_i("Batt =%dV",status.vBatt);
-    status.BattPerc = scale(status.vBatt,battEmpty,battFull,0,100);
-    //log_i("Batt =%d%%",status.BattPerc);
-    //log_i("Batt %dV; %d%%",status.vBatt,status.BattPerc);
+    //log_i("Batt =%dV",status.battery.voltage);
+    status.battery.percent = scale(status.battery.voltage,battEmpty,battFull,0,100);
+    //log_i("Batt =%d%%",status.battery.percent);
+    //log_i("Batt %dV; %d%%",status.battery.voltage,status.battery.percent);
 
     /*
-    if (status.vBatt >= battFull){
-      log_i("Battery Full: %d mV Temp:%s C",status.vBatt,String(status.varioTemp,1));
+    if (status.battery.voltage >= battFull){
+      log_i("Battery Full: %d mV Temp:%s C",status.battery.voltage,String(status.vario.temp,1));
         
         // if (!status.bMuting){
         //   ledcWriteTone(channel,2000);
@@ -3605,13 +3605,13 @@ void checkReceivedLine(char *ch_str){
   }else if (!strncmp(ch_str,"$PPS",4)){
     //received a PFLAG-Message --> start pps
     //log_i("trigger pps");
-    status.bExtGps = true;
+    status.gps.bExtGps = true;
     ppsTriggered = true;
   #endif
   }else if (!strncmp(ch_str,"$CL,",4)){
     float climb = atof(&ch_str[4]);
     status.vario.bHasVario = true;
-    status.ClimbRate = climb;
+    status.vario.ClimbRate = climb;
     //log_i("Climb=%.1f",climb);
   }else if (!strncmp(ch_str,"$PGXCF,?",8)){
       // Handle request for configuration request
@@ -3653,12 +3653,12 @@ void readGPS(){
     #ifdef GXTEST
     if (true){
         tGpsOk = millis();
-        if (!status.bHasGPS){
-          status.bHasGPS = true;
-          fanet.setGPS(status.bHasGPS);          
+        if (!status.gps.bHasGPS){
+          status.gps.bHasGPS = true;
+          fanet.setGPS(status.gps.bHasGPS);          
         }
     #else
-    if (!status.bHasGPS){
+    if (!status.gps.bHasGPS){
     #endif
       char * cstr = new char [sNmeaIn.length()+1];
       strcpy (cstr, sNmeaIn.c_str());
@@ -3704,18 +3704,18 @@ void readGPS(){
         if ((setting.outputGPS) && (!WebUpdateRunning)) sendData2Client(lineBuffer,recBufferIndex);
         recBufferIndex = 0;
         tGpsOk = millis();
-        if (!status.bHasGPS){
-          status.bHasGPS = true;
-          fanet.setGPS(status.bHasGPS);          
+        if (!status.gps.bHasGPS){
+          status.gps.bHasGPS = true;
+          fanet.setGPS(status.gps.bHasGPS);          
         }
       }
       recBufferIndex++;
     }  
   }
   if (timeOver(millis(),tGpsOk,10000)){
-    if (status.bHasGPS) {      
-      status.bHasGPS = false;
-      fanet.setGPS(status.bHasGPS);
+    if (status.gps.bHasGPS) {      
+      status.gps.bHasGPS = false;
+      fanet.setGPS(status.gps.bHasGPS);
     }
   }
 }
@@ -3775,34 +3775,34 @@ void sendLXPW(uint32_t tAct){
     char sOut[MAXSTRING];
     int pos = 0;
     pos += snprintf(&sOut[pos],MAXSTRING-pos,"$LXWP0,N,");
-    if (status.GPS_Fix){
-      pos += snprintf(&sOut[pos],MAXSTRING-pos,"%.01f",status.GPS_speed);
+    if (status.gps.Fix){
+      pos += snprintf(&sOut[pos],MAXSTRING-pos,"%.01f",status.gps.speed);
     }
     pos += snprintf(&sOut[pos],MAXSTRING-pos,",");
     if (status.vario.bHasVario){
-      pos += snprintf(&sOut[pos],MAXSTRING-pos,"%.01f,%.02f",status.varioAlt,status.ClimbRate); // altitude in meters, relative to QNH 1013.25
+      pos += snprintf(&sOut[pos],MAXSTRING-pos,"%.01f,%.02f",status.vario.alt,status.vario.ClimbRate); // altitude in meters, relative to QNH 1013.25
     }else{
       pos += snprintf(&sOut[pos],MAXSTRING-pos,",");
     }
     pos += snprintf(&sOut[pos],MAXSTRING-pos,",,,,,,");
-    if (status.GPS_Fix){
-      pos += snprintf(&sOut[pos],MAXSTRING-pos,"%.01f",status.GPS_course);
+    if (status.gps.Fix){
+      pos += snprintf(&sOut[pos],MAXSTRING-pos,"%.01f",status.gps.course);
     }
     pos += snprintf(&sOut[pos],MAXSTRING-pos,",,");
     pos = flarmDataPort.addChecksum(sOut,MAXSTRING);
     sendData2Client(sOut,pos);
     /*
     String s = "$LXWP0,N,";
-    if (status.GPS_Fix){
-      s += String(status.GPS_speed,1);
+    if (status.gps.Fix){
+      s += String(status.gps.speed,1);
     }
     s += ",";
     if (status.vario.bHasVario){
-      s += String(status.varioAlt,1) + "," + String(status.ClimbRate,2); // altitude in meters, relative to QNH 1013.25
+      s += String(status.vario.alt,1) + "," + String(status.vario.ClimbRate,2); // altitude in meters, relative to QNH 1013.25
     }
     s+=  + ",,,,,,";
-    if (status.GPS_Fix){
-      s += String(status.GPS_course,1);
+    if (status.gps.Fix){
+      s += String(status.gps.course,1);
     }
     s +=  ",,";
     s = flarmDataPort.addChecksum(s);
@@ -3828,14 +3828,14 @@ void sendLK8EX(uint32_t tAct){
     char sOut[MAXSTRING];
     int pos = snprintf(sOut,MAXSTRING,"$LK8EX1,");
     if (status.vario.bHasVario){
-      pos += snprintf(&sOut[pos],MAXSTRING-pos,"%d,",(uint32_t)status.pressure);
-      pos += snprintf(&sOut[pos],MAXSTRING-pos,"%.02f,",status.varioAlt);
-      pos += snprintf(&sOut[pos],MAXSTRING-pos,"%d,%.01f,",(int32_t)roundf(status.ClimbRate * 100.0),status.varioTemp);
+      pos += snprintf(&sOut[pos],MAXSTRING-pos,"%d,",(uint32_t)status.vario.pressure);
+      pos += snprintf(&sOut[pos],MAXSTRING-pos,"%.02f,",status.vario.alt);
+      pos += snprintf(&sOut[pos],MAXSTRING-pos,"%d,%.01f,",(int32_t)roundf(status.vario.ClimbRate * 100.0),status.vario.temp);
     }else{
       // Don't send altitude nor baro data if baro sensor is not available.
       pos += snprintf(&sOut[pos],MAXSTRING-pos,"999999,99999,9999,99,");      
     }
-    pos += snprintf(&sOut[pos],MAXSTRING-pos,"%u,", Clamp<uint32_t>(status.BattPerc, 0, 100) + 1000U);
+    pos += snprintf(&sOut[pos],MAXSTRING-pos,"%u,", Clamp<uint32_t>(status.battery.percent, 0, 100) + 1000U);
     pos = flarmDataPort.addChecksum(sOut,MAXSTRING);
     sendData2Client(sOut,pos);
     tSend = tAct;
@@ -4140,7 +4140,7 @@ void taskStandard(void *pvParameters){
     attachInterrupt(digitalPinToInterrupt(PinPPS), ppsHandler, RISING);
   }
   #ifdef GXTEST
-    status.bExtGps = true;
+    status.gps.bExtGps = true;
     fanet.setGPS(true);
     //only on new boards we have an pps-pin
     pinMode(PinPPS, INPUT);
@@ -4163,17 +4163,17 @@ void taskStandard(void *pvParameters){
   }
 
   fanet.begin(PinLora_SCK, PinLora_MISO, PinLora_MOSI, PinLora_SS,PinLoraRst, PinLoraDI0,PinLoraGPIO,frequency,14,radioChip);
-  fanet.setGPS(status.bHasGPS);
+  fanet.setGPS(status.gps.bHasGPS);
   #ifdef GSMODULE
   if (setting.Mode == eMode::GROUND_STATION){
     //mode ground-station
-    status.GPS_Lat = setting.gs.lat;
-    status.GPS_Lon = setting.gs.lon;  
-    status.GPS_alt = setting.gs.alt;
-    status.GPS_geoidAlt = setting.gs.geoidAlt;
-    MyFanetData.lat = status.GPS_Lat;
-    MyFanetData.lon = status.GPS_Lon;
-    MyFanetData.altitude = status.GPS_alt;
+    status.gps.Lat = setting.gs.lat;
+    status.gps.Lon = setting.gs.lon;  
+    status.gps.alt = setting.gs.alt;
+    status.gps.geoidAlt = setting.gs.geoidAlt;
+    MyFanetData.lat = status.gps.Lat;
+    MyFanetData.lon = status.gps.Lon;
+    MyFanetData.altitude = status.gps.alt;
     fanet.setMyTrackingData(&MyFanetData,setting.gs.geoidAlt,0); //set Data on fanet
   }
   #endif
@@ -4224,10 +4224,10 @@ void taskStandard(void *pvParameters){
     uint32_t tAct = millis();
     if ((bShowBattPower) && (bBatPowerOk)){
       //log_i("show batt-percent");
-      userled.setBattPower(status.BattPerc);
+      userled.setBattPower(status.battery.percent);
       userled.setState(gxUserLed::showBattPower); //blink slow 1-5 times for batt-percent 0-100percent
       bShowBattPower = false;
-    }else if (status.GPS_Fix){
+    }else if (status.gps.Fix){
       userled.setBlinkFast(1); //blink fast 1 times
     }else{
       userled.setBlinkFast(2); //blink fast 2 times
@@ -4309,11 +4309,11 @@ void taskStandard(void *pvParameters){
 
     if (setting.OGNLiveTracking.mode > 0){
       if (status.vario.bHasVario){
-        ogn.setStatusData(status.pressure ,status.varioTemp,NAN,(float)status.vBatt / 1000.,status.BattPerc);
+        ogn.setStatusData(status.vario.pressure ,status.vario.temp,NAN,(float)status.battery.voltage / 1000.,status.battery.percent);
       }else if ((setting.wd.mode.bits.enable) || (status.bWUBroadCast)){
-        ogn.setStatusData(status.weather.Pressure ,status.weather.temp,status.weather.Humidity,(float)status.vBatt / 1000.,status.BattPerc);
+        ogn.setStatusData(status.weather.Pressure ,status.weather.temp,status.weather.Humidity,(float)status.battery.voltage / 1000.,status.battery.percent);
       }else{
-        ogn.setStatusData(NAN ,NAN, NAN, (float)status.vBatt / 1000.,status.BattPerc);
+        ogn.setStatusData(NAN ,NAN, NAN, (float)status.battery.voltage / 1000.,status.battery.percent);
       }
       ogn.run(status.bInternetConnected);
     } 
@@ -4397,8 +4397,8 @@ void taskStandard(void *pvParameters){
       if (setting.OGNLiveTracking.bits.sendWeather) {
         Ogn::weatherData wData;
         wData.devId = fanet.getMyDevId();
-        wData.lat = status.GPS_Lat;
-        wData.lon = status.GPS_Lon;
+        wData.lat = status.gps.Lat;
+        wData.lon = status.gps.Lon;
         wData.bBaro = status.weather.bPressure;
         wData.Baro = status.weather.Pressure;
         wData.bHumidity = status.weather.bHumidity;
@@ -4529,7 +4529,7 @@ void taskStandard(void *pvParameters){
     if (setting.outputModeVario == eOutputVario::OVARIO_LXPW) sendLXPW(tAct); //not output 
     #ifdef AIRMODULE
     if ((setting.Mode == eMode::AIR_MODULE) || ((abs(setting.gs.lat) <= 0.1) && (abs(setting.gs.lon) <= 0.1))){ //in GS-Mode we use the GPS, if in settings disabled
-      if ((PinPPS < 0) && (!status.bExtGps)){
+      if ((PinPPS < 0) && (!status.gps.bExtGps)){
         if ((tAct - tOldPPS) >= 1000){
           gtPPS = millis();
           ppsTriggered = true;
@@ -4538,49 +4538,49 @@ void taskStandard(void *pvParameters){
       if (ppsTriggered){
         ppsTriggered = false;
         tLastPPS = tAct;
-        //log_i("PPS-Triggered t=%d",status.tGPSCycle);
+        //log_i("PPS-Triggered t=%d",status.gps.tCycle);
         //log_i("lat=%d;lon=%d",nmea.getLatitude(),nmea.getLongitude());
         //long alt2 = 0;
         //nmea.getAltitude(alt2);
         //log_i("alt=%d,speed=%d,course=%d",alt2,nmea.getSpeed(),nmea.getCourse());
         //log_i("GPS-FixTime=%s",nmea.getFixTime().c_str());
-        status.tGPSCycle = tAct - tOldPPS;
+        status.gps.tCycle = tAct - tOldPPS;
         if (nmea.isValid()){
           //log_i("nmea is valid");
           long alt = 0;
           nmea.getAltitude(alt);
           #ifdef AIRMODULE
           if (setting.Mode == eMode::AIR_MODULE){
-            status.GPS_NumSat = nmea.getNumSatellites();
+            status.gps.NumSat = nmea.getNumSatellites();
           }
           #endif
-          status.GPS_Fix = 1;
-          if (status.GPS_NumSat < 4){ //we need at least 4 satellites to get accurate position !!
-            status.GPS_speed = 0;
-            status.GPS_course = 0;
+          status.gps.Fix = 1;
+          if (status.gps.NumSat < 4){ //we need at least 4 satellites to get accurate position !!
+            status.gps.speed = 0;
+            status.gps.course = 0;
           }else{
-            status.GPS_speed = nmea.getSpeed()*1.852/1000.; //speed in cm/s --> we need km/h
-            status.GPS_course = nmea.getCourse()/1000.;
+            status.gps.speed = nmea.getSpeed()*1.852/1000.; //speed in cm/s --> we need km/h
+            status.gps.course = nmea.getCourse()/1000.;
 
           // create a global variable for logger igc file name based on GPS datetime
             //set today date
             // if got a correct date i.e. with year
             if (nmea.getYear()>0){
-              snprintf (status.GPS_Date,sizeof(status.GPS_Date)-1,"%02d%02d%02d",nmea.getDay(),nmea.getMonth(),nmea.getYear() - 2000);
-              snprintf (status.GPS_Time,sizeof(status.GPS_Time)-1,"%02d%02d%02d",nmea.getHour(),nmea.getMinute(),nmea.getSecond());
+              snprintf (status.gps.Date,sizeof(status.gps.Date)-1,"%02d%02d%02d",nmea.getDay(),nmea.getMonth(),nmea.getYear() - 2000);
+              snprintf (status.gps.Time,sizeof(status.gps.Time)-1,"%02d%02d%02d",nmea.getHour(),nmea.getMinute(),nmea.getSecond());
             }
           }
           long geoidalt = 0;
           nmea.getGeoIdAltitude(geoidalt);
           //log_i("latlon=%d,%d",nmea.getLatitude(),nmea.getLongitude());
-          status.GPS_Lat = nmea.getLatitude() / 1000000.;
-          status.GPS_Lon = nmea.getLongitude() / 1000000.;  
+          status.gps.Lat = nmea.getLatitude() / 1000000.;
+          status.gps.Lon = nmea.getLongitude() / 1000000.;  
           #ifdef FLARMTEST
-            status.GPS_Lat = setting.gs.lat;
-            status.GPS_Lon = setting.gs.lon;
+            status.gps.Lat = setting.gs.lat;
+            status.gps.Lon = setting.gs.lon;
           #endif
-          status.GPS_alt = alt/1000.;
-          status.GPS_geoidAlt = geoidalt/1000.;
+          status.gps.alt = alt/1000.;
+          status.gps.geoidAlt = geoidalt/1000.;
           //setTime(nmea.getHour(), nmea.getMinute(), nmea.getSecond(), nmea.getDay(), nmea.getMonth(), nmea.getYear());
           struct tm timeinfo;
           timeinfo.tm_year = nmea.getYear() - 1900; //from 1900
@@ -4592,34 +4592,34 @@ void taskStandard(void *pvParameters){
           setAllTime(timeinfo); //we have to set time to GPS-Time for decoding.
 
           MyFanetData.timestamp = now();
-          if (oldAlt == 0) oldAlt = status.GPS_alt;        
-          if (!status.vario.bHasVario) status.ClimbRate = (status.GPS_alt - oldAlt) / (float(status.tGPSCycle) / 1000.0);        
-          oldAlt = status.GPS_alt;          
-          MyFanetData.climb = status.ClimbRate;
-          MyFanetData.lat = status.GPS_Lat;
-          MyFanetData.lon = status.GPS_Lon;
-          MyFanetData.altitude = status.GPS_alt;
-          //log_i("lat=%.6f;lon=%.6f;alt=%.1f;geoAlt=%.1f",status.GPS_Lat,status.GPS_Lon,status.GPS_alt,geoidalt/1000.);
+          if (oldAlt == 0) oldAlt = status.gps.alt;        
+          if (!status.vario.bHasVario) status.vario.ClimbRate = (status.gps.alt - oldAlt) / (float(status.gps.tCycle) / 1000.0);        
+          oldAlt = status.gps.alt;          
+          MyFanetData.climb = status.vario.ClimbRate;
+          MyFanetData.lat = status.gps.Lat;
+          MyFanetData.lon = status.gps.Lon;
+          MyFanetData.altitude = status.gps.alt;
+          //log_i("lat=%.6f;lon=%.6f;alt=%.1f;geoAlt=%.1f",status.gps.Lat,status.gps.Lon,status.gps.alt,geoidalt/1000.);
           if (fanet.onGround){
             MyFanetData.speed = 0.0;
           }else{
-            MyFanetData.speed = status.GPS_speed; //speed in cm/s --> we need km/h
+            MyFanetData.speed = status.gps.speed; //speed in cm/s --> we need km/h
             if (MyFanetData.speed < 1.0) MyFanetData.speed = 1.0;
           }
           MyFanetData.addressType = fanet.getAddressType();
-          if ((status.GPS_speed <= 5.0) && (status.vario.bHasVario)){
-            MyFanetData.heading = status.varioHeading;
+          if ((status.gps.speed <= 5.0) && (status.vario.bHasVario)){
+            MyFanetData.heading = status.vario.Heading;
           }else{
-            MyFanetData.heading = status.GPS_course;
+            MyFanetData.heading = status.gps.course;
           }
           MyFanetData.aircraftType = fanet.getAircraftType();        
           if (setting.Mode == eMode::AIR_MODULE){
             if (setting.OGNLiveTracking.bits.liveTracking){
-              ogn.setGPS(status.GPS_Lat,status.GPS_Lon,status.GPS_alt,status.GPS_speed,MyFanetData.heading);
+              ogn.setGPS(status.gps.Lat,status.gps.Lon,status.gps.alt,status.gps.speed,MyFanetData.heading);
               if (fanet.onGround){
-                ogn.sendGroundTrackingData(now(),status.GPS_Lat,status.GPS_Lon,status.GPS_alt,fanet.getDevId(tFanetData.devId),fanet.state,MyFanetData.addressType,0.0);
+                ogn.sendGroundTrackingData(now(),status.gps.Lat,status.gps.Lon,status.gps.alt,fanet.getDevId(tFanetData.devId),fanet.state,MyFanetData.addressType,0.0);
               }else{
-                ogn.sendTrackingData(now(),status.GPS_Lat,status.GPS_Lon,status.GPS_alt,status.GPS_speed,MyFanetData.heading,status.ClimbRate,fanet.getMyDevId() ,(Ogn::aircraft_t)fanet.getFlarmAircraftType(&MyFanetData),MyFanetData.addressType,fanet.doOnlineTracking,0.0);
+                ogn.sendTrackingData(now(),status.gps.Lat,status.gps.Lon,status.gps.alt,status.gps.speed,MyFanetData.heading,status.vario.ClimbRate,fanet.getMyDevId() ,(Ogn::aircraft_t)fanet.getFlarmAircraftType(&MyFanetData),MyFanetData.addressType,fanet.doOnlineTracking,0.0);
               }
               
             } 
@@ -4628,32 +4628,32 @@ void taskStandard(void *pvParameters){
           }
           fanet.setMyTrackingData(&MyFanetData,geoidalt/1000.,gtPPS); //set Data on fanet
         }else{
-          status.GPS_Fix = 0;
-          status.GPS_speed = 0.0;
-          status.GPS_Lat = 0.0;
-          status.GPS_Lon = 0.0;
-          status.GPS_alt = 0.0;
-          status.GPS_course = 0.0;
-          status.GPS_NumSat = 0;
-          status.GPS_geoidAlt = 0;
-          if (!status.vario.bHasVario) status.ClimbRate = 0.0;
+          status.gps.Fix = 0;
+          status.gps.speed = 0.0;
+          status.gps.Lat = 0.0;
+          status.gps.Lon = 0.0;
+          status.gps.alt = 0.0;
+          status.gps.course = 0.0;
+          status.gps.NumSat = 0;
+          status.gps.geoidAlt = 0;
+          if (!status.vario.bHasVario) status.vario.ClimbRate = 0.0;
           oldAlt = 0.0;
         }
         tOldPPS = tAct;
       }
       if((tAct - tLastPPS) >= 10000){
         //no pps for more then 10sec. --> clear GPS-state
-        status.GPS_Fix = 0;
-        status.GPS_speed = 0.0;
-        status.GPS_Lat = 0.0;
-        status.GPS_Lon = 0.0;
-        status.GPS_alt = 0.0;
-        status.GPS_geoidAlt = 0.0;
-        status.GPS_course = 0.0;
-        status.GPS_NumSat = 0;
+        status.gps.Fix = 0;
+        status.gps.speed = 0.0;
+        status.gps.Lat = 0.0;
+        status.gps.Lon = 0.0;
+        status.gps.alt = 0.0;
+        status.gps.geoidAlt = 0.0;
+        status.gps.course = 0.0;
+        status.gps.NumSat = 0;
       }
     }else{
-      if ((PinPPS < 0) && (!status.bExtGps)){
+      if ((PinPPS < 0) && (!status.gps.bExtGps)){
         if ((tAct - tOldPPS) >= 1000){
           gtPPS = millis();
           ppsTriggered = true;
@@ -4663,15 +4663,15 @@ void taskStandard(void *pvParameters){
       if (ppsTriggered){
         ppsTriggered = false;
         tOldPPS = tAct;
-        MyFanetData.climb = status.ClimbRate;
-        MyFanetData.lat = status.GPS_Lat;
-        MyFanetData.lon = status.GPS_Lon;
-        MyFanetData.altitude = status.GPS_alt;
+        MyFanetData.climb = status.vario.ClimbRate;
+        MyFanetData.lat = status.gps.Lat;
+        MyFanetData.lon = status.gps.Lon;
+        MyFanetData.altitude = status.gps.alt;
         MyFanetData.speed = 0; //speed in cm/s --> we need km/h
         MyFanetData.addressType = ADDRESSTYPE_OGN;
         MyFanetData.heading = 0;
         MyFanetData.aircraftType = fanet.getAircraftType();        
-        fanet.setMyTrackingData(&MyFanetData,status.GPS_geoidAlt,gtPPS); //set Data on fanet
+        fanet.setMyTrackingData(&MyFanetData,status.gps.geoidAlt,gtPPS); //set Data on fanet
 
       }
     }
@@ -5257,11 +5257,11 @@ void taskBackGround(void *pvParameters){
     if (status.bPowerOff){
       powerOff(); //power off, when battery is empty !!
     }
-    //if ((status.BattPerc < setting.minBattPercent) && (status.vBatt >= BATTPINOK)) { // if Batt-voltage is below 1V, maybe the resistor is missing.
+    //if ((status.battery.percent < setting.minBattPercent) && (status.battery.voltage >= BATTPINOK)) { // if Batt-voltage is below 1V, maybe the resistor is missing.
     if ((setting.gs.PowerSave == eGsPower::GS_POWER_BATT_LIFE) || (setting.gs.PowerSave == eGsPower::GS_POWER_SAFE)){
-      if ((status.BattPerc <= setting.minBattPercent) && (status.vBatt >= BATTPINOK)){
+      if ((status.battery.percent <= setting.minBattPercent) && (status.battery.voltage >= BATTPINOK)){
         if (timeOver(tAct,tBattEmpty,60000)){ //min 60sek. below
-          log_i("Batt empty voltage=%d.%dV",status.vBatt/1000,status.vBatt%1000);
+          log_i("Batt empty voltage=%d.%dV",status.battery.voltage/1000,status.battery.voltage%1000);
           log_i("sleep for 30min. --> then check again batt-voltage");
           esp_sleep_enable_timer_wakeup((uint64_t)BATTSLEEPTIME * uS_TO_S_FACTOR); //set Timer for wakeup        
           powerOff();
@@ -5271,9 +5271,9 @@ void taskBackGround(void *pvParameters){
       }
     }else{
       if (status.PMU != ePMU::NOPMU){ //power off only if we have an AXP192, otherwise, we can't switch on again.
-        if ((status.vBatt < battEmpty) && (status.vBatt >= BATTPINOK)) { // if Batt-voltage is below 1V, maybe the resistor is missing.
+        if ((status.battery.voltage < battEmpty) && (status.battery.voltage >= BATTPINOK)) { // if Batt-voltage is below 1V, maybe the resistor is missing.
           if (timeOver(tAct,tBattEmpty,60000)){ //min 60sek. below
-            log_i("Batt empty voltage=%d.%dV",status.vBatt/1000,status.vBatt%1000);
+            log_i("Batt empty voltage=%d.%dV",status.battery.voltage/1000,status.battery.voltage%1000);
             powerOff(); //power off, when battery is empty !!
           }
         }else{

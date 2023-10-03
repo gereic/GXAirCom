@@ -300,7 +300,7 @@ void Screen::drawWeatherScreen(void){
   uint8_t battPercent;
 
   tAct = millis();
-  battPercent = (status.BattCharging) ? 255 : status.BattPerc / 25;    
+  battPercent = (status.battery.charging) ? 255 : status.battery.percent / 25;    
   switch (stepCount)
   {
   case 0:
@@ -534,14 +534,14 @@ void Screen::drawMainScreen(void){
 
   tAct = millis();
   //copy values
-  actData.alt = (status.GPS_Fix) ? status.GPS_alt : status.varioAlt;
-  //log_i("%d,%.01f,%.01f",status.GPS_Fix,status.GPS_alt,status.varioAlt);
-  actData.vario = status.ClimbRate;
-  actData.speed = status.GPS_speed;
-  //actData.compass = (status.GPS_speed <= 5.0) ? status.varioHeading : status.GPS_course ;
-  actData.compass = status.GPS_course ;
-  actData.battPercent = (status.BattCharging) ? 255 : status.BattPerc / 25;
-  actData.SatCount = (status.GPS_Fix) ? status.GPS_NumSat : 0;
+  actData.alt = (status.gps.Fix) ? status.gps.alt : status.vario.alt;
+  //log_i("%d,%.01f,%.01f",status.gps.Fix,status.gps.alt,status.vario.alt);
+  actData.vario = status.vario.ClimbRate;
+  actData.speed = status.gps.speed;
+  //actData.compass = (status.gps.speed <= 5.0) ? status.vario.Heading : status.gps.course ;
+  actData.compass = status.gps.course ;
+  actData.battPercent = (status.battery.charging) ? 255 : status.battery.percent / 25;
+  actData.SatCount = (status.gps.Fix) ? status.gps.NumSat : 0;
   if (actData.SatCount > 9) actData.SatCount = 9;
   //actData.SatCount = 9;
   actData.flightTime = status.flightTime;

@@ -185,26 +185,26 @@ void onWebSocketEvent(uint8_t client_num,
           webSocket.sendTXT(client_num, msg_buf);
 
           doc.clear();
-          doc["climbrate"] = String(status.ClimbRate,1);
-          doc["vTemp"] = String(status.varioTemp,1);
+          doc["climbrate"] = String(status.vario.ClimbRate,1);
+          doc["vTemp"] = String(status.vario.temp,1);
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
 
           doc.clear();
-          doc["vBatt"] = String((float)status.vBatt/1000.,2);
-          doc["Battperc"] = status.BattPerc;
+          doc["vBatt"] = String((float)status.battery.voltage/1000.,2);
+          doc["Battperc"] = status.battery.percent;
           #ifdef AIRMODULE
           if (setting.Mode == eMode::AIR_MODULE){
-            doc["gpsFix"] = status.GPS_Fix;
-            doc["gpsNumSat"] = status.GPS_NumSat;
-            doc["gpsSpeed"] = String(status.GPS_speed,2);
-            doc["gpsCourse"] = String(status.GPS_course,2);
+            doc["gpsFix"] = status.gps.Fix;
+            doc["gpsNumSat"] = status.gps.NumSat;
+            doc["gpsSpeed"] = String(status.gps.speed,2);
+            doc["gpsCourse"] = String(status.gps.course,2);
           }
           #endif
-          doc["gpslat"] = String(status.GPS_Lat,6);
-          doc["gpslon"] = String(status.GPS_Lon,6);
-          doc["gpsAlt"] = String(status.GPS_alt,1);
-          doc["gpsGAlt"] = String(status.GPS_geoidAlt,1);
+          doc["gpslat"] = String(status.gps.Lat,6);
+          doc["gpslon"] = String(status.gps.Lon,6);
+          doc["gpsAlt"] = String(status.gps.alt,1);
+          doc["gpsGAlt"] = String(status.gps.geoidAlt,1);
           doc["fanetTx"] = status.fanetTx;
           doc["fanetRx"] = status.fanetRx;
           doc["legTx"] = status.legTx;
@@ -402,7 +402,7 @@ void onWebSocketEvent(uint8_t client_num,
 
           doc.clear();
           doc["fuelSensor"] = (uint8_t)setting.bHasFuelSensor;
-          doc["vBatt"] = String((float)status.vBatt/1000.,2);
+          doc["vBatt"] = String((float)status.battery.voltage/1000.,2);
           doc["BATOFFS"] = setting.BattVoltOffs;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
@@ -957,15 +957,15 @@ void sendPage(uint8_t pageNr){
       if (status.vario.bHasVario){
         doc.clear();
         bSend = false;
-        if (mStatus.ClimbRate != status.ClimbRate){
+        if (mStatus.vario.ClimbRate != status.vario.ClimbRate){
           bSend = true;
-          mStatus.ClimbRate = status.ClimbRate;
-          doc["climbrate"] = String(status.ClimbRate,1);
+          mStatus.vario.ClimbRate = status.vario.ClimbRate;
+          doc["climbrate"] = String(status.vario.ClimbRate,1);
         }    
-        if (mStatus.varioTemp != status.varioTemp){
+        if (mStatus.vario.temp != status.vario.temp){
           bSend = true;
-          mStatus.varioTemp = status.varioTemp;
-          doc["vTemp"] = String(status.varioTemp,1);
+          mStatus.vario.temp = status.vario.temp;
+          doc["vTemp"] = String(status.vario.temp,1);
         }    
         if (status.vario.bHasMPU){
           char buff[10];
@@ -1015,20 +1015,20 @@ void sendPage(uint8_t pageNr){
         //log_i("actual time %s",strftime_buf);
         /*
         if (setting.Mode == eMode::AIR_MODULE){
-          if ((status.GPS_Time) && (status.GPS_Date)){
-              doc["GPSTime"] = String(status.GPS_Date) + "-" + String(status.GPS_Time);
+          if ((status.gps.Time) && (status.gps.Date)){
+              doc["GPSTime"] = String(status.gps.Date) + "-" + String(status.gps.Time);
           }
         }
-        if (status.GPS_Time){
+        if (status.gps.Time){
           char gpstime[40];
-          snprintf (gpstime,sizeof(gpstime)-1,"GPS: 20%.2s-%.2s-%.2s - %.2s:%.2s:%.2s",&status.GPS_Date[4],&status.GPS_Date[2],&status.GPS_Date[0],&status.GPS_Time[0],&status.GPS_Time[2],&status.GPS_Time[4]);
+          snprintf (gpstime,sizeof(gpstime)-1,"GPS: 20%.2s-%.2s-%.2s - %.2s:%.2s:%.2s",&status.gps.Date[4],&status.gps.Date[2],&status.gps.Date[0],&status.gps.Time[0],&status.gps.Time[2],&status.gps.Time[4]);
           char hh[4]; 
           char mm[4];
           char ss[4];
-          String(status.GPS_Time).substring(0,2).toCharArray(hh,sizeof(hh),0);
-          String(status.GPS_Time).substring(2,4).toCharArray(mm,sizeof(mm),0);
-          String(status.GPS_Time).substring(4,6).toCharArray(ss,sizeof(ss),0);
-          strcpy(gpstime,status.GPS_Date);
+          String(status.gps.Time).substring(0,2).toCharArray(hh,sizeof(hh),0);
+          String(status.gps.Time).substring(2,4).toCharArray(mm,sizeof(mm),0);
+          String(status.gps.Time).substring(4,6).toCharArray(ss,sizeof(ss),0);
+          strcpy(gpstime,status.gps.Date);
           strcat(gpstime," - ");
           strcat(gpstime,hh);
           strcat(gpstime,":");
@@ -1046,67 +1046,67 @@ void sendPage(uint8_t pageNr){
         doc["counter"] = counter;
         bSend = true;
       }
-      if (mStatus.vBatt != status.vBatt){
+      if (mStatus.battery.voltage != status.battery.voltage){
         bSend = true;
-        mStatus.vBatt = status.vBatt;
-        doc["vBatt"] = String((float)status.vBatt/1000.,2);
+        mStatus.battery.voltage = status.battery.voltage;
+        doc["vBatt"] = String((float)status.battery.voltage/1000.,2);
       }    
-      if (mStatus.BattPerc != status.BattPerc){
+      if (mStatus.battery.percent != status.battery.percent){
         bSend = true;
-        mStatus.BattPerc = status.BattPerc;
-        doc["Battperc"] = status.BattPerc;
+        mStatus.battery.percent = status.battery.percent;
+        doc["Battperc"] = status.battery.percent;
       }          
       #ifdef AIRMODULE
       if (setting.Mode == eMode::AIR_MODULE){
-        if ((status.GPS_Time) && (status.GPS_Date)){
-          if ((strcmp(&status.GPS_Date[0],&mStatus.GPS_Date[0])) || (strcmp(&status.GPS_Time[0],&mStatus.GPS_Time[0]))){
-            memcpy(&mStatus.GPS_Time[0],&status.GPS_Time[0],sizeof(status.GPS_Time));
-            memcpy(&mStatus.GPS_Date[0],&status.GPS_Date[0],sizeof(status.GPS_Time));
-            doc["GPSTime"] = String(status.GPS_Date) + "-" + String(status.GPS_Time);
+        if ((status.gps.Time) && (status.gps.Date)){
+          if ((strcmp(&status.gps.Date[0],&mStatus.gps.Date[0])) || (strcmp(&status.gps.Time[0],&mStatus.gps.Time[0]))){
+            memcpy(&mStatus.gps.Time[0],&status.gps.Time[0],sizeof(status.gps.Time));
+            memcpy(&mStatus.gps.Date[0],&status.gps.Date[0],sizeof(status.gps.Time));
+            doc["GPSTime"] = String(status.gps.Date) + "-" + String(status.gps.Time);
           }          
         }
  
-        if (mStatus.GPS_Fix != status.GPS_Fix){
+        if (mStatus.gps.Fix != status.gps.Fix){
           bSend = true;
-          mStatus.GPS_Fix = status.GPS_Fix;
-          doc["gpsFix"] = status.GPS_Fix;
+          mStatus.gps.Fix = status.gps.Fix;
+          doc["gpsFix"] = status.gps.Fix;
         }    
-        if (mStatus.GPS_NumSat != status.GPS_NumSat){
+        if (mStatus.gps.NumSat != status.gps.NumSat){
           bSend = true;
-          mStatus.GPS_NumSat = status.GPS_NumSat;
-          doc["gpsNumSat"] = status.GPS_NumSat;
+          mStatus.gps.NumSat = status.gps.NumSat;
+          doc["gpsNumSat"] = status.gps.NumSat;
         }    
-        if (mStatus.GPS_speed != status.GPS_speed){
+        if (mStatus.gps.speed != status.gps.speed){
           bSend = true;
-          mStatus.GPS_speed = status.GPS_speed;
-          doc["gpsSpeed"] = String(status.GPS_speed,2);
+          mStatus.gps.speed = status.gps.speed;
+          doc["gpsSpeed"] = String(status.gps.speed,2);
         }    
-        if (mStatus.GPS_course != status.GPS_course){
+        if (mStatus.gps.course != status.gps.course){
           bSend = true;
-          mStatus.GPS_course = status.GPS_course;
-          doc["gpsCourse"] = String(status.GPS_course,2);
+          mStatus.gps.course = status.gps.course;
+          doc["gpsCourse"] = String(status.gps.course,2);
         }    
       }
       #endif
-      if (mStatus.GPS_Lat != status.GPS_Lat){
+      if (mStatus.gps.Lat != status.gps.Lat){
         bSend = true;
-        mStatus.GPS_Lat = status.GPS_Lat;
-        doc["gpslat"] = String(status.GPS_Lat,6);
+        mStatus.gps.Lat = status.gps.Lat;
+        doc["gpslat"] = String(status.gps.Lat,6);
       }    
-      if (mStatus.GPS_Lon != status.GPS_Lon){
+      if (mStatus.gps.Lon != status.gps.Lon){
         bSend = true;
-        mStatus.GPS_Lon = status.GPS_Lon;
-        doc["gpslon"] = String(status.GPS_Lon,6);
+        mStatus.gps.Lon = status.gps.Lon;
+        doc["gpslon"] = String(status.gps.Lon,6);
       }    
-      if (mStatus.GPS_alt != status.GPS_alt){
+      if (mStatus.gps.alt != status.gps.alt){
         bSend = true;
-        mStatus.GPS_alt = status.GPS_alt;
-        doc["gpsAlt"] = String(status.GPS_alt,1);
+        mStatus.gps.alt = status.gps.alt;
+        doc["gpsAlt"] = String(status.gps.alt,1);
       }    
-      if (mStatus.GPS_geoidAlt != status.GPS_geoidAlt){
+      if (mStatus.gps.geoidAlt != status.gps.geoidAlt){
         bSend = true;
-        mStatus.GPS_geoidAlt = status.GPS_geoidAlt;
-        doc["gpsGAlt"] = String(status.GPS_geoidAlt,1);
+        mStatus.gps.geoidAlt = status.gps.geoidAlt;
+        doc["gpsGAlt"] = String(status.gps.geoidAlt,1);
       }    
       if (mStatus.fanetTx != status.fanetTx){
         bSend = true;
@@ -1314,10 +1314,10 @@ void sendPage(uint8_t pageNr){
       //site fullsettings
       doc.clear();
       bSend = false;
-      if (mStatus.vBatt != status.vBatt){
+      if (mStatus.battery.voltage != status.battery.voltage){
         bSend = true;
-        mStatus.vBatt = status.vBatt;
-        doc["vBatt"] = String((float)status.vBatt/1000.,2);
+        mStatus.battery.voltage = status.battery.voltage;
+        doc["vBatt"] = String((float)status.battery.voltage/1000.,2);
       }    
       if (mCommand.ConfigGPS != command.ConfigGPS){
         bSend = true;
@@ -1381,8 +1381,8 @@ void sendPage(uint8_t pageNr){
             doc["NAME"] = (fanet.neighbours[i].name.length() > 0) ? fanet.neighbours[i].name : "";
             doc["TYPE"] = fanet.getAircraftType(fanet.neighbours[i].aircraftType);
             doc["STATE"] = fanet.getType(fanet.neighbours[i].type);
-            if ((status.GPS_Lat != 0) && (status.GPS_Lon != 0 )){
-              doc["DIST"] =  String(distance(status.GPS_Lat,status.GPS_Lon,fanet.neighbours[i].lat,fanet.neighbours[i].lon, 'K'),1);
+            if ((status.gps.Lat != 0) && (status.gps.Lon != 0 )){
+              doc["DIST"] =  String(distance(status.gps.Lat,status.gps.Lon,fanet.neighbours[i].lat,fanet.neighbours[i].lon, 'K'),1);
             }else{
               doc["DIST"] = "";
             }
@@ -1439,8 +1439,8 @@ void sendPage(uint8_t pageNr){
             doc["LAT"] = String(fanet.weatherDatas[i].lat,6);
             doc["LON"] = String(fanet.weatherDatas[i].lon,6);
             doc["NAME"] = (fanet.weatherDatas[i].name.length() > 0) ? fanet.weatherDatas[i].name : "";
-            if ((status.GPS_Lat != 0) && (status.GPS_Lon != 0 )){
-              doc["DIST"] =  String(distance(status.GPS_Lat,status.GPS_Lon,fanet.weatherDatas[i].lat,fanet.weatherDatas[i].lon, 'K'),1);
+            if ((status.gps.Lat != 0) && (status.gps.Lon != 0 )){
+              doc["DIST"] =  String(distance(status.gps.Lat,status.gps.Lon,fanet.weatherDatas[i].lat,fanet.weatherDatas[i].lon, 'K'),1);
             }else{
               doc["DIST"] = "";
             }

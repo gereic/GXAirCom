@@ -61,8 +61,8 @@ void Logger::run(void){
   }
   // if Flying i.e. also got gps fix and not initialized
   // test TODO CHANGE HERE to start recording when flying
-//  if (status.GPS_Date && !lInit){
-  if ((status.flying || ltest) && !lInit && status.GPS_Date){
+//  if (status.gps.Date && !lInit){
+  if ((status.flying || ltest) && !lInit && status.gps.Date){
     lInit = true;
     lStop = false;
     // start new igc track with headers
@@ -71,7 +71,7 @@ void Logger::run(void){
     while (1){
       char trackFile[32];
       strcpy(trackFile,"/");
-      strcat(trackFile,status.GPS_Date);
+      strcat(trackFile,status.gps.Date);
       strcat(trackFile,"_");
       strcat(trackFile,itoa(fnum,fnumc,10));
       // TODO this will be withouth extension and will be added when closing the igc 
@@ -91,7 +91,7 @@ void Logger::run(void){
     }
   }
     // if initilaized and flying/not but gps fix and sat > 3
-  if(lInit && ( status.flying || (status.GPS_Fix && status.GPS_NumSat > 3)) ){
+  if(lInit && ( status.flying || (status.gps.Fix && status.gps.NumSat > 3)) ){
     updateLogger();
   }
 
@@ -117,7 +117,7 @@ char * Logger::igcHeaders(){
   strcat(headers,IGC_ROW2);
   strcat(headers,"\r");
   strcat(headers,IGC_ROW3);
-  if (status.GPS_Date) strcat(headers,status.GPS_Date);
+  if (status.gps.Date) strcat(headers,status.gps.Date);
   strcat(headers,"\r");
   strcat(headers,IGC_ROW4);
   if (setting.PilotName) {
@@ -190,16 +190,16 @@ void Logger::updateLogger(void){
   static char row[256];
 
   strcpy(row,"B");
-  strcat(row,status.GPS_Time);
+  strcat(row,status.gps.Time);
 
   static char lat_d[10]; //withouth leading zero added directly to row
   static char lon_d[10]; //withouth leading zero added directly to row
   static char lat_m[10];
   static char lon_m[10];
-  int ilat_d = (int)status.GPS_Lat;
-  int ilat_m = (int)( round((status.GPS_Lat - ilat_d)*60.*1000) );
-  int ilon_d = (int)status.GPS_Lon;
-  int ilon_m = (int)( round((status.GPS_Lon - ilon_d)*60.*1000) );
+  int ilat_d = (int)status.gps.Lat;
+  int ilat_m = (int)( round((status.gps.Lat - ilat_d)*60.*1000) );
+  int ilon_d = (int)status.gps.Lon;
+  int ilon_m = (int)( round((status.gps.Lon - ilon_d)*60.*1000) );
   // latitude from eg. 45.xxx to 45,0.xxx*60*1000N 
   // Degrees
   if ( ilat_d < 10 ) strcat(row,"0");
@@ -232,7 +232,7 @@ void Logger::updateLogger(void){
   strcat(row,"A");
   // Altitude from vario
   char altvario[5];
-  int ialtvario = (int)(round(status.GPS_alt));
+  int ialtvario = (int)(round(status.gps.alt));
   if (ialtvario < 10000) strcat(row,"0");
   if (ialtvario < 1000) strcat(row,"0");
   if (ialtvario < 100) strcat(row,"0");
@@ -241,7 +241,7 @@ void Logger::updateLogger(void){
   strcat(row,altvario);
   // ALtitude from GPS
   char altgps[5];
-  int igpsvario = (int)(round(status.varioAlt));
+  int igpsvario = (int)(round(status.vario.alt));
   if (igpsvario < 10000) strcat(row,"0");
   if (igpsvario < 1000) strcat(row,"0");
   if (igpsvario < 100) strcat(row,"0");
@@ -254,7 +254,7 @@ void Logger::updateLogger(void){
   appendFile(SD_MMC, igcPAth, row);
 
   // G update
-  g_time += (int)status.GPS_Time[strlen(status.GPS_Time)-1];
+  g_time += (int)status.gps.Time[strlen(status.gps.Time)-1];
   g_latlon += (int)lat_m[strlen(lat_m)-1];
   g_baroalt += (int)altvario[strlen(altvario)-1];
   g_gpsalt += (int)altgps[strlen(altgps)-1];
