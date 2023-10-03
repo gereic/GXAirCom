@@ -685,8 +685,8 @@ void FanetMac::stateWrapper()
 		fmac._RfMode.bits.FntTx = false;
 		if (1 == 1){
 			//only listen for Flarm
-			if (fmac._actMode != MODE_FSK_8684){
-				fmac.switchMode(MODE_FSK_8684);
+			if (fmac._actMode != MODE_FSK_8682){
+				fmac.switchMode(MODE_FSK_8682);
 			}
 		}else
 		#endif 

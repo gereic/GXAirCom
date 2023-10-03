@@ -538,8 +538,11 @@ int8_t flarm_decode(void *flarm_pkt, ufo_t *this_aircraft, ufo_t *fop) {
   }
 
   bool bParityErr = false;
-  //if (pkt->parity) {  //from V7 it is always 0
-  if (origParity != pkt_parity) {
+  //if (origParity) log_i("adr:%06X parity orig:%02X,calc:%02X",pkt->addr,origParity,pkt_parity);
+  //V7 sends always 0
+  //V6 and below sends parity-bit (could be 0 or 1)
+  if ((origParity != 0) && (origParity != pkt_parity)) { 
+  //if (origParity != pkt_parity) {
     log_e("bad parity of decoded packet: %02X!=%02X",origParity,pkt_parity);        
     bParityErr = true;
     //return -1;

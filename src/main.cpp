@@ -395,6 +395,7 @@ void sendFanetWeatherData2WI(FanetLora::weatherData *weatherData,uint8_t wiIndex
 #endif
 #ifdef AIRMODULE
 bool setupUbloxConfig(void);
+bool setupQuetelGps(void);
 #endif
 
 constexpr uint32_t commonBaudRates[] = {9600, 19200, 38400, 57600, 115200};
@@ -3842,6 +3843,59 @@ void sendLK8EX(uint32_t tAct){
 }
 
 #ifdef AIRMODULE
+bool sendCmd2NMEA(const char* s,const char* sRet){
+  char buffer[MAXSTRING];
+  int pos = 0;
+  pos += snprintf(&buffer[pos],MAXSTRING-pos,s);
+  pos = flarmDataPort.addChecksum(buffer,MAXSTRING);
+  log_i("%s",buffer);
+  NMeaSerial.write(&buffer[0]);  
+  uint32_t tstart = millis();
+  //wait for response
+  pos = 0;
+  buffer[pos] = 0;
+  char c;
+  while((millis() - tstart) < 1000){
+    while(NMeaSerial.available()){
+      c = NMeaSerial.read();
+      //Serial.printf("%c",c);
+      if (c == '$') pos = 0;
+      if (c == '\r'){
+        Serial.println(buffer);
+        if (strcmp(sRet,buffer) == 0){
+          log_i("successful transmitted");
+          return true;
+        }
+      }
+      buffer[pos] = c;
+      pos++;
+      buffer[pos] = 0; //zero-termination !!
+    }
+    delay(1);
+  }
+  return false;
+}
+
+bool setupQuetelGps(void){
+  log_e("************ config GPS *************");
+  if (sendCmd2NMEA("$PQTXT,W,0,0","$PQTXT,W,OK*0A")){ //set GPTXT to off
+    //we got response --> Quetel-chip
+    sendCmd2NMEA("$PMTK314,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0","$PMTK001,314,3*36"); //set nmea-output to GPRMC and GPGGA
+    return true;
+    //sendCmd2NMEA("$PMTK251,9600",""); //set Baudrate to 9600
+    /*
+    log_i("update Baudrate to 57600");
+    sendCmd2NMEA("$PMTK251,57600",""); //set Baudrate to 57600
+    NMeaSerial.updateBaudRate(57600);
+    //clear serial buffer
+    while (NMeaSerial.available())
+      NMeaSerial.read();
+    */    
+  }else{
+    return false;
+  }
+}
+
 bool setupUbloxConfig(){
   SFE_UBLOX_GNSS ublox;
   ublox.begin(NMeaSerial);
@@ -4198,7 +4252,11 @@ void taskStandard(void *pvParameters){
     if (status.tMaxLoop < status.tLoop) status.tMaxLoop = status.tLoop;
     #ifdef AIRMODULE    
     if (command.ConfigGPS == 1){    
-      if (setupUbloxConfig()){
+      if (setupQuetelGps()){
+        command.ConfigGPS = 2; //setting ok
+        delay(2000);
+        esp_restart();
+      }else if (setupUbloxConfig()){
         command.ConfigGPS = 2; //setting ok
         delay(2000);
         esp_restart();
