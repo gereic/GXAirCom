@@ -254,6 +254,8 @@ function setMQTTMode(mode){
 function getWifiMode(){
   var Ret = 0;
   if (document.getElementById("wifiModeApOff").checked) Ret += 1;
+  if (document.getElementById("wifiEn").checked == false) Ret += 2;
+  
   return Ret;
 }
 
@@ -265,6 +267,12 @@ function setWifiMode(mode){
   }else{
     e.checked = false;
   }
+  e = document.getElementById("wifiEn");
+  if (mode & 2){
+    e.checked = false;
+  }else{
+    e.checked = true;
+  }  
 }
 
 function getOGNMode(){
@@ -965,7 +973,7 @@ function onMessage(evt) {
   <option value="80">80MHz</option>
   <option value="40">40MHz</option>
   <option value="20">20MHz</option>
-  <option value="10">10MHz</option>
+  <!--<option value="10">10MHz</option>-->
 </select></td>
 </tr>
 <tr>
@@ -1179,6 +1187,7 @@ function onMessage(evt) {
       <legend><b>WIFI settings</b></legend>
       <table style="width:100&#37;">
         <tbody>
+          <tr><th>enable Wifi at startup</th><td><input type="checkbox" id="wifiEn" ></td></tr>
           <tr>
             <th>ACCESS-POINT Password</th>
             <td><input type="text" id="appw" ></td>

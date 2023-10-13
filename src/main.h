@@ -358,7 +358,7 @@ struct GsmSettings{
 
 	struct WifiModeBits
 	{
-			unsigned switchOffApWhenStaConnected:1, b1:1, b2:1, b3:1, b4:1, b5:1, b6:1, b7:1;
+			unsigned switchOffApWhenStaConnected:1, disableWifiAtStartup:1, b2:1, b3:1, b4:1, b5:1, b6:1, b7:1;
 	};
 	union uWifiMode
 	{
@@ -516,6 +516,7 @@ struct statusData{
   uint8_t displayType;
   statusNetwork wifiAP;
   statusWifi wifiSTA;
+  bool bWifiOn;
   statusBat battery;
   statusGPS gps;
   uint16_t fanetTx;

@@ -18,6 +18,43 @@ void gxUserLed::setLed(uint8_t val){
   }
 }
 
+void gxUserLed::resetLed(void){
+  ledVal = LOW; //LED OFF
+  setLed(ledVal);
+  tWait = millis();
+  blinkCnt = 0;
+  bReady = false;
+}
+
+bool gxUserLed::blinkLed(uint8_t blinkCount,uint32_t tOn, uint32_t tOff,uint32_t _tWait){
+  uint32_t tAct = millis();
+  if (ledVal == LOW){
+    if (((tAct - tWait) >= _tWait) && (blinkCnt == 0)){
+      ledVal = HIGH; //LED ON
+      setLed(ledVal);
+      tWait = millis();    
+    }else if (((tAct - tWait) >= tOff) && (blinkCnt > 0)){
+      ledVal = HIGH; //LED ON
+      setLed(ledVal);
+      tWait = millis(); 
+    }
+  }else{
+    if ((tAct - tWait) >= tOn){
+      ledVal = LOW; //LED OFF
+      setLed(ledVal);
+      tWait = millis();
+      if (blinkCnt >= (blinkCount-1)){
+        blinkCnt = 0;
+        return true; //ready !!
+      }else{
+        blinkCnt++;
+      }        
+    }
+  }
+  return false;
+  
+}
+
 void gxUserLed::setUserLed(int8_t pinLed,bool bHighActive){
   _pinLed = pinLed;
   _bHighActive = bHighActive;
@@ -35,6 +72,10 @@ void gxUserLed::setBattPower(uint8_t power){
 
 void gxUserLed::setState(ledState newState){
   _newState = newState;
+  if (_newState == off){
+    resetLed();
+    bReady = true;
+  }
 }
 
 void gxUserLed::setBlinkFast(uint8_t blinkCount){
@@ -42,164 +83,81 @@ void gxUserLed::setBlinkFast(uint8_t blinkCount){
   maxBlinkCnt = blinkCount;
 }
 
+gxUserLed::ledState gxUserLed::getState(void){
+  return state;
+}
+
 void gxUserLed::run(){
   if (_pinLed < 0){
     return; //nothing to do --> return;
   }
-  uint32_t tAct = millis();
-  if (state != showBattPower){
+  if (bReady){
+  //if ((state != showBattPower) && (state != showWifiEn) && (state != showWifiDis)){
     if (_newState != state){
       state = _newState;      
-    }
-    
+    }    
   }
   switch (state)
   {
-  case off:
+  case off:    
     ledVal = LOW; //LED OFF
     setLed(ledVal);
-    //digitalWrite(_pinLed,ledVal); //Led OFF
+    bReady = true;
     break;
   case on:
     ledVal = HIGH; //LED ON
     setLed(ledVal);
+    bReady = true;
     break;
   case blink_05s:
     if (oldState != state){
-      ledVal = LOW; //LED OFF
-      setLed(ledVal);
-      tWait = millis();
+      resetLed();
     }
-    if ((tAct - tWait) >= 500){
-      if (ledVal == LOW){ //Led off
-        ledVal = HIGH;
-      }else{
-        ledVal = LOW;
-      }
-      setLed(ledVal);
-      tWait = tAct;
-    }
+    blinkLed(0,500,500,0);
+    bReady = true;
     break;
   case blink_1s:
     if (oldState != state){
-      ledVal = LOW; //LED OFF
-      setLed(ledVal);
-      tWait = millis();
+      resetLed();
     }
-    if ((tAct - tWait) >= 1000){
-      if (ledVal == LOW){ //Led off
-        ledVal = HIGH;
-      }else{
-        ledVal = LOW;
-      }
-      setLed(ledVal);
-      tWait = tAct;
-    }
-    break;
-  case blink1:
-    if (oldState != state){
-      ledVal = LOW; //LED OFF
-      setLed(ledVal);
-      maxBlinkCnt = 1;
-      tWait = millis();
-    }
-    if (ledVal == LOW){
-      if ((tAct - tWait) >= 1000){
-        ledVal = HIGH; //LED ON
-        setLed(ledVal);
-        tWait = millis();
-      }
-    }else{
-      if ((tAct - tWait) >= 200){
-        ledVal = LOW; //LED OFF
-        setLed(ledVal);
-        tWait = millis();
-      }
-    }
-  case blink2: // 1000ms low ... 200ms high ... 200ms low ... 200ms high ... return
-    if (oldState != state){
-      ledVal = LOW; //LED OFF
-      setLed(ledVal);
-      blinkCnt = 0;
-      maxBlinkCnt = 2;
-      tWait = millis();
-    }
-    if (ledVal == LOW){
-      if (((tAct - tWait) >= 1000) && (blinkCnt == 0)){
-        ledVal = HIGH; //LED ON
-        setLed(ledVal);
-        tWait = millis();    
-      }else if (((tAct - tWait) >= 200) && (blinkCnt > 0)){
-        ledVal = HIGH; //LED ON
-        setLed(ledVal);
-        tWait = millis(); 
-      }
-    }else{
-      if ((tAct - tWait) >= 200){
-        ledVal = LOW; //LED OFF
-        setLed(ledVal);
-        tWait = millis();
-        if (blinkCnt >= (maxBlinkCnt-1)){
-          blinkCnt = 0;
-        }else{
-          blinkCnt++;
-        }        
-      }
-    }
+    blinkLed(0,1000,1000,0);
+    bReady = true;
     break;
   case blink_fast:
     if (oldState != state){
-      ledVal = LOW; //LED OFF
-      setLed(ledVal);
-      blinkCnt = 0;
-      tWait = millis();
+      resetLed();
     }
-    if (ledVal == LOW){
-      if (((tAct - tWait) >= 1000) && (blinkCnt == 0)){
-        ledVal = HIGH; //LED ON
-        setLed(ledVal);
-        tWait = millis();    
-      }else if (((tAct - tWait) >= 200) && (blinkCnt > 0)){
-        ledVal = HIGH; //LED ON
-        setLed(ledVal);
-        tWait = millis(); 
-      }
-    }else{
-      if ((tAct - tWait) >= 200){
-        ledVal = LOW; //LED OFF
-        setLed(ledVal);
-        tWait = millis();
-        if (blinkCnt >= (maxBlinkCnt-1)){
-          blinkCnt = 0;
-        }else{
-          blinkCnt++;
-        }        
-      }
-    }
+    blinkLed(maxBlinkCnt,200,200,1000);
+    bReady = true;
     break;
   case showBattPower:
     if (oldState != state){
-      ledVal = LOW; //LED OFF
-      setLed(ledVal);
-      blinkCnt = 0;
-      tWait = millis();
+      resetLed();
     }
-    if ((tAct - tWait) >= 1000){
-      if (ledVal == LOW){ //Led off
-        if (blinkCnt >= _power){
-          ledVal = LOW;
-          state = off; //switch back to off
-        }else{
-          ledVal = HIGH;
-        }        
-      }else{
-        ledVal = LOW;
-        blinkCnt += 1;
-      }
-      setLed(ledVal);
-      tWait = tAct;
+    if (blinkLed(_power,1000,1000,200)){
+      bReady = true;
+      state = off; //switch back to off
+    } 
+    break;
+  case showWifiDis:
+    if (oldState != state){
+      resetLed();
+    }
+    if (blinkLed(5,100,100,0)){
+      bReady = true;
+      state = off; //switch back to off
     }
     break;
+  case showWifiEn:
+    if (oldState != state){
+      resetLed();
+    }
+    if (blinkLed(1,3000,0,0)){
+      bReady = true;
+      state = off; //switch back to off      
+    }
+    break;
+
 
 
   default:

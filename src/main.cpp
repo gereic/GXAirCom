@@ -559,11 +559,15 @@ void handleEvent(ace_button::AceButton* button, uint8_t eventType, uint8_t butto
   switch (eventType) {
     case ace_button::AceButton::kEventClicked:
       sButton[id].state = eventType;
-      //log_i("button %d clicked",id);
+      log_i("button %d clicked",id);
       break;
     case ace_button::AceButton::kEventLongPressed:
       sButton[id].state = eventType;
       //log_i("button %d long pressed",id);
+      break;
+    case ace_button::AceButton::kEventDoubleClicked:
+      sButton[id].state = eventType;
+      log_i("button %d double clicked",id);
       break;
   }
 }
@@ -1376,6 +1380,7 @@ void setupWifi(){
   }
   status.bInternetConnected = false;
   status.wifiSTA.state = IDLE;
+  status.bWifiOn = false;
   WiFi.disconnect(true,true);
   WiFi.mode(WIFI_MODE_NULL);  
   WiFi.persistent(false);
@@ -1384,7 +1389,10 @@ void setupWifi(){
   WiFi.config(IPADDR_ANY, IPADDR_ANY, IPADDR_ANY,IPADDR_ANY,IPADDR_ANY); // call is only a workaround for bug in WiFi class
   WiFi.setHostname(host_name.c_str());
   
-
+  /*
+  if (setting.wifi.uMode.bits.disableWifiAtStartup){
+    return; //--> no wifi at startup --> we are ready
+  }
   
   //delay(10);
 
@@ -1438,10 +1446,10 @@ void setupWifi(){
       WiFi.setSleep(false); //disable power-save-mode !! will increase ping-time
     }
   }
-
-  //status.wifiSTA.state = STARTED;
+  status.bWifiOn = true;
   delay(2000);
   Web_setup();
+  */
 }
 
 void printSettings(){
@@ -1762,12 +1770,6 @@ void readPGXCFSentence(const char* data)
 }
 
 void setup() {
-  
-  
-  // put your setup code here, to run once:  
-  //Serial.begin(57600);
-  //esp_task_wdt_init(WDT_TIMEOUT, true); //enable panic so ESP32 restarts
-  //esp_task_wdt_add(NULL); //add current thread to WDT watch
 
   Serial.begin(115200);
 
@@ -1776,6 +1778,7 @@ void setup() {
   status.bInternetConnected = false;
   status.bTimeOk = false;
   status.modemstatus = eConnectionState::DISCONNECTED;
+  status.bWifiOn = false;
   command.ConfigGPS = 0;
   status.gps.bHasGPS = false;
   fanet.setGPS(false);
@@ -1827,12 +1830,14 @@ void setup() {
   //listSpiffsFiles();
   load_configFile(&setting); //load configuration
   //setting.wifi.connect = eWifiMode::CONNECT_NONE;
+  /*
   if (setting.CPUFrequency <  80){
     setCpuFrequencyMhz(uint32_t(80));
   }else{
     setCpuFrequencyMhz(uint32_t(setting.CPUFrequency));
   }
   log_i("set CPU-Speed to %dMHz",getCpuFrequencyMhz());
+  */
   //setting.boardType = eBoard::UNKNOWN;
   #ifdef S3CORE
   setting.boardType = T_BEAM_S3CORE;
@@ -3369,8 +3374,8 @@ bool printBattVoltage(uint32_t tAct){
 }
 
 void setWifi(bool on){
-  if ((on) && (status.wifiAP.state == IDLE)){
-    log_i("switch WIFI ACCESS-POINT ON");
+  if ((on) && (!status.bWifiOn)){
+    log_i("switch WIFI ON");
     if (setting.CPUFrequency <  80){ //set to min. 80Mhz, because of Wifi
       setCpuFrequencyMhz(uint32_t(80));
     }else{
@@ -3383,26 +3388,73 @@ void setWifi(bool on){
     WiFi.persistent(false);
     WiFi.config(IPADDR_ANY, IPADDR_ANY, IPADDR_ANY,IPADDR_ANY,IPADDR_ANY); // call is only a workaround for bug in WiFi class
     WiFi.setHostname(host_name.c_str());      
-    WiFi.mode(WIFI_MODE_AP);  
-    setupSoftAp();
-    Web_setup();  
+
+    //now configure access-point
+    //so we have wifi connect and access-point at same time
+    //we connecto to wifi
+    if (setting.wifi.connect != eWifiMode::CONNECT_NONE){
+      //esp_wifi_set_auto_connect(true);
+      log_i("Try to connect to WiFi ");
+      WiFi.status();
+      if (setting.wifi.uMode.bits.switchOffApWhenStaConnected){
+        WiFi.mode(WIFI_MODE_STA);
+      }else{
+        WiFi.mode(WIFI_MODE_APSTA);
+        setupSoftAp();
+      }    
+      if ((WiFi.SSID() != setting.wifi.ssid || WiFi.psk() != setting.wifi.password)){
+        // ... Try to connect to WiFi station.
+        WiFi.begin(setting.wifi.ssid.c_str(), setting.wifi.password.c_str());
+      } else {
+        // ... Begin with sdk config.
+        WiFi.begin();
+      }
+      uint32_t tStart = millis();    
+      while(WiFi.status() != WL_CONNECTED){
+        if (timeOver(millis(),tStart,10000)){ //wait max. 10seconds
+          break;
+        }
+        delay(100);
+      }
+      if (WiFi.status() == WL_CONNECTED){
+        log_i("wifi connected");
+      }else{
+        log_i("wifi not connected --> switch on AP");
+        WiFi.disconnect();
+        WiFi.mode(WIFI_MODE_AP); //start AP
+        setupSoftAp();
+      }
+    }else{
+      WiFi.mode(WIFI_MODE_AP);
+      setupSoftAp();
+    }
+    log_i("hostname=%s",host_name.c_str());  
+    log_i("my APIP=%s",local_IP.toString().c_str());
+    if((WiFi.getMode() & WIFI_MODE_STA)){
+      if (setting.outputMode != eOutput::oBLE){
+        WiFi.setSleep(false); //disable power-save-mode !! will increase ping-time
+      }
+    }
+    status.bWifiOn = true; 
+    Web_setup(); 
   }
-  if ((!on) && (status.wifiAP.state != IDLE)){
+  if ((!on) && (status.bWifiOn)){
     log_i("switch WIFI OFF");
     setting.wifi.tWifiStop=0;
     Web_stop();
     WiFi.softAPdisconnect(true);
     WiFi.disconnect(true);
     WiFi.mode(WIFI_MODE_NULL);
-    delay(10);//wait 10ms.
+    status.bWifiOn = false;
+    
+  }
+  if (!status.bWifiOn){
     if ((setting.outputMode == eOutput::oBLE) && (setting.CPUFrequency <  80)){ //output over ble-connection and frequency < 80Mhz --> set to 80Mhz min.
-      setCpuFrequencyMhz(uint32_t(setting.CPUFrequency));      
+      setCpuFrequencyMhz(uint32_t(80)); //minimum 80Mhz if bluetooth-output is on
     }else{
       setCpuFrequencyMhz(uint32_t(setting.CPUFrequency));
     }
-    log_i("set CPU-Speed to %dMHz",getCpuFrequencyMhz());
-    //}
-    
+    log_i("set CPU-Speed to %dMHz",getCpuFrequencyMhz());    
   }
   wifiCMD = 0;
 }
@@ -4226,7 +4278,8 @@ void taskStandard(void *pvParameters){
       //log_i("show batt-percent");
       userled.setBattPower(status.battery.percent);
       userled.setState(gxUserLed::showBattPower); //blink slow 1-5 times for batt-percent 0-100percent
-      bShowBattPower = false;
+      bShowBattPower = false; 
+      log_i("show Batt ok");     
     }else if (status.gps.Fix){
       userled.setBlinkFast(1); //blink fast 1 times
     }else{
@@ -4275,14 +4328,25 @@ void taskStandard(void *pvParameters){
     }
     //check Button 0
     if (sButton[0].state == ace_button::AceButton::kEventClicked){
-      log_v("Short Press IRQ");
+      //log_v("Short Press IRQ");
       setting.screenNumber ++;
       bShowBattPower = true; //show battery-state again
       if (setting.screenNumber > MAXSCREENS) setting.screenNumber = 0;
       write_screenNumber(); //save screennumber in File
     }else if (sButton[0].state == ace_button::AceButton::kEventLongPressed){
-      log_v("Long Press IRQ");
+      //log_v("Long Press IRQ");
       status.bPowerOff = true;
+    }else if (sButton[0].state == ace_button::AceButton::kEventDoubleClicked){
+      //log_v("double clicked IRQ"); --> switch wifi off or on
+      log_i("double clicked wifi on/off");
+      userled.setState(gxUserLed::off); //switch to state off --> so state is working
+      if (status.bWifiOn){
+        userled.setState(gxUserLed::showWifiDis);
+        wifiCMD = 10; //switch off wifi
+      }else{
+        userled.setState(gxUserLed::showWifiEn);
+        wifiCMD = 11; //switch on wifi
+      }
     }
     sButton[0].state =  0;
     //check Button 1
@@ -5029,7 +5093,9 @@ void taskBackGround(void *pvParameters){
   Dusk2Dawn dusk2dawn(setting.gs.lat,setting.gs.lon, 0);
   uint8_t actDay = 0;
   #endif
+  
   setupWifi();
+  setWifi(!setting.wifi.uMode.bits.disableWifiAtStartup);
   #ifdef GSM_MODULE
     if (setting.wifi.connect == eWifiMode::CONNECT_NONE){      
       updater.setClient(&GsmUpdaterClient);
@@ -5207,7 +5273,7 @@ void taskBackGround(void *pvParameters){
     }
     if (timeOver(tAct,tWifiCheck,WIFI_RECONNECT_TIME)){
       tWifiCheck = tAct;
-      if (setting.wifi.connect == eWifiMode::CONNECT_ALWAYS){
+      if ((setting.wifi.connect == eWifiMode::CONNECT_ALWAYS) && (status.bWifiOn)){
         //log_i("check Wifi-status %d ",status.wifiSTA.state);
         if (status.wifiSTA.state != FULL_CONNECTED){
           log_i("WiFi not connected. Try to reconnect");
