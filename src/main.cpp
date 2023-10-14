@@ -1830,6 +1830,16 @@ void setup() {
   //listSpiffsFiles();
   load_configFile(&setting); //load configuration
   //setting.wifi.connect = eWifiMode::CONNECT_NONE;
+  #ifdef GSM_MODULE
+  //minimum cpu-frequency is here 80Mhz cause of GSM-Module
+  if (setting.CPUFrequency <  80){
+    setting.CPUFrequency = 80;
+  }
+  #else
+  if (setting.CPUFrequency <  20){
+    setting.CPUFrequency = 20;
+  }  
+  #endif
   /*
   if (setting.CPUFrequency <  80){
     setCpuFrequencyMhz(uint32_t(80));
@@ -4279,7 +4289,7 @@ void taskStandard(void *pvParameters){
       userled.setBattPower(status.battery.percent);
       userled.setState(gxUserLed::showBattPower); //blink slow 1-5 times for batt-percent 0-100percent
       bShowBattPower = false; 
-      log_i("show Batt ok");     
+      //log_i("show Batt ok");     
     }else if (status.gps.Fix){
       userled.setBlinkFast(1); //blink fast 1 times
     }else{
