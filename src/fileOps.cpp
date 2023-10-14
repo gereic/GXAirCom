@@ -405,3 +405,10 @@ void write_gpsBaud(void){
   preferences.putULong("GPSBAud",setting.gps.Baud);
   preferences.end();
 }
+
+void write_wifiModeBits(void){
+  log_i("write new wifi mode bits=%d",setting.wifi.uMode.mode);
+  preferences.begin("settings", false);
+  preferences.putUChar("WIFI_MODE",setting.wifi.uMode.mode);
+  preferences.end(); 
+}

@@ -3532,6 +3532,30 @@ void checkSystemCmd(char *ch_str){
     //log_i("sending 2 client");
     add2OutputString("#SYC TYPE=" + String(setting.AircraftType) + "\r\n");
   }
+  if (line.indexOf("#SYC Wifi?") >= 0){
+    char msg_buf[500];
+    StaticJsonDocument<500> doc;
+    doc.clear();
+    doc["appw"] = setting.wifi.appw;
+    doc["wificonnect"] = (uint8_t)setting.wifi.connect;
+    doc["WIFI_MODE"] = setting.wifi.uMode.mode;
+    doc["ssid"] = setting.wifi.ssid;
+    doc["password"] = setting.wifi.password;
+    doc["wifioff"] = setting.wifi.tWifiStop;
+    serializeJson(doc, msg_buf);
+    add2OutputString(String(msg_buf));
+  }  
+  iPos = getStringValue(line,"#SYC WIFI_MODE=","\r",0,&sRet);
+  if (iPos >= 0){
+    uint8_t u8 = atoi(sRet.c_str());
+    if (u8 != (uint8_t)setting.wifi.uMode.mode){
+      setting.wifi.uMode.mode = u8;
+      write_wifiModeBits();
+      esp_restart();
+    }
+    add2OutputString("#SYC OK\r\n");
+  }
+
   iPos = getStringValue(line,"#SYC TYPE=","\r",0,&sRet);
   if (iPos >= 0){
     uint8_t u8 = atoi(sRet.c_str());
