@@ -1,5 +1,5 @@
-DevId: 08B668
-Firmware: GsSim7000
+DevId: 089144
+Firmware: Gs
 ServerIp: 192.168.0.10
 ServerPort: 1883
 Version: v5.4.0

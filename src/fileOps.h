@@ -24,4 +24,5 @@ void write_battOffset(void);
 void write_battMinPerc(void);
 void write_gpsBaud(void);
 void write_wifiModeBits(void);
+void write_CPUFrequency(void);
 #endif

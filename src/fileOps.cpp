@@ -412,3 +412,9 @@ void write_wifiModeBits(void){
   preferences.putUChar("WIFI_MODE",setting.wifi.uMode.mode);
   preferences.end(); 
 }
+
+void write_CPUFrequency(void){
+  preferences.begin("settings", false);
+  preferences.putUChar("CPUFREQU",setting.CPUFrequency); //
+  preferences.end(); 
+}

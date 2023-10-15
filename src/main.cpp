@@ -3443,6 +3443,7 @@ void setWifi(bool on){
     if((WiFi.getMode() & WIFI_MODE_STA)){
       if (setting.outputMode != eOutput::oBLE){
         WiFi.setSleep(false); //disable power-save-mode !! will increase ping-time
+        WiFi.setTxPower(WIFI_POWER_19_5dBm); //maximum wifi-power
       }
     }
     status.bWifiOn = true; 
@@ -3599,6 +3600,23 @@ void checkSystemCmd(char *ch_str){
       esp_restart();
     }
     add2OutputString("#SYC OK\r\n");
+  }
+  if (line.indexOf("#SYC FCPU?") >= 0){
+    add2OutputString("#SYC FCPU=" + String(setting.CPUFrequency) + "\r\n");
+  }
+  iPos = getStringValue(line,"#SYC FCPU=","\r",0,&sRet);
+  if (iPos >= 0){
+    uint8_t u8 = atoi(sRet.c_str());
+    u8 = constrain(u8,20,240);
+    add2OutputString("#SYC OK\r\n");
+    if (u8 != setting.CPUFrequency){
+      setting.CPUFrequency = u8;
+      log_i("set CPU-frequency to %dMhz",setting.CPUFrequency);
+      write_CPUFrequency();
+      delay(500); //we have to restart in case, the mode is changed
+      log_e("ESP Restarting !");
+      esp_restart();
+    }
   }
   if (line.indexOf("#SYC MODE?") >= 0){
     //log_i("sending 2 client");

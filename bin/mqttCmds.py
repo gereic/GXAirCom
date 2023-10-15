@@ -43,6 +43,7 @@ def wait_for(client,msgValue,period=0.25,wait_time=80,running_loop=False):
     #print("waiting"+ msgType)
     if client.puback_flag:
       if client.mid_value == msgValue:
+        time.sleep(1) #wait additinal 0.5sec
         return True
       else:
         client.puback_flag = False
@@ -131,6 +132,7 @@ print("1 ... Wifi ON")
 print("2 ... Wifi OFF")
 print("3 ... Firmware Update")
 print("4 ... get Wifi settings")
+print("5 ... get CPU-Speed settings")
 iCmd = int(input("Befehl eingeben (0):") or 0)
 Cmd = ""
 match iCmd:
@@ -142,6 +144,8 @@ match iCmd:
     print("Firmware update selected")
   case 4:
     Cmd = "#SYC Wifi?\r\n"    
+  case 5:
+    Cmd = "#SYC FCPU?\r\n"    
   case _:
     writeConfigFile(config)
     print("canceled")
@@ -165,7 +169,7 @@ client.puback_flag=False #use flag in publish ack
 client.mid_value=None
 client.connect(config['ServerIp'], config['ServerPort'], 60)
 client.loop_start() # start thread for mqqt
-if (iCmd == 1) or (iCmd == 2) or (iCmd == 4):
+if (iCmd == 1) or (iCmd == 2) or (iCmd == 4) or (iCmd == 5):
   client.publish(topic,Cmd) #set wifi to on
   time.sleep(2)
 if (iCmd == 3):
