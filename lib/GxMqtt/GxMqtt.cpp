@@ -186,13 +186,13 @@ void GxMqtt::sendGPS(){
   doc["lon"] = status.gps.Lon;
   doc["alt"] = status.gps.alt;
   serializeJson(doc, msg_buf);
-  sendTopic("gps",msg_buf,false); //send topic gps
+  sendTopic("gps",msg_buf,true); //send topic gps
 }
 
 void GxMqtt::subscribe(){
     pPubSubClient->publish(willTopic,"1",true); //retained
     pPubSubClient->publish(stateTopic,"");
-    sendTopic("name",setting.PilotName.c_str(),false); //send topic name
+    sendTopic("name",setting.PilotName.c_str(),true); //send topic name
     StaticJsonDocument<500> doc; //Memory pool
     char msg_buf[500];
     doc.clear();
@@ -201,7 +201,7 @@ void GxMqtt::subscribe(){
     doc["sdkVersion"] = String(ESP.getSdkVersion());
     doc["img"] = ENV;
     serializeJson(doc, msg_buf);
-    sendTopic("version",msg_buf,false); //send topic version
+    sendTopic("version",msg_buf,true); //send topic version
     sendGPS();
     pPubSubClient->subscribe(cmdTopic);
     //subscribe to update topic    

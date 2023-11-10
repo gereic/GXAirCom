@@ -11,6 +11,7 @@ Img = config.get('Img','')
 
 qos=0
 data_block_size=10000
+#data_block_size=1000
 
 # The callback for when the client receives a CONNACK response from the server.
 def on_connect(client, userdata, flags, rc):
@@ -133,6 +134,7 @@ print("2 ... Wifi OFF")
 print("3 ... Firmware Update")
 print("4 ... get Wifi settings")
 print("5 ... get CPU-Speed settings")
+print("6 ... do internet update")
 iCmd = int(input("Befehl eingeben (0):") or 0)
 Cmd = ""
 match iCmd:
@@ -146,6 +148,8 @@ match iCmd:
     Cmd = "#SYC Wifi?\r\n"    
   case 5:
     Cmd = "#SYC FCPU?\r\n"    
+  case 6:
+    Cmd = "#SYC DOUPDATE\r\n"    
   case _:
     writeConfigFile(config)
     print("canceled")
@@ -169,7 +173,7 @@ client.puback_flag=False #use flag in publish ack
 client.mid_value=None
 client.connect(config['ServerIp'], config['ServerPort'], 60)
 client.loop_start() # start thread for mqqt
-if (iCmd == 1) or (iCmd == 2) or (iCmd == 4) or (iCmd == 5):
+if (iCmd == 1) or (iCmd == 2) or (iCmd == 4) or (iCmd == 5) or (iCmd == 6):
   client.publish(topic,Cmd) #set wifi to on
   time.sleep(2)
 if (iCmd == 3):
