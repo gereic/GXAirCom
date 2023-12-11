@@ -233,5 +233,17 @@ RAIN_PIN 39   (need 10K Pull-Up-Resistor) Bucket-Size 0.5l
 ******** BATTERY-Voltate *******
 BATT_VOLT_PIN 35
 
+************* Pins for Heltec Wireless-Stick-Lite V3 ***************
+
+******** BARO *********
+SDA 33
+SCL 34 
+
+******** Anemometer (Davis 6410) *********
+WINDDIR_PIN 2
+WINDSPEED_PIN 3  (use external Pull)
+
+
+
 
 

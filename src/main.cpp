@@ -227,6 +227,7 @@ int8_t PinBeaconLed = -1;
 int8_t PinExtPower = -1;
 
 //ADC-Voltage
+int8_t PinADCCtrl = -1;
 int8_t PinADCVoltage = -1;
 
 //LORA-Module
@@ -1850,7 +1851,10 @@ void setup() {
   */
   //setting.boardType = eBoard::UNKNOWN;
   #ifdef S3CORE
-  setting.boardType = T_BEAM_S3CORE;
+    setting.boardType = T_BEAM_S3CORE;
+  #endif
+  #ifdef WIRELESS_STICK_V3
+    setting.boardType = HELTEC_WIRELESS_STICK_LITE_V3;
   #endif
   if (setting.boardType == eBoard::UNKNOWN){
     checkBoardType();
@@ -2068,7 +2072,6 @@ void setup() {
     PinBaroSCL = 14;
     // set gpio 4 as INPUT
     pinMode(PinBaroSCL, INPUT_PULLUP);
-    PinADCVoltage = 35;
 
     if (setting.bHasFuelSensor){
       PinFuelSensor = 39;
@@ -2083,8 +2086,8 @@ void setup() {
     pI2cOne->begin(PinOledSDA, PinOledSCL);
     // voltage-divier 100kOhm and 100kOhm
     // vIn = (R1+R2)/R2 * VOut
+    PinADCVoltage = 35;
     adcVoltageMultiplier = 2.12f;
-    pinMode(PinADCVoltage, INPUT);
     if (setting.Mode == eMode::GROUND_STATION){
       PinWindDir = 36;
       PinWindSpeed = 39;
@@ -2107,15 +2110,14 @@ void setup() {
     PinBaroSDA = 13;
     PinBaroSCL = 14;
 
-    PinADCVoltage = 35;
 
     PinBuzzer = 0;
 
     pI2cOne->begin(PinOledSDA, PinOledSCL);
     // voltage-divier 100kOhm and 100kOhm
     // vIn = (R1+R2)/R2 * VOut
+    PinADCVoltage = 35;
     adcVoltageMultiplier = 2.5f; // not sure if it is ok ?? don't have this kind of board
-    pinMode(PinADCVoltage, INPUT);
     break;
   */
   case eBoard::HELTEC_LORA:
@@ -2150,8 +2152,6 @@ void setup() {
 
     PinOneWire = 22;    
 
-    PinADCVoltage = 34;
-
     PinWindDir = 36;
     PinWindSpeed = 37;
     PinRainGauge = 38;
@@ -2174,8 +2174,8 @@ void setup() {
     // voltage-divier 27kOhm and 100kOhm
     // vIn = (R1+R2)/R2 * VOut
     //1S LiPo
+    PinADCVoltage = 34;
     adcVoltageMultiplier = (100000.0f + 27000.0f) / 100000.0f;
-    pinMode(PinADCVoltage, INPUT); //input-Voltage on GPIO34
     break;
   case eBoard::HELTEC_WIRELESS_STICK_LITE:
     log_i("Board=Heltec Wireless Stick Lite");
@@ -2199,8 +2199,6 @@ void setup() {
 
     //PinOneWire = 22;    
 
-    PinADCVoltage = 37;
-
     PinWindDir = 36;
     PinWindSpeed = 39;
     PinRainGauge = 38;
@@ -2212,8 +2210,8 @@ void setup() {
     //1S LiPo
     PinExtPower = 21;
     //adcVoltageMultiplier =  (100000.0f + 220000.0f) / 100000.0f;
+    PinADCVoltage = 37;
     adcVoltageMultiplier =  3.69f;
-    pinMode(PinADCVoltage, INPUT); //input-Voltage on GPIO37
     break;
   case eBoard::HELTEC_WIRELESS_STICK:
     log_i("Board=HELTEC Wireless Stick");
@@ -2282,7 +2280,6 @@ void setup() {
     PinWindSpeed = 34;
     PinRainGauge = 39;
 
-    PinADCVoltage = 35;
     
     //PinUserLed = 12; //PinLoraRst
     
@@ -2290,8 +2287,8 @@ void setup() {
 
     // voltage-divier 100kOhm and 100kOhm
     // vIn = (R1+R2)/R2 * VOut
+    PinADCVoltage = 35;
     adcVoltageMultiplier = 2.2279f; // not sure if it is ok ?? don't have this kind of board
-    pinMode(PinADCVoltage, INPUT);
 
     break;
   case eBoard::TTGO_TCALL_800:
@@ -2315,9 +2312,7 @@ void setup() {
     PinGsmRx = 26;
 
     PinADCVoltage = 35;
-    
-    adcVoltageMultiplier = 2.12f; // not sure if it is ok ?? don't have this kind of board
-    pinMode(PinADCVoltage, INPUT);
+    adcVoltageMultiplier = 2.12f; // not sure if it is ok ?? don't have this kind of board    
 
     break;
   case eBoard::T_BEAM_S3CORE:
@@ -2359,6 +2354,32 @@ void setup() {
     }
     */
 
+    break;
+  case eBoard::HELTEC_WIRELESS_STICK_LITE_V3:
+    log_i("Board=wireless-StickV3");
+
+    PinLoraRst = 12;
+    PinLoraDI0 = 14;
+    PinLoraGPIO = 13;
+    PinLora_SS = 8;
+    PinLora_MISO = 11;
+    PinLora_MOSI = 10;
+    PinLora_SCK = 9;
+
+    PinBaroSDA = 33;
+    PinBaroSCL = 34;
+    pI2cOne->begin(PinBaroSDA, PinBaroSCL);
+
+    PinWindDir = 2;
+    PinWindSpeed = 3;    
+
+    pinMode(35,OUTPUT);
+    digitalWrite(35,LOW); //switch user-LED off
+
+    PinExtPower = 36; //pin for external Voltage-control
+    PinADCCtrl = 37; //pin for reading battery-voltage
+    PinADCVoltage = 1;
+    adcVoltageMultiplier =  5.2636f;
     break;
   case eBoard::UNKNOWN:
     log_e("unknown Board --> please correct");
@@ -2408,6 +2429,13 @@ void setup() {
   if (PinExtPower >= 0){
     pinMode(PinExtPower, OUTPUT); //we have to set pin 21 to measure voltage of Battery
     digitalWrite(PinExtPower,LOW); //set output to Low, so we can measure the voltage
+  }
+  if (PinADCCtrl >= 0){
+    pinMode(PinADCCtrl, OUTPUT); //we have to set pin to measure voltage of Battery
+    digitalWrite(PinADCCtrl,LOW); //set output to Low, so we can measure the voltage    
+  }
+  if (PinADCVoltage >= 0){
+    pinMode(PinADCVoltage, INPUT); //set pin ADC-Voltage as input
   }
 
   #ifdef GSMODULE
@@ -4256,7 +4284,7 @@ void taskStandard(void *pvParameters){
   long frequency = FREQUENCY868;
   fanet.setRFMode(setting.RFMode);
   uint8_t radioChip = RADIO_SX1276;
-  if ((setting.boardType == eBoard::T_BEAM_SX1262) || (setting.boardType == eBoard::T_BEAM_S3CORE)) radioChip = RADIO_SX1262;
+  if ((setting.boardType == eBoard::T_BEAM_SX1262) || (setting.boardType == eBoard::T_BEAM_S3CORE) || (setting.boardType == eBoard::HELTEC_WIRELESS_STICK_LITE_V3)) radioChip = RADIO_SX1262;
 
   // When the requested Address type is ICAO then the devId of the device must be set to your mode-s address
   // See Flarm Dataport Specification for details
