@@ -295,8 +295,8 @@ public:
 	void handle_acked(bool ack, MacAddr &addr);
 	void handle_frame(Frame *frm);
   Frame *get_frame();
-  void fanet_cmd_transmit(char *ch_str);
-  void fanet_cmd_setGroundTrackingType(char *ch_str);
+  void fanet_cmd_transmit(const char *ch_str);
+  void fanet_cmd_setGroundTrackingType(const char *ch_str);
   //void fanet_sendMsg(char *ch_str);
 
   /* Legacy Switch */

@@ -196,11 +196,10 @@ volatile float BattCurrent = 0.0;
 #define AIRWHERE_UDP_PORT 5555
 const char* airwhere_web_ip = "37.128.187.9";
 
-struct ble_data {
-  char data[MAXSIZEBLE];
-  uint16_t size;
-};
+#ifdef BLUETOOTH
 SemaphoreHandle_t ble_queue = nullptr;
+SemaphoreHandle_t RxBleQueue = nullptr;
+#endif
 
 uint32_t psRamSize = 0;
 
@@ -380,8 +379,8 @@ void checkFlyingState(uint32_t tAct);
 void sendFlarmData(uint32_t tAct);
 //void handleButton(uint32_t tAct);
 char* readSerial();
-void checkReceivedLine(char *ch_str);
-void checkSystemCmd(char *ch_str);
+void checkReceivedLine(const char *ch_str);
+void checkSystemCmd(const char *ch_str);
 size_t getNextString(char *ch_str,char *pSearch,char *buffer, size_t sizeBuffer);
 void setWifi(bool on);
 void handleUpdate(uint32_t tAct);
@@ -1116,6 +1115,7 @@ void sendData2Client(char *buffer,int iLen){
     //log_i("serial write %s",buffer);
     Serial.write(buffer,iLen);
   }
+  #ifdef BLUETOOTH
   if (setting.outputMode == eOutput::oBLE){ //output over ble-connection
     if (xHandleBluetooth && ble_queue){
       if (iLen < MAXSIZEBLE){
@@ -1133,6 +1133,7 @@ void sendData2Client(char *buffer,int iLen){
       }
     }
   }
+  #endif
 }
 
 
@@ -1773,7 +1774,7 @@ void readPGXCFSentence(const char* data)
 void setup() {
 
   Serial.begin(115200);
-
+  status.restart.doRestart = false;
   status.bPowerOff = false;
   status.bWUBroadCast = false;
   status.bInternetConnected = false;
@@ -3304,6 +3305,7 @@ void taskBluetooth(void *pvParameters) {
     //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());    
 
     ble_queue = xQueueCreate(3, sizeof(ble_data));
+    RxBleQueue = xQueueCreate(5, sizeof(ble_data));
 
     start_ble(host_name+"-LE");
     status.bluetoothStat = 1;
@@ -3520,10 +3522,12 @@ size_t getNextString(char *ch_str,char *pSearch,char *buffer, size_t sizeBuffer)
   
 }
 
-void checkSystemCmd(char *ch_str){
+void checkSystemCmd(const char *ch_str){
 	/* remove \r\n and any spaces */
-	String line = ch_str;
-  log_i("systemcmd=%s",line.c_str());
+  //log_i("system CMD=%s",ch_str);
+  //Serial.printf("%s\n,",ch_str);
+	String line(ch_str);
+  //log_i("systemcmd=%s",line.c_str());
   String sRet = "";
   int32_t iPos;
   iPos = getStringValue(line,"#SYC WIFI=","\r",0,&sRet);
@@ -3536,17 +3540,21 @@ void checkSystemCmd(char *ch_str){
       wifiCMD = 10;
     }
     add2OutputString("#SYC OK\r\n");
+    return;
   }
   if (line.indexOf("#SYC /?") >= 0){
     add2OutputString("VER\r\nNAME\r\nTYPE\r\nAIRMODE\r\nMODE\r\nOUTMODE\r\n");
+    return;
   }
   if (line.indexOf("#SYC VER?") >= 0){
     //log_i("sending 2 client");
     add2OutputString("#SYC VER=" VERSION "\r\n");
+    return;
   }
   if (line.indexOf("#SYC NAME?") >= 0){
     //log_i("sending 2 client");
     add2OutputString("#SYC NAME=" + setting.PilotName + "\r\n");
+    return;
   }
   iPos = getStringValue(line,"#SYC NAME=","\r",0,&sRet);
   if (iPos >= 0){
@@ -3555,11 +3563,26 @@ void checkSystemCmd(char *ch_str){
       fanet.setPilotname(setting.PilotName);
       write_PilotName();      
     }
+
     add2OutputString("#SYC OK\r\n");
+    return;
   }
   if (line.indexOf("#SYC TYPE?") >= 0){
     //log_i("sending 2 client");
     add2OutputString("#SYC TYPE=" + String(setting.AircraftType) + "\r\n");
+    return;
+  }
+  iPos = getStringValue(line,"#SYC TYPE=","\r",0,&sRet);
+  if (iPos >= 0){
+    uint8_t u8 = atoi(sRet.c_str());
+    u8 = constrain(u8,0,7);
+    if (u8 != (uint8_t)setting.AircraftType){
+      setting.AircraftType = u8;
+      fanet.setAircraftType(FanetLora::aircraft_t(setting.AircraftType));
+      write_AircraftType();
+    }
+    add2OutputString("#SYC OK\r\n");
+    return;
   }
   if (line.indexOf("#SYC Wifi?") >= 0){
     char msg_buf[500];
@@ -3573,32 +3596,24 @@ void checkSystemCmd(char *ch_str){
     doc["wifioff"] = setting.wifi.tWifiStop;
     serializeJson(doc, msg_buf);
     add2OutputString(String(msg_buf));
-  }  
+    return;
+  }
   iPos = getStringValue(line,"#SYC WIFI_MODE=","\r",0,&sRet);
   if (iPos >= 0){
     uint8_t u8 = atoi(sRet.c_str());
     if (u8 != (uint8_t)setting.wifi.uMode.mode){
       setting.wifi.uMode.mode = u8;
       write_wifiModeBits();
-      esp_restart();
+      Serial.println("WIFI_MODE changed --> need restart");
+      status.restart.doRestart = true;
     }
     add2OutputString("#SYC OK\r\n");
-  }
-
-  iPos = getStringValue(line,"#SYC TYPE=","\r",0,&sRet);
-  if (iPos >= 0){
-    uint8_t u8 = atoi(sRet.c_str());
-    u8 = constrain(u8,0,7);
-    if (u8 != (uint8_t)setting.AircraftType){
-      setting.AircraftType = u8;
-      fanet.setAircraftType(FanetLora::aircraft_t(setting.AircraftType));
-      write_AircraftType();
-    }
-    add2OutputString("#SYC OK\r\n");
+    return;
   }
   if (line.indexOf("#SYC AIRMODE?") >= 0){
     //log_i("sending 2 client");
     add2OutputString("#SYC AIRMODE=" + String(setting.fanetMode) + "\r\n");
+    return;
   }
   iPos = getStringValue(line,"#SYC AIRMODE=","\r",0,&sRet);
   if (iPos >= 0){
@@ -3609,10 +3624,12 @@ void checkSystemCmd(char *ch_str){
       write_AirMode();
     }
     add2OutputString("#SYC OK\r\n");
+    return;
   }
   if (line.indexOf("#SYC FUEL_SENSOR?") >= 0){
     //log_i("sending 2 client");
     add2OutputString("#SYC FUEL_SENSOR=" + String((uint8_t)setting.bHasFuelSensor) + "\r\n");
+    return;
   }
   iPos = getStringValue(line,"#SYC FUEL_SENSOR=","\r",0,&sRet);
   if (iPos >= 0){
@@ -3625,12 +3642,15 @@ void checkSystemCmd(char *ch_str){
         setting.bHasFuelSensor = false;
       }      
       write_fuelsensor();
-      esp_restart();
+      Serial.println("FUEL_SENSOR changed --> need restart");
+      status.restart.doRestart = true;
     }
     add2OutputString("#SYC OK\r\n");
+    return;
   }
   if (line.indexOf("#SYC FCPU?") >= 0){
     add2OutputString("#SYC FCPU=" + String(setting.CPUFrequency) + "\r\n");
+    return;
   }
   iPos = getStringValue(line,"#SYC FCPU=","\r",0,&sRet);
   if (iPos >= 0){
@@ -3641,14 +3661,15 @@ void checkSystemCmd(char *ch_str){
       setting.CPUFrequency = u8;
       log_i("set CPU-frequency to %dMhz",setting.CPUFrequency);
       write_CPUFrequency();
-      delay(500); //we have to restart in case, the mode is changed
-      log_e("ESP Restarting !");
-      esp_restart();
+      Serial.println("CPU-frequency changed --> need restart");
+      status.restart.doRestart = true;
     }
+    return;
   }
   if (line.indexOf("#SYC MODE?") >= 0){
     //log_i("sending 2 client");
     add2OutputString("#SYC MODE=" + String(setting.Mode) + "\r\n");
+    return;
   }
   iPos = getStringValue(line,"#SYC MODE=","\r",0,&sRet);
   if (iPos >= 0){
@@ -3658,19 +3679,20 @@ void checkSystemCmd(char *ch_str){
     if (u8 != setting.Mode){
       setting.Mode = eMode(u8);
       write_Mode();
-      delay(500); //we have to restart in case, the mode is changed
-      log_e("ESP Restarting !");
-      esp_restart();
+      Serial.println("MODE changed --> need restart");
+      status.restart.doRestart = true;
     }
+    return;
   }
   if (line.indexOf("#SYC RESTART") >= 0){
-      delay(500); //we have to restart in case, the mode is changed
-      log_e("ESP Restarting !");
-      esp_restart();
+      Serial.println("restart received");
+      status.restart.doRestart = true;
+      return;
   }
   if (line.indexOf("#SYC OUTMODE?") >= 0){
     //log_i("sending 2 client");
     add2OutputString("#SYC OUTMODE=" + String(setting.outputMode) + "\r\n");
+    return;
   }
   iPos = getStringValue(line,"#SYC OUTMODE=","\r",0,&sRet);
   if (iPos >= 0){
@@ -3680,18 +3702,20 @@ void checkSystemCmd(char *ch_str){
     if (u8 != setting.outputMode){
       setting.outputMode = eOutput(u8);
       write_OutputMode();
-      delay(500); //we have to restart in case, the mode is changed
-      log_e("ESP Restarting !");
-      esp_restart();
+      Serial.println("OUTMODE changed --> need to restart");
+      status.restart.doRestart = true;
     }
+    return;
   }
   if (line.indexOf("#SYC NETSTAT?") >= 0){
     //log_i("sending 2 client");
     add2OutputString("#SYC INET=" + String(status.bInternetConnected) + ",MODEM=" + String(status.modemstatus) + ",MQTT=" + String(status.MqttStat) + "\r\n");
+    return;
   }
   if (line.indexOf("#SYC RFMODE?") >= 0){
     //log_i("sending 2 client");
     add2OutputString("#SYC RFMODE=" + String(setting.RFMode) + "\r\n");
+    return;
   }
   iPos = getStringValue(line,"#SYC RFMODE=","\r",0,&sRet);
   if (iPos >= 0){
@@ -3701,14 +3725,15 @@ void checkSystemCmd(char *ch_str){
     if (u8 != setting.RFMode){
       setting.RFMode = u8;
       write_RFMode();
-      delay(500); //we have to restart in case, the mode is changed
-      log_e("ESP Restarting !");
-      esp_restart();
+      Serial.println("RF-Mode changed --> need to restart");
+      status.restart.doRestart = true;
     }
+    return;
   }
   if (line.indexOf("#SYC DOUPDATE") >= 0){
     status.updateState = 50; //check for Update automatic
     add2OutputString("Check for update\r\n");
+    return;
   }
   iPos = getStringValue(line,"#SYC UPDATE=","\r",0,&sRet);
   if (iPos >= 0){
@@ -3716,41 +3741,50 @@ void checkSystemCmd(char *ch_str){
     status.updateState = 60; //check for Update automatic
     add2OutputString("#SYC UPDATE NEW VERSION\r\n");
   }
+  return;
 }
 
 
-void checkReceivedLine(char *ch_str){
+void checkReceivedLine(const char *ch_str){
   //log_i("new serial msg=%s",ch_str);
   if(!strncmp(ch_str, FANET_CMD_TRANSMIT, 4)){
     fanet.fanet_cmd_transmit(ch_str+4);
+    return;
   }else if(!strncmp(ch_str, FANET_CMD_GROUND_TYPE, 4)){
     fanet.fanet_cmd_setGroundTrackingType(ch_str+4);
+    return;
   }else if (!strncmp(ch_str,SYSTEM_CMD,4)){
     checkSystemCmd(ch_str);
+    return;
   }else if (!strncmp(ch_str,GPS_STATE,2)){
     //got GPS-Info
     //log_i("GPS-Info:%s",ch_str);
     if (sNmeaIn.length() == 0){
       sNmeaIn = String(ch_str);
     }
+    return;
   #ifndef GXTEST
   }else if (!strncmp(ch_str,"$PPS",4)){
     //received a PFLAG-Message --> start pps
     //log_i("trigger pps");
     status.gps.bExtGps = true;
     ppsTriggered = true;
+    return;
   #endif
   }else if (!strncmp(ch_str,"$CL,",4)){
     float climb = atof(&ch_str[4]);
     status.vario.bHasVario = true;
     status.vario.ClimbRate = climb;
     //log_i("Climb=%.1f",climb);
+    return;
   }else if (!strncmp(ch_str,"$PGXCF,?",8)){
-      // Handle request for configuration request
-      writePGXCFSentence();
+    // Handle request for configuration request
+    writePGXCFSentence();
+    return;
   }else if (!strncmp(ch_str,"$PGXCF,",7)){
-      // Handle configuration setting
-      readPGXCFSentence(ch_str);
+    // Handle configuration setting
+    readPGXCFSentence(ch_str);
+    return;
   }else{
     log_i("unknown message=%s",ch_str);
   }
@@ -4477,7 +4511,16 @@ void taskStandard(void *pvParameters){
         pMqtt->sendTopic("WD",pWd,false);
         myWdCount = wdCount;
       }
-    }    
+    } 
+    #ifdef BLUETOOTH    
+    if (RxBleQueue) {
+      ble_data data;
+      BaseType_t status = xQueueReceive(RxBleQueue, &data, 0);
+      if (status == pdTRUE) {
+        checkReceivedLine(data.data);
+      }      
+    }
+    #endif  
     checkFlyingState(tAct);
     if (printBattVoltage(tAct)){
       bBatPowerOk = true;
@@ -4606,7 +4649,7 @@ void taskStandard(void *pvParameters){
             log_i("got fanet-cmd from %s:%s",fanet.getDevId(fanetDstId),msgData.msg.c_str()); 
             //log_i("msg=%s",msgData.msg.substring(pos).c_str());
             String s = msgData.msg.substring(pos) + "\r\n";
-            checkReceivedLine((char *)s.c_str());
+            checkReceivedLine(s.c_str());
           }
         }
       }
@@ -4846,6 +4889,14 @@ void taskStandard(void *pvParameters){
     delay(1);
     //if ((WebUpdateRunning) || (bPowerOff)) break;
     if (bPowerOff) break;
+    if (status.restart.doRestart){
+      if (timeOver(millis(),status.restart.time,2000)){
+        Serial.println("ESP Restarting !");
+        esp_restart();
+      }
+    }else{
+      status.restart.time = millis();
+    }
   }
   log_i("stop task");
   fanet.end();

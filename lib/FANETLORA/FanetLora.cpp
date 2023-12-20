@@ -122,7 +122,7 @@ void FanetLora::fanet_sendMsg(char *ch_str){
 
 // set groundtrackingtype 
 // #FNG groundType ( 0 . . F i n hex )\r\n
-void FanetLora::fanet_cmd_setGroundTrackingType(char *ch_str){
+void FanetLora::fanet_cmd_setGroundTrackingType(const char *ch_str){
 	/* remove \r\n and any spaces */
 	char *ptr = strchr(ch_str, '\r');
 	if(ptr == nullptr)
@@ -140,7 +140,7 @@ void FanetLora::fanet_cmd_setGroundTrackingType(char *ch_str){
 
 /* Transmit: #FNT type,dest_manufacturer,dest_id,forward,ack_required,length,length*2hex[,signature] */
 //note: all in HEX
-void FanetLora::fanet_cmd_transmit(char *ch_str)
+void FanetLora::fanet_cmd_transmit(const char *ch_str)
 {
 #if SERIAL_debug_mode > 0
   log_i("### Packet %s", ch_str);
@@ -157,7 +157,7 @@ void FanetLora::fanet_cmd_transmit(char *ch_str)
 
 	/* integrity check */
   char lastChar = ' ';
-	for(char *ptr = ch_str; *ptr != '\0'; ptr++)
+	for(const char *ptr = ch_str; *ptr != '\0'; ptr++)
 	{
 		lastChar = *ptr;
     if(*ptr >= '0' && *ptr <= '9')

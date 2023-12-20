@@ -381,3 +381,6 @@ added raw vaneValue of weatherstation to mqtt-data. For detecting, when analog-r
 V5.3.5
 added support for T-Beam S3-supreme
 added new images for GS and GS_SIM7000 with Platform 6.3.2 and no Bluetooth
+
+V5.5.1
+Bugfix on Bluetooth connection with XCGuide

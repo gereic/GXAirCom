@@ -512,6 +512,11 @@ struct statusBat{
   uint8_t percent; //battery-percent
 };
 
+struct statusRestart{
+  uint32_t time;
+  bool doRestart;
+};
+
 struct statusData{
   uint8_t displayType;
   statusNetwork wifiAP;
@@ -547,6 +552,8 @@ struct statusData{
   uint8_t FanetMsgCount;
   String lastFanetMsg;
   uint8_t MqttStat;
+  statusRestart restart;
+
 };
 
 //define wifi-events on for old framework

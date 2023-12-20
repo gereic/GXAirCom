@@ -21,10 +21,17 @@
 #include <NimBLEDevice.h>
 #include <string.h>
 
+
+struct ble_data {
+  char data[MAXSIZEBLE];
+  uint16_t size;
+};
+
 //#include <sstream>             // Part of C++ Standard library
 
 extern struct statusData status;
-extern void checkReceivedLine(char *ch_str);
+extern void checkReceivedLine(const char *ch_str);
+extern SemaphoreHandle_t RxBleQueue;
 
 NimBLECharacteristic *pCharacteristic;
 uint16_t maxMtu = 0xFFFF;
@@ -84,20 +91,25 @@ class MyCallbacks : public NimBLECharacteristicCallbacks {
 
 	void onWrite(NimBLECharacteristic *pCharacteristic) {
 		static String sLine = "";
-		//pCharacteristic->getData();
 		std::string rxValue = pCharacteristic->getValue();
 		int valueLength = rxValue.length();
-		//log_i("received:%d",rxValue.length());
-		if (valueLength > 0) {
-			//char cstr[valueLength+1]; //+1 for 0-termination
-			//memcpy(cstr, rxValue.data(), valueLength);
-			//cstr[valueLength] = 0; //zero-termination !!
-			//log_i("received:%s,%d",rxValue.c_str(),valueLength);
-			//log_i("received:%s",rxValue.c_str());
-			//checkReceivedLine((char *)rxValue.c_str());						
+		//log_i("%s",rxValue.c_str());
+		if (valueLength > 0) {				
 			sLine += rxValue.c_str();
 			if (sLine.endsWith("\n")){
-				checkReceivedLine((char *)sLine.c_str());
+				//Serial.printf("BLE_RX:%s\n",sLine.c_str());
+				if (RxBleQueue) {
+					if (sLine.length() < MAXSIZEBLE){
+						ble_data data;
+						std::copy_n(sLine.c_str(),sLine.length()+1,std::begin(data.data));
+						data.size=sLine.length();
+						BaseType_t status = xQueueSendToBack(RxBleQueue,&data,0);
+						if (status != pdTRUE){
+							log_w("ble_queue full -> reset queue");
+							xQueueReset(RxBleQueue);
+						}
+					}
+				}
 				sLine = "";
 			}
 			if (sLine.length() > 512){
