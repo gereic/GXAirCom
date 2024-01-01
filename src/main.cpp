@@ -1797,6 +1797,7 @@ void setup() {
   log_i("APB-Freq=%dHz",getApbFrequency());
   log_i("Total heap: %d", ESP.getHeapSize());
   log_i("Free heap: %d", ESP.getFreeHeap());
+  log_i("size of long %d",sizeof(long));
   //function takes the following frequencies as valid values:
   //  240, 160, 80    <<< For all XTAL types
   //  40, 20, 10      <<< For 40MHz XTAL
@@ -2181,7 +2182,9 @@ void setup() {
   case eBoard::HELTEC_WIRELESS_STICK_LITE:
     log_i("Board=Heltec Wireless Stick Lite");
 
+#ifdef AIRMODULE
     PinBeaconLed = 25;
+#endif
 
     PinGPSRX = 9;
     PinGPSTX = 10;
@@ -2216,8 +2219,9 @@ void setup() {
     break;
   case eBoard::HELTEC_WIRELESS_STICK:
     log_i("Board=HELTEC Wireless Stick");
+#ifdef AIRMODULE
     PinBeaconLed = 25;
-
+#endif
     sButton[0].PinButton = 0; //pin for program-button
     
     //PinGPSRX = 34;
@@ -2235,6 +2239,14 @@ void setup() {
     PinOledSDA = 4;
     PinOledSCL = 15;
     pI2cOne->begin(PinOledSDA, PinOledSCL);
+
+    PinBaroSDA = 12;
+    PinBaroSCL = 13;
+
+    PinWindDir = 36;
+    PinWindSpeed = 39;
+
+    PinOneWire = 23;   
 
     PinExtPower = 21;
     break;
