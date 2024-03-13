@@ -122,6 +122,7 @@ bool Weather::begin(TwoWire *pi2c, SettingsData &setting, int8_t oneWirePin, int
       }
       sensors.setResolution(tempSensorAdr, 12);      
       sensors.setWaitForConversion(false); //we don't wait for conversion  
+      sensors.requestTemperatures();//start first conversion
       hasTempSensor = true;
     }
   }
@@ -339,8 +340,10 @@ void Weather::run(void){
       for (i = 0;i < 5;i++){
         bmeRet = bme.readADCValues();
         if (bmeRet == 0){
-          _weather.temp = ((float)bme.getTemp() / 100.) + _tempOffset; // in °C
-          _weather.bTemp = true;
+          if (!hasTempSensor){
+            _weather.temp = ((float)bme.getTemp() / 100.) + _tempOffset; // in °C
+            _weather.bTemp = true;
+          }
           rawPressure = (float)bme.getPressure() / 100.;
           _weather.bHumidity = true;
           _weather.Humidity = (float)(bme.getHumidity()/ 100.); // in %
@@ -360,7 +363,7 @@ void Weather::run(void){
     if (hasTempSensor){ //one-wire Temp-sensor
       float actTemp = -127.0;
       bReadOk = false;
-      for (int i = 0;i < 5;i++){
+      for (int i = 0;i < 3;i++){
         if (sensors.isConnected(tempSensorAdr)){
           actTemp = sensors.getTempC(tempSensorAdr); //get temperature of sensor          
           sensors.requestTemperatures(); //start next temperature-conversion
@@ -368,8 +371,12 @@ void Weather::run(void){
             _weather.temp = actTemp + _tempOffset;
             _weather.bTemp = true;
             bReadOk = true;
-          }
-          break;
+            break;
+          }else{
+            delay(sensors.millisToWaitForConversion(sensors.getResolution()));
+          }          
+        }else{
+          delay(100); //wait 100ms
         }
       }
       if (!bReadOk){

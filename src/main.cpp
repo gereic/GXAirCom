@@ -1858,6 +1858,9 @@ void setup() {
   #ifdef WIRELESS_STICK_V3
     setting.boardType = HELTEC_WIRELESS_STICK_LITE_V3;
   #endif
+  #ifdef Heltec_Lora_V3
+    setting.boardType = HELTEC_LORA_V3;
+  #endif
   if (setting.boardType == eBoard::UNKNOWN){
     checkBoardType();
   }  
@@ -2394,6 +2397,39 @@ void setup() {
     PinADCVoltage = 1;
     adcVoltageMultiplier =  5.2636f;
     break;
+  case eBoard::HELTEC_LORA_V3:
+    log_i("Board=HELTEC_LORA_V3");
+
+    PinLora_SS = 8;
+    PinLora_SCK = 9;
+    PinLora_MOSI = 10;
+    PinLora_MISO = 11;
+    PinLoraRst = 12;
+    PinLoraGPIO = 13;
+    PinLoraDI0 = 14;
+
+    PinOledRst = 21;
+    PinOledSDA = 17;
+    PinOledSCL = 18;
+    pI2cOne->begin(PinOledSDA, PinOledSCL);
+
+    PinBaroSDA = 2;
+    PinBaroSCL = 3;
+
+    //pI2cOne->begin(PinBaroSDA, PinBaroSCL);
+
+    //PinWindDir = 2;
+    //PinWindSpeed = 3;    
+
+    pinMode(35,OUTPUT);
+    digitalWrite(35,LOW); //switch user-LED off
+    //digitalWrite(35,HIGH);
+
+    PinExtPower = 36; //pin for external Voltage-control
+    PinADCCtrl = 37; //pin for reading battery-voltage
+    PinADCVoltage = 1;
+    adcVoltageMultiplier =  5.2636f;
+    break;
   case eBoard::UNKNOWN:
     log_e("unknown Board --> please correct");
     break;
@@ -2442,10 +2478,14 @@ void setup() {
   if (PinExtPower >= 0){
     pinMode(PinExtPower, OUTPUT); //we have to set pin 21 to measure voltage of Battery
     digitalWrite(PinExtPower,LOW); //set output to Low, so we can measure the voltage
+    log_i("set ext-power");
+    delay(500); //wait until devices are on
   }
   if (PinADCCtrl >= 0){
     pinMode(PinADCCtrl, OUTPUT); //we have to set pin to measure voltage of Battery
-    digitalWrite(PinADCCtrl,LOW); //set output to Low, so we can measure the voltage    
+    digitalWrite(PinADCCtrl,LOW); //set output to Low, so we can measure the voltage  
+    log_i("set adcCtrl"); 
+    delay(100); 
   }
   if (PinADCVoltage >= 0){
     pinMode(PinADCVoltage, INPUT); //set pin ADC-Voltage as input
@@ -2516,7 +2556,7 @@ xTaskCreatePinnedToCore(taskOled, "taskOled", 6500, NULL, 8, &xHandleOled, ARDUI
   #endif
 
 #ifdef GSMODULE  
-  if (setting.Mode == eMode::GROUND_STATION){
+  if ((setting.Mode == eMode::GROUND_STATION) && (setting.wd.mode.bits.enable)){
     //start weather-task
     xTaskCreatePinnedToCore(taskWeather, "taskWeather", 13000, NULL, 8, &xHandleWeather, ARDUINO_RUNNING_CORE1);
   }
@@ -4330,7 +4370,7 @@ void taskStandard(void *pvParameters){
   long frequency = FREQUENCY868;
   fanet.setRFMode(setting.RFMode);
   uint8_t radioChip = RADIO_SX1276;
-  if ((setting.boardType == eBoard::T_BEAM_SX1262) || (setting.boardType == eBoard::T_BEAM_S3CORE) || (setting.boardType == eBoard::HELTEC_WIRELESS_STICK_LITE_V3)) radioChip = RADIO_SX1262;
+  if ((setting.boardType == eBoard::T_BEAM_SX1262) || (setting.boardType == eBoard::T_BEAM_S3CORE) || (setting.boardType == eBoard::HELTEC_WIRELESS_STICK_LITE_V3) || (setting.boardType == eBoard::HELTEC_LORA_V3)) radioChip = RADIO_SX1262;
 
   // When the requested Address type is ICAO then the devId of the device must be set to your mode-s address
   // See Flarm Dataport Specification for details

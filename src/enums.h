@@ -13,6 +13,7 @@ enum eBoard {
     HELTEC_WIRELESS_STICK = 8,
     T_BEAM_S3CORE = 9,
     HELTEC_WIRELESS_STICK_LITE_V3 = 10,
+    HELTEC_LORA_V3 = 11,
     UNKNOWN = 255
 };
 

@@ -565,7 +565,7 @@ bool FanetMac::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int8_t rese
 
 	/* configure phy radio */
 	//SPI LoRa pins
-	log_i("sck=%d,miso=%d,mosi=%d,ss=%d,reset=%d,dio0=%d,gpio=%d",sck,miso,mosi,ss,reset,dio0,gpio);
+	log_i("sck=%d,miso=%d,mosi=%d,ss=%d,reset=%d,dio0=%d,gpio=%d,chip=%d",sck,miso,mosi,ss,reset,dio0,gpio,radioChip);
 	SPI.begin(sck, miso, mosi, ss);
 	if (radioChip == RADIO_SX1262){
 		radio.setPins(&SPI,ss,dio0,reset,gpio);
