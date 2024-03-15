@@ -18,7 +18,7 @@
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 
-//#define SSLCONNECTION
+#define SSLCONNECTION
 
 //windspeed [km/h]
 //windgust [km/h]
