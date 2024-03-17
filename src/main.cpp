@@ -1939,7 +1939,9 @@ void setup() {
   //pinMode(BUTTON2, INPUT_PULLUP);
 
   printSettings();
-  analogReadResolution(10); // Default of 12 is not very linear. Recommended to use 10 or 11 depending on needed resolution.
+
+  //NOTE the SparkFun WeatherMeter relies on 12 bit ADC resolution.
+//  analogReadResolution(10); // Default of 12 is not very linear. Recommended to use 10 or 11 depending on needed resolution.
   status.PMU = ePMU::NOPMU;
   for (uint8_t i = 0; i < NUMBUTTONS; i++) {
     //init buttons
@@ -1979,8 +1981,14 @@ void setup() {
     PinBuzzer = 25;
 
     if (setting.Mode == eMode::GROUND_STATION){
-      PinWindDir = 36;
-      PinWindSpeed = 39;
+//      PinWindDir = 36;
+//      PinWindSpeed = 39;
+//      PinRainGauge = 15;
+
+        PinWindDir = 36;
+        PinWindSpeed = 35;
+        PinRainGauge = 32;
+
     }else{
       if (setting.bHasExtPowerSw){
         PinExtPowerOnOff = 36;

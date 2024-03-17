@@ -33,6 +33,9 @@ void IRAM_ATTR onTimer() {
 
 Weather::Weather(){
 }
+Weather::~Weather(){
+    delete _sparkFunWeatherMeter;
+}
 
 bool Weather::checkI2Caddr(uint8_t i2cAddr) {
   uint8_t error;
@@ -157,7 +160,13 @@ bool Weather::begin(TwoWire *pi2c, SettingsData &setting, int8_t oneWirePin, int
     _weather.bWindSpeed = true;
     _weather.bWindDir = true;
     peetBros_init(windSpeedPin,windDirPin);
-  }else{
+  } else if (aneometerType == eAnemometer::SPARKFUN_WEATHERKIT){
+      _sparkFunWeatherMeter = new SFEWeatherMeterKit(windDirPin, windSpeedPin, rainPin);
+      SFEWeatherMeterKit::begin();
+      _weather.bWindDir = true;
+      _weather.bWindSpeed = true;
+      _weather.bRain = true;
+  } else{
     //init-code for aneometer DAVIS6410
     _windDirPin = windDirPin;
     if (windDirPin >= 0){
@@ -402,6 +411,12 @@ void Weather::run(void){
         _weather.WindDir = 0.0; //winddir can't be measured
         _weather.WindSpeed = 0.0; //[km/h]]
       }
+    } else if (aneometerType == eAnemometer::SPARKFUN_WEATHERKIT) {
+        _weather.WindSpeed = _sparkFunWeatherMeter->getWindSpeed();
+        _weather.WindDir = _sparkFunWeatherMeter->getWindDirection();
+        if(_weather.WindSpeed > windgust) {
+            windgust = _weather.WindSpeed;
+        }
     }else{
       checkAneometer();
     }
