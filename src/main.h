@@ -230,6 +230,7 @@ struct weatherupload{
   bool enable;
   String ID;
   String KEY;
+  eWeatherUploadProvider WeatherUploadProvider;
 };
 
 struct Fanetweatherupload{

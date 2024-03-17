@@ -23,7 +23,7 @@ void WeatherUnderground::setMutex(SemaphoreHandle_t *_xMutex){
 
 
 
-bool WeatherUnderground::getData(String ID,String KEY,wData *data){ //get Data from WU with Station-ID and API-Key
+bool WeatherUnderground::getData(String ID,String KEY,weatherUndergroundData *data){ //get Data from WU with Station-ID and API-Key
   char msg[1024]; //make this big enough to hold the resulting string
   bool bRet = true;
   if (xMutex == NULL){ //create new Mutex
@@ -125,7 +125,7 @@ bool WeatherUnderground::getData(String ID,String KEY,wData *data){ //get Data f
   return bRet;
 }
 
-bool  WeatherUnderground::sendData(String ID,String KEY,wData *data){ //send Data to WU with Station-ID and Station-Key
+bool  WeatherUnderground::sendData(String ID,String KEY,weatherUndergroundData *data){ //send Data to WU with Station-ID and Station-Key
   bool bRet = true;
   if (xMutex == NULL){ //create new Mutex
       xMutex = new SemaphoreHandle_t();
