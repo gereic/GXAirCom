@@ -3,6 +3,8 @@
 # requires minify from https://github.com/tdewolff/minify
 # on Debian: apt install minify
 
+# on Mac: brew install tdewolff/tap/minify
+
 set -e
 
 TMP=$(mktemp)
@@ -11,7 +13,7 @@ trap 'rm -f "${TMP}"' EXIT
 rm -f stripped/*.gz stripped/*.{css,js,html}
 for i in orig/*.{css,js,html}; do
     si=${i/orig/stripped/}
-    ./minify \
+    minify \
         --js-keep-var-names \
         --html-keep-default-attrvals \
         --js-precision 0 \

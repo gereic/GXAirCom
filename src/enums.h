@@ -28,7 +28,8 @@ enum eAnemometer {
     DAVIS = 0,
     TX20 = 1,
     ADS_A1015 = 2, // don't use ADS1015 or things will break.
-    PEETBROS = 3
+    PEETBROS = 3,
+    SPARKFUN_WEATHERKIT = 4
 };
 
 /* Mode of operation */
