@@ -10,8 +10,8 @@ DevId = config.get('DevId', '')
 Img = config.get('Img','')
 
 qos=0
-#data_block_size=10000
-data_block_size=250
+data_block_size=10000
+#data_block_size=250
 
 # The callback for when the client receives a CONNACK response from the server.
 def on_connect(client, userdata, flags, rc):

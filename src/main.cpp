@@ -4722,6 +4722,27 @@ void taskStandard(void *pvParameters){
             sendFanetWeatherData2WI(&weatherData,i);
           }
         }
+        if ((pMqtt) && (setting.mqtt.mode.bits.sendWeather)){ //we use MQTT
+          StaticJsonDocument<500> doc;                      //Memory pool
+          char buff[30];
+          char msg_buf[500];
+          pWd = &msg_buf[0];
+          snprintf (buff,sizeof(buff)-1,"%04d-%02d-%02dT%02d:%02d:%02d+00:00",year(),month(),day(),hour(),minute(),second()); // ISO 8601
+          doc["DT"] = buff;
+          doc["ID"] = fanet.getDevId(weatherData.devId);
+          doc["rssi"] = weatherData.rssi;
+          if (weatherData.bWind){
+            doc["wDir"] = round2(weatherData.wHeading);
+            doc["wSpeed"] = round2(weatherData.wSpeed);
+            doc["wGust"] = round2(weatherData.wGust);
+          } 
+          if (weatherData.bTemp) doc["temp"] = round2(weatherData.temp);
+          if (weatherData.bHumidity) doc["hum"] = round2(weatherData.Humidity);
+          if (weatherData.bBaro) doc["press"] = round2(weatherData.Baro);
+          if (weatherData.bStateOfCharge) doc["soc"] = round2(weatherData.Charge);
+          serializeJson(doc, msg_buf);
+          pMqtt->sendTopic("RxWd",&msg_buf[0],false);
+        }
       }
 #endif
       if (setting.OGNLiveTracking.bits.fwdWeather){
