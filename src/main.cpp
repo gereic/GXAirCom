@@ -2389,6 +2389,8 @@ void setup() {
     PinWindDir = 2;
     PinWindSpeed = 3;    
 
+    PinOneWire = 4; //pin for one-Wire
+
     pinMode(35,OUTPUT);
     digitalWrite(35,LOW); //switch user-LED off
 
