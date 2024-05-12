@@ -2911,6 +2911,7 @@ void getRTCTime(){
 void getRTC(){
   DFRobot_SD3031 rtc(pI2cZero);
   if (!rtc.begin()){
+    rtc.disable32k(); //we don't need the 32k output --> disable it
     log_i("found SD3031 RTC");
     status.rtc.module = RTC_3031;
     getRTCTime();
@@ -2919,6 +2920,7 @@ void getRTC(){
   }
   RTC_DS3231 rtc2;
   if (rtc2.begin(pI2cZero)) {
+    rtc2.disable32K(); //we don't need the 32k output --> disable it
     log_i("found DS3231 RTC");
     status.rtc.module = RTC_3231;
     getRTCTime();
