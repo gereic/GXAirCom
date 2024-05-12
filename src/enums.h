@@ -138,5 +138,10 @@ enum eAdsAneometerPin{
   ADS_VREF_PIN = 3
 };
 
+enum eRTC{
+  RTC_NONE = 0,
+  RTC_3031 = 1
+};
+
 
 #endif

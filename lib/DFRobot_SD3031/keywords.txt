@@ -1,0 +1,56 @@
+#######################################
+# Syntax Coloring Map For DFRobot_SD3031
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+DFRobot_SD3031	KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+
+begin	KEYWORD2
+getRTCTime	KEYWORD2
+setHourSystem	KEYWORD2
+setTime	KEYWORD2
+setAlarmnumber	KEYWORD2
+getTemperatureC	KEYWORD2
+getVoltage	KEYWORD2
+clearAlarm	KEYWORD2
+getAMorPM	KEYWORD2
+enable32k	KEYWORD2
+disable32k	KEYWORD2
+writeSRAM	KEYWORD2
+readSRAM	KEYWORD2
+clearSRAM	KEYWORD2
+
+
+
+#######################################
+# Instances (KEYWORD2)
+#######################################
+
+
+#######################################
+# Constants (LITERAL1)
+#######################################
+e24hours	LITERAL1
+e12hours	LITERAL1
+eSunday	LITERAL1
+eMonday	LITERAL1
+eTuesday	LITERAL1
+eWednesday	LITERAL1
+eThursday	LITERAL1
+eFriday	LITERAL1
+eSaturday	LITERAL1
+eYearEnable	LITERAL1
+eMondayEnable	LITERAL1
+eDayEnable	LITERAL1
+eHoursEnable	LITERAL1
+eMinuteEnable	LITERAL1
+eSecondEnable	LITERAL1
+
+

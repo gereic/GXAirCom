@@ -94,6 +94,9 @@ XPowersLibInterface *PMU = NULL;
 #include <Weather.h>
 #include <WeatherUnderground.h>
 #include <Windy.h>
+
+#include <DFRobot_SD3031.h>
+
 #endif
 
 
@@ -392,6 +395,9 @@ double round2(double value);
 #ifdef GSMODULE
 void sendFanetWeatherData2WU(FanetLora::weatherData *weatherData,uint8_t wuIndex);
 void sendFanetWeatherData2WI(FanetLora::weatherData *weatherData,uint8_t wiIndex);
+void setRTCTime(tm &timeinfo);
+void getRTC();
+void getRTCTime();
 #endif
 #ifdef AIRMODULE
 bool setupUbloxConfig(void);
@@ -717,7 +723,7 @@ void setAllTime(tm &timeinfo){
   tm.Hour = timeinfo.tm_hour;
   tm.Minute = timeinfo.tm_min;
   tm.Second = timeinfo.tm_sec;
-  //log_i("y1=%d,y=%d,m=%d,d=%d,h=%d,m=%d,s=%d",timeinfo.tm_year,tm.Year,tm.Month,tm.Day,tm.Hour,tm.Minute,tm.Second);
+  //log_i("%04d%02d%02d-%02d:%02d:%02d",timeinfo.tm_year,timeinfo.tm_mon,timeinfo.tm_mday,timeinfo.tm_hour,timeinfo.tm_min,timeinfo.tm_sec);
   time_t t =  makeTime(tm);  
   setTime(t); //set time of timelib
   timeval epoch = {(int32_t)t, 0};
@@ -2909,12 +2915,53 @@ void taskGsm(void *pvParameters){
 
 #endif
 
+
+
 #ifdef GSMODULE
+void setRTCTime(tm &timeinfo){
+  if (status.rtc.module != RTC_3031) return;
+  DFRobot_SD3031 rtc(pI2cZero);
+  if (rtc.begin())return;
+  log_i("set time of RTC to %04d%02d%02d-%02d:%02d:%02d",timeinfo.tm_year + 1900,timeinfo.tm_mon+1,timeinfo.tm_mday,timeinfo.tm_hour,timeinfo.tm_min,timeinfo.tm_sec);
+  rtc.setTime(timeinfo.tm_year + 1900,timeinfo.tm_mon+1,timeinfo.tm_mday,timeinfo.tm_hour,timeinfo.tm_min,timeinfo.tm_sec);
+}
+
+void getRTCTime(){
+  if (status.rtc.module != RTC_3031) return;
+  DFRobot_SD3031 rtc(pI2cZero);
+  if (rtc.begin())return;
+  status.rtc.temp = rtc.getTemperatureC();
+  status.rtc.voltage = rtc.getVoltage();
+  //log_i("RTC temp=%dC;Batt=%.2fV",status.rtc.temp,status.rtc.voltage);  
+  sTimeData_t rtcTime =  rtc.getRTCTime();
+  //log_i("%04d%02d%02d-%02d:%02d:%02d",rtcTime.year,rtcTime.month,rtcTime.day,rtcTime.hour,rtcTime.minute,rtcTime.second);
+  struct tm timeinfo;
+  timeinfo.tm_year = rtcTime.year - 1900;
+  timeinfo.tm_mon = rtcTime.month - 1; //month begin with 0
+  timeinfo.tm_mday = rtcTime.day;
+  timeinfo.tm_hour = rtcTime.hour;
+  timeinfo.tm_min = rtcTime.minute; 
+  timeinfo.tm_sec = rtcTime.second;
+  setAllTime(timeinfo); //we have to set time to GPS-Time for decoding.  
+}
+
+void getRTC(){
+  DFRobot_SD3031 rtc(pI2cZero);
+  if (!rtc.begin()){
+    log_i("found SD3031 RTC");
+    status.rtc.module = RTC_3031;
+    getRTCTime();
+    printLocalTime();
+  }
+}
+
+
 void taskWeather(void *pvParameters){
   static uint32_t tUploadData; //first sending is in Sending-intervall to have steady-values
   static uint32_t tSendData; //first sending is in FANET-Sending-intervall to have steady-values
   static uint32_t tLastWindSpeed; //
   static uint32_t tWindOk;
+  static uint32_t tGetRTCTime;
   bool bDataOk = false;
   log_i("starting weather-task ");  
   Weather::weatherData wData;
@@ -2947,8 +2994,14 @@ void taskWeather(void *pvParameters){
   tWindOk = millis();
   status.weather.error.value = 0;
   status.weather.error.bits.notStarted = true;
+  getRTC();
+  tGetRTCTime = millis();
   while (1){
     uint32_t tAct = millis();
+    if (timeOver(tAct,tGetRTCTime,10000)){
+      tGetRTCTime = tAct;
+      getRTCTime();
+    }
     if (setting.wd.mode.bits.enable){
       //station has BME --> we are a weather-station
       weather.run();
@@ -3505,10 +3558,10 @@ void setWifi(bool on){
       }
       uint32_t tStart = millis();    
       while(WiFi.status() != WL_CONNECTED){
-        if (timeOver(millis(),tStart,10000)){ //wait max. 10seconds
+        if (timeOver(millis(),tStart,60000)){ //wait max. 60seconds
           break;
         }
-        delay(100);
+        delay(1000);
       }
       if (WiFi.status() == WL_CONNECTED){
         log_i("wifi connected");
@@ -5411,8 +5464,11 @@ void taskBackGround(void *pvParameters){
         struct tm timeinfo;
         if(getLocalTime(&timeinfo)){
           uint32_t tEnd = millis();
-          log_i("h=%d,min=%d,sec=%d,day=%d,month=%d,year=%d",timeinfo.tm_hour,timeinfo.tm_min, timeinfo.tm_sec, timeinfo.tm_mday,timeinfo.tm_mon+1, timeinfo.tm_year + 1900);
+          log_i("%04d%02d%02d-%02d:%02d:%02d",timeinfo.tm_year + 1900,timeinfo.tm_mon+1,timeinfo.tm_mday,timeinfo.tm_hour,timeinfo.tm_min, timeinfo.tm_sec);
           setAllTime(timeinfo);
+          #ifdef GSMODULE
+            setRTCTime(timeinfo);
+          #endif
           uint32_t tAfterNtp = now(); 
           tBeforeNtp += ((tEnd - tStart) / 1000);
           uint32_t tDist = tAfterNtp - tBeforeNtp;          

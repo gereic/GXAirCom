@@ -517,6 +517,12 @@ struct statusRestart{
   bool doRestart;
 };
 
+struct statusRtc{
+  eRTC module = RTC_NONE;
+  float voltage = 0.0;
+  int8_t temp = 0;
+};
+
 struct statusData{
   uint8_t displayType;
   statusNetwork wifiAP;
@@ -553,7 +559,7 @@ struct statusData{
   String lastFanetMsg;
   uint8_t MqttStat;
   statusRestart restart;
-
+  statusRtc rtc;
 };
 
 //define wifi-events on for old framework

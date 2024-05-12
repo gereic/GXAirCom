@@ -184,6 +184,14 @@ void onWebSocketEvent(uint8_t client_num,
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
 
+          if (status.rtc.module != RTC_NONE){
+            doc.clear();
+            doc["RTC"] = uint8_t(status.rtc.module);
+            doc["rtcTemp"] = status.rtc.temp;
+            doc["rtcVolt"] = String(status.rtc.voltage,2);
+            serializeJson(doc, msg_buf);
+            webSocket.sendTXT(client_num, msg_buf);            
+          }
           doc.clear();
           doc["climbrate"] = String(status.vario.ClimbRate,1);
           doc["vTemp"] = String(status.vario.temp,1);

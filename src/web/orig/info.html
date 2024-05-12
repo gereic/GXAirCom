@@ -8,6 +8,7 @@
 <script language="javascript" type="text/javascript">
 var pageNumber=2;
 var wsMode=0;
+var rtc=0;
 const wsModeEn = 1;
 const wsModeBme = 2;
 const wsModeRain = 4;
@@ -29,7 +30,11 @@ function setVis(){
   document.getElementById("VisgpsNumSat").style.display='none';
   document.getElementById("VisgpsTime").style.display='none';  
   document.getElementById("VisgpsSpeed").style.display='none';
-  document.getElementById("VisgpsCourse").style.display='none';    
+  document.getElementById("VisgpsCourse").style.display='none';  
+  document.getElementById("visRTC").style.display='none';
+  if (rtc != 0){
+    document.getElementById("visRTC").style.display='';
+  }  
   if (document.getElementById("mode").value == 1){ /*mode ground-station*/
     if (wsMode & wsModeBme){
       document.getElementById("VisWdTemp").style.display='';
@@ -83,6 +88,9 @@ function onMessage(evt) {
           if (myObj[key] == 0){
             document.getElementById("VisVario").style.display='none';
           }
+          continue;
+        }else if (key == "RTC"){
+          rtc = myObj[key];
           continue;
         }else if (key == "WsMode"){
           wsMode = myObj[key];
@@ -513,6 +521,17 @@ function onMessage(evt) {
             <th>signal strength</th>
             <td><input type="text" id="GSMRssi"></td>
           </tr>
+        </tbody>      
+      </table>
+    </fieldset>
+    <p></p>
+    <p></p>
+    <fieldset id="visRTC">
+      <legend><b>RTC</b></legend>
+      <table style="width:100&#37;">
+        <tbody>
+          <tr><th>temp [°C]</th><td><input type="text" id="rtcTemp" disabled></td></tr>
+          <tr><th>battery [V]</th><td><input type="text" id="rtcVolt" disabled></td></tr>
         </tbody>      
       </table>
     </fieldset>
