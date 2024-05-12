@@ -96,6 +96,7 @@ XPowersLibInterface *PMU = NULL;
 #include <Windy.h>
 
 #include <DFRobot_SD3031.h>
+#include <RTClib.h>
 
 #endif
 
@@ -748,71 +749,12 @@ bool printLocalTime()
   struct tm now;
   getLocalTime(&now,0);
   if (now.tm_year >= 117){
-    //Serial.println(&now, "%B %d %Y %H:%M:%S (%A)");
-    log_i("%04d %02d %02d %02d:%02d:%02d",now.tm_year+1900,now.tm_mon+1,now.tm_mday,now.tm_hour,now.tm_min,now.tm_sec);
+    //log_i("%04d %02d %02d %02d:%02d:%02d",now.tm_year+1900,now.tm_mon+1,now.tm_mday,now.tm_hour,now.tm_min,now.tm_sec);
     return true;
   }else{
     return false;
   }
-  //struct tm timeinfo;
-  /*
-  if (timeStatus() == timeSet){
-    log_i("%d %d %d %d:%d:%d",year(),month(),day(),hour(),minute(),second());
-    return true;
-  }
-  log_i("Failed to obtain time");
-  return false;
-  */
-  /*
-  if(!getLocalTime(&timeinfo)){
-    
-    Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");
-    return false;
-  }
-  Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");
-  return true;
-  */
 }
-
-/*
-void handleButton(uint32_t tAct){
-  static uint32_t buttonTimer = millis();
-  //static uint32_t dblClkTimer = millis();
-  //static bool dblClkActive = false;
-  static bool buttonActive = false;
-  static bool longPressActive = false;
-  if (digitalRead(BUTTON2) == LOW){
-    //Button pressed
-		if (buttonActive == false) {
-			buttonActive = true;
-			buttonTimer = millis();
-		}
-		if ((millis() - buttonTimer > LONGPRESSTIME) && (longPressActive == false)) {
-			longPressActive = true;
-      if (setting.vario.volume == LOWVOLUME){
-        setting.vario.volume = MIDVOLUME;  
-      }else if (setting.vario.volume == MIDVOLUME){
-        setting.vario.volume = HIGHVOLUME;  
-      }else if (setting.vario.volume == HIGHVOLUME){
-        setting.vario.volume = LOWVOLUME;  
-      }
-      write_Volume();
-      //log_i("volume=%d",setting.vario.volume);
-		}
-  }else{
-    //Button released
-		if (!setting.bHasExtPowerSw){ //no muting when in kobo (for the moment)
-      if (buttonActive == true) {
-        if (longPressActive == false) {
-          status.bMuting = !status.bMuting; //toggle muting
-        }
-      }
-    }
-		buttonActive = false;
-		longPressActive = false;
-  }
-}
-*/
 
 
 void sendFlarmData(uint32_t tAct){
@@ -2919,30 +2861,51 @@ void taskGsm(void *pvParameters){
 
 #ifdef GSMODULE
 void setRTCTime(tm &timeinfo){
-  if (status.rtc.module != RTC_3031) return;
-  DFRobot_SD3031 rtc(pI2cZero);
-  if (rtc.begin())return;
-  log_i("set time of RTC to %04d%02d%02d-%02d:%02d:%02d",timeinfo.tm_year + 1900,timeinfo.tm_mon+1,timeinfo.tm_mday,timeinfo.tm_hour,timeinfo.tm_min,timeinfo.tm_sec);
-  rtc.setTime(timeinfo.tm_year + 1900,timeinfo.tm_mon+1,timeinfo.tm_mday,timeinfo.tm_hour,timeinfo.tm_min,timeinfo.tm_sec);
+  //log_i("set time of RTC to %04d%02d%02d-%02d:%02d:%02d",timeinfo.tm_year + 1900,timeinfo.tm_mon+1,timeinfo.tm_mday,timeinfo.tm_hour,timeinfo.tm_min,timeinfo.tm_sec);
+  if (status.rtc.module == RTC_3031){
+    DFRobot_SD3031 rtc(pI2cZero);
+    if (rtc.begin())return;
+    rtc.setTime(timeinfo.tm_year + 1900,timeinfo.tm_mon+1,timeinfo.tm_mday,timeinfo.tm_hour,timeinfo.tm_min,timeinfo.tm_sec);
+  }else if (status.rtc.module == RTC_3231){
+    RTC_DS3231 rtc2;
+    if (!rtc2.begin(pI2cZero)) return;  
+    rtc2.adjust(DateTime(timeinfo.tm_year + 1900, timeinfo.tm_mon+1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec));  
+  }
 }
 
 void getRTCTime(){
-  if (status.rtc.module != RTC_3031) return;
-  DFRobot_SD3031 rtc(pI2cZero);
-  if (rtc.begin())return;
-  status.rtc.temp = rtc.getTemperatureC();
-  status.rtc.voltage = rtc.getVoltage();
-  //log_i("RTC temp=%dC;Batt=%.2fV",status.rtc.temp,status.rtc.voltage);  
-  sTimeData_t rtcTime =  rtc.getRTCTime();
-  //log_i("%04d%02d%02d-%02d:%02d:%02d",rtcTime.year,rtcTime.month,rtcTime.day,rtcTime.hour,rtcTime.minute,rtcTime.second);
-  struct tm timeinfo;
-  timeinfo.tm_year = rtcTime.year - 1900;
-  timeinfo.tm_mon = rtcTime.month - 1; //month begin with 0
-  timeinfo.tm_mday = rtcTime.day;
-  timeinfo.tm_hour = rtcTime.hour;
-  timeinfo.tm_min = rtcTime.minute; 
-  timeinfo.tm_sec = rtcTime.second;
-  setAllTime(timeinfo); //we have to set time to GPS-Time for decoding.  
+  if (status.rtc.module == RTC_3031){
+    DFRobot_SD3031 rtc(pI2cZero);
+    if (rtc.begin())return;
+    status.rtc.temp = float(rtc.getTemperatureC());
+    status.rtc.voltage = rtc.getVoltage();
+    //log_i("RTC temp=%dC;Batt=%.2fV",status.rtc.temp,status.rtc.voltage);  
+    sTimeData_t rtcTime =  rtc.getRTCTime();
+    //log_i("%04d%02d%02d-%02d:%02d:%02d",rtcTime.year,rtcTime.month,rtcTime.day,rtcTime.hour,rtcTime.minute,rtcTime.second);
+    struct tm timeinfo;
+    timeinfo.tm_year = rtcTime.year - 1900;
+    timeinfo.tm_mon = rtcTime.month - 1; //month begin with 0
+    timeinfo.tm_mday = rtcTime.day;
+    timeinfo.tm_hour = rtcTime.hour;
+    timeinfo.tm_min = rtcTime.minute; 
+    timeinfo.tm_sec = rtcTime.second;
+    setAllTime(timeinfo); //we have to set time to GPS-Time for decoding.  
+  }else if (status.rtc.module == RTC_3231){
+    RTC_DS3231 rtc2;
+    if (!rtc2.begin(pI2cZero)) return;
+    status.rtc.temp = int(rtc2.getTemperature());
+    status.rtc.voltage = 0.0;
+    DateTime now = rtc2.now();
+    //log_i("%04d%02d%02d-%02d:%02d:%02d",now.year(),now.month(),now.day(),now.hour(),now.minute(),now.second());
+    struct tm timeinfo;
+    timeinfo.tm_year = now.year() - 1900;
+    timeinfo.tm_mon = now.month() - 1; //month begin with 0
+    timeinfo.tm_mday = now.day();
+    timeinfo.tm_hour = now.hour();
+    timeinfo.tm_min = now.minute(); 
+    timeinfo.tm_sec = now.second();
+    setAllTime(timeinfo); //we have to set time to GPS-Time for decoding.      
+  }
 }
 
 void getRTC(){
@@ -2952,7 +2915,16 @@ void getRTC(){
     status.rtc.module = RTC_3031;
     getRTCTime();
     printLocalTime();
+    return;
   }
+  RTC_DS3231 rtc2;
+  if (rtc2.begin(pI2cZero)) {
+    log_i("found DS3231 RTC");
+    status.rtc.module = RTC_3231;
+    getRTCTime();
+    printLocalTime();
+    return;  
+  }  
 }
 
 
@@ -5456,7 +5428,7 @@ void taskBackGround(void *pvParameters){
     if (WiFi.status() == WL_CONNECTED){
       if (timeOver(tAct,tGetTime,GETNTPINTERVALL)){
         tGetTime = tAct;
-        log_i("get ntp-time");
+        //log_i("get ntp-time");
         uint32_t tStart = millis();
         uint32_t tBeforeNtp = now();
         configTime(0, 0, "pool.ntp.org");
@@ -5464,7 +5436,7 @@ void taskBackGround(void *pvParameters){
         struct tm timeinfo;
         if(getLocalTime(&timeinfo)){
           uint32_t tEnd = millis();
-          log_i("%04d%02d%02d-%02d:%02d:%02d",timeinfo.tm_year + 1900,timeinfo.tm_mon+1,timeinfo.tm_mday,timeinfo.tm_hour,timeinfo.tm_min, timeinfo.tm_sec);
+          //log_i("%04d%02d%02d-%02d:%02d:%02d",timeinfo.tm_year + 1900,timeinfo.tm_mon+1,timeinfo.tm_mday,timeinfo.tm_hour,timeinfo.tm_min, timeinfo.tm_sec);
           setAllTime(timeinfo);
           #ifdef GSMODULE
             setRTCTime(timeinfo);
@@ -5476,7 +5448,7 @@ void taskBackGround(void *pvParameters){
             log_e("%ds delay timediff to big --> try again in 5 seconds");
             tGetTime = tAct - GETNTPINTERVALL + 5000; //try again in 5 second
           }else{
-            log_i("get ntp-time OK",tDist);
+            //log_i("get ntp-time OK",tDist);
             if (printLocalTime() == true){
               status.bTimeOk = true;
             } 

@@ -187,7 +187,7 @@ void onWebSocketEvent(uint8_t client_num,
           if (status.rtc.module != RTC_NONE){
             doc.clear();
             doc["RTC"] = uint8_t(status.rtc.module);
-            doc["rtcTemp"] = status.rtc.temp;
+            doc["rtcTemp"] = String(status.rtc.temp,1);
             doc["rtcVolt"] = String(status.rtc.voltage,2);
             serializeJson(doc, msg_buf);
             webSocket.sendTXT(client_num, msg_buf);            

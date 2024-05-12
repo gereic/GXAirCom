@@ -520,7 +520,7 @@ struct statusRestart{
 struct statusRtc{
   eRTC module = RTC_NONE;
   float voltage = 0.0;
-  int8_t temp = 0;
+  float temp = 0;
 };
 
 struct statusData{

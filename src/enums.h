@@ -140,7 +140,8 @@ enum eAdsAneometerPin{
 
 enum eRTC{
   RTC_NONE = 0,
-  RTC_3031 = 1
+  RTC_3031 = 1,
+  RTC_3231 = 2
 };
 
 
