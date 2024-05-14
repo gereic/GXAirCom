@@ -1335,9 +1335,10 @@ void setupWifi(){
   WiFi.mode(WIFI_MODE_NULL);  
   WiFi.persistent(false);
   WiFi.onEvent(WiFiEvent);
-  //WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE,INADDR_NONE,INADDR_NONE);
-  WiFi.config(IPADDR_ANY, IPADDR_ANY, IPADDR_ANY,IPADDR_ANY,IPADDR_ANY); // call is only a workaround for bug in WiFi class
   WiFi.setHostname(host_name.c_str());
+  //WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE,INADDR_NONE,INADDR_NONE);
+  //WiFi.config(IPADDR_ANY, IPADDR_ANY, IPADDR_ANY,IPADDR_ANY,IPADDR_ANY); // call is only a workaround for bug in WiFi class
+  
   
   /*
   if (setting.wifi.uMode.bits.disableWifiAtStartup){
@@ -2911,8 +2912,8 @@ void getRTCTime(){
 void getRTC(){
   DFRobot_SD3031 rtc(pI2cZero);
   if (!rtc.begin()){
-    rtc.disable32k(); //we don't need the 32k output --> disable it
     log_i("found SD3031 RTC");
+    rtc.disable32k(); //we don't need the 32k output --> disable it
     status.rtc.module = RTC_3031;
     getRTCTime();
     printLocalTime();
@@ -2920,9 +2921,31 @@ void getRTC(){
   }
   RTC_DS3231 rtc2;
   if (rtc2.begin(pI2cZero)) {
-    rtc2.disable32K(); //we don't need the 32k output --> disable it
     log_i("found DS3231 RTC");
+    rtc2.disable32K(); //we don't need the 32k output --> disable it
+    // set alarm 1, 2 flag to false (so alarm 1, 2 didn't happen so far)
+    // if not done, this easily leads to problems, as both register aren't reset on reboot/recompile
+    rtc2.clearAlarm(1);
+    rtc2.clearAlarm(2);    
     status.rtc.module = RTC_3231;
+    // stop oscillating signals at SQW Pin
+    // otherwise setAlarm1 will fail
+    rtc2.writeSqwPinMode(DS3231_OFF);
+    // turn off alarm 2 (in case it isn't off already)
+    // again, this isn't done at reboot, so a previously set alarm could easily go overlooked
+    rtc2.disableAlarm(1);
+    rtc2.disableAlarm(2);
+    /*
+    // schedule an alarm 10 seconds in the future
+    if(!rtc2.setAlarm1(
+            rtc2.now() + TimeSpan(10),
+            DS3231_A1_Hour // this mode triggers the alarm when the seconds match. See Doxygen for other options
+    )) {
+        Serial.println("Error, alarm wasn't set!");
+    }else {
+        Serial.println("Alarm will happen in 10 seconds!");
+    }   
+    */   
     getRTCTime();
     printLocalTime();
     return;  
@@ -3506,9 +3529,11 @@ void setWifi(bool on){
     delay(10); //wait 10ms
     WiFi.disconnect(true,true);
     WiFi.mode(WIFI_MODE_NULL);
-    WiFi.persistent(false);
+    WiFi.persistent(false); 
+    #if ESP_IDF_VERSION_MAJOR < 4
     WiFi.config(IPADDR_ANY, IPADDR_ANY, IPADDR_ANY,IPADDR_ANY,IPADDR_ANY); // call is only a workaround for bug in WiFi class
-    WiFi.setHostname(host_name.c_str());      
+    #endif
+    //WiFi.setHostname(host_name.c_str());      
 
     //now configure access-point
     //so we have wifi connect and access-point at same time
@@ -3520,8 +3545,8 @@ void setWifi(bool on){
       if (setting.wifi.uMode.bits.switchOffApWhenStaConnected){
         WiFi.mode(WIFI_MODE_STA);
       }else{
-        WiFi.mode(WIFI_MODE_APSTA);
         setupSoftAp();
+        WiFi.mode(WIFI_MODE_APSTA);
       }    
       if ((WiFi.SSID() != setting.wifi.ssid || WiFi.psk() != setting.wifi.password)){
         // ... Try to connect to WiFi station.
@@ -3530,12 +3555,15 @@ void setWifi(bool on){
         // ... Begin with sdk config.
         WiFi.begin();
       }
+      /*
       uint32_t tStart = millis();    
       while(WiFi.status() != WL_CONNECTED){
         if (timeOver(millis(),tStart,60000)){ //wait max. 60seconds
           break;
         }
-        delay(1000);
+        //delay(1000);
+        //yield();
+        vTaskDelay(pdMS_TO_TICKS(1000));
       }
       if (WiFi.status() == WL_CONNECTED){
         log_i("wifi connected");
@@ -3545,6 +3573,7 @@ void setWifi(bool on){
         WiFi.mode(WIFI_MODE_AP); //start AP
         setupSoftAp();
       }
+      */
     }else{
       WiFi.mode(WIFI_MODE_AP);
       setupSoftAp();
@@ -5513,12 +5542,13 @@ void taskBackGround(void *pvParameters){
         //log_i("check Wifi-status %d ",status.wifiSTA.state);
         if (status.wifiSTA.state != FULL_CONNECTED){
           log_i("WiFi not connected. Try to reconnect");
-          WiFi.disconnect(true,true);
+          WiFi.disconnect(true);
           WiFi.mode(WIFI_MODE_NULL);
-          WiFi.persistent(false);
+          #if ESP_IDF_VERSION_MAJOR < 4
           WiFi.config(IPADDR_ANY, IPADDR_ANY, IPADDR_ANY,IPADDR_ANY,IPADDR_ANY); // call is only a workaround for bug in WiFi class
+          #endif
           //WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE,INADDR_NONE,INADDR_NONE); // call is only a workaround for bug in WiFi class
-          WiFi.setHostname(host_name.c_str()); //set hostname          
+          //WiFi.setHostname(host_name.c_str()); //set hostname          
           if (setting.wifi.uMode.bits.switchOffApWhenStaConnected){
             WiFi.mode(WIFI_MODE_STA);
           }else{
