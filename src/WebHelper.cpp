@@ -935,6 +935,7 @@ void Web_setup(void){
   // Handle requests for pages that do not exist
   server.onNotFound(onPageNotFound);
 
+  log_i("start webserver");
   // Start web server
   server.begin();
 
@@ -944,6 +945,7 @@ void Web_setup(void){
 }
 
 void Web_stop(void){
+  log_i("stop webserver");
   webSocket.close();
   server.end();
 }

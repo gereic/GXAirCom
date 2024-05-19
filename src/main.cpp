@@ -1328,6 +1328,7 @@ void setupWifi(){
   while(host_name.length() == 0){
     delay(100); //wait until we have the devid
   }
+  log_i("setup Wifi");
   status.bInternetConnected = false;
   status.wifiSTA.state = IDLE;
   status.bWifiOn = false;
@@ -1335,72 +1336,9 @@ void setupWifi(){
   WiFi.mode(WIFI_MODE_NULL);  
   WiFi.persistent(false);
   WiFi.onEvent(WiFiEvent);
-  WiFi.setHostname(host_name.c_str());
-  //WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE,INADDR_NONE,INADDR_NONE);
   //WiFi.config(IPADDR_ANY, IPADDR_ANY, IPADDR_ANY,IPADDR_ANY,IPADDR_ANY); // call is only a workaround for bug in WiFi class
-  
-  
-  /*
-  if (setting.wifi.uMode.bits.disableWifiAtStartup){
-    return; //--> no wifi at startup --> we are ready
-  }
-  
-  //delay(10);
-
-  //now configure access-point
-  //so we have wifi connect and access-point at same time
-  //we connecto to wifi
-  if (setting.wifi.connect != eWifiMode::CONNECT_NONE){
-    //esp_wifi_set_auto_connect(true);
-    log_i("Try to connect to WiFi ");
-    WiFi.status();
-    if (setting.wifi.uMode.bits.switchOffApWhenStaConnected){
-      WiFi.mode(WIFI_MODE_STA);
-    }else{
-      WiFi.mode(WIFI_MODE_APSTA);
-      setupSoftAp();
-    }    
-    if ((WiFi.SSID() != setting.wifi.ssid || WiFi.psk() != setting.wifi.password)){
-      // ... Try to connect to WiFi station.
-      WiFi.begin(setting.wifi.ssid.c_str(), setting.wifi.password.c_str());
-    } else {
-      // ... Begin with sdk config.
-      WiFi.begin();
-    }
-    uint32_t tStart = millis();    
-    while(WiFi.status() != WL_CONNECTED){
-      if (timeOver(millis(),tStart,10000)){ //wait max. 10seconds
-        break;
-      }
-      delay(100);
-    }
-    if (WiFi.status() == WL_CONNECTED){
-      log_i("wifi connected");
-    }else{
-      log_i("wifi not connected --> switch on AP");
-      WiFi.disconnect();
-      WiFi.mode(WIFI_MODE_AP); //start AP
-      setupSoftAp();
-    }
-  }else{
-    WiFi.mode(WIFI_MODE_AP);
-    setupSoftAp();
-  }
-  log_i("hostname=%s",host_name.c_str());  
-
-
-  log_i("my APIP=%s",local_IP.toString().c_str());
-
-  
-  if((WiFi.getMode() & WIFI_MODE_STA)){
-    if (setting.outputMode != eOutput::oBLE){
-      WiFi.setSleep(false); //disable power-save-mode !! will increase ping-time
-    }
-  }
-  status.bWifiOn = true;
-  delay(2000);
-  Web_setup();
-  */
+  WiFi.setHostname(host_name.c_str());
+  log_i("setup Wifi ready !");
 }
 
 void printSettings(){
@@ -3527,13 +3465,10 @@ void setWifi(bool on){
     }
     log_i("set CPU-Speed to %dMHz",getCpuFrequencyMhz());
     delay(10); //wait 10ms
+    WiFi.config(IPADDR_ANY, IPADDR_ANY, IPADDR_ANY,IPADDR_ANY,IPADDR_ANY); // call is only a workaround for bug in WiFi class
     WiFi.disconnect(true,true);
     WiFi.mode(WIFI_MODE_NULL);
-    WiFi.persistent(false); 
-    #if ESP_IDF_VERSION_MAJOR < 4
-    WiFi.config(IPADDR_ANY, IPADDR_ANY, IPADDR_ANY,IPADDR_ANY,IPADDR_ANY); // call is only a workaround for bug in WiFi class
-    #endif
-    //WiFi.setHostname(host_name.c_str());      
+    WiFi.persistent(false);
 
     //now configure access-point
     //so we have wifi connect and access-point at same time
@@ -3555,7 +3490,6 @@ void setWifi(bool on){
         // ... Begin with sdk config.
         WiFi.begin();
       }
-      /*
       uint32_t tStart = millis();    
       while(WiFi.status() != WL_CONNECTED){
         if (timeOver(millis(),tStart,60000)){ //wait max. 60seconds
@@ -3573,7 +3507,6 @@ void setWifi(bool on){
         WiFi.mode(WIFI_MODE_AP); //start AP
         setupSoftAp();
       }
-      */
     }else{
       WiFi.mode(WIFI_MODE_AP);
       setupSoftAp();
@@ -3587,16 +3520,18 @@ void setWifi(bool on){
       }
     }
     status.bWifiOn = true; 
+    log_i("switch WIFI ON ready !");
     Web_setup(); 
   }
   if ((!on) && (status.bWifiOn)){
+    Web_stop();
     log_i("switch WIFI OFF");
     setting.wifi.tWifiStop=0;
-    Web_stop();
-    WiFi.softAPdisconnect(true);
-    WiFi.disconnect(true);
+    //WiFi.softAPdisconnect(true);
+    WiFi.disconnect(true,true);
     WiFi.mode(WIFI_MODE_NULL);
     status.bWifiOn = false;
+    log_i("switch WIFI OFF ready !");
     
   }
   if (!status.bWifiOn){
