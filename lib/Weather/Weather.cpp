@@ -105,6 +105,7 @@ bool Weather::begin(TwoWire *pi2c, SettingsData &setting, int8_t oneWirePin, int
   actHour = 0;
   actDay = 0;
   _bHasBME = setting.wd.mode.bits.hasBME;
+  _bHasDS18B20 = setting.wd.mode.bits.ds18B20;
   anSettings = setting.wd.anemometer;
   aneometerType = anSettings.AnemometerType;
 

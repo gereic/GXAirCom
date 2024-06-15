@@ -41,14 +41,14 @@ PinExtPowerOnOff 36
 
 ******** Anemometer (Davis 6410) *********
 WINDDIR_PIN 36
-WINDSPEED_PIN 39  (use external Pull)
+WINDSPEED_PIN 39  (use external Pull 4,7k)
 
 ******** Anemometer (TX20) *********
 DATA_PIN 39
 
 ******** Anemometer (Peet Bros) *********
-WINDDIR_PIN 36  (use external Pull 10K)
-WINDSPEED_PIN 39  (use external Pull 10K)
+WINDDIR_PIN 36  (use external Pull 10k)
+WINDSPEED_PIN 39  (use external Pull 10k)
 
 
 
@@ -123,13 +123,13 @@ BATT_VOLT_PIN 34   ---|____|----|----|____|-----
                   GND  100K   GPIO34   27K     4.2V
 
 ******** Temperature-sensor DS18B20 for Ground-station *********
-TEMP_PIN 22
+TEMP_PIN 22 external 4,7k Pull-up
 
 ******** Anemometer (Davis 6410) *********
 GND (red)
 3V3 (yellow)
 WINDDIR_PIN 36 (green)
-WINDSPEED_PIN 37  (use external Pull) (black)
+WINDSPEED_PIN 37  (use external Pull 4,7k) (black)
 
 ******** Anemometer (TX20) *********
 DATA_PIN 37
@@ -212,11 +212,11 @@ SDA 21
 SCL 22 
 
 ******** Temperature-sensor DS18B20 for Ground-station *********
-TEMP_PIN 25  (if e-ink is selected, no ds18b20 is supported)
+TEMP_PIN 25  (if e-ink is selected, no ds18b20 is supported) external 4,7k Pull-up
 
 ******** Anemometer (Davis 6410) *********
 WINDDIR_PIN 33
-WINDSPEED_PIN 34  (use external Pull)
+WINDSPEED_PIN 34  (use external Pull 4,7k)
 
 ******** Anemometer (TX20) *********
 DATA_PIN 34
@@ -241,7 +241,7 @@ SCL 34
 
 ******** Anemometer (Davis 6410) *********
 WINDDIR_PIN 2
-WINDSPEED_PIN 3  (use external Pull)
+WINDSPEED_PIN 3  (use external Pull 4,7k)
 
 
 

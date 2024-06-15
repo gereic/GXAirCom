@@ -13,6 +13,7 @@
  const wsModeEn = 1;
  const wsModeBme = 2;
  const wsModeRain = 4;
+ const wsModeDS18B20 = 8;
 /*this function sets visible depending on actual option*/
 function setFts(){
       document.getElementById("traccarsrv").value="http://tracking.fivl.it:5055/";
@@ -102,7 +103,7 @@ function setVis(){
           document.getElementById("VisAWFFNT").style.display=''; /*set advanced weather settings visible    */
         }
       }
-      if (wsMode & wsModeBme){
+      if ((wsMode & wsModeBme) || (wsMode & wsModeDS18B20)){
         document.getElementById("VisWDBme").style.display='';  /*enable temp-correction for BME*/
       }
       if (document.getElementById("wdAnemo").value == 2){
@@ -160,6 +161,7 @@ function setVis(){
   document.getElementById("wdModeEnable").checked = wsMode & wsModeEn;
   document.getElementById("wdModeHasBME").checked = wsMode & wsModeBme;
   document.getElementById("wdModeRainSensor").checked = wsMode & wsModeRain;
+  document.getElementById("wdModeDS18B20").checked = wsMode & wsModeDS18B20;
 }
 
 function setWsMode(){
@@ -168,6 +170,7 @@ function setWsMode(){
   if (document.getElementById("wdModeEnable").checked) wsMode += 1;
   if (document.getElementById("wdModeHasBME").checked) wsMode += 2;
   if (document.getElementById("wdModeRainSensor").checked) wsMode += 4;
+  if (document.getElementById("wdModeDS18B20").checked) wsMode += 8;
   setVis();
 }
 
@@ -176,6 +179,7 @@ function getWsMode(){
   if (document.getElementById("wdModeEnable").checked) Ret += 1;
   if (document.getElementById("wdModeHasBME").checked) Ret += 2;
   if (document.getElementById("wdModeRainSensor").checked) Ret += 4;
+  if (document.getElementById("wdModeDS18B20").checked) Ret += 8;
   return Ret;
 }
 
@@ -194,8 +198,8 @@ function getRfMode(){
   var Ret = 0;
   if (document.getElementById("FntRx").checked) Ret += 1;
   if (document.getElementById("FntTx").checked) Ret += 2;
-  if (document.getElementById("LegRx").checked) Ret += 4;
-  if (document.getElementById("LegTx").checked) Ret += 8;
+  //if (document.getElementById("LegRx").checked) Ret += 4;
+  //if (document.getElementById("LegTx").checked) Ret += 8;
   return Ret;
 }
 
@@ -213,6 +217,7 @@ function setRfMode(mode){
   }else{
     e.checked = false;
   }
+  /*
   e = document.getElementById("LegRx");
   if (mode & 4){
     e.checked = true;
@@ -225,6 +230,7 @@ function setRfMode(mode){
   }else{
     e.checked = false;
   }
+  */
 }
 
 function getMQTTMode(){
@@ -1058,6 +1064,7 @@ function onMessage(evt) {
             <th>FANET TX (sending Fanet-MSG)</th>
             <td><input type="checkbox" id="FntTx"></td>
           </tr>
+          <!--
           <tr>
             <th>Flarm RX (receiving Flarm-MSG)</th>
             <td><input type="checkbox" id="LegRx"></td>
@@ -1066,6 +1073,7 @@ function onMessage(evt) {
             <th>Flarm TX (sending Flarm-MSG)</th>
             <td><input type="checkbox" id="LegTx"></td>
           </tr>
+          -->
           <tr id="VisFanetTracking">
             <th>fanet-tracking-mode</th>
             <td><select id="fntMode">
@@ -1311,6 +1319,10 @@ function onMessage(evt) {
           <tr>
             <th>BME280</th>
             <td><input onchange="setWsMode()" type="checkbox" id="wdModeHasBME"></td>
+          </tr>
+          <tr>
+            <th>DS18B20</th>
+            <td><input onchange="setWsMode()" type="checkbox" id="wdModeDS18B20"></td>
           </tr>
           <tr id="VisWDBme">
             <th>offset Temperature [K]</th>

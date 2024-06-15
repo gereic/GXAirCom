@@ -30,6 +30,9 @@
 #define FLARM_KEY2 0x045d9f3b
 #define FLARM_KEY3 0x87b562f4
 
+#define FLARM_KEY4 0x956F6C77
+#define FLARM_KEY5 { 0xA5F9B21C, 0xAB3F9D12, 0xC6F34E34, 0xD72FA378 }
+
 enum
 {
 	TURN_RATE_0,
@@ -73,7 +76,7 @@ typedef struct UFO {
 typedef struct {
     /********************/
     unsigned int addr:24;
-    unsigned int zero0:4;
+    unsigned int type:4; /* 2 new protocol, 0 old protocol, 1 other messages */
     unsigned int addr_type:3;
     unsigned int zero1:1;
     // unsigned int magic:8;
@@ -100,6 +103,43 @@ typedef struct {
     int8_t ew[4];
     /********************/
 } __attribute__((packed)) flarm_packet_t;
+
+
+typedef struct {
+    /********************/
+    unsigned int addr:24;
+    unsigned int type:4;     /* 2 new protocol, 0 old protocol, 1 other messages */
+    unsigned int addr_type:3;
+    unsigned int _unk1:1;
+    /********************/
+    unsigned int _unk2:22;   /* always 0 ? */
+    unsigned int stealth:1;
+    unsigned int no_track:1;
+    unsigned int _unk3:2;    /* always 1 ? */
+    unsigned int _unk4:2;    /* always 0 ? */
+    unsigned int _unk5:2;    /* always 1 ? */
+    unsigned int _unk6:2;    /* always 0 ? */
+    /********************/
+    unsigned int _unk7:2;    /* always 0 ? */
+    unsigned int tstamp:4;   /* the LS 4 bits of timestamp (unix epoch) */
+    unsigned int aircraft_type:4;
+    unsigned int _unk8:1;    /* always 0 ? */
+    unsigned int alt:13;     /* meters + 1000, enscaled(12,1) */
+
+    unsigned int lat:20;     /* rounded and with MS bits removed */
+    unsigned int lon:20;     /* rounded and with MS bits removed */
+    int          turn:9;     /* degs/sec times 20, enscaled(6,2) */
+    unsigned int hs:10;      /* m/s times 10, enscaled(8,2) */
+    int          vs:9;       /* m/s times 10, enscaled(6,2) */
+    unsigned int course:10;  /* degrees (0-360) times 2 */
+    unsigned int airborne:2; /* 1 when stationary, 2 when moving, 3 when circling */
+
+    unsigned int hp:6;       /* meters times 10, enscaled(3,3) */
+    unsigned int vp:5;       /* meters times  4, enscaled(2,3) */
+    unsigned int _unk9:5;
+    unsigned int _unk10:8;   /* always 0 ? */
+    /********************/
+} __attribute__((packed)) flarm_v7_packet_t;
 
 
 typedef struct {
@@ -169,6 +209,9 @@ size_t flarm_decrypt(void *flarm_pkt, long timestamp);
 uint8_t flarm_parity(uint32_t x);
 unsigned short flarm_getCkSum(byte* ba, int len);
 int8_t flarm_decode(void *flarm_pkt, ufo_t *this_aircraft, ufo_t *fop);
+bool flarm_v7_decode(void *flarm_pkt, ufo_t *this_aircraft, ufo_t *fop);
+size_t flarm_v7_encode(AircraftState *aircraft, uint8_t *packet, long timestamp);
+void flarm_v7_debugBuffer(uint8_t *flarm_pkt,ufo_t *this_aircraft);
 
 
 #endif

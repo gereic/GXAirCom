@@ -1719,6 +1719,7 @@ void setup() {
   }
   //listSpiffsFiles();
   load_configFile(&setting); //load configuration
+  setting.RFMode = setting.RFMode & 0x03; //only FANET allowed !!
   //setting.wifi.connect = eWifiMode::CONNECT_NONE;
   #ifdef GSM_MODULE
   //minimum cpu-frequency is here 80Mhz cause of GSM-Module

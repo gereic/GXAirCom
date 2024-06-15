@@ -12,6 +12,7 @@ var rtc=0;
 const wsModeEn = 1;
 const wsModeBme = 2;
 const wsModeRain = 4;
+const wsModeDS18B20 = 8;
 function resetMaxLoopTime(){
   var obj = {rLoopTime : 1};
   doSend(JSON.stringify(obj));
@@ -40,6 +41,8 @@ function setVis(){
       document.getElementById("VisWdTemp").style.display='';
       document.getElementById("VisWdHum").style.display='';
       document.getElementById("VisWdPress").style.display='';
+    }else if (wsMode & wsModeDS18B20){
+      document.getElementById("VisWdTemp").style.display='';
     }
     if (wsMode & wsModeRain){
       document.getElementById("VisWdR1h").style.display='';

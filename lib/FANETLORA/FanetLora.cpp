@@ -862,12 +862,22 @@ bool FanetLora::createLegacy(uint8_t *buffer){
   }else{
     flarmAircraftConfig.airborne_mode = 2; //inAir
   }
-  
-  flarm_create_packet(&flarmAircraftState, buffer);
-  flarm_encrypt(buffer,_myData.timestamp);
+  if (1 == 2){
+    flarm_create_packet(&flarmAircraftState, buffer);
+    flarm_encrypt(buffer,_myData.timestamp);
+  }
+  flarm_v7_encode(&flarmAircraftState, buffer,_myData.timestamp);
 	uint16_t crc16 = flarm_getCkSum(buffer,24);
 	buffer[24]=(crc16 >>8);
   buffer[25]=crc16;
+  /*
+  ufo_t myAircraft={0};
+  myAircraft.latitude = _myData.lat;
+  myAircraft.longitude = _myData.lon;
+  myAircraft.geoid_separation = _geoIdAltitude;   
+  myAircraft.timestamp = _myData.timestamp;
+  flarm_v7_debugBuffer(&buffer[0],&myAircraft);
+  */
   return true;
 }
 

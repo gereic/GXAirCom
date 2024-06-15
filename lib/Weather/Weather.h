@@ -100,6 +100,7 @@ private:
     uint8_t actDay = 0;
     uint8_t aneometerType = 0;
     bool _bHasBME = false;
+    bool _bHasDS18B20 = false;
     ADS1015 _ADS1015;
     bool initADS(AnemometerSettings &anSettings);
     bool _bHasADS = false;

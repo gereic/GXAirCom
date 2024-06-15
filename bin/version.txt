@@ -384,3 +384,7 @@ added new images for GS and GS_SIM7000 with Platform 6.3.2 and no Bluetooth
 
 V5.5.1
 Bugfix on Bluetooth connection with XCGuide
+
+V6.0.0
+removed support for Flarm
+added settings for weather-station if only DS18B20 installed

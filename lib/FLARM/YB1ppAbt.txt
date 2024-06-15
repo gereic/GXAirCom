@@ -1,0 +1,99 @@
+In Mid-March 2024 FLARMs switched to transmitting data in a new protocol.
+
+Reception experiments showed that the frequencies, modulation, sync bytes, packet size, and the first (unencrypted) 32-bit word of the data packet were not changed. The second word, too, is unencrypted.  But the remaining 4 words are encrypted.
+
+Examination of the binaries showed that the new protocol uses a new, 2-stage, encryption scheme. The first stage takes the following 4 values as initial 32-bit key words: the first (unencrypted) word of the data packet, the second word of the data packet, the timestamp (unix epoch) shifted 4 bits to the right, and the constant 0x956F6C77. These 4 words, treated as 16 (low-endian) bytes, are scrambled using 2 rounds of Feistel type transformations. This can be described using this C code:
+
+uint32_t wkeys[4] = {...};
+uint8_t *bkeys = &wkeys[0];
+int p, q, x, y, z, sum;
+x = bkeys[15];
+sum = 0;
+q = 2;
+do {
+  sum += 0x9E3779B9;   // "delta"
+  for (p=0; p<16; p++) {
+    z = x & 0xFF;
+    y = bkeys[(p+1) % 16];
+    x = bkeys[p];
+    x += ((((z >> 5) ^ (y << 2)) + ((y >> 3) ^ (z << 4))) ^ (sum ^ y));
+    bkeys[p] = (uint8_t)x;
+  }
+} while (--q > 0);
+
+After that the last four 32-bit words of the packet are each XOR-ed in place with the corresponding scrambled word. This makes the scrambling stage symmetric, i.e., it is reversible with exactly the same procedure:
+
+packet[2] ^= wkeys[0];
+packet[3] ^= wkeys[1];
+packet[4] ^= wkeys[2];
+packet[5] ^= wkeys[3];
+
+The second stage of the encryption (and thus the first stage of decryption) uses XXTEA, like the older protocol, but with fixed keys:  0xA5F9B21C, 0xAB3F9D12, 0xC6F34E34, 0xD72FA378
+
+After decryption, it was found that the data fields differ from the old protocol in several ways.
+
+The latitude is encoded in a similar manner to the old protocol, but with more precision, using one more bit (20 instead of 19), and with a divisor of 52 rather than 128.
+
+For the longitude the divisor is not constant, it is chosen based on the integer part (degrees) of the absolute latitude, as follows:
+
+static uint16_t table[] = {
+    53,53,54,54,55,55,
+    56,56,57,57,58,58,59,59,60,60,
+    61,61,62,62,63,63,64,64,65,65,
+    67,68,70,71,73,74,76,77,79,80,
+    82,83,85,86,88,89,91,94,98,101,
+    105,108,112,115,119,122,126,129,137,144,
+    152,159,167,174,190,205,221,236,252,
+    267,299,330,362,425,489,552,616,679,743,806,806
+};
+int ilat = (int)fabs(latitude);  // degrees
+if (ilat < 14)  londiv = 52;
+else            londiv = table[ilat-14];
+
+Several data fields (some signed) are integers with a wide dynamic range, packed into fewer bits using a pseudo floating point format.  They can be decoded as follows - if signed then an extra bit is added on the left:
+
+int descale( unsigned int value, unsigned int mbits, unsigned int ebits)
+{
+    unsigned int offset = (1 << mbits);
+    unsigned int signbit = (offset << ebits);
+    unsigned int negative = (value & signbit);
+    value &= (signbit - 1);
+    if (value >= offset) {
+        unsigned int exp = value >> mbits;
+        value &= (offset - 1);
+        value += offset;
+        value <<= exp;
+        value -= offset;
+    }
+    return (negative? -(int)value : value);
+}
+
+Here are the data fields in the packet, as deduced from examining the binaries, and from comparing actual data packets to other information available about the same aircraft at the same time. The bits are numbered here from 0, little-endian within bytes, and bytes in the order transmitted - little-endian within words.
+
+Bits 0-23: aircraft ID
+Bits 24-27: message type: 2 = this new protocol, 0 = old protocol, 1 = other non-traffic messages
+Bits 28-30: address (ID) type (bit 30 may not actually be used)
+Bits 31-53: always 0?
+Bit 54: stealth flag
+Bit 55: no-track flag
+Bits 56-57: always 1?
+Bits 58-59: always 0?
+Bits 60-61: always 1?
+Bits 62-65: always 0?
+Bits 66-69: the least-significant 4 bits of the FLARM's timestamp (unix epoch)
+Bits 70-73: aircraft type
+Bit 74: always 0?
+Bits 75-87: altitude in meters + 1000, enscaled(12,1)
+Bits 88-107: latitude (rounded and with MS bits removed)
+Bits 108-127: longitude (rounded and with MS bits removed)
+Bits 128-136: turn rate, degs/sec times 20, enscaled(6,2), signed
+Bits 137-146: horizontal speed, m/s times 10, enscaled(8,2)
+Bits 147-155: vertical speed, m/s times 10, enscaled(6,2), signed
+Bits 156-165: course direction, degrees (0-360) times 2
+Bits 166-167: 2-bit integer, 1 when stationary, 2 when moving, 3 when circling
+Bits 168-173: GNSS horizontal accuracy, meters times 10, enscaled(3,3)
+Bits 174-178: GNSS vertical accuracy, meters times 4, enscaled(2,3)
+Bits 179-183: unknown data
+Bits 184-191: always 0?
+
+Unlike in the old protocol, the data (latitude, longitude, course direction) are for the current moment, not some time in the future.  But, like in the old protocol, the speed and turnrate are referenced to the ground, and thus oscillate up and down while the aircraft is circling in wind.

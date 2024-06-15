@@ -318,6 +318,12 @@ void FanetMac::frameReceived(int length)
 			Serial.print(Buffer);
 		}
 		#endif
+    if (length != 26){ //FSK-Frame is fixed 26Bytes long
+			#if RX_DEBUG > 0
+			log_e("rx size 26!=%d",length);
+			#endif
+			return;
+		}		
 		#if RX_DEBUG > 0
 			static uint32_t tmax = 0;
 			static uint32_t tmin = 1000;
@@ -355,12 +361,6 @@ void FanetMac::frameReceived(int length)
 			//log_i("%s",Buffer);
 			//log_i("l=%d;%s",len,Buffer);
 		#endif
-    if (length != 26){ //FSK-Frame is fixed 26Bytes long
-			#if RX_DEBUG > 0
-			log_e("rx size 26!=%d",length);
-			#endif
-			return;
-		}
     // The magic number is a 1-byte unencrypted value at the 4th byte. 
 		// high-nibble --> Address-Type
 		// ICAO = 1;
@@ -368,114 +368,46 @@ void FanetMac::frameReceived(int length)
 		// ANONYMOUS = 3;
 		// low-nibble --> unknown (must be zero)
 
-		uint8_t magic = rx_frame[3] & 0x0F;
-		if (magic != 0x00){
-			//the unknown-Bits have to be zero !!
+		uint16_t crc16_2 = (uint16_t(rx_frame[24]) << 8) + uint16_t(rx_frame[25]);
+		uint16_t crc16 =  flarm_getCkSum(rx_frame,24);
+		if (crc16 != crc16_2){
 			#if RX_DEBUG > 0
-      log_e("Legacy: unknown-Bits have to be zero %d",magic);
-			#endif
-      return;			
-		}
-		/*
-		magic = rx_frame[3] >> 8;
-    if (magic != 0x10 && magic != 0x20 && magic != 0x30) {
-			#if RX_DEBUG > 0
-      log_e("%d Legacy: wrong message %d!=0x10!=0x20",millis(),magic);
-			#endif
-      return;			
-    }
-		*/
-
-    //check if Checksum is OK
-  	uint16_t crc16 =  flarm_getCkSum(rx_frame,24);
-    uint16_t crc16_2 = (uint16_t(rx_frame[24]) << 8) + uint16_t(rx_frame[25]);
-    if (crc16 != crc16_2){
-			/*
-			time_t tUnix;
-      char strftime_buf[64];
-      struct tm timeinfo;
-      time(&tUnix);
-			len += sprintf(Buffer+len,"T=%d;",tUnix);
-			//log_i("l=%d,%s",len,Buffer);
-      localtime_r(&tUnix, &timeinfo);
-      strftime(strftime_buf, sizeof(strftime_buf), "%F %T", &timeinfo);   
-			len += sprintf(Buffer+len,"%s;",strftime_buf);
-			//log_i("l=%d,%s",len,Buffer);
-			if (_actMode == MODE_FSK_8684){
-				len += sprintf(Buffer+len,"F=868.4;");
-			}else{
-				len += sprintf(Buffer+len,"F=868.2;");
-			}
-			len += sprintf(Buffer+len,"Rx=%d;rssi=%d;", num_received, rssi);
-
-			for(int i=0; i<num_received; i++)
-			{
-				len += sprintf(Buffer+len,"%02X", rx_frame[i]);
-				if (i >= 26) break;
-				//if(i<num_received-1)
-				//	len += sprintf(Buffer+len,",");
-			}
-			len += sprintf(Buffer+len,"\n");
-			Serial.print(Buffer);
-			*/
-			//fmac.sendUdpData((uint8_t *)Buffer,len);
-			//log_i("%s",Buffer);
-			//log_i("l=%d;%s",len,Buffer);
-      #if RX_DEBUG > 0
 			log_e("%d Legacy: wrong Checksum %04X!=%04X",millis(),crc16,crc16_2);
 			#endif
+			return;
+		}
+
+		//bool v7packet = false;
+		flarm_v7_packet_t *pkt = (flarm_v7_packet_t *)&rx_frame[0];
+		if (pkt->type == 2){
+			//new protocoll
+			//v7packet = true;
+			//log_i("new protocol received");
+		//}else if (pkt->addr_type == 0){
+		//	log_i("old protocol received");
+		}else{
+			//#if RX_DEBUG > 0
+      //log_e("flarm: wrong packet type %d",pkt->type);
+			//#endif
       return;
-    }
+		}
     ufo_t air={0};
     ufo_t myAircraft={0};
     myAircraft.latitude = lat;
     myAircraft.longitude = lon;
     myAircraft.geoid_separation = geoidAlt;
-    myAircraft.timestamp = now();
-    //myAircraft.latitude =    
+		myAircraft.timestamp = tUnix; 
 		uint8_t newPacket[26];
-		//uint32_t tNow = now();	
 		uint32_t tOffset = 0;	
 		bool bOk = false;
 		int8_t ret = 0;
-		for(int i = 0;i < 5; i++){
+		int i = 0;
+		//flarm_v7_debugBuffer(&rx_frame[0],&myAircraft);
+		for(i = 0;i < 5; i++){
 			memcpy(&newPacket[0],&rx_frame[0],26);
-			flarm_decrypt(newPacket,tUnix + tOffset);
-			ret = flarm_decode(newPacket,&myAircraft,&air);
-			//if (legacy_decode(newPacket,&myAircraft,&air) == 0){
-			if (ret == 0){				
-				//float dist = distance(myAircraft.latitude,myAircraft.longitude,air.latitude,air.longitude, 'K');      
-				//len = sprintf(Buffer,"T=%dadr=%06X;adrType=%d;airType=%d,lat=%.06f,lon=%.06f,alt=%.01f,speed=%.01f,course=%.01f,climb=%.01f\n", millis()-fmac._ppsMillis,air.addr,air.addr_type,air.aircraft_type,air.latitude,air.longitude,air.altitude,air.speed,air.course,air.vs);
-				/*
-				len = sprintf(Buffer,"T=%dadr=%06X;adrType=%d;airType=%d,lat=%.06f,lon=%.06f,alt=%.01f,speed=%.01f,course=%.01f,vs=%.01f,geoid=%.01f", air.timestamp,air.addr,air.addr_type,air.aircraft_type,air.latitude,air.longitude,air.altitude,air.speed,air.course,air.vs,air.geoid_separation);
-				Serial.print(Buffer);
-				legacy_packet_t *pkt = (legacy_packet_t *) newPacket;
-				len = sprintf(Buffer,",Turnrate=%d\n", pkt->turnrate);
-				Serial.print(Buffer);
-				*/
-
-				//fmac.sendUdpData((uint8_t *)Buffer,len);
-				
-				//legacy_packet_t *pkt = (legacy_packet_t *) newPacket;
-				//len = sprintf(Buffer,"unk0=%d,unk1=%d,unk2=%d,unk3=%d,\n", pkt->zero0,pkt->zero1,pkt->_unk2,pkt->zero2);
-				//fmac.sendUdpData((uint8_t *)Buffer,len);
-				//Serial.print(Buffer);
-
-      	//if ((dist <= 100) && (air.addr != 0) && (air.aircraft_type != 0)){
-				//if ((air.addr != 0) && (air.aircraft_type != 0)){
-				//if ((pkt->zero0 == 0) && (pkt->zero1 == 0) && (pkt->_unk2 == 0) && (pkt->zero2 == 0)){
-			  bOk = true;
-				/*
-				if (tOffset != 0){
-					log_i("index=%d,tOffset=%d",i,tOffset);
-				}
-				*/
-				break;
-			//}else if (ret == -2){
-				//unknown message
-			//	break;
-			}
-			//log_i("Legacy-Packet not valid ts=%d;offset=%d",tNow,tOffset);
+			myAircraft.timestamp = tUnix + tOffset;
+			bOk = flarm_v7_decode(&newPacket[0],&myAircraft,&air);
+			if (bOk) break;
 			if (i == 0){
 				tOffset = 1;
 			}else if (i == 1){
@@ -484,9 +416,25 @@ void FanetMac::frameReceived(int length)
 				tOffset = 2;
 			}else if (i == 3){
 				tOffset = -2;
-			}
+			}				
 		}
+		//if (i > 0){
+		//	pkt = (flarm_v7_packet_t *)&newPacket[0];
+		//	log_i("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",bOk,i,pkt->_unk1,pkt->_unk2,pkt->_unk3,pkt->_unk4,pkt->_unk5,pkt->_unk6,pkt->_unk7,pkt->_unk8,pkt->_unk9,pkt->_unk10);
+		//}
+		/*
 		if (bOk){
+
+		}
+		float dist = distance(myAircraft.latitude,myAircraft.longitude,air.latitude,air.longitude, 'K');  
+		uint8_t ok = 1;
+		if (dist > 10){
+			ok = 0;
+		}
+		log_i("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",bOk,ok,i,pkt->_unk1,pkt->_unk2,pkt->_unk3,pkt->_unk4,pkt->_unk5,pkt->_unk6,pkt->_unk7,pkt->_unk8,pkt->_unk9,pkt->_unk10);
+		*/
+		if (bOk){
+			//log_i("legacy ok");
 			frm = new Frame();
 			frm->src.manufacturer = uint8_t(air.addr >> 16);
 			frm->src.id = uint16_t(air.addr & 0x0000FFFF);

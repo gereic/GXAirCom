@@ -6,6 +6,109 @@
 
 #include "FlarmRadio.h"
 
+void printbuffer(uint8_t *buffer){
+  char hexBuffer[3];
+  for(int i=0; i<26; i++){
+    sprintf(hexBuffer,"%02X", buffer[i]);
+    Serial.print(hexBuffer);
+  }
+  Serial.print("\n");
+}
+
+static const uint16_t lon_div_table[] = {
+   53,  53,  54,  54,  55,  55,
+   56,  56,  57,  57,  58,  58,  59,  59,  60,  60,
+   61,  61,  62,  62,  63,  63,  64,  64,  65,  65,
+   67,  68,  70,  71,  73,  74,  76,  77,  79,  80,
+   82,  83,  85,  86,  88,  89,  91,  94,  98, 101,
+  105, 108, 112, 115, 119, 122, 126, 129, 137, 144,
+  152, 159, 167, 174, 190, 205, 221, 236, 252,
+  267, 299, 330, 362, 425, 489, 552, 616, 679, 743, 806, 806
+};
+
+static int descale(unsigned int value, unsigned int mbits, unsigned int ebits)
+{
+    unsigned int offset   = (1 << mbits);
+    unsigned int signbit  = (offset << ebits);
+    unsigned int negative = (value & signbit);
+
+    value &= (signbit - 1);
+
+    if (value >= offset) {
+        unsigned int exp = value >> mbits;
+        value &= (offset - 1);
+        value += offset;
+        value <<= exp;
+        value -= offset;
+    }
+
+    return (negative ? -(int)value : value);
+}
+
+static unsigned int enscale_unsigned(unsigned int value,
+                                     unsigned int mbits,
+                                     unsigned int ebits)
+{
+    unsigned int offset  = (1 << mbits);
+    unsigned int max_val = (offset << ebits) - 1;
+
+    if (value >= offset) {
+      unsigned int e      = 0;
+      unsigned int m      = offset + value;
+      unsigned int mlimit = offset + offset - 1;
+
+      while (m > mlimit) {
+          m >>= 1;
+          e += offset;
+          if (e > max_val) {
+              return (max_val);
+          }
+      }
+      m -= offset;
+      value = (e | m);
+    }
+
+    return (value);
+}
+
+static unsigned int enscale_signed(  signed int value,
+                                   unsigned int mbits,
+                                   unsigned int ebits)
+{
+    unsigned int offset  = (1 << mbits);
+    unsigned int signbit = (offset << ebits);
+    unsigned int max_val = signbit - 1;
+    unsigned int sign    = 0;
+
+    if (value < 0) {
+      value = -value;
+      sign  = signbit;
+    }
+
+    unsigned int rval;
+    if (value >= offset) {
+      unsigned int e      = 0;
+      unsigned int m      = offset + (unsigned int) value;
+      unsigned int mlimit = offset + offset - 1;
+
+      while (m > mlimit) {
+        m >>= 1;
+        e += offset;
+        if (e > max_val) {
+          return (sign | max_val);
+        }
+      }
+      m -= offset;
+      rval = (sign | e | m);
+    } else {
+      rval = (sign | (unsigned int) value);
+    }
+
+    return (rval);
+}
+
+
+
 uint8_t flarm_get_zone(float lat, float lon){
 /*
 - Zone 1: Europe, Africa, Russia, China (30W to 110E, excl. zone 5)
@@ -474,7 +577,193 @@ size_t flarm_encrypt(void *flarm_pkt, long timestamp)
   return (sizeof(flarm_packet_t));
 }
 
+void make_v7_key(uint32_t key[4]) {
+  uint8_t *bkeys;
+  int p, q, x, y, z, sum;
 
+  bkeys = (uint8_t *) &key[0];
+  x = bkeys[15];
+  sum = 0;
+  q = 2;
+
+  do {
+    sum += DELTA;
+    for (p=0; p<16; p++) {
+      z = x & 0xFF;
+      y = bkeys[(p+1) % 16];
+      x = bkeys[p];
+      x += ((((z >> 5) ^ (y << 2)) + ((y >> 3) ^ (z << 4))) ^ (sum ^ y));
+      bkeys[p] = (uint8_t)x;
+    }
+  } while (--q > 0);
+}
+
+bool flarm_v7_decode(void *flarm_pkt, ufo_t *this_aircraft, ufo_t *fop){
+  const uint32_t xxtea_key[4] = FLARM_KEY5;
+  uint32_t key_v7[4];
+  flarm_v7_packet_t *pkt = (flarm_v7_packet_t *) flarm_pkt;
+  uint32_t *wpkt     = (uint32_t *) flarm_pkt;
+  uint32_t timestamp = (uint32_t) this_aircraft->timestamp;  
+
+  flarm_btea(&wpkt[2], -4, xxtea_key);
+  key_v7[0]          = wpkt[0];
+  key_v7[1]          = wpkt[1];
+  key_v7[2]          = timestamp >> 4;
+  key_v7[3]          = FLARM_KEY4;
+
+  make_v7_key(key_v7);
+
+  wpkt[2] ^= key_v7[0];
+  wpkt[3] ^= key_v7[1];
+  wpkt[4] ^= key_v7[2];
+  wpkt[5] ^= key_v7[3];
+
+  if ((pkt->_unk1 == 0) && (pkt->_unk2 == 0) && (pkt->_unk3 == 3) && (pkt->_unk4 == 0) && (pkt->_unk5 == 3) && (pkt->_unk6 == 0) && (pkt->_unk7 == 0) && (pkt->_unk8 == 0) && (pkt->_unk9 == 0) && (pkt->_unk10 == 0)){
+    //ok
+  }else{
+    log_i("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",pkt->_unk1,pkt->_unk2,pkt->_unk3,pkt->_unk4,pkt->_unk5,pkt->_unk6,pkt->_unk7,pkt->_unk8,pkt->_unk9,pkt->_unk10);
+    return false;
+  }
+
+  fop->addr          = pkt->addr;
+  fop->addr_type     = pkt->addr_type;
+  fop->timestamp     = timestamp;
+
+  fop->stealth       = pkt->stealth;
+  fop->no_track      = pkt->no_track;
+  fop->aircraft_type = pkt->aircraft_type;
+
+  float ref_lat      = this_aircraft->latitude;
+  float ref_lon      = this_aircraft->longitude;
+  float geo_separ    = this_aircraft->geoid_separation;
+
+  int16_t alt = descale(pkt->alt, 12, 1) - 1000 ; /* relative to WGS84 ellipsoid */
+  fop->altitude      = (float) alt - geo_separ;
+
+  int32_t round_lat  = (int32_t) (ref_lat * 1e7) / 52;
+  int32_t lat        = (pkt->lat - round_lat) % (uint32_t) 0x100000;
+  if (lat >= 0x080000) lat -= 0x100000;
+  lat                = ((lat + round_lat) * 52) /* + 0x40 */;
+  fop->latitude      = (float)lat / 1e7;
+
+  int ilat           = (int)fabs(fop->latitude);
+  if (ilat > 89) { ilat = 89; }
+  int32_t lon_div    = (ilat < 14) ? 52 : lon_div_table[ilat-14];
+
+  int32_t round_lon  = (int32_t) (ref_lon * 1e7) / lon_div;
+  int32_t lon        = (pkt->lon - round_lon) % (uint32_t) 0x100000;
+  if (lon >= 0x080000) lon -= 0x100000;
+  lon                = ((lon + round_lon) * lon_div) /* + 0x40 */;
+  fop->longitude     = (float)lon / 1e7;
+
+  uint16_t speed10   = (uint16_t) descale(pkt->hs, 8, 2);
+  fop->speed         = speed10 / (10 * _GPS_KMH_2_MPS);
+
+  int16_t vs10       = (int16_t) descale(pkt->vs, 6, 2);
+  fop->vs            = ((float) vs10) / 10.0; //* (_GPS_FEET_PER_METER * 6.0);
+
+  float course       = pkt->course;
+  fop->course        = course / 2;
+
+    /* TODO */
+  return true;
+}
+
+size_t flarm_v7_encode(AircraftState *aircraft, uint8_t *packet, long timestamp){
+    const uint32_t xxtea_key[4] = FLARM_KEY5;
+    uint32_t key_v7[4];
+
+    flarm_v7_packet_t *pkt = (flarm_v7_packet_t *) packet;
+    uint32_t *wpkt     = (uint32_t *) packet;
+
+    //uint32_t id        = this_aircraft->addr;
+    //uint8_t acft_type  = this_aircraft->aircraft_type > AIRCRAFT_TYPE_STATIC ?
+    //                     AIRCRAFT_TYPE_UNKNOWN : this_aircraft->aircraft_type;
+
+    int32_t lat        = (aircraft->extrapolated_lat_deg_e7);
+    int32_t lon        = (aircraft->extrapolated_lon_deg_e7);
+    int16_t alt = (int16_t) (aircraft->extrapolated_height_m);
+    //uint32_t timestamp = (uint32_t) timestamp;
+
+    float course       = aircraft->extrapolated_heading_deg_e1;
+    float speedf       = (float)aircraft->gspeed_filtered_cm_s / 100.; //aircraft->gps.; /* m/s */
+    float vsf          = (float)aircraft->vel_u_filtered_cm_s / 100.; //this_aircraft->vs / (_GPS_FEET_PER_METER * 60.0); /* m/s */
+
+    //log_i("course=%d,speed=%d,vsf=%d",aircraft->extrapolated_heading_deg_e1,aircraft->gspeed_filtered_cm_s,aircraft->vel_u_filtered_cm_s);
+
+  // Fill bytes 0 to 23 of the packet with data.
+    packet[0] = aircraft->config->identifier[0];
+    packet[1] = aircraft->config->identifier[1];
+    packet[2] = aircraft->config->identifier[2];
+    pkt->type          = 2; /* Air V7 position */
+
+    pkt->addr_type     = aircraft->config->addressType;
+
+    pkt->stealth       = aircraft->config->private_mode;
+    pkt->no_track      = aircraft->config->no_tracking_mode;
+
+
+    pkt->tstamp        = timestamp & 0xF;
+    pkt->aircraft_type = aircraft->config->type;
+    //log_i("lat=%d,lon=%d,alt=%d,adrType=%d,ts=%d,aircraftType=%d",lat,lon,alt,aircraft->config->addressType,timestamp,aircraft->config->type);
+
+    alt += 1000;
+    if (alt < 0) { alt = 0; }
+    pkt->alt           = enscale_unsigned(alt, 12, 1); /* 0 ... 12286 */
+
+    pkt->lat = ((lat / 52) + (lat & 0x40 /* TBD */ ? (lat < 0 ? -1 : 1) : 0)) & 0xFFFFF;
+
+    int ilat           = abs(lat / 10000000); //(int)fabs(this_aircraft->latitude);
+    log_i("ilat=%d",ilat);
+    if (ilat > 89) { ilat = 89; }
+    int32_t lon_div    = (ilat < 14) ? 52 : lon_div_table[ilat-14];
+
+    pkt->lon           = (lon / lon_div) & 0xFFFFF;
+
+    pkt->turn          = 0; /* TBD */
+
+    uint16_t speed10   = (uint16_t) roundf(speedf * 10.0f);
+    pkt->hs            = enscale_unsigned(speed10, 8, 2); /* 0 ... 3832 */
+
+    int16_t vs10       = (int16_t) roundf(vsf * 10.0f);
+    pkt->vs = aircraft->config->private_mode ? 0 : enscale_signed(vs10, 6, 2); /* 0 ... 952 */
+
+    pkt->course        = (int) (course * 2);
+    pkt->airborne      = aircraft->is_airborne ? 2 : 1;
+
+/*
+ * TODO
+ * Volunteer contributors are welcome:
+ * https://pastebin.com/YB1ppAbt
+ */
+    pkt->_unk1         = 0;
+    pkt->_unk2         = 0;
+    pkt->_unk3         = 3;
+    pkt->_unk4         = 0;
+    pkt->_unk5         = 3;
+    pkt->_unk6         = 0;
+    pkt->_unk7         = 0;
+    pkt->_unk8         = 0;
+    pkt->_unk9         = 0; /* TBD */
+    pkt->_unk10        = 0;
+
+    key_v7[0]          = wpkt[0];
+    key_v7[1]          = wpkt[1];
+    key_v7[2]          = timestamp >> 4;
+    key_v7[3]          = FLARM_KEY4;
+
+    make_v7_key(key_v7);
+
+    wpkt[2] ^= key_v7[0];
+    wpkt[3] ^= key_v7[1];
+    wpkt[4] ^= key_v7[2];
+    wpkt[5] ^= key_v7[3];
+
+    flarm_btea(&wpkt[2], 4, xxtea_key);
+    printbuffer(packet);
+    return (sizeof(flarm_v7_packet_t));
+
+}
 
 size_t flarm_decrypt(void *flarm_pkt, long timestamp)
 {
@@ -524,8 +813,8 @@ int8_t flarm_decode(void *flarm_pkt, ufo_t *this_aircraft, ufo_t *fop) {
     log_e("aircraft_type = 0");
     return -9;    
   }
-  if (pkt->zero0 != 0){
-    log_e("unknown message zero0=%02X",pkt->zero0);
+  if (pkt->type != 0){
+    log_e("unknown message type=%02X",pkt->type);
     return -10;
   }
   if (pkt->zero1 != 0){
@@ -625,6 +914,29 @@ int8_t flarm_decode(void *flarm_pkt, ufo_t *this_aircraft, ufo_t *fop) {
 
 
   return 0;
+}
+
+void flarm_v7_debugBuffer(uint8_t *flarm_pkt,ufo_t *this_aircraft){
+  uint16_t crc16_2 = (uint16_t(flarm_pkt[24]) << 8) + uint16_t(flarm_pkt[25]);
+  uint16_t crc16 =  flarm_getCkSum(flarm_pkt,24);
+  if (crc16 != crc16_2){
+    log_e("wrong Checksum %04X!=%04X",crc16,crc16_2);
+    return;
+  } 
+  flarm_v7_packet_t *pkt = (flarm_v7_packet_t *)flarm_pkt;
+  if (pkt->type != 2){
+    log_e("packet type %d != 2",pkt->type);
+    return;
+  } 
+  ufo_t air={0};
+  bool bOk = flarm_v7_decode(flarm_pkt,this_aircraft,&air);
+  if (!bOk){
+    log_e("flarm-package not ok");
+    return;
+  }
+  log_i("id=%06X,addr_type=%d,lat=%d,lon=%D,alt=%d,ab=%d,turn=%d,hs=%d,vs=%d,hp=%d,vp=%d",pkt->addr,pkt->addr_type,pkt->lat,pkt->lon,pkt->alt,pkt->airborne,pkt->turn,pkt->hs,pkt->vs,pkt->hp,pkt->vp);
+  log_i("aircraft=%d,course=%d,nt=%d,st=%d,tstmp=%d",pkt->aircraft_type,pkt->course,pkt->no_track,pkt->stealth,pkt->tstamp);
+  log_i("flarm package ok");
 }
 
 
