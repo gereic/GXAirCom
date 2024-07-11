@@ -157,7 +157,7 @@ bool Weather::begin(TwoWire *pi2c, SettingsData &setting, int8_t oneWirePin, int
     }
   } else if (aneometerType == eAnemometer::PEETBROS){
     _weather.bWindSpeed = true;
-    _weather.bWindDir = true;
+    _weather.bWindDir = true;    
     peetBros_init(windSpeedPin,windDirPin);
   }else{
     //init-code for aneometer DAVIS6410
@@ -397,8 +397,8 @@ void Weather::run(void){
     } else if (aneometerType == eAnemometer::ADS_A1015 && _bHasADS) {
       checkAdsAneometer();
     } else if (aneometerType == eAnemometer::PEETBROS) {
-      float Dir;
-      float Speed;
+      float Dir = 0.0;
+      float Speed = 0.0;
       uint8_t ret = peetBrosgetNewData(&Dir,&Speed);
       //log_i("dir=%.1f,speed=%0.1f,ret=%d",Dir,Speed,ret);
       if (ret == 1){

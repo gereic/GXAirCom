@@ -2874,17 +2874,14 @@ void getRTC(){
     // again, this isn't done at reboot, so a previously set alarm could easily go overlooked
     rtc2.disableAlarm(1);
     rtc2.disableAlarm(2);
-    /*
-    // schedule an alarm 10 seconds in the future
-    if(!rtc2.setAlarm1(
-            rtc2.now() + TimeSpan(10),
-            DS3231_A1_Hour // this mode triggers the alarm when the seconds match. See Doxygen for other options
-    )) {
-        Serial.println("Error, alarm wasn't set!");
-    }else {
-        Serial.println("Alarm will happen in 10 seconds!");
-    }   
-    */   
+    // schedule an alarm on 04:00:00 UTC
+    if (!rtc2.setAlarm1(DateTime(2024,6,17,4,00,00),DS3231_A1_Hour)){
+      log_e("Error, alarm wasn't set!");
+    }
+    // schedule an alarm on 16:00:00 UTC
+    if (!rtc2.setAlarm2(DateTime(2024,6,17,16,00,00),DS3231_A2_Hour)){
+      log_e("Error, alarm wasn't set!");
+    }    
     getRTCTime();
     printLocalTime();
     return;  
@@ -5065,7 +5062,11 @@ void powerOff(){
       delay(500); //wait 500ms
     }
     uint64_t mask = uint64_t(1) << uint64_t(sButton[0].PinButton); //prg-Button has a pull-up-resistor --> Pin has to go low, if pressed
-    esp_sleep_enable_ext1_wakeup(mask,ESP_EXT1_WAKEUP_ALL_LOW); //wait until power is back again
+    #ifdef CONFIG_IDF_TARGET_ESP32
+      esp_sleep_enable_ext1_wakeup(mask,ESP_EXT1_WAKEUP_ALL_LOW); //wait until power is back again
+    #else
+      esp_sleep_enable_ext1_wakeup(mask,ESP_EXT1_WAKEUP_ANY_LOW); //wait until power is back again
+    #endif
   }
   if (PinExtPowerOnOff >= 0){
     if (!digitalRead(PinExtPowerOnOff)){

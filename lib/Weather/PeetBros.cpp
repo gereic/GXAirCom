@@ -22,27 +22,30 @@ Connectors used:
 
 Remaining:
 * power saving, it uses ~40mA on an Uno now.
+lastRotationAt
 
 */
 
 #include <PeetBros.h>
 
-volatile uint32_t rotation_took0;
-volatile uint32_t rotation_took1;
-volatile uint32_t directionTimeStamp;
-volatile uint32_t direction_latency0;
-volatile uint32_t direction_latency1;
-volatile uint32_t last_rotation_at = millis();
-uint32_t last_report = millis();
-volatile uint8_t cntDir = 0;
-volatile uint8_t cntSpeed = 0;
-float PeetBrosDir = 0.0;
+#define PETTBROSDEBOUNCE 10
 
-void isr_rotated();
-void isr_direction();
+volatile unsigned int rotation_took0;
+volatile unsigned int rotation_took1;
+volatile signed int direction_latency0;
+volatile signed int direction_latency1;
+volatile unsigned long last_rotation_at = millis();
+//volatile uint32_t dirCnt = 0;
+//volatile uint32_t speedCnt = 0;
+volatile unsigned long lastRotIsr = 0;
+volatile unsigned long lastSpeedIsr = 0;
+
+void IRAM_ATTR isr_rotated();
+void IRAM_ATTR isr_direction();
 bool valid_sensordata();
 float wspeed_to_real();
 float wdir_to_degrees();
+void print_debug();
 
 void peetBros_init(int8_t windSpeedPin,int8_t windDirPin){
 
@@ -50,55 +53,65 @@ void peetBros_init(int8_t windSpeedPin,int8_t windDirPin){
   rotation_took1 = 0;
   direction_latency0 = 0;
   direction_latency1 = 0;
-  last_rotation_at = 0;
   pinMode(windSpeedPin, INPUT);
   pinMode(windDirPin, INPUT);
-  attachInterrupt(digitalPinToInterrupt(windSpeedPin), isr_rotated, FALLING);
-  attachInterrupt(digitalPinToInterrupt(windDirPin), isr_direction, FALLING);
+  log_i("speedPin=%d,dirPin=%d",windSpeedPin,windDirPin);
+  attachInterrupt(digitalPinToInterrupt(windSpeedPin), isr_rotated, RISING);
+  attachInterrupt(digitalPinToInterrupt(windDirPin), isr_direction, RISING);
 }
 
 uint8_t peetBrosgetNewData(float *Dir, float *Speed){
-  /*
-  if ((!valid_sensordata) || (direction_latency0 < 0)){
-    return 255;
-  }
-  */
+  noInterrupts();
+  if (!valid_sensordata()){
+    interrupts();
+    return(255);
+  } 
+  //Serial.printf("d=%d,s=%d\n",dirCnt,speedCnt);
   *Speed = wspeed_to_real(); // kmh
   *Dir = wdir_to_degrees(); //0-360 deg
+  interrupts();
   if (isnan(*Speed) || isnan(*Dir)){
     return 255; //error not valid value
   }
   return 1;
 }
 
+void print_debug() {
+  Serial.print("since last_rot: ");
+  Serial.print(millis() - last_rotation_at); Serial.print("ms; ");
+  Serial.print("last dur: ");
+  Serial.print(rotation_took0); Serial.print("ms; ");
+  Serial.print("wspeed: ");
+  Serial.print(wspeed_to_real()); Serial.print("km/h; ");
+  Serial.print("last dir_lat: ");
+  Serial.print(direction_latency1); Serial.print("ms; ");
+  Serial.print("wdir: ");
+  Serial.print(wdir_to_degrees()); Serial.print(" degrees; ");
+  Serial.println();
+}
 
 
 bool valid_sensordata() {
   // XXX: wrapping timers?
-  if (last_rotation_at + 10*1000 < millis()) return(false);
+  if ((last_rotation_at + 10*1000 < millis()) || (direction_latency1 < 0)) return(false);
   else return(true);
 }
 
 float wspeed_to_real() {
   float mph = NAN;
 
-  if (!valid_sensordata()) return(0.0);
+  //if (!valid_sensordata()) return(NAN);
 
-  float r0 = 1.0 / (float(rotation_took1) / 1000.0);
-  float r1 = r0 * r0;
+  // avoid rewriting documented formulas.
+  float r0 = 1.0 / (rotation_took0 / 1000.0);
+  float r1 = 1.0 / (rotation_took1 / 1000.0);
 
-  if (r0 < 0.010){
-    mph = 0.0;
-  } 
-  else if (r0 < 3.229){
-    mph = -0.1095*r1 + 2.9318*r0 - 0.1412;
-  } else if (r0 < 54.362){
-    mph = 0.0052*r1 + 2.1980*r0 + 1.1091;
-  } else if (r0 < 66.332){
-    mph = 0.1104*r1 - 9.5685*r0 + 329.87;
-  } 
+  if (r0 < 0.010) mph = 0.0;
+  else if (r0 < 3.229) mph = -0.1095*r1 + 2.9318*r0 - 0.1412;
+  else if (r0 < 54.362) mph = 0.0052*r1 + 2.1980*r0 + 1.1091;
+  else if (r0 < 66.332) mph = 0.1104*r1 - 9.5685*r0 + 329.87;
 
-  if (isinf(mph) || isnan(mph) || mph < 0.0) return(0.0);
+  if (isinf(mph) || isnan(mph) || mph < 0.0) return(NAN);
 
   //float meters_per_second = mph * 0.48037;
   //float knots = mph * 0.86897;
@@ -109,24 +122,20 @@ float wspeed_to_real() {
 float wdir_to_degrees() {
   float windangle;
 
-  //NORTH (both reeds close simultaneously) 
-  //SOUTH (contact closures are 180° out of phase)  
-  if (!valid_sensordata()) return(NAN);
-  if (direction_latency1 < 0) return(NAN);
-  float phaseshift = 0.0;
-  if (direction_latency1 <= rotation_took1){
-    phaseshift = float(direction_latency1) / float(rotation_took1);
-  }else{
-    log_e("lat > rot; %d > %d",direction_latency1,rotation_took1);
-    return PeetBrosDir; //return last direction
-  }
-  //log_i("lat=%d,took=%d,phase=%.2f",direction_latency1,rotation_took1,phaseshift);
+  //if (!valid_sensordata()) return(NAN);
+  //if (direction_latency1 < 0) return(NAN);
+
+  float avg_rotation_time = ((float(rotation_took0) + float(rotation_took1)) / 2.0);
+
+  float phaseshift = float(direction_latency1) / avg_rotation_time;
+
   if (isnan(phaseshift) || isinf(phaseshift)) windangle = NAN;
   else if (phaseshift == 0.0) windangle = 360.0;
   else if (phaseshift > 0.99) windangle = 360.0;
   else windangle = 360.0 * phaseshift;
-  PeetBrosDir = windangle;
-  return(PeetBrosDir);
+
+  //Serial.printf("%.2fms; %.2fps; %.2fdeg\n",avg_rotation_time,phaseshift,windangle);
+  return(windangle);
 }
 
 /*
@@ -137,30 +146,29 @@ float wdir_to_degrees() {
  * rotation took.
 */
 void isr_rotated() {
-  uint32_t now = millis();
-  uint32_t last_rotation_took;
-  if (cntDir != 1){ //check if switch for direction was also on for exactly 1 time    
-    cntDir = 0;
-    return;
-  }
-  cntDir = 0;
+  //unsigned long diff = lastSpeedIsr - millis();
+  //if (diff < PETTBROSDEBOUNCE) return; //debounce
+  //lastSpeedIsr = millis();
+  unsigned long now = millis();
+  unsigned int last_rotation_took;
+  //speedCnt++;
+  // Handle wrapping counters.
+  if (now < last_rotation_at)
+    last_rotation_took = now + (ULONG_MAX - last_rotation_at);
+  else
+    last_rotation_took = now - last_rotation_at;
 
-  last_rotation_took = now - last_rotation_at;
+  // I'd love to log this somewhere, but no Serial inside an ISR.
+  if (last_rotation_took < 0)
+    last_rotation_took = 0;
 
-  // spurious interrupt? ignore it.
-  // (these are probably an artifact of the push button used for development)
-  if (last_rotation_took < 2) return;
-
-  rotation_took1 = last_rotation_took;
-  direction_latency1 = directionTimeStamp - last_rotation_at;
   last_rotation_at = now;
 
-  /*
   rotation_took1 = rotation_took0;
   rotation_took0 = last_rotation_took;
+
   direction_latency1 = direction_latency0;
-  direction_latency0 = 0;
-  */
+  direction_latency0 = -1;
 }
 
 /*
@@ -171,10 +179,18 @@ void isr_rotated() {
  * we can compute the angle.
  *
 */
-void isr_direction() {  
-  //uint32_t now = millis();
-  directionTimeStamp = millis();
-  //direction_latency0 = now - last_rotation_at;
-  cntDir += 1; //count direction
+void IRAM_ATTR isr_direction() { 
+  //unsigned long diff = lastRotIsr - millis();
+  //if (diff < PETTBROSDEBOUNCE) return; //debounce
+  //lastRotIsr = millis();
+  unsigned long now = millis();
+  unsigned int direction_latency;
+  //dirCnt++;
+  if (now < last_rotation_at)
+    direction_latency = now + (ULONG_MAX - last_rotation_at);
+  else
+    direction_latency = now - last_rotation_at;
+
+  direction_latency0 = direction_latency;
 }
 
