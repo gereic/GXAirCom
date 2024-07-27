@@ -1830,6 +1830,10 @@ void setup() {
   //pinMode(BUTTON2, INPUT_PULLUP);
 
   printSettings();
+  if (setting.wifi.connect == eWifiMode::CONNECT_ALWAYS){
+    log_i("set tWifiStop to 0 cause we have to be always connected");
+    setting.wifi.tWifiStop = 0; //no stop on wifi in case we connect always
+  }   
   analogReadResolution(10); // Default of 12 is not very linear. Recommended to use 10 or 11 depending on needed resolution.
   status.PMU = ePMU::NOPMU;
   for (uint8_t i = 0; i < NUMBUTTONS; i++) {
@@ -2446,9 +2450,15 @@ xTaskCreatePinnedToCore(taskOled, "taskOled", 6500, NULL, 8, &xHandleOled, ARDUI
   #endif
 
 #ifdef GSMODULE  
-  if ((setting.Mode == eMode::GROUND_STATION) && (setting.wd.mode.bits.enable)){
-    //start weather-task
-    xTaskCreatePinnedToCore(taskWeather, "taskWeather", 13000, NULL, 8, &xHandleWeather, ARDUINO_RUNNING_CORE1);
+  if (setting.Mode == eMode::GROUND_STATION){
+    if ((setting.WUUpload.enable) && (!setting.wd.mode.bits.enable)){
+      status.bWUBroadCast = true;
+      log_i("wu broadcast enabled");
+    }
+    if ((status.bWUBroadCast) || (setting.wd.mode.bits.enable)){
+      //start weather-task
+      xTaskCreatePinnedToCore(taskWeather, "taskWeather", 13000, NULL, 8, &xHandleWeather, ARDUINO_RUNNING_CORE1);
+    }
   }
 #endif  
 #ifdef GSM_MODULE
@@ -2830,6 +2840,7 @@ void getRTCTime(){
     timeinfo.tm_min = rtcTime.minute; 
     timeinfo.tm_sec = rtcTime.second;
     setAllTime(timeinfo); //we have to set time to GPS-Time for decoding.  
+    status.bTimeOk = true;
   }else if (status.rtc.module == RTC_3231){
     RTC_DS3231 rtc2;
     if (!rtc2.begin(pI2cZero)) return;
@@ -2844,7 +2855,8 @@ void getRTCTime(){
     timeinfo.tm_hour = now.hour();
     timeinfo.tm_min = now.minute(); 
     timeinfo.tm_sec = now.second();
-    setAllTime(timeinfo); //we have to set time to GPS-Time for decoding.      
+    setAllTime(timeinfo); //we have to set time to GPS-Time for decoding.  
+    status.bTimeOk = true;    
   }
 }
 
@@ -2853,9 +2865,11 @@ void getRTC(){
   if (!rtc.begin()){
     log_i("found SD3031 RTC");
     rtc.disable32k(); //we don't need the 32k output --> disable it
+    rtc.clearAlarm();
+    rtc.setAlarm(rtc.eEveryDay,4,0,0);
     status.rtc.module = RTC_3031;
     getRTCTime();
-    printLocalTime();
+    printLocalTime();    
     return;
   }
   RTC_DS3231 rtc2;
@@ -2909,10 +2923,6 @@ void taskWeather(void *pvParameters){
   weather.setWindDirOffset(setting.wd.windDirOffset);
   if (!weather.begin(pI2cZero,setting,PinOneWire,PinWindDir,PinWindSpeed,PinRainGauge)){
   
-  }
-  if ((setting.WUUpload.enable) && (!setting.wd.mode.bits.enable)){
-    status.bWUBroadCast = true;
-    log_i("wu broadcast enabled");
   }
   if ((!setting.wd.mode.bits.enable) && (!status.bWUBroadCast)){
     log_i("stopping task");

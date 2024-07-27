@@ -55,6 +55,8 @@ function setVis(){
   document.getElementById("VisADS1015Exp").style.display='none';
   document.getElementById("VisADS1015").style.display='none'; //set ADS1015 settings invisible
   document.getElementById("VisWifiOff").style.display='none';  
+  document.getElementById("VisAvgFNT").style.display='none';
+  document.getElementById("VisAvgWD").style.display='none';
   if (document.getElementById("wificonnect").value != 2){
     document.getElementById("VisWifiOff").style.display=''; //show wifi-off
   }
@@ -89,20 +91,26 @@ function setVis(){
   }    
   if (document.getElementById("mode").value == 1){ /*mode ground-station*/
     document.getElementById("VisOwnWs").style.display='';  /*enable Own weather-station  */
-    if (wsMode & wsModeEn){
+    if (document.getElementById("setView").value >= SETTING_ADVANCED){ /*we are advanced or expert*/
+      document.getElementById("VisAWUS").style.display=''; /*set advanced weather upload settings visible  */
+      if (document.getElementById("setView").value == SETTING_EXPERT){ /*we are expert user*/
+        document.getElementById("VisAWFFNT").style.display=''; /*set advanced weather settings visible    */
+      }
+    }
+    if (wsMode & wsModeEn){ //weather station enabled
+      document.getElementById("VisAvgFNT").style.display='';
+      document.getElementById("VisAvgWD").style.display='';
       document.getElementById("VisWD").style.display=''; /*set weather-data invisible*/
       document.getElementById("tWu").innerHTML='Weather Underground Upload';
-      document.getElementById("tWu2").innerHTML='enable sending weather-data to WU';
+      document.getElementById("tWuEnable").innerHTML='enable sending weather-data to WU';
+      document.getElementById("tWuKey").innerHTML='KEY';
       document.getElementById("VisWU").style.display=''; /*set weather-underground upload invisible*/
       document.getElementById("tWi").innerHTML='windy Upload';
       document.getElementById("tWi2").innerHTML='enable sending weather-data to windy';
+      document.getElementById("tWuIntervall").innerHTML='upload-interval [s] (default 300 -> 5min)';
+      document.getElementById("tWdUpload").innerHTML='Weather Upload settings';
       document.getElementById("VisWI").style.display=''; /*set windy upload invisible*/
-      if (document.getElementById("setView").value >= SETTING_ADVANCED){ /*we are advanced or expert*/
-        document.getElementById("VisAWUS").style.display=''; /*set advanced weather upload settings visible  */
-        if (document.getElementById("setView").value == SETTING_EXPERT){ /*we are expert user*/
-          document.getElementById("VisAWFFNT").style.display=''; /*set advanced weather settings visible    */
-        }
-      }
+
       if ((wsMode & wsModeBme) || (wsMode & wsModeDS18B20)){
         document.getElementById("VisWDBme").style.display='';  /*enable temp-correction for BME*/
       }
@@ -114,9 +122,12 @@ function setVis(){
       }    
     }else{
       document.getElementById("tWu").innerHTML='Broadcast weather-underground data to FANET';
-      document.getElementById("tWu2").innerHTML='enable sending wu-data to FANET';
+      document.getElementById("tWuEnable").innerHTML='enable sending wu-data to FANET';
+      document.getElementById("tWuKey").innerHTML='API-KEY (not station-Key)';
       document.getElementById("VisWU").style.display=''; /*set weather-underground visible*/
       document.getElementById("VisWI").style.display='none'; /*set windy upload invisible*/
+      document.getElementById("tWdUpload").innerHTML='Weather query settings';
+      document.getElementById("tWuIntervall").innerHTML='intervall for getting data [s]';
     }
     document.getElementById("VisMqtt").style.display='';  /*enable Mqtt settings*/
     document.getElementById("VisAirCraftType").style.display='none';    
@@ -1517,12 +1528,12 @@ function onMessage(evt) {
       <legend><b>FANET Weather settings</b></legend>
       <table style="width:100&#37;">
         <tbody>
-          <tr>
-            <th>FANET average-coefficient (default 16)</th>
+          <tr id="VisAvgFNT">
+            <th>average-coefficient (default 16)</th>
             <td><input type="number" id="WFFNT" min="0.1" max="2000"></td>
           </tr>
           <tr>
-            <th>FANET send-interval [s] (default 40)</th>
+            <th>send-interval [s] (default 40)</th>
             <td><input type="number" id="WIFNT" min="5" max="15000"></td>
           </tr>
         </tbody>      
@@ -1531,15 +1542,15 @@ function onMessage(evt) {
     <p></p>
     <p></p>
     <fieldset id="VisAWUS">
-      <legend><b>Weather Upload settings</b></legend>
+      <legend><b id="tWdUpload">Weather Upload settings</b></legend>
       <table style="width:100&#37;">
         <tbody>
-          <tr>
+          <tr id="VisAvgWD">
             <th>average-coefficient (default 128)</th>
             <td><input type="number" id="WFWU" min="0.1" max="2000"></td>
           </tr>
           <tr>
-            <th>upload-interval [s] (default 300 -> 5min)</th>
+            <th id="tWuIntervall">upload-interval [s] (default 300 -> 5min)</th>
             <td><input type="number" id="WIWU" min="30" max="1800000"></td>
           </tr>
         </tbody>      
@@ -1552,7 +1563,7 @@ function onMessage(evt) {
       <table style="width:100&#37;">
         <tbody>
           <tr>
-            <th id="tWu2">enable sending weather-data to WU</th>
+            <th id="tWuEnable">enable sending weather-data to WU</th>
             <td><input type="checkbox" id="WUUlEnable"></td>
           </tr>
           <tr>
@@ -1560,7 +1571,7 @@ function onMessage(evt) {
             <td><input type="text" id="WUUlID"></td>
           </tr>
           <tr>
-            <th>KEY</th>
+            <th id="tWuKey">KEY</th>
             <td><input type="text" id="WUUlKEY"></td>
           </tr>
         </tbody>      
