@@ -40,6 +40,11 @@ volatile unsigned long last_rotation_at = millis();
 volatile unsigned long lastRotIsr = 0;
 volatile unsigned long lastSpeedIsr = 0;
 
+volatile unsigned long lastRotAt = millis();
+volatile unsigned int rotTook0;
+volatile unsigned int rotTook1;
+volatile signed int dirLatency = 0;
+
 void IRAM_ATTR isr_rotated();
 void IRAM_ATTR isr_direction();
 bool valid_sensordata();
@@ -53,6 +58,7 @@ void peetBros_init(int8_t windSpeedPin,int8_t windDirPin){
   rotation_took1 = 0;
   direction_latency0 = 0;
   direction_latency1 = 0;
+  dirLatency = 0;
   pinMode(windSpeedPin, INPUT);
   pinMode(windDirPin, INPUT);
   log_i("speedPin=%d,dirPin=%d",windSpeedPin,windDirPin);
@@ -93,7 +99,7 @@ void print_debug() {
 
 bool valid_sensordata() {
   // XXX: wrapping timers?
-  if ((last_rotation_at + 10*1000 < millis()) || (direction_latency1 < 0)) return(false);
+  if ((lastRotAt + 10*1000 < millis()) || (dirLatency < 0)) return(false);
   else return(true);
 }
 
@@ -103,8 +109,8 @@ float wspeed_to_real() {
   //if (!valid_sensordata()) return(NAN);
 
   // avoid rewriting documented formulas.
-  float r0 = 1.0 / (rotation_took0 / 1000.0);
-  float r1 = 1.0 / (rotation_took1 / 1000.0);
+  float r0 = 1.0 / (rotTook0 / 1000.0);
+  float r1 = 1.0 / (rotTook1 / 1000.0);
 
   if (r0 < 0.010) mph = 0.0;
   else if (r0 < 3.229) mph = -0.1095*r1 + 2.9318*r0 - 0.1412;
@@ -123,11 +129,11 @@ float wdir_to_degrees() {
   float windangle;
 
   //if (!valid_sensordata()) return(NAN);
-  //if (direction_latency1 < 0) return(NAN);
+  //if (dirLatency < 0) return(NAN);
 
-  float avg_rotation_time = ((float(rotation_took0) + float(rotation_took1)) / 2.0);
+  float avg_rotation_time = ((float(rotTook0) + float(rotTook1)) / 2.0);
 
-  float phaseshift = float(direction_latency1) / avg_rotation_time;
+  float phaseshift = float(dirLatency) / avg_rotation_time;
 
   if (isnan(phaseshift) || isinf(phaseshift)) windangle = NAN;
   else if (phaseshift == 0.0) windangle = 360.0;
@@ -168,6 +174,12 @@ void isr_rotated() {
   rotation_took0 = last_rotation_took;
 
   direction_latency1 = direction_latency0;
+  if (direction_latency1 >= 0) {
+    lastRotAt = last_rotation_at;
+    rotTook0 = rotation_took0;
+    rotTook1 = rotation_took1;
+    dirLatency = direction_latency1;
+  }
   direction_latency0 = -1;
 }
 
