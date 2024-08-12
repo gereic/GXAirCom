@@ -30,6 +30,8 @@ volatile uint8_t newData = 0;
 volatile uint8_t windDir = 0; //[0-15] (0=N)
 volatile uint16_t windSpeed = 0; //[0.1m/s]
 
+uint8_t errCount = 0;
+
 int8_t tx20DataPin = -1;
 hw_timer_t * tx20timer = NULL;
 
@@ -143,7 +145,12 @@ uint8_t tx20getNewData(uint8_t *Dir, uint16_t *Speed){
   *Speed = windSpeed;
   uint8_t retData = newData;
   if (!retData){
-    log_e("no new weather-data received");
+    errCount ++;
+    if (errCount > 1){ //every 2 seconds, we get new data. This function will be called also every 2 seconds, so maybe we don't have new data for 1 time
+      log_e("no new weather-data received cnt=%d",errCount);
+    }    
+  }else{
+    errCount = 0;
   }
   newData = 0; //clear new Data
   return retData;
