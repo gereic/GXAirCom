@@ -13,7 +13,7 @@ Logger logger;
  * Functions
  */
 
-void sendPage(uint8_t pageNr);
+void sendPage(uint8_t pageNr,uint8_t clientNr);
 void sendPageHeader(uint8_t client_num);
 void sendReceivers(uint8_t client_num);
 
@@ -950,7 +950,7 @@ void Web_stop(void){
   server.end();
 }
 
-void sendPage(uint8_t pageNr){
+void sendPage(uint8_t pageNr,uint8_t clientNr){
   static statusData mStatus;
   static commandData mCommand;
   StaticJsonDocument<500> doc; //Memory pool  
@@ -1001,12 +1001,7 @@ void sendPage(uint8_t pageNr){
         }
         if (bSend){
           serializeJson(doc, msg_buf);
-          for (int i = 0;i <MAXCLIENTS;i++){
-            if (clientPages[i] == pageNr){
-              //log_d("Sending to [%u]: %s", i, msg_buf);
-              webSocket.sendTXT(i, msg_buf);
-            }
-          }
+          webSocket.sendTXT(clientNr, msg_buf);
         }
       }
 
@@ -1150,12 +1145,7 @@ void sendPage(uint8_t pageNr){
       }    
       if (bSend){
         serializeJson(doc, msg_buf);
-        for (int i = 0;i <MAXCLIENTS;i++){
-          if (clientPages[i] == pageNr){
-            //log_d("Sending to [%u]: %s", i, msg_buf);
-            webSocket.sendTXT(i, msg_buf);
-          }
-        }
+        webSocket.sendTXT(clientNr, msg_buf);
       }
 
       doc.clear();
@@ -1194,12 +1184,7 @@ void sendPage(uint8_t pageNr){
       #endif
       if (bSend){
         serializeJson(doc, msg_buf);
-        for (int i = 0;i <MAXCLIENTS;i++){
-          if (clientPages[i] == pageNr){
-            //log_d("Sending to [%u]: %s", i, msg_buf);
-            webSocket.sendTXT(i, msg_buf);
-          }
-        }
+        webSocket.sendTXT(clientNr, msg_buf);
       }
 
       if (setting.bHasFuelSensor){
@@ -1212,12 +1197,7 @@ void sendPage(uint8_t pageNr){
         }        
         if (bSend){
           serializeJson(doc, msg_buf);
-          for (int i = 0;i <MAXCLIENTS;i++){
-            if (clientPages[i] == pageNr){
-              //log_d("Sending to [%u]: %s", i, msg_buf);
-              webSocket.sendTXT(i, msg_buf);
-            }
-          }
+          webSocket.sendTXT(clientNr, msg_buf);
         }
       }
 
@@ -1269,12 +1249,7 @@ void sendPage(uint8_t pageNr){
         }    
         if (bSend){
           serializeJson(doc, msg_buf);
-          for (int i = 0;i <MAXCLIENTS;i++){
-            if (clientPages[i] == pageNr){
-              //log_d("Sending to [%u]: %s", i, msg_buf);
-              webSocket.sendTXT(i, msg_buf);
-            }
-          }
+          webSocket.sendTXT(clientNr, msg_buf);
         }
       }
       #endif
@@ -1290,12 +1265,7 @@ void sendPage(uint8_t pageNr){
       }    
       if (bSend){
         serializeJson(doc, msg_buf);
-        for (int i = 0;i <MAXCLIENTS;i++){
-          if (clientPages[i] == pageNr){
-            //log_d("Sending to [%u]: %s", i, msg_buf);
-            webSocket.sendTXT(i, msg_buf);
-          }
-        }
+        webSocket.sendTXT(clientNr, msg_buf);
       }
       break;
     case 5:
@@ -1312,12 +1282,7 @@ void sendPage(uint8_t pageNr){
       }    
       if (bSend){
         serializeJson(doc, msg_buf);
-        for (int i = 0;i <MAXCLIENTS;i++){
-          if (clientPages[i] == pageNr){
-            //log_d("Sending to [%u]: %s", i, msg_buf);
-            webSocket.sendTXT(i, msg_buf);
-          }
-        }
+        webSocket.sendTXT(clientNr, msg_buf);
       }
       break;
     case 10:
@@ -1356,12 +1321,7 @@ void sendPage(uint8_t pageNr){
       }    
       if (bSend){
         serializeJson(doc, msg_buf);
-        for (int i = 0;i <MAXCLIENTS;i++){
-          if (clientPages[i] == pageNr){
-            //log_d("Sending to [%u]: %s", i, msg_buf);
-            webSocket.sendTXT(i, msg_buf);
-          }
-        }
+        webSocket.sendTXT(clientNr, msg_buf);
       }
       break;
     case 20:
@@ -1371,12 +1331,7 @@ void sendPage(uint8_t pageNr){
         uint8_t count = fanet.getNeighboursCount();
         doc["NBCount"] = count;
         serializeJson(doc, msg_buf);
-        for (int i = 0;i <MAXCLIENTS;i++){
-          if (clientPages[i] == pageNr){
-            //log_d("Sending to [%u]: %s", i, msg_buf);
-            webSocket.sendTXT(i, msg_buf);
-          }
-        }
+        webSocket.sendTXT(clientNr, msg_buf);
         if (count == 0){
           break; //no Neighbours
         }
@@ -1408,12 +1363,7 @@ void sendPage(uint8_t pageNr){
             }
             doc["SEEN"] = String((millis() - fanet.neighbours[i].tLastMsg) / 1000);
             serializeJson(doc, msg_buf);
-            for (int i = 0;i <MAXCLIENTS;i++){
-              if (clientPages[i] == pageNr){
-                //log_d("Sending to [%u]: %s", i, msg_buf);
-                webSocket.sendTXT(i, msg_buf);
-              }
-            }
+            webSocket.sendTXT(clientNr, msg_buf);
             iIndex++;
           }
         }
@@ -1431,12 +1381,7 @@ void sendPage(uint8_t pageNr){
         }
         doc["NBCount"] = count;
         serializeJson(doc, msg_buf);
-        for (int i = 0;i <MAXCLIENTS;i++){
-          if (clientPages[i] == pageNr){
-            //log_d("Sending to [%u]: %s", i, msg_buf);
-            webSocket.sendTXT(i, msg_buf);
-          }
-        }
+        webSocket.sendTXT(clientNr, msg_buf);
         if (count == 0){
           break; //no weatherstations
         }
@@ -1486,12 +1431,7 @@ void sendPage(uint8_t pageNr){
             doc["RSSI"] =  String(fanet.weatherDatas[i].rssi);
             doc["SEEN"] = String((millis() - fanet.weatherDatas[i].tLastMsg) / 1000);
             serializeJson(doc, msg_buf);
-            for (int i = 0;i <MAXCLIENTS;i++){
-              if (clientPages[i] == pageNr){
-                //log_d("Sending to [%u]: %s", i, msg_buf);
-                webSocket.sendTXT(i, msg_buf);
-              }
-            }
+            webSocket.sendTXT(clientNr, msg_buf);
             iIndex++;
           }
         }
@@ -1513,8 +1453,7 @@ void Web_loop(void){
     //site update
     for (int i = 0;i <MAXCLIENTS;i++){
       if (clientPages[i] > 0){
-        sendPage(clientPages[i]);
-        break;
+        sendPage(clientPages[i],i);
       }
     }
   }

@@ -142,6 +142,9 @@ uint8_t tx20getNewData(uint8_t *Dir, uint16_t *Speed){
   *Dir = windDir;
   *Speed = windSpeed;
   uint8_t retData = newData;
+  if (!retData){
+    log_e("no new weather-data received");
+  }
   newData = 0; //clear new Data
   return retData;
 }

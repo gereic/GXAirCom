@@ -2889,6 +2889,7 @@ void getRTC(){
     rtc2.disableAlarm(1);
     rtc2.disableAlarm(2);
     // schedule an alarm on 04:00:00 UTC
+    //if (!rtc2.setAlarm1(rtc2.now() + TimeSpan(10),DS3231_A1_Second)){ // this mode triggers the alarm when the seconds match. See Doxygen for other options
     if (!rtc2.setAlarm1(DateTime(2024,6,17,4,00,00),DS3231_A1_Hour)){
       log_e("Error, alarm wasn't set!");
     }
