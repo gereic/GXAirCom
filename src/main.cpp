@@ -39,6 +39,7 @@
 
 XPowersLibInterface *PMU = NULL;
 
+
 //#define GXTEST
 //#define FLARMTEST
 
@@ -97,6 +98,8 @@ XPowersLibInterface *PMU = NULL;
 
 #include <DFRobot_SD3031.h>
 #include <RTClib.h>
+
+RTC_DS3231 *pRtc3231 = NULL;
 
 #endif
 
@@ -2817,9 +2820,12 @@ void setRTCTime(tm &timeinfo){
     if (rtc.begin())return;
     rtc.setTime(timeinfo.tm_year + 1900,timeinfo.tm_mon+1,timeinfo.tm_mday,timeinfo.tm_hour,timeinfo.tm_min,timeinfo.tm_sec);
   }else if (status.rtc.module == RTC_3231){
-    RTC_DS3231 rtc2;
-    if (!rtc2.begin(pI2cZero)) return;  
-    rtc2.adjust(DateTime(timeinfo.tm_year + 1900, timeinfo.tm_mon+1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec));  
+    if (pRtc3231 == NULL){
+      log_e("rtc is null");
+      return;
+    }
+    pRtc3231->adjust(DateTime(timeinfo.tm_year + 1900, timeinfo.tm_mon+1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec));  
+    log_i("adjust rtc-time to %04d-%02d-%02d_%d:%02d:%02d",timeinfo.tm_year + 1900, timeinfo.tm_mon+1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
   }
 }
 
@@ -2842,11 +2848,13 @@ void getRTCTime(){
     setAllTime(timeinfo); //we have to set time to GPS-Time for decoding.  
     status.bTimeOk = true;
   }else if (status.rtc.module == RTC_3231){
-    RTC_DS3231 rtc2;
-    if (!rtc2.begin(pI2cZero)) return;
-    status.rtc.temp = int(rtc2.getTemperature());
+    if (pRtc3231 == NULL){
+      log_e("rtc is null");
+      return;
+    }
+    status.rtc.temp = int(pRtc3231->getTemperature());
     status.rtc.voltage = 0.0;
-    DateTime now = rtc2.now();
+    DateTime now = pRtc3231->now();
     //log_i("%04d%02d%02d-%02d:%02d:%02d",now.year(),now.month(),now.day(),now.hour(),now.minute(),now.second());
     struct tm timeinfo;
     timeinfo.tm_year = now.year() - 1900;
@@ -2855,6 +2863,7 @@ void getRTCTime(){
     timeinfo.tm_hour = now.hour();
     timeinfo.tm_min = now.minute(); 
     timeinfo.tm_sec = now.second();
+    //log_i("set time from rtc-time to %04d-%02d-%02d_%d:%02d:%02d",timeinfo.tm_year + 1900, timeinfo.tm_mon+1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
     setAllTime(timeinfo); //we have to set time to GPS-Time for decoding.  
     status.bTimeOk = true;    
   }
@@ -2872,35 +2881,38 @@ void getRTC(){
     printLocalTime();    
     return;
   }
-  RTC_DS3231 rtc2;
-  if (rtc2.begin(pI2cZero)) {
+  if (pRtc3231 == NULL) pRtc3231 = new RTC_DS3231();
+  if (pRtc3231->begin(pI2cZero)) {
     log_i("found DS3231 RTC");
-    rtc2.disable32K(); //we don't need the 32k output --> disable it
+    pRtc3231->disable32K(); //we don't need the 32k output --> disable it
     // set alarm 1, 2 flag to false (so alarm 1, 2 didn't happen so far)
     // if not done, this easily leads to problems, as both register aren't reset on reboot/recompile
-    rtc2.clearAlarm(1);
-    rtc2.clearAlarm(2);    
+    pRtc3231->clearAlarm(1);
+    pRtc3231->clearAlarm(2);    
     status.rtc.module = RTC_3231;
     // stop oscillating signals at SQW Pin
     // otherwise setAlarm1 will fail
-    rtc2.writeSqwPinMode(DS3231_OFF);
+    pRtc3231->writeSqwPinMode(DS3231_OFF);
     // turn off alarm 2 (in case it isn't off already)
     // again, this isn't done at reboot, so a previously set alarm could easily go overlooked
-    rtc2.disableAlarm(1);
-    rtc2.disableAlarm(2);
+    pRtc3231->disableAlarm(1);
+    pRtc3231->disableAlarm(2);
     // schedule an alarm on 04:00:00 UTC
-    //if (!rtc2.setAlarm1(rtc2.now() + TimeSpan(10),DS3231_A1_Second)){ // this mode triggers the alarm when the seconds match. See Doxygen for other options
-    if (!rtc2.setAlarm1(DateTime(2024,6,17,4,00,00),DS3231_A1_Hour)){
+    //if (!pRtc3231->setAlarm1(pRtc3231->now() + TimeSpan(10),DS3231_A1_Second)){ // this mode triggers the alarm when the seconds match. See Doxygen for other options
+    if (!pRtc3231->setAlarm1(DateTime(2024,6,17,4,00,00),DS3231_A1_Hour)){
       log_e("Error, alarm wasn't set!");
     }
     // schedule an alarm on 16:00:00 UTC
-    if (!rtc2.setAlarm2(DateTime(2024,6,17,16,00,00),DS3231_A2_Hour)){
+    if (!pRtc3231->setAlarm2(DateTime(2024,6,17,16,00,00),DS3231_A2_Hour)){
       log_e("Error, alarm wasn't set!");
     }    
     getRTCTime();
     printLocalTime();
     return;  
-  }  
+  }else{
+    delete pRtc3231; //delete again
+    pRtc3231 = NULL;
+  }
 }
 
 
