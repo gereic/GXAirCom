@@ -155,7 +155,7 @@ public:
   typedef struct {
     uint32_t timestamp = 0;
     uint8_t type; //tracking-type (11... online tracking 7X .... ground tracking)
-    uint32_t devId;
+    uint32_t devId = 0;
     float lat; //latitude
     float lon; //longitude
     float altitude; //altitude [m]

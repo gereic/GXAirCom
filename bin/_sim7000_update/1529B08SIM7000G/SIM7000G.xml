@@ -1,0 +1,333 @@
+<?xml version="1.0" ?>
+<contents>
+  <product_info>
+    <product_name>MDM9206.TX.3.0</product_name>
+    <hlos_type cmm_var="HLOS_TYPE">TX</hlos_type>
+    <chipid cmm_var="CHIPID">MDM9206</chipid>
+  </product_info>
+  <builds_flat>
+    <build>
+      <name>common</name>
+      <role>common</role>
+      <chipset>MDM9206</chipset>
+      <build_id>MDM9206.TX.3.0-00156-STD.PROD-1.356327.1.425170.3</build_id>
+      <windows_root_path>.\</windows_root_path>
+      <linux_root_path>./</linux_root_path>
+      <image_dir>common</image_dir>
+      <download_file get_binary="True" minimized="true">
+        <file_name>partition.mbn</file_name>
+        <file_path>./</file_path>
+      </download_file>
+      <file_ref get_binary="True" partition="sec" minimized="true">
+        <file_name>sec.dat</file_name>
+        <file_path>common/sectools/resources/build/</file_path>
+      </file_ref>
+      <download_file get_binary="True" minimized="true">
+        <file_name>sec.dat</file_name>
+        <file_path>common/sectools/resources/build/</file_path>
+      </download_file>
+      <partition_file>
+        <file_name>partition_update.xml</file_name>
+        <file_path>./</file_path>
+      </partition_file>
+    </build>
+    <build>
+      <name>glue</name>
+      <role>glue</role>
+      <chipset>MDM9206</chipset>
+      <build_id>GLUE.MDM9206_TX.3.0-00029-NOOP_TEST-1</build_id>
+      <windows_root_path>.\</windows_root_path>
+      <linux_root_path>./</linux_root_path>
+      <release_path/>
+      <image_dir>common</image_dir>
+      <buildfile_path>echo/</buildfile_path>
+      <build_command>echo ./BuildProducts.txt &gt; BuildProducts.txt</build_command>
+    </build>
+    <build>
+      <name>apps</name>
+      <role>apps</role>
+      <chipset>MDM9206</chipset>
+      <build_id>IOT.TX.3.0-00264-M9206ACINAAAZA-1.425170.1</build_id>
+      <windows_root_path cmm_root_path_var="APSS_BUILDROOT">.\</windows_root_path>
+      <linux_root_path cmm_root_path_var="APSS_BUILDROOT">./</linux_root_path>
+      <image_dir>apps_proc</image_dir>
+      <release_path>HY11_CompileTest</release_path>
+      <download_file cmm_file_var="APSS_BINARY" get_binary="True" minimized="true">
+        <file_name>apps.mbn</file_name>
+        <file_path>apps_proc/build/ms/bin/ACINAAAZ/</file_path>
+      </download_file>
+      <download_file cmm_file_var="ACDB_BINARY" get_binary="True" minimized="true">
+        <file_name>acdb.mbn</file_name>
+        <file_path>apps_proc/build/ms/bin/ACINAAAZ/</file_path>
+      </download_file>
+      <file_ref minimized="true">
+        <file_name>l4.t32</file_name>
+        <file_path>apps_proc/build/ms</file_path>
+      </file_ref>
+      <file_ref minimized="true">
+        <file_name>l4.men</file_name>
+        <file_path>apps_proc/build/ms</file_path>
+      </file_ref>
+      <download_file cmm_file_var="APSS_ELF" minimized="true">
+        <file_name>M9x06ACINAAAZ*.elf</file_name>
+        <file_path>apps_proc/build/ms</file_path>
+      </download_file>
+      <buildfile_path>/</buildfile_path>
+      <build_command> </build_command>
+    </build>
+    <build>
+      <name>modem</name>
+      <role>modem</role>
+      <chipset>MDM9206</chipset>
+      <build_id>MPSS.JO.3.0.3-00304-9607_LTENBG_PACK-11.356327.1.425170.1</build_id>
+      <physical_pool>
+      <region_base>0x84000000</region_base>
+      <size>0x3C00000</size>
+      </physical_pool>
+      <windows_root_path cmm_root_path_var="MPSS_BUILDROOT">.\</windows_root_path>
+      <linux_root_path cmm_root_path_var="MPSS_BUILDROOT">./</linux_root_path>
+      <image_dir>modem_proc</image_dir>
+      <release_path>PCT/SRC</release_path>
+      <file_ref minimized="true">
+        <file_name>qdsp6sw.mbn</file_name>
+        <file_path>modem_proc/build/ms/bin/9607.ltenbgf3.prod/</file_path>
+      </file_ref>
+      <file_ref get_binary="True" minimized="true">
+        <file_name>efs1.bin</file_name>
+        <file_path>modem_proc/build/ms/bin/9607.ltenbgf3.prod/</file_path>
+      </file_ref>
+      <file_ref get_binary="True" minimized="true">
+        <file_name>efs2.bin</file_name>
+        <file_path>modem_proc/build/ms/bin/9607.ltenbgf3.prod/</file_path>
+      </file_ref>
+      <file_ref get_binary="True" minimized="true">
+        <file_name>efs3.bin</file_name>
+        <file_path>modem_proc/build/ms/bin/9607.ltenbgf3.prod/</file_path>
+      </file_ref>
+      <file_ref symbol="modem">
+        <file_name>M96079607.ltenbgf3.prod*.elf</file_name>
+        <file_path>modem_proc/build/ms/</file_path>
+      </file_ref>
+      <file_ref debug_script="load_coredump">
+        <file_name>load_coredump.cmm</file_name>
+        <file_path>modem_proc/core/debugtools/err/cmm/</file_path>
+      </file_ref>
+      <file_ref debug_script="recover_ulog_dumps">
+        <file_name>ULogDump.cmm</file_name>
+        <file_path>modem_proc/core/power/ulog/scripts/</file_path>
+      </file_ref>
+      <file_ref debug_script="recover_npa_dumps">
+        <file_name>NPADump.cmm</file_name>
+        <file_path>modem_proc/core/power/npa/scripts/</file_path>
+      </file_ref>
+      <file_ref debug_script="recover_sleepctl_logs">
+        <file_name>SleepDump.cmm</file_name>
+        <file_path>modem_proc/core/power/sleep2.0/scripts/</file_path>
+      </file_ref>
+      <file_ref debug_script="analyze_qurt_kernel_error_info">
+        <file_name>analy_qurt_error.cmm</file_name>
+        <file_path>modem_proc/core/kernel/qurt/scripts</file_path>
+      </file_ref>
+      <download_file cmm_file_var="MPSS_BINARY" get_binary="True" minimized="true">
+        <file_name>qdsp6sw.mbn</file_name>
+        <file_path>modem_proc/build/ms/bin/9607.ltenbgf3.prod/</file_path>
+      </download_file>
+      <download_file cmm_file_var="MBA_BINARY" get_binary="True" minimized="true">
+        <file_name>mba.mbn</file_name>
+        <file_path>modem_proc/build/ms/bin/9607.ltenbgf3.prod/</file_path>
+      </download_file>
+      <download_file cmm_file_var="MPSS_ELF" minimized="true">
+        <file_name>M96079607.ltenbgf3.prod*.elf</file_name>
+        <file_path>modem_proc/build/ms/</file_path>
+      </download_file>
+      <buildfile_path>/</buildfile_path>
+      <build_command> </build_command>
+    </build>
+    <build>
+      <name>tz</name>
+      <role>tz</role>
+      <chipset>MDM9206</chipset>
+      <build_id>TZ.BF.4.0.c6-00117-M9607TAAAAANAZT-2.425170.1</build_id>
+      <windows_root_path cmm_root_path_var="TZ_BUILDROOT">.\</windows_root_path>
+      <linux_root_path cmm_root_path_var="TZ_BUILDROOT">./</linux_root_path>
+      <image_dir>trustzone_images</image_dir>
+      <release_path>HY11_CompileTest</release_path>
+      <download_file cmm_file_var="BOOT_TZ_MBN" minimized="true">
+        <file_name>tz.mbn</file_name>
+        <file_path>trustzone_images/build/ms/bin/OAQAANBA/</file_path>
+      </download_file>
+      <download_file cmm_file_var="TZ_BINARY" get_binary="True" minimized="true">
+        <file_name>tz.mbn</file_name>
+        <file_path>trustzone_images/build/ms/bin/OAQAANBA/</file_path>
+      </download_file>
+      <download_file cmm_file_var="DEVCFG_BINARY" get_binary="True" fastboot_complete="devcfg" minimized="true">
+        <file_name>devcfg.mbn</file_name>
+        <file_path>trustzone_images/build/ms/bin/OAQAANBA/</file_path>
+      </download_file>
+      <buildfile_path>/</buildfile_path>
+      <build_command> </build_command>
+    </build>
+    <build>
+      <name>boot</name>
+      <role>boot</role>
+      <chipset>MDM9206</chipset>
+      <build_id>BOOT.BF.3.1.4-00027-M9x06LAAAANAZB-1</build_id>
+      <windows_root_path cmm_root_path_var="BOOT_BUILDROOT">.\</windows_root_path>
+      <linux_root_path cmm_root_path_var="BOOT_BUILDROOT">./</linux_root_path>
+      <image_dir>boot_images</image_dir>
+      <release_path>HY11_CompileTest</release_path>
+      <flash_programmer get_binary="True" minimized="true">
+        <file_name>NPRG9x06.mbn</file_name>
+        <file_path>boot_images/build/ms/bin/9x06/nand/</file_path>
+      </flash_programmer>
+      <device_programmer minimized="true">
+        <file_name>validated_nand_firehose_9x06.mbn</file_name>
+        <file_path>boot_images/build/ms/bin/9x06/nand/</file_path>
+      </device_programmer>
+      <download_file get_binary="True" minimized="true">
+        <file_name>ENPRG9x06.mbn</file_name>
+        <file_path>boot_images/build/ms/bin/9x06/nand/</file_path>
+      </download_file>
+      <download_file get_binary="True" minimized="true">
+        <file_name>NPRG9x06.mbn</file_name>
+        <file_path>boot_images/build/ms/bin/9x06/nand/</file_path>
+      </download_file>
+      <download_file minimized="true">
+        <file_name>sbl1.mbn</file_name>
+        <file_path>boot_images/build/ms/bin/9x06/nand/LAATMNAZA/</file_path>
+      </download_file>
+      <file_ref minimized="true">
+        <file_name>hwio.cmm</file_name>
+        <file_path>boot_images/core/systemdrivers/hwio/scripts/mdm9x06/</file_path>
+      </file_ref>
+      <file_ref minimized="true">
+        <file_name>*</file_name>
+        <file_path>boot_images/core/storage/flash/tools/src/nand/</file_path>
+      </file_ref>
+      <file_ref minimized="true">
+        <file_name>hwioreg.cmm</file_name>
+        <file_path>boot_images/core/systemdrivers/hwio/scripts/mdm9x06/</file_path>
+      </file_ref>
+      <file_ref minimized="true">
+        <file_name>*</file_name>
+        <file_path>boot_images/core/storage/tools/ptool/</file_path>
+      </file_ref>
+      <file_ref minimized="true">
+        <file_name>clk_init_9x06.cmm</file_name>
+        <file_path>boot_images/build/ms/</file_path>
+      </file_ref>
+      <download_file minimized="true">
+        <file_name>hwio.cmm</file_name>
+        <file_path>boot_images/core/systemdrivers/hwio/scripts/mdm9x06/</file_path>
+      </download_file>
+      <download_file cmm_file_var="BOOT_ELF" minimized="true">
+        <file_name>SBL1_nand*.elf</file_name>
+        <file_path>boot_images/core/bsp/bootloaders/sbl1/build/mdm9x06/</file_path>
+      </download_file>
+      <download_file cmm_file_var="BOOT_BINARY" get_binary="True" minimized="true">
+        <file_name>sbl1.mbn</file_name>
+        <file_path>boot_images/build/ms/bin/9x06/nand/LAATMNAZA/</file_path>
+      </download_file>
+      <buildfile_path>boot_images/build/ms/</buildfile_path>
+      <build_command>cleanpack.sh 9x06</build_command>
+    </build>
+    <build>
+      <name>rpm</name>
+      <role>rpm</role>
+      <chipset>MDM9206</chipset>
+      <build_id>RPM.BF.2.1.1.c7-00007-M9607AAAAANAZR-1</build_id>
+      <windows_root_path cmm_root_path_var="RPM_BUILDROOT">.\</windows_root_path>
+      <linux_root_path cmm_root_path_var="RPM_BUILDROOT">./</linux_root_path>
+      <image_dir>rpm_proc</image_dir>
+      <release_path>HY11_CompileTest</release_path>
+      <file_ref minimized="true">
+        <file_name>rpm.mbn</file_name>
+        <file_path>rpm_proc/build/ms/bin/9x07/</file_path>
+      </file_ref>
+      <file_ref debug_script="recover_ulog_dumps">
+        <file_name>rpm_ulogdump.cmm</file_name>
+        <file_path>rpm_proc/core/power/ulog/scripts</file_path>
+      </file_ref>
+      <file_ref debug_script="recover_npa_dumps">
+        <file_name>rpm_npadump.cmm</file_name>
+        <file_path>rpm_proc/core/power/npa/scripts</file_path>
+      </file_ref>
+      <file_ref debug_script="parse_merged_logs">
+        <file_name>rpm_log_bfam.py</file_name>
+        <file_path>rpm_proc/core/power/rpm/debug/scripts</file_path>
+      </file_ref>
+      <file_ref symbol="true">
+        <file_name>RPM_AAAAANAAR.elf</file_name>
+        <file_path>rpm_proc/core/bsp/rpm/build/9x07/</file_path>
+      </file_ref>
+      <download_file cmm_file_var="RPM_BINARY" get_binary="True" minimized="true">
+        <file_name>rpm.mbn</file_name>
+        <file_path>rpm_proc/build/ms/bin/9x07/</file_path>
+      </download_file>
+      <download_file cmm_file_var="RPM_ELF" minimized="true">
+        <file_name>RPM_AAAAANAAR.elf</file_name>
+        <file_path>rpm_proc/core/bsp/rpm/build/9x07/</file_path>
+      </download_file>
+      <buildfile_path>rpm_proc/build/</buildfile_path>
+      <build_command>build_packed.sh 9x07</build_command>
+    </build>
+  </builds_flat>
+  <build_tools>
+    <tool>
+      <name>cpfatfs</name>
+      <build>boot</build>
+      <path>boot_images/core/storage/tools/fattool/</path>
+    </tool>
+    <tool>
+      <name>fatadd</name>
+      <build>boot</build>
+      <path>boot_images/core/storage/tools/fattool/</path>
+    </tool>
+    <tool>
+      <name>msp</name>
+      <build>boot</build>
+      <path>boot_images/core/storage/tools/ptool/</path>
+    </tool>
+    <tool>
+      <name>checksparse</name>
+      <build>boot</build>
+      <path>boot_images/core/storage/tools/ptool/</path>
+    </tool>
+  </build_tools>
+  <external_tools>
+    <tool>
+      <name>trace32</name>
+      <version>June 2011</version>
+      <path>\\qcdfs\QCT\qctdata\CoreBSPTarget\Shelby\T32</path>
+    </tool>
+    <tool>
+      <name>qpst</name>
+      <version>QPST 2.7.420</version>
+      <path>\\cold\tools\Installers\QPST</path>
+    </tool>
+    <tool>
+      <name>qxdm</name>
+      <version>QXDM 3.14.777</version>
+      <path>\\cold\tools\Installers\QXDM</path>
+    </tool>
+  </external_tools>
+  <workflow>
+    <tool>
+      <name>nand_mbn_generator.py</name>
+      <build>boot</build>
+      <path>boot_images/core/storage/tools/nandbootmbn/</path>
+    </tool>
+    <step type="exec">
+      <params>python @tool_name ./../config/partition_update.xml partition.mbn 128 2 65536</params>
+      <tool_name>nand_mbn_generator.py</tool_name>
+    </step>
+    <step type="copy">
+      <src_files>$[attribute:get_binary]</src_files>
+      <destn_dir>./../../binaries</destn_dir>
+    </step>
+    <step type="copy">
+      <src_files>Ver_Info.txt</src_files>
+      <destn_dir>./bin/image</destn_dir>
+    </step>
+  </workflow>
+</contents>

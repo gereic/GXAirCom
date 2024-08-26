@@ -8,3 +8,4 @@ bin/_version.txt
 bin/_copy2server.bat
 bin/scplog.txt
 bin/mqttupdate.py
+_04settings

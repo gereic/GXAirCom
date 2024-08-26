@@ -102,7 +102,7 @@ void load_configFile(SettingsData* pSetting){
   
   //weathersettings
   pSetting->wd.mode.mode = preferences.getUChar("WsMode",0);
-  pSetting->wd.sendFanet = preferences.getUChar("FanetWeather",0);
+  pSetting->wd.sendFanet = preferences.getUChar("FanetWeather",1);
   pSetting->wd.tempOffset = preferences.getFloat("wdTempOffset",0.0);
   pSetting->wd.windDirOffset = preferences.getInt("wdWDirOffset",0);
   pSetting->wd.avgFactorFanet = preferences.getFloat("avgFanet",16);

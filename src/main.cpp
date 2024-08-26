@@ -629,6 +629,21 @@ uint8_t checkI2C(){
 }
 
 void checkBoardType(){
+  #ifndef AIRMODULE //we are a ground-station --> set default-values
+  setting.PilotName = "GS" + fanet.getMyDevId();
+  log_i("set station-name %s",setting.PilotName.c_str());
+  setting.wd.sendFanet = 1;
+  setting.OGNLiveTracking.bits.fwdName = true;
+  setting.OGNLiveTracking.bits.fwdWeather = true;
+  setting.OGNLiveTracking.bits.liveTracking = true;
+  setting.OGNLiveTracking.bits.sendWeather = true;
+  setting.outputMode = eOutput::oSERIAL;
+  setting.bOutputSerial = false;
+  setting.outputGPS = false;
+  setting.outputFLARM = false;
+  setting.outputFANET = false;
+  setting.outputModeVario = eOutputVario::OVARIO_NONE;
+  #endif
   #ifdef TINY_GSM_MODEM_SIM7000
     setting.displayType = NO_DISPLAY;
     setting.boardType = eBoard::TTGO_TSIM_7000;
@@ -2591,6 +2606,8 @@ bool initModem(){
       return false;
     }
   #endif
+  String sVer = modem.getModemInfo();
+  log_i("Version of SIM7000 %s",sVer.c_str());
   bool bRet = false;
   for (int i = 0;i <3;i++){
     log_i("restarting modem...");

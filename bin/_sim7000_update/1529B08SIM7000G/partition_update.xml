@@ -1,0 +1,298 @@
+<?xml version="1.0" encoding="utf-8"?>
+<nandboot>
+	<magic_numbers>
+		<usr_part_magic1>0xAA7D1B9A</usr_part_magic1>
+		<usr_part_magic2>0x1F7D48BC</usr_part_magic2>
+	</magic_numbers>
+	<partition_version length="4">0x4</partition_version>
+	<partitions>
+		<partition>
+			<name length="16" type="string">0:SBL</name>
+			<size_blks length="4">0x8</size_blks>
+			<pad_blks length="4">0x2</pad_blks>
+			<which_flash>0</which_flash>
+			<attr>0xFF</attr>
+			<attr>0x01</attr>
+			<attr>0x00</attr>
+			<attr>0xFE</attr>
+            <img_name type="string">sbl1.mbn</img_name>
+		</partition>
+		<partition>
+			<name length="16" type="string">0:MIBIB</name>
+			<size_blks length="4">0x6</size_blks>
+			<pad_blks length="4">0x4</pad_blks>
+			<which_flash>0</which_flash>
+			<attr>0xFF</attr>
+			<attr>0x01</attr>
+			<attr>0xFF</attr>
+			<attr>0xFE</attr>
+            <img_name type="string">partition.mbn</img_name>
+		</partition>
+		<partition>
+			<name length="16" type="string">0:EFS2</name>
+			<size_kb length="4">11264</size_kb>
+			<pad_kb length="4">1024</pad_kb>
+			<which_flash>0</which_flash>
+			<attr>0xFF</attr>
+			<attr>0x01</attr>
+			<attr>0x00</attr>
+			<attr>0xFF</attr>
+			<img_name type="string"></img_name>
+		</partition>
+		<partition>
+			<name length="16" type="string">0:TZ</name>
+			<size_kb length="4">2048</size_kb>
+			<pad_kb length="4">256</pad_kb>
+			<which_flash>0</which_flash>
+			<attr>0xFF</attr>
+			<attr>0x01</attr>
+			<attr>0x00</attr>
+			<attr>0xFF</attr>
+            <img_name type="string">tz.mbn</img_name>
+		</partition>
+		<partition>
+			<name length="16" type="string">0:DEVCFG</name>
+			<size_kb length="4">256</size_kb>
+			<pad_kb length="4">50</pad_kb>
+			<which_flash>0</which_flash>
+			<attr>0xFF</attr>
+			<attr>0x01</attr>
+			<attr>0x00</attr>
+			<attr>0xFF</attr>
+			<img_name type="string">devcfg.mbn</img_name>
+		</partition>
+		<partition>
+			<name length="16" type="string">0:APDP</name>
+			<size_kb length="4">256</size_kb>
+			<pad_kb length="4">50</pad_kb>
+			<which_flash>0</which_flash>
+			<attr>0xFF</attr>
+			<attr>0x01</attr>
+			<attr>0x00</attr>
+			<attr>0xFF</attr>
+		</partition>
+		<partition>
+			<name length="16" type="string">0:MSADP</name>
+			<size_kb length="4">256</size_kb>
+			<pad_kb length="4">50</pad_kb>
+			<which_flash>0</which_flash>
+			<attr>0xFF</attr>
+			<attr>0x01</attr>
+			<attr>0x00</attr>
+			<attr>0xFF</attr>
+		</partition>
+		<partition>
+			<name length="16" type="string">0:SEC</name>
+			<size_kb length="4">16</size_kb>
+			<pad_kb length="4">10</pad_kb>
+			<which_flash>0</which_flash>
+			<attr>0xFF</attr>
+			<attr>0x01</attr>
+			<attr>0x00</attr>
+			<attr>0xFF</attr>
+		</partition>		
+		<partition>
+      <!-- SIMCOM mengxiangning added for efs and fota begin -->
+			<name length="16" type="string">0:EFS2BAK</name>
+			<size_kb length="4">11520</size_kb>
+      <!-- SIMCOM mengxiangning modify for log region will be all bad blocks, that makes the module cannot power on @20180108 begin-->
+			<pad_kb length="4">1280</pad_kb>
+      <!-- SIMCOM mengxiangning modify for log region will be all bad blocks, that makes the module cannot power on @20180108 end-->
+			<which_flash>0</which_flash>
+			<attr>0xFF</attr>
+			<attr>0x01</attr>
+			<attr>0x00</attr>
+			<attr>0xFF</attr>
+		</partition>
+		<partition>
+			<name length="16" type="string">0:fotaflag</name>
+			<size_kb length="4">128</size_kb>
+			<pad_kb length="4">128</pad_kb>
+			<which_flash>0</which_flash>
+			<attr>0xFF</attr>
+			<attr>0x01</attr>
+			<attr>0x00</attr>
+			<attr>0xFF</attr>
+		</partition>
+		<partition>
+			<name length="16" type="string">0:Cache_DEVCFG</name>
+			<size_kb length="4">256</size_kb>
+			<pad_kb length="4">50</pad_kb>
+			<which_flash>0</which_flash>
+			<attr>0xFF</attr>
+			<attr>0x01</attr>
+			<attr>0x00</attr>
+			<attr>0xFF</attr>
+			<img_name type="string">devcfg.mbn</img_name>
+		</partition>
+		<partition>
+      <!-- SIMCOM mengxiangning added for efs and fota end -->
+			<name length="16" type="string">0:MBA</name>
+			<size_kb length="4">256</size_kb>
+			<pad_kb length="4">256</pad_kb>
+			<which_flash>0</which_flash>
+			<attr>0xFF</attr>
+			<attr>0x01</attr>
+			<attr>0x00</attr>
+			<attr>0xFF</attr>
+            <img_name type="string">mba.mbn</img_name>
+		</partition>
+		<partition>
+			<name length="16" type="string">0:ACDB</name>
+			<size_kb length="4">256</size_kb>
+			<pad_kb length="4">256</pad_kb>
+			<which_flash>0</which_flash>
+			<attr>0xFF</attr>
+			<attr>0x01</attr>
+			<attr>0x00</attr>
+			<attr>0xFF</attr>
+			<img_name type="string">acdb.mbn</img_name>
+		</partition>
+		<partition>
+			<name length="16" type="string">0:RPM</name>
+			<size_kb length="4">206</size_kb>
+			<pad_kb length="4">50</pad_kb>
+			<which_flash>0</which_flash>
+			<attr>0xFF</attr>
+			<attr>0x01</attr>
+			<attr>0x00</attr>
+			<attr>0xFF</attr>
+            <img_name type="string">rpm.mbn</img_name>
+		</partition>
+		<partition>
+			<name length="16" type="string">0:QDSP</name>
+			<size_kb length="4">25984</size_kb>
+			<pad_kb length="4">1792</pad_kb>
+			<which_flash>0</which_flash>
+			<attr>0xFF</attr>
+			<attr>0x01</attr>
+			<attr>0x00</attr>
+			<attr>0xFF</attr>
+			<img_name type="string">qdsp6sw.mbn</img_name>
+		</partition>		
+		<partition>
+			<name length="16" type="string">0:APPS</name>
+			<size_kb length="4">5120</size_kb>
+			<pad_kb length="4">512</pad_kb>
+			<which_flash>0</which_flash>
+			<attr>0xFF</attr>
+			<attr>0x01</attr>
+			<attr>0x00</attr>
+			<attr>0xFF</attr>
+			<img_name type="string">apps.mbn</img_name>
+		</partition>
+		<partition>
+			<name length="16" type="string">0:SCRUB</name>
+			<size_kb length="4">25984</size_kb>
+			<pad_kb length="4">1792</pad_kb>
+			<which_flash>0</which_flash>
+			<attr>0xFF</attr>
+			<attr>0x01</attr>
+			<attr>0x00</attr>
+			<attr>0xFF</attr>
+			<img_name type="string">qdsp6sw.mbn</img_name>
+		</partition>		
+		<partition>
+			<name length="16" type="string">0:Cache_APPS</name>
+			<size_kb length="4">5120</size_kb>
+			<pad_kb length="4">512</pad_kb>
+			<which_flash>0</which_flash>
+			<attr>0xFF</attr>
+			<attr>0x01</attr>
+			<attr>0x00</attr>
+			<attr>0xFF</attr>
+			<img_name type="string">apps.mbn</img_name>
+    </partition>
+    <partition>
+			<name length="16" type="string">0:Cache_TZ</name>
+			<size_kb length="4">2048</size_kb>
+			<pad_kb length="4">256</pad_kb>
+			<which_flash>0</which_flash>
+			<attr>0xFF</attr>
+			<attr>0x01</attr>
+			<attr>0x00</attr>
+			<attr>0xFF</attr>
+            <img_name type="string">tz.mbn</img_name>
+    </partition>
+    <partition>
+			<name length="16" type="string">0:Cache_RPM</name>
+			<size_kb length="4">206</size_kb>
+			<pad_kb length="4">50</pad_kb>
+			<which_flash>0</which_flash>
+			<attr>0xFF</attr>
+			<attr>0x01</attr>
+			<attr>0x00</attr>
+			<attr>0xFF</attr>
+            <img_name type="string">rpm.mbn</img_name>
+    </partition>
+		<partition>
+			<name length="16" type="string">0:Cache_ACDB</name>
+      <!-- SIMCOM mengxiangning added for efs and fota begin -->
+			<size_kb length="4">256</size_kb>
+			<pad_kb length="4">256</pad_kb>
+			<which_flash>0</which_flash>
+			<attr>0xFF</attr>
+			<attr>0x01</attr>
+			<attr>0x00</attr>
+			<attr>0xFF</attr>
+			<img_name type="string">acdb.mbn</img_name>
+		</partition>
+		<partition>
+			<name length="16" type="string">0:Cache_MBA</name>
+      <!-- SIMCOM mengxiangning added for efs and fota end -->
+			<size_kb length="4">256</size_kb>
+			<pad_kb length="4">256</pad_kb>
+			<which_flash>0</which_flash>
+			<attr>0xFF</attr>
+			<attr>0x01</attr>
+			<attr>0x00</attr>
+			<attr>0xFF</attr>
+            <img_name type="string">mba.mbn</img_name>
+		</partition>
+		<partition>
+			<name length="16" type="string">0:misc</name>
+			<size_kb length="4">10</size_kb>
+			<pad_kb length="4">5</pad_kb>
+			<which_flash>0</which_flash>
+			<attr>0xFF</attr>
+			<attr>0x01</attr>
+			<attr>0x00</attr>
+			<attr>0xFF</attr>
+		</partition>
+		<partition>
+			<name length="16" type="string">0:sec</name>
+			<size_kb length="4">16</size_kb>
+			<pad_kb length="4">10</pad_kb>
+			<which_flash>0</which_flash>
+			<attr>0xFF</attr>
+			<attr>0x01</attr>
+			<attr>0x00</attr>
+			<attr>0xFF</attr>
+			<img_name type="string">sec.dat</img_name>
+    </partition>
+    <!-- SIMCOM mengxiangning added for backup eat bin @20170718 begin -->
+    <partition>
+			<name length="16" type="string">0:BAKAP</name>
+			<size_kb length="4">2176</size_kb>
+      <!-- SIMCOM mengxiangning modify for remodify @20180111 begin-->
+			<pad_kb length="4">600</pad_kb>
+      <!-- SIMCOM mengxiangning modify for remodify @20180111 end-->
+			<which_flash>0</which_flash>
+			<attr>0xFF</attr>
+			<attr>0x01</attr>
+			<attr>0x00</attr>
+			<attr>0xFF</attr>
+		</partition>
+    <!-- SIMCOM mengxiangning added for backup eat bin @20170718 end -->
+		<partition>
+			<name length="16" type="string">0:EFS2APPS</name>
+			<size_kb length="4">0xFFFFFFFF</size_kb>
+			<pad_kb length="4">0xFFFF</pad_kb>
+			<which_flash>0</which_flash>
+			<attr>0xFF</attr>
+			<attr>0x01</attr>
+			<attr>0x00</attr>
+			<attr>0xFF</attr>
+		</partition>		
+	</partitions>
+</nandboot>

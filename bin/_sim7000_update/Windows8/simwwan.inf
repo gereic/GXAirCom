@@ -1,0 +1,1134 @@
+;-------------------------------------------------------------------------------
+; SimTech Wireless Network Device for Windows 7
+;
+; Copyright (c) 2014 SimTech Technologies, Inc.
+; All rights reserved.
+
+
+[Version]
+Signature   = "$Windows NT$"
+Class       = Net
+ClassGUID   = {4d36e972-e325-11ce-bfc1-08002be10318}
+Provider    = %SIMTech%
+DriverVer   = 11/17/2015,4.0.3.9
+Catalogfile = simlteusbwwan.cat
+
+[ControlFlags]
+ExcludeFromSelect = *
+
+[Manufacturer]
+%sim% = sim, NTx86.6.1, NTia64.6.1, NTamd64.6.1
+
+[SourceDisksNames.x86]
+1000 = %simSrcDisk%,"",,\ndis\6.2\i386
+
+[SourceDisksNames.amd64]
+1000 = %simSrcDisk%,"",,\ndis\6.2\amd64
+
+[SourceDisksFiles]
+  simlteusbwwan.sys = 1000
+
+[sim.NTx86.6.1]
+%simwwan.DeviceDesc%         = simwwan.ndi, USB\VID_05C6&PID_7000&MI_00
+%simwwan.DeviceDesc7001%     = simwwan.ndi, USB\VID_05C6&PID_7001&MI_01
+%simwwan.DeviceDesc7002%     = simwwan.ndi, USB\VID_05C6&PID_7002&MI_01
+%simwwan.DeviceDesc71011%    = simwwan.ndi, USB\VID_05C6&PID_7101&MI_01
+%simwwan.DeviceDesc71012%    = simwwan.ndi, USB\VID_05C6&PID_7101&MI_02
+%simwwan.DeviceDesc71013%    = simwwan.ndi, USB\VID_05C6&PID_7101&MI_03
+%simwwan.DeviceDesc71021%    = simwwan.ndi, USB\VID_05C6&PID_7102&MI_01
+%simwwan.DeviceDesc71022%    = simwwan.ndi, USB\VID_05C6&PID_7102&MI_02
+%simwwan.DeviceDesc71023%    = simwwan.ndi, USB\VID_05C6&PID_7102&MI_03
+%simwwan.DeviceDesc80007%    = simwwan.ndi, USB\VID_05C6&PID_8000&MI_07
+%simwwan.DeviceDesc80016%    = simwwan.ndi, USB\VID_05C6&PID_8001&MI_06
+%simwwan.DeviceDesc90005%    = simwwan.ndi, USB\VID_1E0E&PID_9000&MI_05
+%simwwan.DeviceDesc90015%    = simwwan.ndi, USB\VID_1E0E&PID_9001&MI_05
+%simwwan.DeviceDesc90025%    = simwwan.ndi, USB\VID_1E0E&PID_9002&MI_05
+%simwwan.DeviceDesc90046%    = simwwan.ndi, USB\VID_1E0E&PID_9004&MI_06
+%simwwan.DeviceDesc90075%    = simwwan.ndi, USB\VID_1E0E&PID_9007&MI_05
+%simwwan.DeviceDesc900A4%    = simwwan.ndi, USB\VID_05C6&PID_900A&MI_04
+%simwwan.DeviceDesc900B2%    = simwwan.ndi, USB\VID_05C6&PID_900B&MI_02
+%simwwan.DeviceDesc900C4%    = simwwan.ndi, USB\VID_05C6&PID_900C&MI_04
+%simwwan.DeviceDesc900C5%    = simwwan.ndi, USB\VID_05C6&PID_900C&MI_05
+%simwwan.DeviceDesc900C6%    = simwwan.ndi, USB\VID_05C6&PID_900C&MI_06
+%simwwan.DeviceDesc900D5%    = simwwan.ndi, USB\VID_05C6&PID_900D&MI_05
+%simwwan.DeviceDesc900F3%    = simwwan.ndi, USB\VID_05C6&PID_900F&MI_03
+%simwwan.DeviceDesc900F4%    = simwwan.ndi, USB\VID_05C6&PID_900F&MI_04
+%simwwan.DeviceDesc900F5%    = simwwan.ndi, USB\VID_05C6&PID_900F&MI_05
+%simwwan.DeviceDesc90104%    = simwwan.ndi, USB\VID_05C6&PID_9010&MI_04
+%simwwan.DeviceDesc90105%    = simwwan.ndi, USB\VID_05C6&PID_9010&MI_05
+%simwwan.DeviceDesc90113%    = simwwan.ndi, USB\VID_05C6&PID_9011&MI_03
+%simwwan.DeviceDesc90114%    = simwwan.ndi, USB\VID_05C6&PID_9011&MI_04
+%simwwan.DeviceDesc90211%    = simwwan.ndi, USB\VID_05C6&PID_9021&MI_01
+%simwwan.DeviceDesc90222%    = simwwan.ndi, USB\VID_05C6&PID_9022&MI_02
+%simwwan.DeviceDesc90254%    = simwwan.ndi, USB\VID_05C6&PID_9025&MI_04
+%simwwan.DeviceDesc90263%    = simwwan.ndi, USB\VID_05C6&PID_9026&MI_03
+%simwwan.DeviceDesc902E5%    = simwwan.ndi, USB\VID_05C6&PID_902E&MI_05
+%simwwan.DeviceDesc90315%    = simwwan.ndi, USB\VID_05C6&PID_9031&MI_05
+%simwwan.DeviceDesc90324%    = simwwan.ndi, USB\VID_05C6&PID_9032&MI_04
+%simwwan.DeviceDesc90333%    = simwwan.ndi, USB\VID_05C6&PID_9033&MI_03
+%simwwan.DeviceDesc90334%    = simwwan.ndi, USB\VID_05C6&PID_9033&MI_04
+%simwwan.DeviceDesc90335%    = simwwan.ndi, USB\VID_05C6&PID_9033&MI_05
+%simwwan.DeviceDesc90336%    = simwwan.ndi, USB\VID_05C6&PID_9033&MI_06
+%simwwan.DeviceDesc90343%    = simwwan.ndi, USB\VID_05C6&PID_9034&MI_03
+%simwwan.DeviceDesc90344%    = simwwan.ndi, USB\VID_05C6&PID_9034&MI_04
+%simwwan.DeviceDesc90345%    = simwwan.ndi, USB\VID_05C6&PID_9034&MI_05
+%simwwan.DeviceDesc90346%    = simwwan.ndi, USB\VID_05C6&PID_9034&MI_06
+%simwwan.DeviceDesc90347%    = simwwan.ndi, USB\VID_05C6&PID_9034&MI_07
+%simwwan.DeviceDesc90354%    = simwwan.ndi, USB\VID_05C6&PID_9035&MI_04
+%simwwan.DeviceDesc903580%    = simwwan.ndi, USB\VID_05C6&PID_9035&MI_80
+%simwwan.DeviceDesc903581%    = simwwan.ndi, USB\VID_05C6&PID_9035&MI_81
+%simwwan.DeviceDesc903582%    = simwwan.ndi, USB\VID_05C6&PID_9035&MI_82
+%simwwan.DeviceDesc903583%    = simwwan.ndi, USB\VID_05C6&PID_9035&MI_83
+%simwwan.DeviceDesc903584%    = simwwan.ndi, USB\VID_05C6&PID_9035&MI_84
+%simwwan.DeviceDesc903585%    = simwwan.ndi, USB\VID_05C6&PID_9035&MI_85
+%simwwan.DeviceDesc903586%    = simwwan.ndi, USB\VID_05C6&PID_9035&MI_86
+%simwwan.DeviceDesc903587%    = simwwan.ndi, USB\VID_05C6&PID_9035&MI_87
+%simwwan.DeviceDesc903588%    = simwwan.ndi, USB\VID_05C6&PID_9035&MI_88
+%simwwan.DeviceDesc90363%    = simwwan.ndi, USB\VID_05C6&PID_9036&MI_03
+%simwwan.DeviceDesc90375%    = simwwan.ndi, USB\VID_05C6&PID_9037&MI_05
+%simwwan.DeviceDesc90384%    = simwwan.ndi, USB\VID_05C6&PID_9038&MI_04
+%simwwan.DeviceDesc903B7%    = simwwan.ndi, USB\VID_05C6&PID_903B&MI_07
+%simwwan.DeviceDesc903C6%    = simwwan.ndi, USB\VID_05C6&PID_903C&MI_06
+%simwwan.DeviceDesc903D6%    = simwwan.ndi, USB\VID_05C6&PID_903D&MI_06
+%simwwan.DeviceDesc903E5%    = simwwan.ndi, USB\VID_05C6&PID_903E&MI_05
+%simwwan.DeviceDesc90463%    = simwwan.ndi, USB\VID_05C6&PID_9046&MI_03
+%simwwan.DeviceDesc90464%    = simwwan.ndi, USB\VID_05C6&PID_9046&MI_04
+%simwwan.DeviceDesc90465%    = simwwan.ndi, USB\VID_05C6&PID_9046&MI_05
+%simwwan.DeviceDesc90472%    = simwwan.ndi, USB\VID_05C6&PID_9047&MI_02
+%simwwan.DeviceDesc90473%    = simwwan.ndi, USB\VID_05C6&PID_9047&MI_03
+%simwwan.DeviceDesc90474%    = simwwan.ndi, USB\VID_05C6&PID_9047&MI_04
+%simwwan.DeviceDesc90484%    = simwwan.ndi, USB\VID_05C6&PID_9048&MI_04
+%simwwan.DeviceDesc90485%    = simwwan.ndi, USB\VID_05C6&PID_9048&MI_05
+%simwwan.DeviceDesc90486%    = simwwan.ndi, USB\VID_05C6&PID_9048&MI_06
+%simwwan.DeviceDesc90487%    = simwwan.ndi, USB\VID_05C6&PID_9048&MI_07
+%simwwan.DeviceDesc90488%    = simwwan.ndi, USB\VID_05C6&PID_9048&MI_08
+%simwwan.DeviceDesc90493%    = simwwan.ndi, USB\VID_05C6&PID_9049&MI_03
+%simwwan.DeviceDesc904C5%    = simwwan.ndi, USB\VID_05C6&PID_904C&MI_05
+%simwwan.DeviceDesc904C6%    = simwwan.ndi, USB\VID_05C6&PID_904C&MI_06
+%simwwan.DeviceDesc904C7%    = simwwan.ndi, USB\VID_05C6&PID_904C&MI_07
+%simwwan.DeviceDesc904C8%    = simwwan.ndi, USB\VID_05C6&PID_904C&MI_08
+%simwwan.DeviceDesc90503%    = simwwan.ndi, USB\VID_05C6&PID_9050&MI_03
+%simwwan.DeviceDesc90524%    = simwwan.ndi, USB\VID_05C6&PID_9052&MI_04
+%simwwan.DeviceDesc90536%    = simwwan.ndi, USB\VID_05C6&PID_9053&MI_06
+%simwwan.DeviceDesc90537%    = simwwan.ndi, USB\VID_05C6&PID_9053&MI_07
+%simwwan.DeviceDesc90545%    = simwwan.ndi, USB\VID_05C6&PID_9054&MI_05
+%simwwan.DeviceDesc90546%    = simwwan.ndi, USB\VID_05C6&PID_9054&MI_06
+%simwwan.DeviceDesc90553%    = simwwan.ndi, USB\VID_05C6&PID_9055&MI_03
+%simwwan.DeviceDesc90554%    = simwwan.ndi, USB\VID_05C6&PID_9055&MI_04
+%simwwan.DeviceDesc90555%    = simwwan.ndi, USB\VID_05C6&PID_9055&MI_05
+%simwwan.DeviceDesc90556%    = simwwan.ndi, USB\VID_05C6&PID_9055&MI_06
+%simwwan.DeviceDesc90557%    = simwwan.ndi, USB\VID_05C6&PID_9055&MI_07
+%simwwan.DeviceDesc905580%    = simwwan.ndi, USB\VID_05C6&PID_9055&MI_80
+%simwwan.DeviceDesc905581%    = simwwan.ndi, USB\VID_05C6&PID_9055&MI_81
+%simwwan.DeviceDesc905582%    = simwwan.ndi, USB\VID_05C6&PID_9055&MI_82
+%simwwan.DeviceDesc905583%    = simwwan.ndi, USB\VID_05C6&PID_9055&MI_83
+%simwwan.DeviceDesc905584%    = simwwan.ndi, USB\VID_05C6&PID_9055&MI_84
+%simwwan.DeviceDesc905585%    = simwwan.ndi, USB\VID_05C6&PID_9055&MI_85
+%simwwan.DeviceDesc905586%    = simwwan.ndi, USB\VID_05C6&PID_9055&MI_86
+%simwwan.DeviceDesc905587%    = simwwan.ndi, USB\VID_05C6&PID_9055&MI_87
+%simwwan.DeviceDesc905588%    = simwwan.ndi, USB\VID_05C6&PID_9055&MI_88
+%simwwan.DeviceDesc90563%    = simwwan.ndi, USB\VID_05C6&PID_9056&MI_03
+%simwwan.DeviceDesc90622%    = simwwan.ndi, USB\VID_05C6&PID_9062&MI_02
+%simwwan.DeviceDesc90623%    = simwwan.ndi, USB\VID_05C6&PID_9062&MI_03
+%simwwan.DeviceDesc90624%    = simwwan.ndi, USB\VID_05C6&PID_9062&MI_04
+%simwwan.DeviceDesc90625%    = simwwan.ndi, USB\VID_05C6&PID_9062&MI_05
+%simwwan.DeviceDesc90626%    = simwwan.ndi, USB\VID_05C6&PID_9062&MI_06
+%simwwan.DeviceDesc90627%    = simwwan.ndi, USB\VID_05C6&PID_9062&MI_07
+%simwwan.DeviceDesc90628%    = simwwan.ndi, USB\VID_05C6&PID_9062&MI_08
+%simwwan.DeviceDesc90629%    = simwwan.ndi, USB\VID_05C6&PID_9062&MI_09
+%simwwan.DeviceDesc90643%    = simwwan.ndi, USB\VID_05C6&PID_9064&MI_03
+%simwwan.DeviceDesc90656%    = simwwan.ndi, USB\VID_05C6&PID_9065&MI_06
+%simwwan.DeviceDesc90657%    = simwwan.ndi, USB\VID_05C6&PID_9065&MI_07
+%simwwan.DeviceDesc90665%    = simwwan.ndi, USB\VID_05C6&PID_9066&MI_05
+%simwwan.DeviceDesc90666%    = simwwan.ndi, USB\VID_05C6&PID_9066&MI_06
+%simwwan.DeviceDesc90671%    = simwwan.ndi, USB\VID_05C6&PID_9067&MI_01
+%simwwan.DeviceDesc90682%    = simwwan.ndi, USB\VID_05C6&PID_9068&MI_02
+%simwwan.DeviceDesc90683%    = simwwan.ndi, USB\VID_05C6&PID_9068&MI_03
+%simwwan.DeviceDesc90684%    = simwwan.ndi, USB\VID_05C6&PID_9068&MI_04
+%simwwan.DeviceDesc90685%    = simwwan.ndi, USB\VID_05C6&PID_9068&MI_05
+%simwwan.DeviceDesc90686%    = simwwan.ndi, USB\VID_05C6&PID_9068&MI_06
+%simwwan.DeviceDesc90687%    = simwwan.ndi, USB\VID_05C6&PID_9068&MI_07
+%simwwan.DeviceDesc90695%    = simwwan.ndi, USB\VID_05C6&PID_9069&MI_05
+%simwwan.DeviceDesc90696%    = simwwan.ndi, USB\VID_05C6&PID_9069&MI_06
+%simwwan.DeviceDesc90697%    = simwwan.ndi, USB\VID_05C6&PID_9069&MI_07
+%simwwan.DeviceDesc90698%    = simwwan.ndi, USB\VID_05C6&PID_9069&MI_08
+%simwwan.DeviceDesc90704%    = simwwan.ndi, USB\VID_05C6&PID_9070&MI_04
+%simwwan.DeviceDesc90705%    = simwwan.ndi, USB\VID_05C6&PID_9070&MI_05
+%simwwan.DeviceDesc90755%    = simwwan.ndi, USB\VID_05C6&PID_9075&MI_05
+%simwwan.DeviceDesc90764%    = simwwan.ndi, USB\VID_05C6&PID_9076&MI_04
+%simwwan.DeviceDesc90765%    = simwwan.ndi, USB\VID_05C6&PID_9076&MI_05
+%simwwan.DeviceDesc90766%    = simwwan.ndi, USB\VID_05C6&PID_9076&MI_06
+%simwwan.DeviceDesc90767%    = simwwan.ndi, USB\VID_05C6&PID_9076&MI_07
+%simwwan.DeviceDesc90768%    = simwwan.ndi, USB\VID_05C6&PID_9076&MI_08
+%simwwan.DeviceDesc90773%    = simwwan.ndi, USB\VID_05C6&PID_9077&MI_03
+%simwwan.DeviceDesc90774%    = simwwan.ndi, USB\VID_05C6&PID_9077&MI_04
+%simwwan.DeviceDesc90775%    = simwwan.ndi, USB\VID_05C6&PID_9077&MI_05
+%simwwan.DeviceDesc90776%    = simwwan.ndi, USB\VID_05C6&PID_9077&MI_06
+%simwwan.DeviceDesc90783%    = simwwan.ndi, USB\VID_05C6&PID_9078&MI_03
+%simwwan.DeviceDesc90794%    = simwwan.ndi, USB\VID_05C6&PID_9079&MI_04
+%simwwan.DeviceDesc90795%    = simwwan.ndi, USB\VID_05C6&PID_9079&MI_05
+%simwwan.DeviceDesc90796%    = simwwan.ndi, USB\VID_05C6&PID_9079&MI_06
+%simwwan.DeviceDesc90797%    = simwwan.ndi, USB\VID_05C6&PID_9079&MI_07
+%simwwan.DeviceDesc90798%    = simwwan.ndi, USB\VID_05C6&PID_9079&MI_08
+%simwwan.DeviceDesc90805%    = simwwan.ndi, USB\VID_05C6&PID_9080&MI_05
+%simwwan.DeviceDesc90806%    = simwwan.ndi, USB\VID_05C6&PID_9080&MI_06
+%simwwan.DeviceDesc90807%    = simwwan.ndi, USB\VID_05C6&PID_9080&MI_07
+%simwwan.DeviceDesc90808%    = simwwan.ndi, USB\VID_05C6&PID_9080&MI_08
+%simwwan.DeviceDesc90833%    = simwwan.ndi, USB\VID_05C6&PID_9083&MI_03
+%simwwan.DeviceDesc90844%    = simwwan.ndi, USB\VID_05C6&PID_9084&MI_04
+%simwwan.DeviceDesc908A5%    = simwwan.ndi, USB\VID_05C6&PID_908A&MI_05
+%simwwan.DeviceDesc908A6%    = simwwan.ndi, USB\VID_05C6&PID_908A&MI_06
+%simwwan.DeviceDesc908B4%    = simwwan.ndi, USB\VID_05C6&PID_908B&MI_04
+%simwwan.DeviceDesc908E7%    = simwwan.ndi, USB\VID_05C6&PID_908E&MI_07
+%simwwan.DeviceDesc908E8%    = simwwan.ndi, USB\VID_05C6&PID_908E&MI_08
+%simwwan.DeviceDesc908F3%    = simwwan.ndi, USB\VID_05C6&PID_908F&MI_03
+%simwwan.DeviceDesc908F4%    = simwwan.ndi, USB\VID_05C6&PID_908F&MI_04
+%simwwan.DeviceDesc908F80%    = simwwan.ndi, USB\VID_05C6&PID_908F&MI_80
+%simwwan.DeviceDesc908F81%    = simwwan.ndi, USB\VID_05C6&PID_908F&MI_81
+%simwwan.DeviceDesc908F82%    = simwwan.ndi, USB\VID_05C6&PID_908F&MI_82
+%simwwan.DeviceDesc908F83%    = simwwan.ndi, USB\VID_05C6&PID_908F&MI_83
+%simwwan.DeviceDesc908F84%    = simwwan.ndi, USB\VID_05C6&PID_908F&MI_84
+%simwwan.DeviceDesc908F85%    = simwwan.ndi, USB\VID_05C6&PID_908F&MI_85
+%simwwan.DeviceDesc908F86%    = simwwan.ndi, USB\VID_05C6&PID_908F&MI_86
+%simwwan.DeviceDesc908F87%    = simwwan.ndi, USB\VID_05C6&PID_908F&MI_87
+%simwwan.DeviceDesc908F88%    = simwwan.ndi, USB\VID_05C6&PID_908F&MI_88
+%simwwan.DeviceDesc90903%    = simwwan.ndi, USB\VID_05C6&PID_9090&MI_03
+%simwwan.DeviceDesc90904%    = simwwan.ndi, USB\VID_05C6&PID_9090&MI_04
+%simwwan.DeviceDesc90905%    = simwwan.ndi, USB\VID_05C6&PID_9090&MI_05
+%simwwan.DeviceDesc90912%    = simwwan.ndi, USB\VID_05C6&PID_9091&MI_02
+%simwwan.DeviceDesc90922%    = simwwan.ndi, USB\VID_05C6&PID_9092&MI_02
+%simwwan.DeviceDesc90943%    = simwwan.ndi, USB\VID_05C6&PID_9094&MI_03
+%simwwan.DeviceDesc90952%    = simwwan.ndi, USB\VID_05C6&PID_9095&MI_02
+%simwwan.DeviceDesc90961%    = simwwan.ndi, USB\VID_05C6&PID_9096&MI_01
+%simwwan.DeviceDesc90970%    = simwwan.ndi, USB\VID_05C6&PID_9097&MI_00
+%simwwan.DeviceDesc909A5%    = simwwan.ndi, USB\VID_05C6&PID_909A&MI_05
+%simwwan.DeviceDesc909B4%    = simwwan.ndi, USB\VID_05C6&PID_909B&MI_04
+%simwwan.DeviceDesc909F5%    = simwwan.ndi, USB\VID_05C6&PID_909F&MI_05
+%simwwan.DeviceDesc909F6%    = simwwan.ndi, USB\VID_05C6&PID_909F&MI_06
+%simwwan.DeviceDesc90A05%    = simwwan.ndi, USB\VID_05C6&PID_90A0&MI_05
+%simwwan.DeviceDesc90A06%    = simwwan.ndi, USB\VID_05C6&PID_90A0&MI_06
+%simwwan.DeviceDesc90A12%    = simwwan.ndi, USB\VID_05C6&PID_90A1&MI_02
+%simwwan.DeviceDesc90A180%    = simwwan.ndi, USB\VID_05C6&PID_90A1&MI_80
+%simwwan.DeviceDesc90A181%    = simwwan.ndi, USB\VID_05C6&PID_90A1&MI_81
+%simwwan.DeviceDesc90A182%    = simwwan.ndi, USB\VID_05C6&PID_90A1&MI_82
+%simwwan.DeviceDesc90A183%    = simwwan.ndi, USB\VID_05C6&PID_90A1&MI_83
+%simwwan.DeviceDesc90A184%    = simwwan.ndi, USB\VID_05C6&PID_90A1&MI_84
+%simwwan.DeviceDesc90A185%    = simwwan.ndi, USB\VID_05C6&PID_90A1&MI_85
+%simwwan.DeviceDesc90A186%    = simwwan.ndi, USB\VID_05C6&PID_90A1&MI_86
+%simwwan.DeviceDesc90A187%    = simwwan.ndi, USB\VID_05C6&PID_90A1&MI_87
+%simwwan.DeviceDesc90A188%    = simwwan.ndi, USB\VID_05C6&PID_90A1&MI_88
+%simwwan.DeviceDesc90A25%    = simwwan.ndi, USB\VID_05C6&PID_90A2&MI_05
+%simwwan.DeviceDesc90A34%    = simwwan.ndi, USB\VID_05C6&PID_90A3&MI_04
+%simwwan.DeviceDesc90A53%    = simwwan.ndi, USB\VID_05C6&PID_90A5&MI_03
+%simwwan.DeviceDesc90A580%    = simwwan.ndi, USB\VID_05C6&PID_90A5&MI_80
+%simwwan.DeviceDesc90A581%    = simwwan.ndi, USB\VID_05C6&PID_90A5&MI_81
+%simwwan.DeviceDesc90A582%    = simwwan.ndi, USB\VID_05C6&PID_90A5&MI_82
+%simwwan.DeviceDesc90A583%    = simwwan.ndi, USB\VID_05C6&PID_90A5&MI_83
+%simwwan.DeviceDesc90A584%    = simwwan.ndi, USB\VID_05C6&PID_90A5&MI_84
+%simwwan.DeviceDesc90A585%    = simwwan.ndi, USB\VID_05C6&PID_90A5&MI_85
+%simwwan.DeviceDesc90A586%    = simwwan.ndi, USB\VID_05C6&PID_90A5&MI_86
+%simwwan.DeviceDesc90A587%    = simwwan.ndi, USB\VID_05C6&PID_90A5&MI_87
+%simwwan.DeviceDesc90A588%    = simwwan.ndi, USB\VID_05C6&PID_90A5&MI_88
+%simwwan.DeviceDesc90A64%    = simwwan.ndi, USB\VID_05C6&PID_90A6&MI_04
+%simwwan.DeviceDesc90A680%    = simwwan.ndi, USB\VID_05C6&PID_90A6&MI_80
+%simwwan.DeviceDesc90A681%    = simwwan.ndi, USB\VID_05C6&PID_90A6&MI_81
+%simwwan.DeviceDesc90A682%    = simwwan.ndi, USB\VID_05C6&PID_90A6&MI_82
+%simwwan.DeviceDesc90A683%    = simwwan.ndi, USB\VID_05C6&PID_90A6&MI_83
+%simwwan.DeviceDesc90A684%    = simwwan.ndi, USB\VID_05C6&PID_90A6&MI_84
+%simwwan.DeviceDesc90A685%    = simwwan.ndi, USB\VID_05C6&PID_90A6&MI_85
+%simwwan.DeviceDesc90A686%    = simwwan.ndi, USB\VID_05C6&PID_90A6&MI_86
+%simwwan.DeviceDesc90A687%    = simwwan.ndi, USB\VID_05C6&PID_90A6&MI_87
+%simwwan.DeviceDesc90A688%    = simwwan.ndi, USB\VID_05C6&PID_90A6&MI_88
+%simwwan.DeviceDesc90A74%    = simwwan.ndi, USB\VID_05C6&PID_90A7&MI_04
+%simwwan.DeviceDesc90A84%    = simwwan.ndi, USB\VID_05C6&PID_90A8&MI_04
+%simwwan.DeviceDesc90A95%    = simwwan.ndi, USB\VID_05C6&PID_90A9&MI_05
+%simwwan.DeviceDesc90AA1%    = simwwan.ndi, USB\VID_05C6&PID_90AA&MI_01
+%simwwan.DeviceDesc90AA2%    = simwwan.ndi, USB\VID_05C6&PID_90AA&MI_02
+%simwwan.DeviceDesc90AA3%    = simwwan.ndi, USB\VID_05C6&PID_90AA&MI_03
+%simwwan.DeviceDesc90AB4%    = simwwan.ndi, USB\VID_05C6&PID_90AB&MI_04
+%simwwan.DeviceDesc90AC4%    = simwwan.ndi, USB\VID_05C6&PID_90AC&MI_04
+%simwwan.DeviceDesc90AD4%    = simwwan.ndi, USB\VID_05C6&PID_90AD&MI_04
+%simwwan.DeviceDesc90AE4%    = simwwan.ndi, USB\VID_05C6&PID_90AE&MI_04
+%simwwan.DeviceDesc90AE80%    = simwwan.ndi, USB\VID_05C6&PID_90AE&MI_80
+%simwwan.DeviceDesc90AE81%    = simwwan.ndi, USB\VID_05C6&PID_90AE&MI_81
+%simwwan.DeviceDesc90AE82%    = simwwan.ndi, USB\VID_05C6&PID_90AE&MI_82
+%simwwan.DeviceDesc90AE83%    = simwwan.ndi, USB\VID_05C6&PID_90AE&MI_83
+%simwwan.DeviceDesc90AE84%    = simwwan.ndi, USB\VID_05C6&PID_90AE&MI_84
+%simwwan.DeviceDesc90AE85%    = simwwan.ndi, USB\VID_05C6&PID_90AE&MI_85
+%simwwan.DeviceDesc90AE86%    = simwwan.ndi, USB\VID_05C6&PID_90AE&MI_86
+%simwwan.DeviceDesc90AE87%    = simwwan.ndi, USB\VID_05C6&PID_90AE&MI_87
+%simwwan.DeviceDesc90AE88%    = simwwan.ndi, USB\VID_05C6&PID_90AE&MI_88
+%simwwan.DeviceDesc90AF3%    = simwwan.ndi, USB\VID_05C6&PID_90AF&MI_03
+%simwwan.DeviceDesc90AF80%    = simwwan.ndi, USB\VID_05C6&PID_90AF&MI_80
+%simwwan.DeviceDesc90AF81%    = simwwan.ndi, USB\VID_05C6&PID_90AF&MI_81
+%simwwan.DeviceDesc90AF82%    = simwwan.ndi, USB\VID_05C6&PID_90AF&MI_82
+%simwwan.DeviceDesc90AF83%    = simwwan.ndi, USB\VID_05C6&PID_90AF&MI_83
+%simwwan.DeviceDesc90AF84%    = simwwan.ndi, USB\VID_05C6&PID_90AF&MI_84
+%simwwan.DeviceDesc90AF85%    = simwwan.ndi, USB\VID_05C6&PID_90AF&MI_85
+%simwwan.DeviceDesc90AF86%    = simwwan.ndi, USB\VID_05C6&PID_90AF&MI_86
+%simwwan.DeviceDesc90AF87%    = simwwan.ndi, USB\VID_05C6&PID_90AF&MI_87
+%simwwan.DeviceDesc90AF88%    = simwwan.ndi, USB\VID_05C6&PID_90AF&MI_88
+%simwwan.DeviceDesc90B03%    = simwwan.ndi, USB\VID_05C6&PID_90B0&MI_03
+%simwwan.DeviceDesc90B23%    = simwwan.ndi, USB\VID_05C6&PID_90B2&MI_03
+%simwwan.DeviceDesc90B72%    = simwwan.ndi, USB\VID_05C6&PID_90B7&MI_02
+%simwwan.DeviceDesc90B82%    = simwwan.ndi, USB\VID_05C6&PID_90B8&MI_02
+%simwwan.DeviceDesc90B92%    = simwwan.ndi, USB\VID_05C6&PID_90B9&MI_02
+%simwwan.DeviceDesc90B93%    = simwwan.ndi, USB\VID_05C6&PID_90B9&MI_03
+%simwwan.DeviceDesc920D0%    = simwwan.ndi, USB\VID_05C6&PID_920D&MI_00
+
+[sim.NTia64.6.1]
+%simwwan.DeviceDesc%         = simwwan.ndi, USB\VID_05C6&PID_7000&MI_00
+%simwwan.DeviceDesc7001%     = simwwan.ndi, USB\VID_05C6&PID_7001&MI_01
+%simwwan.DeviceDesc7002%     = simwwan.ndi, USB\VID_05C6&PID_7002&MI_01
+%simwwan.DeviceDesc71011%    = simwwan.ndi, USB\VID_05C6&PID_7101&MI_01
+%simwwan.DeviceDesc71012%    = simwwan.ndi, USB\VID_05C6&PID_7101&MI_02
+%simwwan.DeviceDesc71013%    = simwwan.ndi, USB\VID_05C6&PID_7101&MI_03
+%simwwan.DeviceDesc71021%    = simwwan.ndi, USB\VID_05C6&PID_7102&MI_01
+%simwwan.DeviceDesc71022%    = simwwan.ndi, USB\VID_05C6&PID_7102&MI_02
+%simwwan.DeviceDesc71023%    = simwwan.ndi, USB\VID_05C6&PID_7102&MI_03
+%simwwan.DeviceDesc80007%    = simwwan.ndi, USB\VID_05C6&PID_8000&MI_07
+%simwwan.DeviceDesc80016%    = simwwan.ndi, USB\VID_05C6&PID_8001&MI_06
+%simwwan.DeviceDesc90005%    = simwwan.ndi, USB\VID_1E0E&PID_9000&MI_05
+%simwwan.DeviceDesc90015%    = simwwan.ndi, USB\VID_1E0E&PID_9001&MI_05
+%simwwan.DeviceDesc90025%    = simwwan.ndi, USB\VID_1E0E&PID_9002&MI_05
+%simwwan.DeviceDesc90046%    = simwwan.ndi, USB\VID_1E0E&PID_9004&MI_06
+%simwwan.DeviceDesc90075%    = simwwan.ndi, USB\VID_1E0E&PID_9007&MI_05
+%simwwan.DeviceDesc900A4%    = simwwan.ndi, USB\VID_05C6&PID_900A&MI_04
+%simwwan.DeviceDesc900B2%    = simwwan.ndi, USB\VID_05C6&PID_900B&MI_02
+%simwwan.DeviceDesc900C4%    = simwwan.ndi, USB\VID_05C6&PID_900C&MI_04
+%simwwan.DeviceDesc900C5%    = simwwan.ndi, USB\VID_05C6&PID_900C&MI_05
+%simwwan.DeviceDesc900C6%    = simwwan.ndi, USB\VID_05C6&PID_900C&MI_06
+%simwwan.DeviceDesc900D5%    = simwwan.ndi, USB\VID_05C6&PID_900D&MI_05
+%simwwan.DeviceDesc900F3%    = simwwan.ndi, USB\VID_05C6&PID_900F&MI_03
+%simwwan.DeviceDesc900F4%    = simwwan.ndi, USB\VID_05C6&PID_900F&MI_04
+%simwwan.DeviceDesc900F5%    = simwwan.ndi, USB\VID_05C6&PID_900F&MI_05
+%simwwan.DeviceDesc90104%    = simwwan.ndi, USB\VID_05C6&PID_9010&MI_04
+%simwwan.DeviceDesc90105%    = simwwan.ndi, USB\VID_05C6&PID_9010&MI_05
+%simwwan.DeviceDesc90113%    = simwwan.ndi, USB\VID_05C6&PID_9011&MI_03
+%simwwan.DeviceDesc90114%    = simwwan.ndi, USB\VID_05C6&PID_9011&MI_04
+%simwwan.DeviceDesc90211%    = simwwan.ndi, USB\VID_05C6&PID_9021&MI_01
+%simwwan.DeviceDesc90222%    = simwwan.ndi, USB\VID_05C6&PID_9022&MI_02
+%simwwan.DeviceDesc90254%    = simwwan.ndi, USB\VID_05C6&PID_9025&MI_04
+%simwwan.DeviceDesc90263%    = simwwan.ndi, USB\VID_05C6&PID_9026&MI_03
+%simwwan.DeviceDesc902E5%    = simwwan.ndi, USB\VID_05C6&PID_902E&MI_05
+%simwwan.DeviceDesc90315%    = simwwan.ndi, USB\VID_05C6&PID_9031&MI_05
+%simwwan.DeviceDesc90324%    = simwwan.ndi, USB\VID_05C6&PID_9032&MI_04
+%simwwan.DeviceDesc90333%    = simwwan.ndi, USB\VID_05C6&PID_9033&MI_03
+%simwwan.DeviceDesc90334%    = simwwan.ndi, USB\VID_05C6&PID_9033&MI_04
+%simwwan.DeviceDesc90335%    = simwwan.ndi, USB\VID_05C6&PID_9033&MI_05
+%simwwan.DeviceDesc90336%    = simwwan.ndi, USB\VID_05C6&PID_9033&MI_06
+%simwwan.DeviceDesc90343%    = simwwan.ndi, USB\VID_05C6&PID_9034&MI_03
+%simwwan.DeviceDesc90344%    = simwwan.ndi, USB\VID_05C6&PID_9034&MI_04
+%simwwan.DeviceDesc90345%    = simwwan.ndi, USB\VID_05C6&PID_9034&MI_05
+%simwwan.DeviceDesc90346%    = simwwan.ndi, USB\VID_05C6&PID_9034&MI_06
+%simwwan.DeviceDesc90347%    = simwwan.ndi, USB\VID_05C6&PID_9034&MI_07
+%simwwan.DeviceDesc90354%    = simwwan.ndi, USB\VID_05C6&PID_9035&MI_04
+%simwwan.DeviceDesc903580%    = simwwan.ndi, USB\VID_05C6&PID_9035&MI_80
+%simwwan.DeviceDesc903581%    = simwwan.ndi, USB\VID_05C6&PID_9035&MI_81
+%simwwan.DeviceDesc903582%    = simwwan.ndi, USB\VID_05C6&PID_9035&MI_82
+%simwwan.DeviceDesc903583%    = simwwan.ndi, USB\VID_05C6&PID_9035&MI_83
+%simwwan.DeviceDesc903584%    = simwwan.ndi, USB\VID_05C6&PID_9035&MI_84
+%simwwan.DeviceDesc903585%    = simwwan.ndi, USB\VID_05C6&PID_9035&MI_85
+%simwwan.DeviceDesc903586%    = simwwan.ndi, USB\VID_05C6&PID_9035&MI_86
+%simwwan.DeviceDesc903587%    = simwwan.ndi, USB\VID_05C6&PID_9035&MI_87
+%simwwan.DeviceDesc903588%    = simwwan.ndi, USB\VID_05C6&PID_9035&MI_88
+%simwwan.DeviceDesc90363%    = simwwan.ndi, USB\VID_05C6&PID_9036&MI_03
+%simwwan.DeviceDesc90375%    = simwwan.ndi, USB\VID_05C6&PID_9037&MI_05
+%simwwan.DeviceDesc90384%    = simwwan.ndi, USB\VID_05C6&PID_9038&MI_04
+%simwwan.DeviceDesc903B7%    = simwwan.ndi, USB\VID_05C6&PID_903B&MI_07
+%simwwan.DeviceDesc903C6%    = simwwan.ndi, USB\VID_05C6&PID_903C&MI_06
+%simwwan.DeviceDesc903D6%    = simwwan.ndi, USB\VID_05C6&PID_903D&MI_06
+%simwwan.DeviceDesc903E5%    = simwwan.ndi, USB\VID_05C6&PID_903E&MI_05
+%simwwan.DeviceDesc90463%    = simwwan.ndi, USB\VID_05C6&PID_9046&MI_03
+%simwwan.DeviceDesc90464%    = simwwan.ndi, USB\VID_05C6&PID_9046&MI_04
+%simwwan.DeviceDesc90465%    = simwwan.ndi, USB\VID_05C6&PID_9046&MI_05
+%simwwan.DeviceDesc90472%    = simwwan.ndi, USB\VID_05C6&PID_9047&MI_02
+%simwwan.DeviceDesc90473%    = simwwan.ndi, USB\VID_05C6&PID_9047&MI_03
+%simwwan.DeviceDesc90474%    = simwwan.ndi, USB\VID_05C6&PID_9047&MI_04
+%simwwan.DeviceDesc90484%    = simwwan.ndi, USB\VID_05C6&PID_9048&MI_04
+%simwwan.DeviceDesc90485%    = simwwan.ndi, USB\VID_05C6&PID_9048&MI_05
+%simwwan.DeviceDesc90486%    = simwwan.ndi, USB\VID_05C6&PID_9048&MI_06
+%simwwan.DeviceDesc90487%    = simwwan.ndi, USB\VID_05C6&PID_9048&MI_07
+%simwwan.DeviceDesc90488%    = simwwan.ndi, USB\VID_05C6&PID_9048&MI_08
+%simwwan.DeviceDesc90493%    = simwwan.ndi, USB\VID_05C6&PID_9049&MI_03
+%simwwan.DeviceDesc904C5%    = simwwan.ndi, USB\VID_05C6&PID_904C&MI_05
+%simwwan.DeviceDesc904C6%    = simwwan.ndi, USB\VID_05C6&PID_904C&MI_06
+%simwwan.DeviceDesc904C7%    = simwwan.ndi, USB\VID_05C6&PID_904C&MI_07
+%simwwan.DeviceDesc904C8%    = simwwan.ndi, USB\VID_05C6&PID_904C&MI_08
+%simwwan.DeviceDesc90503%    = simwwan.ndi, USB\VID_05C6&PID_9050&MI_03
+%simwwan.DeviceDesc90524%    = simwwan.ndi, USB\VID_05C6&PID_9052&MI_04
+%simwwan.DeviceDesc90536%    = simwwan.ndi, USB\VID_05C6&PID_9053&MI_06
+%simwwan.DeviceDesc90537%    = simwwan.ndi, USB\VID_05C6&PID_9053&MI_07
+%simwwan.DeviceDesc90545%    = simwwan.ndi, USB\VID_05C6&PID_9054&MI_05
+%simwwan.DeviceDesc90546%    = simwwan.ndi, USB\VID_05C6&PID_9054&MI_06
+%simwwan.DeviceDesc90553%    = simwwan.ndi, USB\VID_05C6&PID_9055&MI_03
+%simwwan.DeviceDesc90554%    = simwwan.ndi, USB\VID_05C6&PID_9055&MI_04
+%simwwan.DeviceDesc90555%    = simwwan.ndi, USB\VID_05C6&PID_9055&MI_05
+%simwwan.DeviceDesc90556%    = simwwan.ndi, USB\VID_05C6&PID_9055&MI_06
+%simwwan.DeviceDesc90557%    = simwwan.ndi, USB\VID_05C6&PID_9055&MI_07
+%simwwan.DeviceDesc905580%    = simwwan.ndi, USB\VID_05C6&PID_9055&MI_80
+%simwwan.DeviceDesc905581%    = simwwan.ndi, USB\VID_05C6&PID_9055&MI_81
+%simwwan.DeviceDesc905582%    = simwwan.ndi, USB\VID_05C6&PID_9055&MI_82
+%simwwan.DeviceDesc905583%    = simwwan.ndi, USB\VID_05C6&PID_9055&MI_83
+%simwwan.DeviceDesc905584%    = simwwan.ndi, USB\VID_05C6&PID_9055&MI_84
+%simwwan.DeviceDesc905585%    = simwwan.ndi, USB\VID_05C6&PID_9055&MI_85
+%simwwan.DeviceDesc905586%    = simwwan.ndi, USB\VID_05C6&PID_9055&MI_86
+%simwwan.DeviceDesc905587%    = simwwan.ndi, USB\VID_05C6&PID_9055&MI_87
+%simwwan.DeviceDesc905588%    = simwwan.ndi, USB\VID_05C6&PID_9055&MI_88
+%simwwan.DeviceDesc90563%    = simwwan.ndi, USB\VID_05C6&PID_9056&MI_03
+%simwwan.DeviceDesc90622%    = simwwan.ndi, USB\VID_05C6&PID_9062&MI_02
+%simwwan.DeviceDesc90623%    = simwwan.ndi, USB\VID_05C6&PID_9062&MI_03
+%simwwan.DeviceDesc90624%    = simwwan.ndi, USB\VID_05C6&PID_9062&MI_04
+%simwwan.DeviceDesc90625%    = simwwan.ndi, USB\VID_05C6&PID_9062&MI_05
+%simwwan.DeviceDesc90626%    = simwwan.ndi, USB\VID_05C6&PID_9062&MI_06
+%simwwan.DeviceDesc90627%    = simwwan.ndi, USB\VID_05C6&PID_9062&MI_07
+%simwwan.DeviceDesc90628%    = simwwan.ndi, USB\VID_05C6&PID_9062&MI_08
+%simwwan.DeviceDesc90629%    = simwwan.ndi, USB\VID_05C6&PID_9062&MI_09
+%simwwan.DeviceDesc90643%    = simwwan.ndi, USB\VID_05C6&PID_9064&MI_03
+%simwwan.DeviceDesc90656%    = simwwan.ndi, USB\VID_05C6&PID_9065&MI_06
+%simwwan.DeviceDesc90657%    = simwwan.ndi, USB\VID_05C6&PID_9065&MI_07
+%simwwan.DeviceDesc90665%    = simwwan.ndi, USB\VID_05C6&PID_9066&MI_05
+%simwwan.DeviceDesc90666%    = simwwan.ndi, USB\VID_05C6&PID_9066&MI_06
+%simwwan.DeviceDesc90671%    = simwwan.ndi, USB\VID_05C6&PID_9067&MI_01
+%simwwan.DeviceDesc90682%    = simwwan.ndi, USB\VID_05C6&PID_9068&MI_02
+%simwwan.DeviceDesc90683%    = simwwan.ndi, USB\VID_05C6&PID_9068&MI_03
+%simwwan.DeviceDesc90684%    = simwwan.ndi, USB\VID_05C6&PID_9068&MI_04
+%simwwan.DeviceDesc90685%    = simwwan.ndi, USB\VID_05C6&PID_9068&MI_05
+%simwwan.DeviceDesc90686%    = simwwan.ndi, USB\VID_05C6&PID_9068&MI_06
+%simwwan.DeviceDesc90687%    = simwwan.ndi, USB\VID_05C6&PID_9068&MI_07
+%simwwan.DeviceDesc90695%    = simwwan.ndi, USB\VID_05C6&PID_9069&MI_05
+%simwwan.DeviceDesc90696%    = simwwan.ndi, USB\VID_05C6&PID_9069&MI_06
+%simwwan.DeviceDesc90697%    = simwwan.ndi, USB\VID_05C6&PID_9069&MI_07
+%simwwan.DeviceDesc90698%    = simwwan.ndi, USB\VID_05C6&PID_9069&MI_08
+%simwwan.DeviceDesc90704%    = simwwan.ndi, USB\VID_05C6&PID_9070&MI_04
+%simwwan.DeviceDesc90705%    = simwwan.ndi, USB\VID_05C6&PID_9070&MI_05
+%simwwan.DeviceDesc90755%    = simwwan.ndi, USB\VID_05C6&PID_9075&MI_05
+%simwwan.DeviceDesc90764%    = simwwan.ndi, USB\VID_05C6&PID_9076&MI_04
+%simwwan.DeviceDesc90765%    = simwwan.ndi, USB\VID_05C6&PID_9076&MI_05
+%simwwan.DeviceDesc90766%    = simwwan.ndi, USB\VID_05C6&PID_9076&MI_06
+%simwwan.DeviceDesc90767%    = simwwan.ndi, USB\VID_05C6&PID_9076&MI_07
+%simwwan.DeviceDesc90768%    = simwwan.ndi, USB\VID_05C6&PID_9076&MI_08
+%simwwan.DeviceDesc90773%    = simwwan.ndi, USB\VID_05C6&PID_9077&MI_03
+%simwwan.DeviceDesc90774%    = simwwan.ndi, USB\VID_05C6&PID_9077&MI_04
+%simwwan.DeviceDesc90775%    = simwwan.ndi, USB\VID_05C6&PID_9077&MI_05
+%simwwan.DeviceDesc90776%    = simwwan.ndi, USB\VID_05C6&PID_9077&MI_06
+%simwwan.DeviceDesc90783%    = simwwan.ndi, USB\VID_05C6&PID_9078&MI_03
+%simwwan.DeviceDesc90794%    = simwwan.ndi, USB\VID_05C6&PID_9079&MI_04
+%simwwan.DeviceDesc90795%    = simwwan.ndi, USB\VID_05C6&PID_9079&MI_05
+%simwwan.DeviceDesc90796%    = simwwan.ndi, USB\VID_05C6&PID_9079&MI_06
+%simwwan.DeviceDesc90797%    = simwwan.ndi, USB\VID_05C6&PID_9079&MI_07
+%simwwan.DeviceDesc90798%    = simwwan.ndi, USB\VID_05C6&PID_9079&MI_08
+%simwwan.DeviceDesc90805%    = simwwan.ndi, USB\VID_05C6&PID_9080&MI_05
+%simwwan.DeviceDesc90806%    = simwwan.ndi, USB\VID_05C6&PID_9080&MI_06
+%simwwan.DeviceDesc90807%    = simwwan.ndi, USB\VID_05C6&PID_9080&MI_07
+%simwwan.DeviceDesc90808%    = simwwan.ndi, USB\VID_05C6&PID_9080&MI_08
+%simwwan.DeviceDesc90833%    = simwwan.ndi, USB\VID_05C6&PID_9083&MI_03
+%simwwan.DeviceDesc90844%    = simwwan.ndi, USB\VID_05C6&PID_9084&MI_04
+%simwwan.DeviceDesc908A5%    = simwwan.ndi, USB\VID_05C6&PID_908A&MI_05
+%simwwan.DeviceDesc908A6%    = simwwan.ndi, USB\VID_05C6&PID_908A&MI_06
+%simwwan.DeviceDesc908B4%    = simwwan.ndi, USB\VID_05C6&PID_908B&MI_04
+%simwwan.DeviceDesc908E7%    = simwwan.ndi, USB\VID_05C6&PID_908E&MI_07
+%simwwan.DeviceDesc908E8%    = simwwan.ndi, USB\VID_05C6&PID_908E&MI_08
+%simwwan.DeviceDesc908F3%    = simwwan.ndi, USB\VID_05C6&PID_908F&MI_03
+%simwwan.DeviceDesc908F4%    = simwwan.ndi, USB\VID_05C6&PID_908F&MI_04
+%simwwan.DeviceDesc908F80%    = simwwan.ndi, USB\VID_05C6&PID_908F&MI_80
+%simwwan.DeviceDesc908F81%    = simwwan.ndi, USB\VID_05C6&PID_908F&MI_81
+%simwwan.DeviceDesc908F82%    = simwwan.ndi, USB\VID_05C6&PID_908F&MI_82
+%simwwan.DeviceDesc908F83%    = simwwan.ndi, USB\VID_05C6&PID_908F&MI_83
+%simwwan.DeviceDesc908F84%    = simwwan.ndi, USB\VID_05C6&PID_908F&MI_84
+%simwwan.DeviceDesc908F85%    = simwwan.ndi, USB\VID_05C6&PID_908F&MI_85
+%simwwan.DeviceDesc908F86%    = simwwan.ndi, USB\VID_05C6&PID_908F&MI_86
+%simwwan.DeviceDesc908F87%    = simwwan.ndi, USB\VID_05C6&PID_908F&MI_87
+%simwwan.DeviceDesc908F88%    = simwwan.ndi, USB\VID_05C6&PID_908F&MI_88
+%simwwan.DeviceDesc90903%    = simwwan.ndi, USB\VID_05C6&PID_9090&MI_03
+%simwwan.DeviceDesc90904%    = simwwan.ndi, USB\VID_05C6&PID_9090&MI_04
+%simwwan.DeviceDesc90905%    = simwwan.ndi, USB\VID_05C6&PID_9090&MI_05
+%simwwan.DeviceDesc90912%    = simwwan.ndi, USB\VID_05C6&PID_9091&MI_02
+%simwwan.DeviceDesc90922%    = simwwan.ndi, USB\VID_05C6&PID_9092&MI_02
+%simwwan.DeviceDesc90943%    = simwwan.ndi, USB\VID_05C6&PID_9094&MI_03
+%simwwan.DeviceDesc90952%    = simwwan.ndi, USB\VID_05C6&PID_9095&MI_02
+%simwwan.DeviceDesc90961%    = simwwan.ndi, USB\VID_05C6&PID_9096&MI_01
+%simwwan.DeviceDesc90970%    = simwwan.ndi, USB\VID_05C6&PID_9097&MI_00
+%simwwan.DeviceDesc909A5%    = simwwan.ndi, USB\VID_05C6&PID_909A&MI_05
+%simwwan.DeviceDesc909B4%    = simwwan.ndi, USB\VID_05C6&PID_909B&MI_04
+%simwwan.DeviceDesc909F5%    = simwwan.ndi, USB\VID_05C6&PID_909F&MI_05
+%simwwan.DeviceDesc909F6%    = simwwan.ndi, USB\VID_05C6&PID_909F&MI_06
+%simwwan.DeviceDesc90A05%    = simwwan.ndi, USB\VID_05C6&PID_90A0&MI_05
+%simwwan.DeviceDesc90A06%    = simwwan.ndi, USB\VID_05C6&PID_90A0&MI_06
+%simwwan.DeviceDesc90A12%    = simwwan.ndi, USB\VID_05C6&PID_90A1&MI_02
+%simwwan.DeviceDesc90A180%    = simwwan.ndi, USB\VID_05C6&PID_90A1&MI_80
+%simwwan.DeviceDesc90A181%    = simwwan.ndi, USB\VID_05C6&PID_90A1&MI_81
+%simwwan.DeviceDesc90A182%    = simwwan.ndi, USB\VID_05C6&PID_90A1&MI_82
+%simwwan.DeviceDesc90A183%    = simwwan.ndi, USB\VID_05C6&PID_90A1&MI_83
+%simwwan.DeviceDesc90A184%    = simwwan.ndi, USB\VID_05C6&PID_90A1&MI_84
+%simwwan.DeviceDesc90A185%    = simwwan.ndi, USB\VID_05C6&PID_90A1&MI_85
+%simwwan.DeviceDesc90A186%    = simwwan.ndi, USB\VID_05C6&PID_90A1&MI_86
+%simwwan.DeviceDesc90A187%    = simwwan.ndi, USB\VID_05C6&PID_90A1&MI_87
+%simwwan.DeviceDesc90A188%    = simwwan.ndi, USB\VID_05C6&PID_90A1&MI_88
+%simwwan.DeviceDesc90A25%    = simwwan.ndi, USB\VID_05C6&PID_90A2&MI_05
+%simwwan.DeviceDesc90A34%    = simwwan.ndi, USB\VID_05C6&PID_90A3&MI_04
+%simwwan.DeviceDesc90A53%    = simwwan.ndi, USB\VID_05C6&PID_90A5&MI_03
+%simwwan.DeviceDesc90A580%    = simwwan.ndi, USB\VID_05C6&PID_90A5&MI_80
+%simwwan.DeviceDesc90A581%    = simwwan.ndi, USB\VID_05C6&PID_90A5&MI_81
+%simwwan.DeviceDesc90A582%    = simwwan.ndi, USB\VID_05C6&PID_90A5&MI_82
+%simwwan.DeviceDesc90A583%    = simwwan.ndi, USB\VID_05C6&PID_90A5&MI_83
+%simwwan.DeviceDesc90A584%    = simwwan.ndi, USB\VID_05C6&PID_90A5&MI_84
+%simwwan.DeviceDesc90A585%    = simwwan.ndi, USB\VID_05C6&PID_90A5&MI_85
+%simwwan.DeviceDesc90A586%    = simwwan.ndi, USB\VID_05C6&PID_90A5&MI_86
+%simwwan.DeviceDesc90A587%    = simwwan.ndi, USB\VID_05C6&PID_90A5&MI_87
+%simwwan.DeviceDesc90A588%    = simwwan.ndi, USB\VID_05C6&PID_90A5&MI_88
+%simwwan.DeviceDesc90A64%    = simwwan.ndi, USB\VID_05C6&PID_90A6&MI_04
+%simwwan.DeviceDesc90A680%    = simwwan.ndi, USB\VID_05C6&PID_90A6&MI_80
+%simwwan.DeviceDesc90A681%    = simwwan.ndi, USB\VID_05C6&PID_90A6&MI_81
+%simwwan.DeviceDesc90A682%    = simwwan.ndi, USB\VID_05C6&PID_90A6&MI_82
+%simwwan.DeviceDesc90A683%    = simwwan.ndi, USB\VID_05C6&PID_90A6&MI_83
+%simwwan.DeviceDesc90A684%    = simwwan.ndi, USB\VID_05C6&PID_90A6&MI_84
+%simwwan.DeviceDesc90A685%    = simwwan.ndi, USB\VID_05C6&PID_90A6&MI_85
+%simwwan.DeviceDesc90A686%    = simwwan.ndi, USB\VID_05C6&PID_90A6&MI_86
+%simwwan.DeviceDesc90A687%    = simwwan.ndi, USB\VID_05C6&PID_90A6&MI_87
+%simwwan.DeviceDesc90A688%    = simwwan.ndi, USB\VID_05C6&PID_90A6&MI_88
+%simwwan.DeviceDesc90A74%    = simwwan.ndi, USB\VID_05C6&PID_90A7&MI_04
+%simwwan.DeviceDesc90A84%    = simwwan.ndi, USB\VID_05C6&PID_90A8&MI_04
+%simwwan.DeviceDesc90A95%    = simwwan.ndi, USB\VID_05C6&PID_90A9&MI_05
+%simwwan.DeviceDesc90AA1%    = simwwan.ndi, USB\VID_05C6&PID_90AA&MI_01
+%simwwan.DeviceDesc90AA2%    = simwwan.ndi, USB\VID_05C6&PID_90AA&MI_02
+%simwwan.DeviceDesc90AA3%    = simwwan.ndi, USB\VID_05C6&PID_90AA&MI_03
+%simwwan.DeviceDesc90AB4%    = simwwan.ndi, USB\VID_05C6&PID_90AB&MI_04
+%simwwan.DeviceDesc90AC4%    = simwwan.ndi, USB\VID_05C6&PID_90AC&MI_04
+%simwwan.DeviceDesc90AD4%    = simwwan.ndi, USB\VID_05C6&PID_90AD&MI_04
+%simwwan.DeviceDesc90AE4%    = simwwan.ndi, USB\VID_05C6&PID_90AE&MI_04
+%simwwan.DeviceDesc90AE80%    = simwwan.ndi, USB\VID_05C6&PID_90AE&MI_80
+%simwwan.DeviceDesc90AE81%    = simwwan.ndi, USB\VID_05C6&PID_90AE&MI_81
+%simwwan.DeviceDesc90AE82%    = simwwan.ndi, USB\VID_05C6&PID_90AE&MI_82
+%simwwan.DeviceDesc90AE83%    = simwwan.ndi, USB\VID_05C6&PID_90AE&MI_83
+%simwwan.DeviceDesc90AE84%    = simwwan.ndi, USB\VID_05C6&PID_90AE&MI_84
+%simwwan.DeviceDesc90AE85%    = simwwan.ndi, USB\VID_05C6&PID_90AE&MI_85
+%simwwan.DeviceDesc90AE86%    = simwwan.ndi, USB\VID_05C6&PID_90AE&MI_86
+%simwwan.DeviceDesc90AE87%    = simwwan.ndi, USB\VID_05C6&PID_90AE&MI_87
+%simwwan.DeviceDesc90AE88%    = simwwan.ndi, USB\VID_05C6&PID_90AE&MI_88
+%simwwan.DeviceDesc90AF3%    = simwwan.ndi, USB\VID_05C6&PID_90AF&MI_03
+%simwwan.DeviceDesc90AF80%    = simwwan.ndi, USB\VID_05C6&PID_90AF&MI_80
+%simwwan.DeviceDesc90AF81%    = simwwan.ndi, USB\VID_05C6&PID_90AF&MI_81
+%simwwan.DeviceDesc90AF82%    = simwwan.ndi, USB\VID_05C6&PID_90AF&MI_82
+%simwwan.DeviceDesc90AF83%    = simwwan.ndi, USB\VID_05C6&PID_90AF&MI_83
+%simwwan.DeviceDesc90AF84%    = simwwan.ndi, USB\VID_05C6&PID_90AF&MI_84
+%simwwan.DeviceDesc90AF85%    = simwwan.ndi, USB\VID_05C6&PID_90AF&MI_85
+%simwwan.DeviceDesc90AF86%    = simwwan.ndi, USB\VID_05C6&PID_90AF&MI_86
+%simwwan.DeviceDesc90AF87%    = simwwan.ndi, USB\VID_05C6&PID_90AF&MI_87
+%simwwan.DeviceDesc90AF88%    = simwwan.ndi, USB\VID_05C6&PID_90AF&MI_88
+%simwwan.DeviceDesc90B03%    = simwwan.ndi, USB\VID_05C6&PID_90B0&MI_03
+%simwwan.DeviceDesc90B23%    = simwwan.ndi, USB\VID_05C6&PID_90B2&MI_03
+%simwwan.DeviceDesc90B72%    = simwwan.ndi, USB\VID_05C6&PID_90B7&MI_02
+%simwwan.DeviceDesc90B82%    = simwwan.ndi, USB\VID_05C6&PID_90B8&MI_02
+%simwwan.DeviceDesc90B92%    = simwwan.ndi, USB\VID_05C6&PID_90B9&MI_02
+%simwwan.DeviceDesc90B93%    = simwwan.ndi, USB\VID_05C6&PID_90B9&MI_03
+%simwwan.DeviceDesc920D0%    = simwwan.ndi, USB\VID_05C6&PID_920D&MI_00
+
+[sim.NTamd64.6.1]
+%simwwan.DeviceDesc%         = simwwan.ndi, USB\VID_05C6&PID_7000&MI_00
+%simwwan.DeviceDesc7001%     = simwwan.ndi, USB\VID_05C6&PID_7001&MI_01
+%simwwan.DeviceDesc7002%     = simwwan.ndi, USB\VID_05C6&PID_7002&MI_01
+%simwwan.DeviceDesc71011%    = simwwan.ndi, USB\VID_05C6&PID_7101&MI_01
+%simwwan.DeviceDesc71012%    = simwwan.ndi, USB\VID_05C6&PID_7101&MI_02
+%simwwan.DeviceDesc71013%    = simwwan.ndi, USB\VID_05C6&PID_7101&MI_03
+%simwwan.DeviceDesc71021%    = simwwan.ndi, USB\VID_05C6&PID_7102&MI_01
+%simwwan.DeviceDesc71022%    = simwwan.ndi, USB\VID_05C6&PID_7102&MI_02
+%simwwan.DeviceDesc71023%    = simwwan.ndi, USB\VID_05C6&PID_7102&MI_03
+%simwwan.DeviceDesc80007%    = simwwan.ndi, USB\VID_05C6&PID_8000&MI_07
+%simwwan.DeviceDesc80016%    = simwwan.ndi, USB\VID_05C6&PID_8001&MI_06
+%simwwan.DeviceDesc90005%    = simwwan.ndi, USB\VID_1E0E&PID_9000&MI_05
+%simwwan.DeviceDesc90015%    = simwwan.ndi, USB\VID_1E0E&PID_9001&MI_05
+%simwwan.DeviceDesc90025%    = simwwan.ndi, USB\VID_1E0E&PID_9002&MI_05
+%simwwan.DeviceDesc90046%    = simwwan.ndi, USB\VID_1E0E&PID_9004&MI_06
+%simwwan.DeviceDesc90075%    = simwwan.ndi, USB\VID_1E0E&PID_9007&MI_05
+%simwwan.DeviceDesc900A4%    = simwwan.ndi, USB\VID_05C6&PID_900A&MI_04
+%simwwan.DeviceDesc900B2%    = simwwan.ndi, USB\VID_05C6&PID_900B&MI_02
+%simwwan.DeviceDesc900C4%    = simwwan.ndi, USB\VID_05C6&PID_900C&MI_04
+%simwwan.DeviceDesc900C5%    = simwwan.ndi, USB\VID_05C6&PID_900C&MI_05
+%simwwan.DeviceDesc900C6%    = simwwan.ndi, USB\VID_05C6&PID_900C&MI_06
+%simwwan.DeviceDesc900D5%    = simwwan.ndi, USB\VID_05C6&PID_900D&MI_05
+%simwwan.DeviceDesc900F3%    = simwwan.ndi, USB\VID_05C6&PID_900F&MI_03
+%simwwan.DeviceDesc900F4%    = simwwan.ndi, USB\VID_05C6&PID_900F&MI_04
+%simwwan.DeviceDesc900F5%    = simwwan.ndi, USB\VID_05C6&PID_900F&MI_05
+%simwwan.DeviceDesc90104%    = simwwan.ndi, USB\VID_05C6&PID_9010&MI_04
+%simwwan.DeviceDesc90105%    = simwwan.ndi, USB\VID_05C6&PID_9010&MI_05
+%simwwan.DeviceDesc90113%    = simwwan.ndi, USB\VID_05C6&PID_9011&MI_03
+%simwwan.DeviceDesc90114%    = simwwan.ndi, USB\VID_05C6&PID_9011&MI_04
+%simwwan.DeviceDesc90211%    = simwwan.ndi, USB\VID_05C6&PID_9021&MI_01
+%simwwan.DeviceDesc90222%    = simwwan.ndi, USB\VID_05C6&PID_9022&MI_02
+%simwwan.DeviceDesc90254%    = simwwan.ndi, USB\VID_05C6&PID_9025&MI_04
+%simwwan.DeviceDesc90263%    = simwwan.ndi, USB\VID_05C6&PID_9026&MI_03
+%simwwan.DeviceDesc902E5%    = simwwan.ndi, USB\VID_05C6&PID_902E&MI_05
+%simwwan.DeviceDesc90315%    = simwwan.ndi, USB\VID_05C6&PID_9031&MI_05
+%simwwan.DeviceDesc90324%    = simwwan.ndi, USB\VID_05C6&PID_9032&MI_04
+%simwwan.DeviceDesc90333%    = simwwan.ndi, USB\VID_05C6&PID_9033&MI_03
+%simwwan.DeviceDesc90334%    = simwwan.ndi, USB\VID_05C6&PID_9033&MI_04
+%simwwan.DeviceDesc90335%    = simwwan.ndi, USB\VID_05C6&PID_9033&MI_05
+%simwwan.DeviceDesc90336%    = simwwan.ndi, USB\VID_05C6&PID_9033&MI_06
+%simwwan.DeviceDesc90343%    = simwwan.ndi, USB\VID_05C6&PID_9034&MI_03
+%simwwan.DeviceDesc90344%    = simwwan.ndi, USB\VID_05C6&PID_9034&MI_04
+%simwwan.DeviceDesc90345%    = simwwan.ndi, USB\VID_05C6&PID_9034&MI_05
+%simwwan.DeviceDesc90346%    = simwwan.ndi, USB\VID_05C6&PID_9034&MI_06
+%simwwan.DeviceDesc90347%    = simwwan.ndi, USB\VID_05C6&PID_9034&MI_07
+%simwwan.DeviceDesc90354%    = simwwan.ndi, USB\VID_05C6&PID_9035&MI_04
+%simwwan.DeviceDesc903580%    = simwwan.ndi, USB\VID_05C6&PID_9035&MI_80
+%simwwan.DeviceDesc903581%    = simwwan.ndi, USB\VID_05C6&PID_9035&MI_81
+%simwwan.DeviceDesc903582%    = simwwan.ndi, USB\VID_05C6&PID_9035&MI_82
+%simwwan.DeviceDesc903583%    = simwwan.ndi, USB\VID_05C6&PID_9035&MI_83
+%simwwan.DeviceDesc903584%    = simwwan.ndi, USB\VID_05C6&PID_9035&MI_84
+%simwwan.DeviceDesc903585%    = simwwan.ndi, USB\VID_05C6&PID_9035&MI_85
+%simwwan.DeviceDesc903586%    = simwwan.ndi, USB\VID_05C6&PID_9035&MI_86
+%simwwan.DeviceDesc903587%    = simwwan.ndi, USB\VID_05C6&PID_9035&MI_87
+%simwwan.DeviceDesc903588%    = simwwan.ndi, USB\VID_05C6&PID_9035&MI_88
+%simwwan.DeviceDesc90363%    = simwwan.ndi, USB\VID_05C6&PID_9036&MI_03
+%simwwan.DeviceDesc90375%    = simwwan.ndi, USB\VID_05C6&PID_9037&MI_05
+%simwwan.DeviceDesc90384%    = simwwan.ndi, USB\VID_05C6&PID_9038&MI_04
+%simwwan.DeviceDesc903B7%    = simwwan.ndi, USB\VID_05C6&PID_903B&MI_07
+%simwwan.DeviceDesc903C6%    = simwwan.ndi, USB\VID_05C6&PID_903C&MI_06
+%simwwan.DeviceDesc903D6%    = simwwan.ndi, USB\VID_05C6&PID_903D&MI_06
+%simwwan.DeviceDesc903E5%    = simwwan.ndi, USB\VID_05C6&PID_903E&MI_05
+%simwwan.DeviceDesc90463%    = simwwan.ndi, USB\VID_05C6&PID_9046&MI_03
+%simwwan.DeviceDesc90464%    = simwwan.ndi, USB\VID_05C6&PID_9046&MI_04
+%simwwan.DeviceDesc90465%    = simwwan.ndi, USB\VID_05C6&PID_9046&MI_05
+%simwwan.DeviceDesc90472%    = simwwan.ndi, USB\VID_05C6&PID_9047&MI_02
+%simwwan.DeviceDesc90473%    = simwwan.ndi, USB\VID_05C6&PID_9047&MI_03
+%simwwan.DeviceDesc90474%    = simwwan.ndi, USB\VID_05C6&PID_9047&MI_04
+%simwwan.DeviceDesc90484%    = simwwan.ndi, USB\VID_05C6&PID_9048&MI_04
+%simwwan.DeviceDesc90485%    = simwwan.ndi, USB\VID_05C6&PID_9048&MI_05
+%simwwan.DeviceDesc90486%    = simwwan.ndi, USB\VID_05C6&PID_9048&MI_06
+%simwwan.DeviceDesc90487%    = simwwan.ndi, USB\VID_05C6&PID_9048&MI_07
+%simwwan.DeviceDesc90488%    = simwwan.ndi, USB\VID_05C6&PID_9048&MI_08
+%simwwan.DeviceDesc90493%    = simwwan.ndi, USB\VID_05C6&PID_9049&MI_03
+%simwwan.DeviceDesc904C5%    = simwwan.ndi, USB\VID_05C6&PID_904C&MI_05
+%simwwan.DeviceDesc904C6%    = simwwan.ndi, USB\VID_05C6&PID_904C&MI_06
+%simwwan.DeviceDesc904C7%    = simwwan.ndi, USB\VID_05C6&PID_904C&MI_07
+%simwwan.DeviceDesc904C8%    = simwwan.ndi, USB\VID_05C6&PID_904C&MI_08
+%simwwan.DeviceDesc90503%    = simwwan.ndi, USB\VID_05C6&PID_9050&MI_03
+%simwwan.DeviceDesc90524%    = simwwan.ndi, USB\VID_05C6&PID_9052&MI_04
+%simwwan.DeviceDesc90536%    = simwwan.ndi, USB\VID_05C6&PID_9053&MI_06
+%simwwan.DeviceDesc90537%    = simwwan.ndi, USB\VID_05C6&PID_9053&MI_07
+%simwwan.DeviceDesc90545%    = simwwan.ndi, USB\VID_05C6&PID_9054&MI_05
+%simwwan.DeviceDesc90546%    = simwwan.ndi, USB\VID_05C6&PID_9054&MI_06
+%simwwan.DeviceDesc90553%    = simwwan.ndi, USB\VID_05C6&PID_9055&MI_03
+%simwwan.DeviceDesc90554%    = simwwan.ndi, USB\VID_05C6&PID_9055&MI_04
+%simwwan.DeviceDesc90555%    = simwwan.ndi, USB\VID_05C6&PID_9055&MI_05
+%simwwan.DeviceDesc90556%    = simwwan.ndi, USB\VID_05C6&PID_9055&MI_06
+%simwwan.DeviceDesc90557%    = simwwan.ndi, USB\VID_05C6&PID_9055&MI_07
+%simwwan.DeviceDesc905580%    = simwwan.ndi, USB\VID_05C6&PID_9055&MI_80
+%simwwan.DeviceDesc905581%    = simwwan.ndi, USB\VID_05C6&PID_9055&MI_81
+%simwwan.DeviceDesc905582%    = simwwan.ndi, USB\VID_05C6&PID_9055&MI_82
+%simwwan.DeviceDesc905583%    = simwwan.ndi, USB\VID_05C6&PID_9055&MI_83
+%simwwan.DeviceDesc905584%    = simwwan.ndi, USB\VID_05C6&PID_9055&MI_84
+%simwwan.DeviceDesc905585%    = simwwan.ndi, USB\VID_05C6&PID_9055&MI_85
+%simwwan.DeviceDesc905586%    = simwwan.ndi, USB\VID_05C6&PID_9055&MI_86
+%simwwan.DeviceDesc905587%    = simwwan.ndi, USB\VID_05C6&PID_9055&MI_87
+%simwwan.DeviceDesc905588%    = simwwan.ndi, USB\VID_05C6&PID_9055&MI_88
+%simwwan.DeviceDesc90563%    = simwwan.ndi, USB\VID_05C6&PID_9056&MI_03
+%simwwan.DeviceDesc90622%    = simwwan.ndi, USB\VID_05C6&PID_9062&MI_02
+%simwwan.DeviceDesc90623%    = simwwan.ndi, USB\VID_05C6&PID_9062&MI_03
+%simwwan.DeviceDesc90624%    = simwwan.ndi, USB\VID_05C6&PID_9062&MI_04
+%simwwan.DeviceDesc90625%    = simwwan.ndi, USB\VID_05C6&PID_9062&MI_05
+%simwwan.DeviceDesc90626%    = simwwan.ndi, USB\VID_05C6&PID_9062&MI_06
+%simwwan.DeviceDesc90627%    = simwwan.ndi, USB\VID_05C6&PID_9062&MI_07
+%simwwan.DeviceDesc90628%    = simwwan.ndi, USB\VID_05C6&PID_9062&MI_08
+%simwwan.DeviceDesc90629%    = simwwan.ndi, USB\VID_05C6&PID_9062&MI_09
+%simwwan.DeviceDesc90643%    = simwwan.ndi, USB\VID_05C6&PID_9064&MI_03
+%simwwan.DeviceDesc90656%    = simwwan.ndi, USB\VID_05C6&PID_9065&MI_06
+%simwwan.DeviceDesc90657%    = simwwan.ndi, USB\VID_05C6&PID_9065&MI_07
+%simwwan.DeviceDesc90665%    = simwwan.ndi, USB\VID_05C6&PID_9066&MI_05
+%simwwan.DeviceDesc90666%    = simwwan.ndi, USB\VID_05C6&PID_9066&MI_06
+%simwwan.DeviceDesc90671%    = simwwan.ndi, USB\VID_05C6&PID_9067&MI_01
+%simwwan.DeviceDesc90682%    = simwwan.ndi, USB\VID_05C6&PID_9068&MI_02
+%simwwan.DeviceDesc90683%    = simwwan.ndi, USB\VID_05C6&PID_9068&MI_03
+%simwwan.DeviceDesc90684%    = simwwan.ndi, USB\VID_05C6&PID_9068&MI_04
+%simwwan.DeviceDesc90685%    = simwwan.ndi, USB\VID_05C6&PID_9068&MI_05
+%simwwan.DeviceDesc90686%    = simwwan.ndi, USB\VID_05C6&PID_9068&MI_06
+%simwwan.DeviceDesc90687%    = simwwan.ndi, USB\VID_05C6&PID_9068&MI_07
+%simwwan.DeviceDesc90695%    = simwwan.ndi, USB\VID_05C6&PID_9069&MI_05
+%simwwan.DeviceDesc90696%    = simwwan.ndi, USB\VID_05C6&PID_9069&MI_06
+%simwwan.DeviceDesc90697%    = simwwan.ndi, USB\VID_05C6&PID_9069&MI_07
+%simwwan.DeviceDesc90698%    = simwwan.ndi, USB\VID_05C6&PID_9069&MI_08
+%simwwan.DeviceDesc90704%    = simwwan.ndi, USB\VID_05C6&PID_9070&MI_04
+%simwwan.DeviceDesc90705%    = simwwan.ndi, USB\VID_05C6&PID_9070&MI_05
+%simwwan.DeviceDesc90755%    = simwwan.ndi, USB\VID_05C6&PID_9075&MI_05
+%simwwan.DeviceDesc90764%    = simwwan.ndi, USB\VID_05C6&PID_9076&MI_04
+%simwwan.DeviceDesc90765%    = simwwan.ndi, USB\VID_05C6&PID_9076&MI_05
+%simwwan.DeviceDesc90766%    = simwwan.ndi, USB\VID_05C6&PID_9076&MI_06
+%simwwan.DeviceDesc90767%    = simwwan.ndi, USB\VID_05C6&PID_9076&MI_07
+%simwwan.DeviceDesc90768%    = simwwan.ndi, USB\VID_05C6&PID_9076&MI_08
+%simwwan.DeviceDesc90773%    = simwwan.ndi, USB\VID_05C6&PID_9077&MI_03
+%simwwan.DeviceDesc90774%    = simwwan.ndi, USB\VID_05C6&PID_9077&MI_04
+%simwwan.DeviceDesc90775%    = simwwan.ndi, USB\VID_05C6&PID_9077&MI_05
+%simwwan.DeviceDesc90776%    = simwwan.ndi, USB\VID_05C6&PID_9077&MI_06
+%simwwan.DeviceDesc90783%    = simwwan.ndi, USB\VID_05C6&PID_9078&MI_03
+%simwwan.DeviceDesc90794%    = simwwan.ndi, USB\VID_05C6&PID_9079&MI_04
+%simwwan.DeviceDesc90795%    = simwwan.ndi, USB\VID_05C6&PID_9079&MI_05
+%simwwan.DeviceDesc90796%    = simwwan.ndi, USB\VID_05C6&PID_9079&MI_06
+%simwwan.DeviceDesc90797%    = simwwan.ndi, USB\VID_05C6&PID_9079&MI_07
+%simwwan.DeviceDesc90798%    = simwwan.ndi, USB\VID_05C6&PID_9079&MI_08
+%simwwan.DeviceDesc90805%    = simwwan.ndi, USB\VID_05C6&PID_9080&MI_05
+%simwwan.DeviceDesc90806%    = simwwan.ndi, USB\VID_05C6&PID_9080&MI_06
+%simwwan.DeviceDesc90807%    = simwwan.ndi, USB\VID_05C6&PID_9080&MI_07
+%simwwan.DeviceDesc90808%    = simwwan.ndi, USB\VID_05C6&PID_9080&MI_08
+%simwwan.DeviceDesc90833%    = simwwan.ndi, USB\VID_05C6&PID_9083&MI_03
+%simwwan.DeviceDesc90844%    = simwwan.ndi, USB\VID_05C6&PID_9084&MI_04
+%simwwan.DeviceDesc908A5%    = simwwan.ndi, USB\VID_05C6&PID_908A&MI_05
+%simwwan.DeviceDesc908A6%    = simwwan.ndi, USB\VID_05C6&PID_908A&MI_06
+%simwwan.DeviceDesc908B4%    = simwwan.ndi, USB\VID_05C6&PID_908B&MI_04
+%simwwan.DeviceDesc908E7%    = simwwan.ndi, USB\VID_05C6&PID_908E&MI_07
+%simwwan.DeviceDesc908E8%    = simwwan.ndi, USB\VID_05C6&PID_908E&MI_08
+%simwwan.DeviceDesc908F3%    = simwwan.ndi, USB\VID_05C6&PID_908F&MI_03
+%simwwan.DeviceDesc908F4%    = simwwan.ndi, USB\VID_05C6&PID_908F&MI_04
+%simwwan.DeviceDesc908F80%    = simwwan.ndi, USB\VID_05C6&PID_908F&MI_80
+%simwwan.DeviceDesc908F81%    = simwwan.ndi, USB\VID_05C6&PID_908F&MI_81
+%simwwan.DeviceDesc908F82%    = simwwan.ndi, USB\VID_05C6&PID_908F&MI_82
+%simwwan.DeviceDesc908F83%    = simwwan.ndi, USB\VID_05C6&PID_908F&MI_83
+%simwwan.DeviceDesc908F84%    = simwwan.ndi, USB\VID_05C6&PID_908F&MI_84
+%simwwan.DeviceDesc908F85%    = simwwan.ndi, USB\VID_05C6&PID_908F&MI_85
+%simwwan.DeviceDesc908F86%    = simwwan.ndi, USB\VID_05C6&PID_908F&MI_86
+%simwwan.DeviceDesc908F87%    = simwwan.ndi, USB\VID_05C6&PID_908F&MI_87
+%simwwan.DeviceDesc908F88%    = simwwan.ndi, USB\VID_05C6&PID_908F&MI_88
+%simwwan.DeviceDesc90903%    = simwwan.ndi, USB\VID_05C6&PID_9090&MI_03
+%simwwan.DeviceDesc90904%    = simwwan.ndi, USB\VID_05C6&PID_9090&MI_04
+%simwwan.DeviceDesc90905%    = simwwan.ndi, USB\VID_05C6&PID_9090&MI_05
+%simwwan.DeviceDesc90912%    = simwwan.ndi, USB\VID_05C6&PID_9091&MI_02
+%simwwan.DeviceDesc90922%    = simwwan.ndi, USB\VID_05C6&PID_9092&MI_02
+%simwwan.DeviceDesc90943%    = simwwan.ndi, USB\VID_05C6&PID_9094&MI_03
+%simwwan.DeviceDesc90952%    = simwwan.ndi, USB\VID_05C6&PID_9095&MI_02
+%simwwan.DeviceDesc90961%    = simwwan.ndi, USB\VID_05C6&PID_9096&MI_01
+%simwwan.DeviceDesc90970%    = simwwan.ndi, USB\VID_05C6&PID_9097&MI_00
+%simwwan.DeviceDesc909A5%    = simwwan.ndi, USB\VID_05C6&PID_909A&MI_05
+%simwwan.DeviceDesc909B4%    = simwwan.ndi, USB\VID_05C6&PID_909B&MI_04
+%simwwan.DeviceDesc909F5%    = simwwan.ndi, USB\VID_05C6&PID_909F&MI_05
+%simwwan.DeviceDesc909F6%    = simwwan.ndi, USB\VID_05C6&PID_909F&MI_06
+%simwwan.DeviceDesc90A05%    = simwwan.ndi, USB\VID_05C6&PID_90A0&MI_05
+%simwwan.DeviceDesc90A06%    = simwwan.ndi, USB\VID_05C6&PID_90A0&MI_06
+%simwwan.DeviceDesc90A12%    = simwwan.ndi, USB\VID_05C6&PID_90A1&MI_02
+%simwwan.DeviceDesc90A180%    = simwwan.ndi, USB\VID_05C6&PID_90A1&MI_80
+%simwwan.DeviceDesc90A181%    = simwwan.ndi, USB\VID_05C6&PID_90A1&MI_81
+%simwwan.DeviceDesc90A182%    = simwwan.ndi, USB\VID_05C6&PID_90A1&MI_82
+%simwwan.DeviceDesc90A183%    = simwwan.ndi, USB\VID_05C6&PID_90A1&MI_83
+%simwwan.DeviceDesc90A184%    = simwwan.ndi, USB\VID_05C6&PID_90A1&MI_84
+%simwwan.DeviceDesc90A185%    = simwwan.ndi, USB\VID_05C6&PID_90A1&MI_85
+%simwwan.DeviceDesc90A186%    = simwwan.ndi, USB\VID_05C6&PID_90A1&MI_86
+%simwwan.DeviceDesc90A187%    = simwwan.ndi, USB\VID_05C6&PID_90A1&MI_87
+%simwwan.DeviceDesc90A188%    = simwwan.ndi, USB\VID_05C6&PID_90A1&MI_88
+%simwwan.DeviceDesc90A25%    = simwwan.ndi, USB\VID_05C6&PID_90A2&MI_05
+%simwwan.DeviceDesc90A34%    = simwwan.ndi, USB\VID_05C6&PID_90A3&MI_04
+%simwwan.DeviceDesc90A53%    = simwwan.ndi, USB\VID_05C6&PID_90A5&MI_03
+%simwwan.DeviceDesc90A580%    = simwwan.ndi, USB\VID_05C6&PID_90A5&MI_80
+%simwwan.DeviceDesc90A581%    = simwwan.ndi, USB\VID_05C6&PID_90A5&MI_81
+%simwwan.DeviceDesc90A582%    = simwwan.ndi, USB\VID_05C6&PID_90A5&MI_82
+%simwwan.DeviceDesc90A583%    = simwwan.ndi, USB\VID_05C6&PID_90A5&MI_83
+%simwwan.DeviceDesc90A584%    = simwwan.ndi, USB\VID_05C6&PID_90A5&MI_84
+%simwwan.DeviceDesc90A585%    = simwwan.ndi, USB\VID_05C6&PID_90A5&MI_85
+%simwwan.DeviceDesc90A586%    = simwwan.ndi, USB\VID_05C6&PID_90A5&MI_86
+%simwwan.DeviceDesc90A587%    = simwwan.ndi, USB\VID_05C6&PID_90A5&MI_87
+%simwwan.DeviceDesc90A588%    = simwwan.ndi, USB\VID_05C6&PID_90A5&MI_88
+%simwwan.DeviceDesc90A64%    = simwwan.ndi, USB\VID_05C6&PID_90A6&MI_04
+%simwwan.DeviceDesc90A680%    = simwwan.ndi, USB\VID_05C6&PID_90A6&MI_80
+%simwwan.DeviceDesc90A681%    = simwwan.ndi, USB\VID_05C6&PID_90A6&MI_81
+%simwwan.DeviceDesc90A682%    = simwwan.ndi, USB\VID_05C6&PID_90A6&MI_82
+%simwwan.DeviceDesc90A683%    = simwwan.ndi, USB\VID_05C6&PID_90A6&MI_83
+%simwwan.DeviceDesc90A684%    = simwwan.ndi, USB\VID_05C6&PID_90A6&MI_84
+%simwwan.DeviceDesc90A685%    = simwwan.ndi, USB\VID_05C6&PID_90A6&MI_85
+%simwwan.DeviceDesc90A686%    = simwwan.ndi, USB\VID_05C6&PID_90A6&MI_86
+%simwwan.DeviceDesc90A687%    = simwwan.ndi, USB\VID_05C6&PID_90A6&MI_87
+%simwwan.DeviceDesc90A688%    = simwwan.ndi, USB\VID_05C6&PID_90A6&MI_88
+%simwwan.DeviceDesc90A74%    = simwwan.ndi, USB\VID_05C6&PID_90A7&MI_04
+%simwwan.DeviceDesc90A84%    = simwwan.ndi, USB\VID_05C6&PID_90A8&MI_04
+%simwwan.DeviceDesc90A95%    = simwwan.ndi, USB\VID_05C6&PID_90A9&MI_05
+%simwwan.DeviceDesc90AA1%    = simwwan.ndi, USB\VID_05C6&PID_90AA&MI_01
+%simwwan.DeviceDesc90AA2%    = simwwan.ndi, USB\VID_05C6&PID_90AA&MI_02
+%simwwan.DeviceDesc90AA3%    = simwwan.ndi, USB\VID_05C6&PID_90AA&MI_03
+%simwwan.DeviceDesc90AB4%    = simwwan.ndi, USB\VID_05C6&PID_90AB&MI_04
+%simwwan.DeviceDesc90AC4%    = simwwan.ndi, USB\VID_05C6&PID_90AC&MI_04
+%simwwan.DeviceDesc90AD4%    = simwwan.ndi, USB\VID_05C6&PID_90AD&MI_04
+%simwwan.DeviceDesc90AE4%    = simwwan.ndi, USB\VID_05C6&PID_90AE&MI_04
+%simwwan.DeviceDesc90AE80%    = simwwan.ndi, USB\VID_05C6&PID_90AE&MI_80
+%simwwan.DeviceDesc90AE81%    = simwwan.ndi, USB\VID_05C6&PID_90AE&MI_81
+%simwwan.DeviceDesc90AE82%    = simwwan.ndi, USB\VID_05C6&PID_90AE&MI_82
+%simwwan.DeviceDesc90AE83%    = simwwan.ndi, USB\VID_05C6&PID_90AE&MI_83
+%simwwan.DeviceDesc90AE84%    = simwwan.ndi, USB\VID_05C6&PID_90AE&MI_84
+%simwwan.DeviceDesc90AE85%    = simwwan.ndi, USB\VID_05C6&PID_90AE&MI_85
+%simwwan.DeviceDesc90AE86%    = simwwan.ndi, USB\VID_05C6&PID_90AE&MI_86
+%simwwan.DeviceDesc90AE87%    = simwwan.ndi, USB\VID_05C6&PID_90AE&MI_87
+%simwwan.DeviceDesc90AE88%    = simwwan.ndi, USB\VID_05C6&PID_90AE&MI_88
+%simwwan.DeviceDesc90AF3%    = simwwan.ndi, USB\VID_05C6&PID_90AF&MI_03
+%simwwan.DeviceDesc90AF80%    = simwwan.ndi, USB\VID_05C6&PID_90AF&MI_80
+%simwwan.DeviceDesc90AF81%    = simwwan.ndi, USB\VID_05C6&PID_90AF&MI_81
+%simwwan.DeviceDesc90AF82%    = simwwan.ndi, USB\VID_05C6&PID_90AF&MI_82
+%simwwan.DeviceDesc90AF83%    = simwwan.ndi, USB\VID_05C6&PID_90AF&MI_83
+%simwwan.DeviceDesc90AF84%    = simwwan.ndi, USB\VID_05C6&PID_90AF&MI_84
+%simwwan.DeviceDesc90AF85%    = simwwan.ndi, USB\VID_05C6&PID_90AF&MI_85
+%simwwan.DeviceDesc90AF86%    = simwwan.ndi, USB\VID_05C6&PID_90AF&MI_86
+%simwwan.DeviceDesc90AF87%    = simwwan.ndi, USB\VID_05C6&PID_90AF&MI_87
+%simwwan.DeviceDesc90AF88%    = simwwan.ndi, USB\VID_05C6&PID_90AF&MI_88
+%simwwan.DeviceDesc90B03%    = simwwan.ndi, USB\VID_05C6&PID_90B0&MI_03
+%simwwan.DeviceDesc90B23%    = simwwan.ndi, USB\VID_05C6&PID_90B2&MI_03
+%simwwan.DeviceDesc90B72%    = simwwan.ndi, USB\VID_05C6&PID_90B7&MI_02
+%simwwan.DeviceDesc90B82%    = simwwan.ndi, USB\VID_05C6&PID_90B8&MI_02
+%simwwan.DeviceDesc90B92%    = simwwan.ndi, USB\VID_05C6&PID_90B9&MI_02
+%simwwan.DeviceDesc90B93%    = simwwan.ndi, USB\VID_05C6&PID_90B9&MI_03
+%simwwan.DeviceDesc920D0%    = simwwan.ndi, USB\VID_05C6&PID_920D&MI_00
+
+[simwwan.ndi]
+Characteristics = 0x4 ; NCF_PHYSICAL
+BusType         = 15  ; PNPBus
+
+; Windows 7 specific
+*IfType = 244 ; IF_TYPE_WWANPP2
+*MediaType = 9 ; NdisMediumWirelessWan
+*PhysicalMediaType = 8 ; NdisPhysicalMediumWirelessWan
+EnableDhcp = 0
+
+AddReg          = simwwan.Reg
+CopyFiles       = simwwan.CopyFiles
+
+[simwwan.ndi.Services]
+AddService      = simlteusbwwan, 2, simwwan.Service, simwwan.EventLog
+
+;-----------------------------------------------------------------------------
+; WMI security settings
+;-----------------------------------------------------------------------------
+[gobiwwan.ndi.WMI]
+WMIInterface={DE81837E-BD78-4EC8-ABA8-89B7D026C1CF},,WMIGuidSecurity_AllReadAdminFul
+
+[WMIGuidSecurity_AllReadAdminFul]
+security="O:BAG:BAD:(A;;0x12001f;;;BA)(A;;0x12001f;;;LS)(A;;0x12001f;;;NS)(A;;0x12001f;;;SY)(A;;0x12001f;;;NO)(A;;CC;;;BU)"
+
+;-----------------------------------------------------------------------------
+; Virtual Miniport Common
+;
+[simwwan.Reg]
+HKR,    ,                         BusNumber,           0, "0" 
+HKR, Ndi,                         Service,             0, "simlteusbwwan"
+
+;Entries to be put in add-registry-section for NdisMediumWirelessWan
+HKR, Ndi\Interfaces, UpperRange, 0, "flpp4, flpp6"
+HKR, Ndi\Interfaces, LowerRange, 0, "ppip"
+HKR,, QCDevDisableQoS, 0x00010001, 0x00000003
+
+; Diable QMI
+; HKR,, QCMPDisableQMI, 0x00010001, 0x00000001
+
+; Disable QMAP V3
+HKR,, QCMPEnableQMAPV3, 0x00010001, 0x00000000
+
+; Disable QMAP V2
+HKR,, QCMPEnableQMAPV2, 0x00010001, 0x00000000
+
+; Disable QMAP V1
+; HKR,, QCMPEnableQMAPV1, 0x00010001, 0x00000000
+
+; Disable QCNCM UL
+; HKR,, QCMPEnableMBIMUL, 0x00010001, 0x00000000
+
+; Disable QCNCM DL
+; HKR,, QCMPEnableMBIMDL, 0x00010001, 0x00000000
+
+; Disable TLP UL
+; HKR,, QCMPEnableTLP, 0x00010001, 0x00000000
+
+; Disable TLP DL
+; HKR,, QCMPEnableDLTLP, 0x00010001, 0x00000000
+
+; Max UL aggregated packets
+; HKR,, QCDriverTLPMaxPackets, 0x00010001, 0x00000003
+
+; Max DL aggregated packets
+HKR,, QCDriverDLMaxPackets, 0x00010001, 0x00000020
+
+; Max DL aggregated Size
+HKR,, QCDriverDLAggregationSize, 0x00010001, 0x00008000
+;-----------------------------------------------------------------------------
+; Driver and Service Section
+;
+[simwwan.CopyFiles]
+simlteusbwwan.sys,,,2
+
+[simwwan.Service]
+DisplayName     = %simwwan.Ltenet.Service.DispName%
+ServiceType     = 1 ;%SERVICE_KERNEL_DRIVER%
+StartType       = 3 ;%SERVICE_DEMAND_START%
+ErrorControl    = 1 ;%SERVICE_ERROR_NORMAL%
+ServiceBinary   = %12%\simlteusbwwan.sys
+LoadOrderGroup  = NDIS
+AddReg          = TextModeFlags.Reg
+
+[simwwan.EventLog]
+AddReg = simwwan.AddEventLog.Reg
+
+[simwwan.AddEventLog.Reg]
+HKR, , EventMessageFile, 0x00020000, "%%SystemRoot%%\System32\netevent.dll"
+HKR, , TypesSupported,   0x00010001, 7
+
+[TextModeFlags.Reg]
+HKR, , TextModeFlags,    0x00010001, 0x0001
+
+[SourceDisksNames]
+1 = %DiskId1%,,,""
+
+[SourceDisksFiles]
+simlteusbwwan.sys  = 1,,
+
+;-----------------------------------------------------------------------------
+; DestinationDirs
+;
+[DestinationDirs]
+simwwan.CopyFiles = 12
+
+;-----------------------------------------------------------------------------
+; Localizable Strings
+;
+[Strings]
+simSrcDisk = "SimTech USB Driver Disk"
+sim                       = "SimTech"                      
+simwwan.DeviceDesc           = "SimTech HS-USB WWAN Adapter"
+simwwan.DeviceDesc7001       = "SimTech HS-USB WWAN Adapter 7001"
+simwwan.DeviceDesc7002       = "SimTech HS-USB WWAN Adapter 7002"
+simwwan.DeviceDesc71011      = "SimTech HS-USB WWAN Adapter 7101-1"
+simwwan.DeviceDesc71012      = "SimTech HS-USB WWAN Adapter 7101-2"
+simwwan.DeviceDesc71013      = "SimTech HS-USB WWAN Adapter 7101-3"
+simwwan.DeviceDesc71021      = "SimTech HS-USB WWAN Adapter 7102-1"
+simwwan.DeviceDesc71022      = "SimTech HS-USB WWAN Adapter 7102-2"
+simwwan.DeviceDesc71023      = "SimTech HS-USB WWAN Adapter 7102-3"
+simwwan.DeviceDesc80007      = "SimTech HS-USB WWAN Adapter 8000"
+simwwan.DeviceDesc80016      = "SimTech HS-USB WWAN Adapter 8001"
+simwwan.DeviceDesc90005      = "SimTech HS-USB WWAN Adapter 9000"
+simwwan.DeviceDesc90015      = "SimTech HS-USB WWAN Adapter 9001"
+simwwan.DeviceDesc90025      = "SimTech HS-USB WWAN Adapter 9002"
+simwwan.DeviceDesc90046     = "SimTech HS-USB WWAN Adapter 9004"
+simwwan.DeviceDesc90075      = "SimTech HS-USB WWAN Adapter 9007"
+simwwan.DeviceDesc900A4      = "SimTech HS-USB WWAN Adapter 900A"
+simwwan.DeviceDesc900B2      = "SimTech HS-USB WWAN Adapter 900B"
+simwwan.DeviceDesc900C4      = "SimTech HS-USB WWAN Adapter 900C-4"
+simwwan.DeviceDesc900C5      = "SimTech HS-USB WWAN Adapter 900C-5"
+simwwan.DeviceDesc900C6      = "SimTech HS-USB WWAN Adapter 900C-6"
+simwwan.DeviceDesc900D5      = "SimTech HS-USB WWAN Adapter 900D-5"
+simwwan.DeviceDesc900F3      = "SimTech HS-USB WWAN Adapter 900F-3"
+simwwan.DeviceDesc900F4      = "SimTech HS-USB WWAN Adapter 900F-4"
+simwwan.DeviceDesc900F5      = "SimTech HS-USB WWAN Adapter 900F-5"
+simwwan.DeviceDesc90104      = "SimTech HS-USB WWAN Adapter 9010-4"
+simwwan.DeviceDesc90105      = "SimTech HS-USB WWAN Adapter 9010-5"
+simwwan.DeviceDesc90113      = "SimTech HS-USB WWAN Adapter 9011-3"
+simwwan.DeviceDesc90114      = "SimTech HS-USB WWAN Adapter 9011-4"
+simwwan.DeviceDesc90211      = "SimTech HS-USB WWAN Adapter 9021"
+simwwan.DeviceDesc90222      = "SimTech HS-USB WWAN Adapter 9022"
+simwwan.DeviceDesc90254      = "SimTech HS-USB WWAN Adapter 9025"
+simwwan.DeviceDesc90263      = "SimTech HS-USB WWAN Adapter 9026"
+simwwan.DeviceDesc902E5      = "SimTech HS-USB WWAN Adapter 902E"
+simwwan.DeviceDesc90315      = "SimTech HS-USB WWAN Adapter 9031"
+simwwan.DeviceDesc90324      = "SimTech HS-USB WWAN Adapter 9032"
+simwwan.DeviceDesc90333      = "SimTech HS-USB WWAN Adapter 9033-3"
+simwwan.DeviceDesc90334      = "SimTech HS-USB WWAN Adapter 9033-4"
+simwwan.DeviceDesc90335      = "SimTech HS-USB WWAN Adapter 9033-5"
+simwwan.DeviceDesc90336      = "SimTech HS-USB WWAN Adapter 9033-6"
+simwwan.DeviceDesc90343      = "SimTech HS-USB WWAN Adapter 9034-3"
+simwwan.DeviceDesc90344      = "SimTech HS-USB WWAN Adapter 9034-4"
+simwwan.DeviceDesc90345      = "SimTech HS-USB WWAN Adapter 9034-5"
+simwwan.DeviceDesc90346      = "SimTech HS-USB WWAN Adapter 9034-6"
+simwwan.DeviceDesc90347      = "SimTech HS-USB WWAN Adapter 9034-7"
+simwwan.DeviceDesc90354      = "SimTech HS-USB WWAN Adapter 9035"
+simwwan.DeviceDesc903580     = "SimTech HS-USB WWAN Adapter 9035-80(MUX1)"
+simwwan.DeviceDesc903581     = "SimTech HS-USB WWAN Adapter 9035-81(MUX2)"
+simwwan.DeviceDesc903582     = "SimTech HS-USB WWAN Adapter 9035-82(MUX3)"
+simwwan.DeviceDesc903583     = "SimTech HS-USB WWAN Adapter 9035-83(MUX4)"
+simwwan.DeviceDesc903584     = "SimTech HS-USB WWAN Adapter 9035-84(MUX5)"
+simwwan.DeviceDesc903585     = "SimTech HS-USB WWAN Adapter 9035-85(MUX6)"
+simwwan.DeviceDesc903586     = "SimTech HS-USB WWAN Adapter 9035-86(MUX7)"
+simwwan.DeviceDesc903587     = "SimTech HS-USB WWAN Adapter 9035-87(MUX8)"
+simwwan.DeviceDesc903588     = "SimTech HS-USB WWAN Adapter 9035-88(MUX9)"
+simwwan.DeviceDesc90363      = "SimTech HS-USB WWAN Adapter 9036"
+simwwan.DeviceDesc90375      = "SimTech HS-USB WWAN Adapter 9037"
+simwwan.DeviceDesc90384      = "SimTech HS-USB WWAN Adapter 9038"
+simwwan.DeviceDesc903B7      = "SimTech HS-USB WWAN Adapter 903B"
+simwwan.DeviceDesc903C6      = "SimTech HS-USB WWAN Adapter 903C"
+simwwan.DeviceDesc903D6      = "SimTech HS-USB WWAN Adapter 903D"
+simwwan.DeviceDesc903E5      = "SimTech HS-USB WWAN Adapter 903E"
+simwwan.DeviceDesc90463      = "SimTech HS-USB WWAN Adapter 9046-3"
+simwwan.DeviceDesc90464      = "SimTech HS-USB WWAN Adapter 9046-4"
+simwwan.DeviceDesc90465      = "SimTech HS-USB WWAN Adapter 9046-5"
+simwwan.DeviceDesc90472      = "SimTech HS-USB WWAN Adapter 9047-2"
+simwwan.DeviceDesc90473      = "SimTech HS-USB WWAN Adapter 9047-3"
+simwwan.DeviceDesc90474      = "SimTech HS-USB WWAN Adapter 9047-4"
+simwwan.DeviceDesc90484      = "SimTech HS-USB WWAN Adapter 9048-4(NET1)"
+simwwan.DeviceDesc90485      = "SimTech HS-USB WWAN Adapter 9048-5(NET2)"
+simwwan.DeviceDesc90486      = "SimTech HS-USB WWAN Adapter 9048-6(NET3)"
+simwwan.DeviceDesc90487      = "SimTech HS-USB WWAN Adapter 9048-7(NET4)"
+simwwan.DeviceDesc90488      = "SimTech HS-USB WWAN Adapter 9048-8(NET5)"
+simwwan.DeviceDesc90493      = "SimTech HS-USB WWAN Adapter 9049"
+simwwan.DeviceDesc904C5      = "SimTech HS-USB WWAN Adapter 904C-5(NET1)"
+simwwan.DeviceDesc904C6      = "SimTech HS-USB WWAN Adapter 904C-6(NET2)"
+simwwan.DeviceDesc904C7      = "SimTech HS-USB WWAN Adapter 904C-7(NET3)"
+simwwan.DeviceDesc904C8      = "SimTech HS-USB WWAN Adapter 904C-8(NET4)"
+simwwan.DeviceDesc90503      = "SimTech HS-USB WWAN Adapter 9050"
+simwwan.DeviceDesc90524      = "SimTech HS-USB WWAN Adapter 9052"
+simwwan.DeviceDesc90536      = "SimTech HS-USB WWAN Adapter 9053-6(MSM)"
+simwwan.DeviceDesc90537      = "SimTech HS-USB WWAN Adapter 9053-7(MDM)"
+simwwan.DeviceDesc90545      = "SimTech HS-USB WWAN Adapter 9054-5(MSM)"
+simwwan.DeviceDesc90546      = "SimTech HS-USB WWAN Adapter 9054-6(MDM)"
+simwwan.DeviceDesc90553      = "SimTech HS-USB WWAN Adapter 9055-3(NET1)"
+simwwan.DeviceDesc90554      = "SimTech HS-USB WWAN Adapter 9055-4(NET2)"
+simwwan.DeviceDesc90555      = "SimTech HS-USB WWAN Adapter 9055-5(NET3)"
+simwwan.DeviceDesc90556      = "SimTech HS-USB WWAN Adapter 9055-6(NET4)"
+simwwan.DeviceDesc90557      = "SimTech HS-USB WWAN Adapter 9055-7(NET5)"
+simwwan.DeviceDesc905580     = "SimTech HS-USB WWAN Adapter 9055-80(NET2_MUX1)"
+simwwan.DeviceDesc905581     = "SimTech HS-USB WWAN Adapter 9055-81(NET2_MUX2)"
+simwwan.DeviceDesc905582     = "SimTech HS-USB WWAN Adapter 9055-82(NET2_MUX3)"
+simwwan.DeviceDesc905583     = "SimTech HS-USB WWAN Adapter 9055-83(NET2_MUX4)"
+simwwan.DeviceDesc905584     = "SimTech HS-USB WWAN Adapter 9055-84(NET2_MUX5)"
+simwwan.DeviceDesc905585     = "SimTech HS-USB WWAN Adapter 9055-85(NET2_MUX6)"
+simwwan.DeviceDesc905586     = "SimTech HS-USB WWAN Adapter 9055-86(NET2_MUX7)"
+simwwan.DeviceDesc905587     = "SimTech HS-USB WWAN Adapter 9055-87(NET2_MUX8)"
+simwwan.DeviceDesc905588     = "SimTech HS-USB WWAN Adapter 9055-88(NET2_MUX9)"
+simwwan.DeviceDesc90563      = "SimTech HS-USB WWAN Adapter 9056"
+simwwan.DeviceDesc90622      = "SimTech HS-USB WWAN Adapter 9062-2(NET1)"
+simwwan.DeviceDesc90623      = "SimTech HS-USB WWAN Adapter 9062-3(NET2)"
+simwwan.DeviceDesc90624      = "SimTech HS-USB WWAN Adapter 9062-4(NET3)"
+simwwan.DeviceDesc90625      = "SimTech HS-USB WWAN Adapter 9062-5(NET4)"
+simwwan.DeviceDesc90626      = "SimTech HS-USB WWAN Adapter 9062-6(NET5)"
+simwwan.DeviceDesc90627      = "SimTech HS-USB WWAN Adapter 9062-7(NET6)"
+simwwan.DeviceDesc90628      = "SimTech HS-USB WWAN Adapter 9062-8(NET7)"
+simwwan.DeviceDesc90629      = "SimTech HS-USB WWAN Adapter 9062-9(NET8)"
+simwwan.DeviceDesc90643      = "SimTech HS-USB WWAN Adapter 9064"
+simwwan.DeviceDesc90656      = "SimTech HS-USB WWAN Adapter 9065(MDM)"
+simwwan.DeviceDesc90657      = "SimTech HS-USB WWAN Adapter 9065(QSC)"
+simwwan.DeviceDesc90665      = "SimTech HS-USB WWAN Adapter 9066(MDM)"
+simwwan.DeviceDesc90666      = "SimTech HS-USB WWAN Adapter 9066(QSC)"
+simwwan.DeviceDesc90671      = "SimTech HS-USB WWAN Adapter 9067"
+simwwan.DeviceDesc90682      = "SimTech HS-USB WWAN Adapter 9068-2(NET1)"
+simwwan.DeviceDesc90683      = "SimTech HS-USB WWAN Adapter 9068-3(NET2)"
+simwwan.DeviceDesc90684      = "SimTech HS-USB WWAN Adapter 9068-4(NET3)"
+simwwan.DeviceDesc90685      = "SimTech HS-USB WWAN Adapter 9068-5(NET4)"
+simwwan.DeviceDesc90686      = "SimTech HS-USB WWAN Adapter 9068-6(NET5)"
+simwwan.DeviceDesc90687      = "SimTech HS-USB WWAN Adapter 9068-7(NET6)"
+simwwan.DeviceDesc90695      = "SimTech HS-USB WWAN Adapter 9069-5(NET1)"
+simwwan.DeviceDesc90696      = "SimTech HS-USB WWAN Adapter 9069-6(NET2)"
+simwwan.DeviceDesc90697      = "SimTech HS-USB WWAN Adapter 9069-7(NET3)"
+simwwan.DeviceDesc90698      = "SimTech HS-USB WWAN Adapter 9069-8(NET4)"
+simwwan.DeviceDesc90704      = "SimTech HS-USB WWAN Adapter 9070-4(NET1)"
+simwwan.DeviceDesc90705      = "SimTech HS-USB WWAN Adapter 9070-5(NET2)"
+simwwan.DeviceDesc90755      = "SimTech HS-USB WWAN Adapter 9075"
+simwwan.DeviceDesc90764      = "SimTech HS-USB WWAN Adapter 9076-4(NET1)"
+simwwan.DeviceDesc90765      = "SimTech HS-USB WWAN Adapter 9076-5(NET2)"
+simwwan.DeviceDesc90766      = "SimTech HS-USB WWAN Adapter 9076-6(NET3)"
+simwwan.DeviceDesc90767      = "SimTech HS-USB WWAN Adapter 9076-7(NET4)"
+simwwan.DeviceDesc90768      = "SimTech HS-USB WWAN Adapter 9076-8(NET5)"
+simwwan.DeviceDesc90773      = "SimTech HS-USB WWAN Adapter 9077-3(NET1)"
+simwwan.DeviceDesc90774      = "SimTech HS-USB WWAN Adapter 9077-4(NET2)"
+simwwan.DeviceDesc90775      = "SimTech HS-USB WWAN Adapter 9077-5(NET3)"
+simwwan.DeviceDesc90776      = "SimTech HS-USB WWAN Adapter 9077-6(NET4)"
+simwwan.DeviceDesc90783      = "SimTech HS-USB WWAN Adapter 9078"
+simwwan.DeviceDesc90794      = "SimTech HS-USB WWAN Adapter 9079-4(NET1)"
+simwwan.DeviceDesc90795      = "SimTech HS-USB WWAN Adapter 9079-5(NET2)"
+simwwan.DeviceDesc90796      = "SimTech HS-USB WWAN Adapter 9079-6(NET3)"
+simwwan.DeviceDesc90797      = "SimTech HS-USB WWAN Adapter 9079-7(NET4)"
+simwwan.DeviceDesc90798      = "SimTech HS-USB WWAN Adapter 9079-8(NET5)"
+simwwan.DeviceDesc90805      = "SimTech HS-USB WWAN Adapter 9080-5(NET1)"
+simwwan.DeviceDesc90806      = "SimTech HS-USB WWAN Adapter 9080-6(NET2)"
+simwwan.DeviceDesc90807      = "SimTech HS-USB WWAN Adapter 9080-7(NET3)"
+simwwan.DeviceDesc90808      = "SimTech HS-USB WWAN Adapter 9080-8(NET4)"
+simwwan.DeviceDesc90833      = "SimTech HS-USB WWAN Adapter 9083"
+simwwan.DeviceDesc90844      = "SimTech HS-USB WWAN Adapter 9084"
+simwwan.DeviceDesc908A5      = "SimTech HS-USB WWAN Adapter 908A-5(NET1)"
+simwwan.DeviceDesc908A6      = "SimTech HS-USB WWAN Adapter 908A-6(NET2)"
+simwwan.DeviceDesc908B4      = "SimTech HS-USB WWAN Adapter 908B"
+simwwan.DeviceDesc908E7      = "SimTech HS-USB WWAN Adapter 908E-7(NET1)"
+simwwan.DeviceDesc908E8      = "SimTech HS-USB WWAN Adapter 908E-8(NET2)"
+simwwan.DeviceDesc908F3      = "SimTech HS-USB WWAN Adapter 908F-3(NET1_MUX)"
+simwwan.DeviceDesc908F4      = "SimTech HS-USB WWAN Adapter 908F-4(NET2_MUX)"
+simwwan.DeviceDesc908F80     = "SimTech HS-USB WWAN Adapter 908F-80(NET2_MUX1)"
+simwwan.DeviceDesc908F81     = "SimTech HS-USB WWAN Adapter 908F-81(NET2_MUX2)"
+simwwan.DeviceDesc908F82     = "SimTech HS-USB WWAN Adapter 908F-82(NET2_MUX3)"
+simwwan.DeviceDesc908F83     = "SimTech HS-USB WWAN Adapter 908F-83(NET2_MUX4)"
+simwwan.DeviceDesc908F84     = "SimTech HS-USB WWAN Adapter 908F-84(NET2_MUX5)"
+simwwan.DeviceDesc908F85     = "SimTech HS-USB WWAN Adapter 908F-85(NET2_MUX6)"
+simwwan.DeviceDesc908F86     = "SimTech HS-USB WWAN Adapter 908F-86(NET2_MUX7)"
+simwwan.DeviceDesc908F87     = "SimTech HS-USB WWAN Adapter 908F-87(NET2_MUX8)"
+simwwan.DeviceDesc908F88     = "SimTech HS-USB WWAN Adapter 908F-88(NET2_MUX9)"
+simwwan.DeviceDesc90903      = "SimTech HS-USB WWAN Adapter 9090-3(NET1_MUX)"
+simwwan.DeviceDesc90904      = "SimTech HS-USB WWAN Adapter 9090-4(NET2_MUX)"
+simwwan.DeviceDesc90905      = "SimTech HS-USB WWAN Adapter 9090-5(LWIP)"
+simwwan.DeviceDesc90912      = "SimTech HS-USB WWAN Adapter 9091"
+simwwan.DeviceDesc90922      = "SimTech HS-USB WWAN Adapter 9092"
+simwwan.DeviceDesc90943      = "SimTech HS-USB WWAN Adapter 9094"
+simwwan.DeviceDesc90952      = "SimTech HS-USB WWAN Adapter 9095"
+simwwan.DeviceDesc90961      = "SimTech HS-USB WWAN Adapter 9096"
+simwwan.DeviceDesc90970      = "SimTech HS-USB WWAN Adapter 9097"
+simwwan.DeviceDesc909A5      = "SimTech HS-USB WWAN Adapter 909A"
+simwwan.DeviceDesc909B4      = "SimTech HS-USB WWAN Adapter 909B"
+simwwan.DeviceDesc909F5      = "SimTech HS-USB WWAN Adapter 909F-5(NET1)"
+simwwan.DeviceDesc909F6      = "SimTech HS-USB WWAN Adapter 909F-6(NET2)"
+simwwan.DeviceDesc90A05      = "SimTech HS-USB WWAN Adapter 90A0-5(NET1)"
+simwwan.DeviceDesc90A06      = "SimTech HS-USB WWAN Adapter 90A0-6(NET2)"
+simwwan.DeviceDesc90A12      = "SimTech HS-USB WWAN Adapter 90A1"
+simwwan.DeviceDesc90A180     = "SimTech HS-USB WWAN Adapter 90A1-80(MUX1)"
+simwwan.DeviceDesc90A181     = "SimTech HS-USB WWAN Adapter 90A1-81(MUX2)"
+simwwan.DeviceDesc90A182     = "SimTech HS-USB WWAN Adapter 90A1-82(MUX3)"
+simwwan.DeviceDesc90A183     = "SimTech HS-USB WWAN Adapter 90A1-83(MUX4)"
+simwwan.DeviceDesc90A184     = "SimTech HS-USB WWAN Adapter 90A1-84(MUX5)"
+simwwan.DeviceDesc90A185     = "SimTech HS-USB WWAN Adapter 90A1-85(MUX6)"
+simwwan.DeviceDesc90A186     = "SimTech HS-USB WWAN Adapter 90A1-86(MUX7)"
+simwwan.DeviceDesc90A187     = "SimTech HS-USB WWAN Adapter 90A1-87(MUX8)"
+simwwan.DeviceDesc90A188     = "SimTech HS-USB WWAN Adapter 90A1-88(MUX9)"
+simwwan.DeviceDesc90A25      = "SimTech HS-USB WWAN Adapter 90A2"
+simwwan.DeviceDesc90A34      = "SimTech HS-USB WWAN Adapter 90A3"
+simwwan.DeviceDesc90A53      = "SimTech HS-USB WWAN Adapter 90A5-3(NET1_MUX)"
+simwwan.DeviceDesc90A580     = "SimTech HS-USB WWAN Adapter 90A5-80(NET1_MUX1)"
+simwwan.DeviceDesc90A581     = "SimTech HS-USB WWAN Adapter 90A5-81(NET1_MUX2)"
+simwwan.DeviceDesc90A582     = "SimTech HS-USB WWAN Adapter 90A5-82(NET1_MUX3)"
+simwwan.DeviceDesc90A583     = "SimTech HS-USB WWAN Adapter 90A5-83(NET1_MUX4)"
+simwwan.DeviceDesc90A584     = "SimTech HS-USB WWAN Adapter 90A5-84(NET1_MUX5)"
+simwwan.DeviceDesc90A585     = "SimTech HS-USB WWAN Adapter 90A5-85(NET1_MUX6)"
+simwwan.DeviceDesc90A586     = "SimTech HS-USB WWAN Adapter 90A5-86(NET1_MUX7)"
+simwwan.DeviceDesc90A587     = "SimTech HS-USB WWAN Adapter 90A5-87(NET1_MUX8)"
+simwwan.DeviceDesc90A588     = "SimTech HS-USB WWAN Adapter 90A5-88(NET1_MUX9)"
+simwwan.DeviceDesc90A64      = "SimTech HS-USB WWAN Adapter 90A6-4(NET1_MUX)"
+simwwan.DeviceDesc90A680     = "SimTech HS-USB WWAN Adapter 90A6-80(NET1_MUX1)"
+simwwan.DeviceDesc90A681     = "SimTech HS-USB WWAN Adapter 90A6-81(NET1_MUX2)"
+simwwan.DeviceDesc90A682     = "SimTech HS-USB WWAN Adapter 90A6-82(NET1_MUX3)"
+simwwan.DeviceDesc90A683     = "SimTech HS-USB WWAN Adapter 90A6-83(NET1_MUX4)"
+simwwan.DeviceDesc90A684     = "SimTech HS-USB WWAN Adapter 90A6-84(NET1_MUX5)"
+simwwan.DeviceDesc90A685     = "SimTech HS-USB WWAN Adapter 90A6-85(NET1_MUX6)"
+simwwan.DeviceDesc90A686     = "SimTech HS-USB WWAN Adapter 90A6-86(NET1_MUX7)"
+simwwan.DeviceDesc90A687     = "SimTech HS-USB WWAN Adapter 90A6-87(NET1_MUX8)"
+simwwan.DeviceDesc90A688     = "SimTech HS-USB WWAN Adapter 90A6-88(NET1_MUX9)"
+simwwan.DeviceDesc90A74      = "SimTech HS-USB WWAN Adapter 90A7-4(NET1)"
+simwwan.DeviceDesc90A84      = "SimTech HS-USB WWAN Adapter 90A8-4(NET1)"
+simwwan.DeviceDesc90A95      = "SimTech HS-USB WWAN Adapter 90A9"
+simwwan.DeviceDesc90AA1      = "SimTech HS-USB WWAN Adapter 90AA-1(NET1)"
+simwwan.DeviceDesc90AA2      = "SimTech HS-USB WWAN Adapter 90AA-2(NET2)"
+simwwan.DeviceDesc90AA3      = "SimTech HS-USB WWAN Adapter 90AA-3(NET3)"
+simwwan.DeviceDesc90AB4      = "SimTech HS-USB WWAN Adapter 90AB"
+simwwan.DeviceDesc90AC4      = "SimTech HS-USB WWAN Adapter 90AC"
+simwwan.DeviceDesc90AD4      = "SimTech HS-USB WWAN Adapter 90AD"
+simwwan.DeviceDesc90AE4      = "SimTech HS-USB WWAN Adapter 90AE-4(NET1_MUX)"
+simwwan.DeviceDesc90AE80     = "SimTech HS-USB WWAN Adapter 90AE-80(NET1_MUX1)"
+simwwan.DeviceDesc90AE81     = "SimTech HS-USB WWAN Adapter 90AE-81(NET1_MUX2)"
+simwwan.DeviceDesc90AE82     = "SimTech HS-USB WWAN Adapter 90AE-82(NET1_MUX3)"
+simwwan.DeviceDesc90AE83     = "SimTech HS-USB WWAN Adapter 90AE-83(NET1_MUX4)"
+simwwan.DeviceDesc90AE84     = "SimTech HS-USB WWAN Adapter 90AE-84(NET1_MUX5)"
+simwwan.DeviceDesc90AE85     = "SimTech HS-USB WWAN Adapter 90AE-85(NET1_MUX6)"
+simwwan.DeviceDesc90AE86     = "SimTech HS-USB WWAN Adapter 90AE-86(NET1_MUX7)"
+simwwan.DeviceDesc90AE87     = "SimTech HS-USB WWAN Adapter 90AE-87(NET1_MUX8)"
+simwwan.DeviceDesc90AE88     = "SimTech HS-USB WWAN Adapter 90A5-88(NET1_MUX9)"
+simwwan.DeviceDesc90AF3      = "SimTech HS-USB WWAN Adapter 90AF-3(NET1_MUX)"
+simwwan.DeviceDesc90AF80     = "SimTech HS-USB WWAN Adapter 90AF-80(NET1_MUX1)"
+simwwan.DeviceDesc90AF81     = "SimTech HS-USB WWAN Adapter 90AF-81(NET1_MUX2)"
+simwwan.DeviceDesc90AF82     = "SimTech HS-USB WWAN Adapter 90AF-82(NET1_MUX3)"
+simwwan.DeviceDesc90AF83     = "SimTech HS-USB WWAN Adapter 90AF-83(NET1_MUX4)"
+simwwan.DeviceDesc90AF84     = "SimTech HS-USB WWAN Adapter 90AF-84(NET1_MUX5)"
+simwwan.DeviceDesc90AF85     = "SimTech HS-USB WWAN Adapter 90AF-85(NET1_MUX6)"
+simwwan.DeviceDesc90AF86     = "SimTech HS-USB WWAN Adapter 90AF-86(NET1_MUX7)"
+simwwan.DeviceDesc90AF87     = "SimTech HS-USB WWAN Adapter 90AF-87(NET1_MUX8)"
+simwwan.DeviceDesc90AF88     = "SimTech HS-USB WWAN Adapter 90AF-88(NET1_MUX9)"
+simwwan.DeviceDesc90B03      = "SimTech HS-USB WWAN Adapter 90B0"
+simwwan.DeviceDesc90B23      = "SimTech HS-USB WWAN Adapter 90B2"
+simwwan.DeviceDesc90B72      = "SimTech HS-USB WWAN Adapter 90B7"
+simwwan.DeviceDesc90B82      = "SimTech HS-USB WWAN Adapter 90B8"
+simwwan.DeviceDesc90B92      = "SimTech HS-USB WWAN Adapter 90B9-2"
+simwwan.DeviceDesc90B93      = "SimTech HS-USB WWAN Adapter 90B9-3"
+simwwan.DeviceDesc920D0      = "SimTech Gobi 3000 HS-USB Mobile Broadband Adapter 920D"
+simwwan.Service.DispName     = "SimTech USB-NDIS WWAN miniport"
+DiskId1 = "SimTech USB-NDIS Miniport Device Installation Disk #1"

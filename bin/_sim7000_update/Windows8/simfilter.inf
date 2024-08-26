@@ -1,0 +1,680 @@
+;-------------------------------------------------------------------------------
+; Copyright (c) 2014 SimTech Technologies, Inc.
+; All rights reserved.
+;-------------------------------------------------------------------------------
+
+[Version]
+Signature   = "$WINDOWS NT$"
+Class       = USB
+Provider    = %SIMTech%
+ClassGUID   = {36FC9E60-C465-11CF-8056-444553540000}
+DriverVer   = 10/08/2015,1.0.3.0
+CatalogFile = simlteusbfilter.cat
+
+[Manufacturer]
+%SimTech%  = SimTechFilter, NTamd64
+
+[ControlFlags]
+ExcludeFromSelect = *
+
+[SourceDisksNames.x86]
+1000 = %simSrcDisk%,"",,\filter\i386
+
+[SourceDisksNames.amd64]
+1000 = %simSrcDisk%,"",,\filter\amd64
+
+[SourceDisksFiles]
+simlteusbfilter.sys  = 1000
+
+[SimTechFilter]
+%simfilter.DeviceDesc3197%     = simfilter, USB\VID_05C6&PID_3197
+%simfilter.DeviceDesc3199%     = simfilter, USB\VID_05C6&PID_3199
+%simfilter.DeviceDesc319A%     = simfilter, USB\VID_05C6&PID_319A
+%simfilter.DeviceDesc319B%     = simfilter, USB\VID_05C6&PID_319B
+%simfilter.DeviceDesc3200%     = simfilter, USB\VID_05C6&PID_3200
+%simfilter.DeviceDesc6000%     = simfilter, USB\VID_05C6&PID_6000
+%simfilter.DeviceDesc%         = simfilter, USB\VID_05C6&PID_7000
+%simfilter.DeviceDesc7001%     = simfilter, USB\VID_05C6&PID_7001
+%simfilter.DeviceDesc7002%     = simfilter, USB\VID_05C6&PID_7002
+%simfilter.DeviceDesc7101%     = simfilter, USB\VID_05C6&PID_7101
+%simfilter.DeviceDesc7102%     = simfilter, USB\VID_05C6&PID_7102
+%simfilter.DeviceDesc8000%     = simfilter, USB\VID_05C6&PID_8000
+%simfilter.DeviceDesc8001%     = simfilter, USB\VID_05C6&PID_8001
+%simfilter.DeviceDesc8002%     = simfilter, USB\VID_05C6&PID_8002
+%simfilter.DeviceDesc9000%     = simfilter, USB\VID_1E0E&PID_9000
+%simfilter.DeviceDesc9001%     = simfilter, USB\VID_1E0E&PID_9001
+%simfilter.DeviceDesc9002%     = simfilter, USB\VID_1E0E&PID_9002
+%simfilter.DeviceDesc9003%     = simfilter, USB\VID_1E0E&PID_9003
+%simfilter.DeviceDesc9004%     = simfilter, USB\VID_1E0E&PID_9004
+%simfilter.DeviceDesc9005%     = simfilter, USB\VID_1E0E&PID_9005
+%simfilter.DeviceDesc9006%     = simfilter, USB\VID_1E0E&PID_9006
+%simfilter.DeviceDesc9007%     = simfilter, USB\VID_1E0E&PID_9007
+%simfilter.DeviceDesc900A%     = simfilter, USB\VID_05C6&PID_900A
+%simfilter.DeviceDesc900B%     = simfilter, USB\VID_05C6&PID_900B
+%simfilter.DeviceDesc900C%     = simfilter, USB\VID_05C6&PID_900C
+%simfilter.DeviceDesc900D%     = simfilter, USB\VID_05C6&PID_900D
+%simfilter.DeviceDesc900F%     = simfilter, USB\VID_05C6&PID_900F
+%simfilter.DeviceDesc9010%     = simfilter, USB\VID_05C6&PID_9010
+%simfilter.DeviceDesc9011%     = simfilter, USB\VID_05C6&PID_9011
+%simfilter.DeviceDesc9012%     = simfilter, USB\VID_05C6&PID_9012
+%simfilter.DeviceDesc9013%     = simfilter, USB\VID_05C6&PID_9013
+%simfilter.DeviceDesc9016%     = simfilter, USB\VID_05C6&PID_9016
+%simfilter.DeviceDesc9017%     = simfilter, USB\VID_05C6&PID_9017
+%simfilter.DeviceDesc9018%     = simfilter, USB\VID_05C6&PID_9018
+%simfilter.DeviceDesc9019%     = simfilter, USB\VID_05C6&PID_9019
+%simfilter.DeviceDesc901B%     = simfilter, USB\VID_05C6&PID_901B
+%simfilter.DeviceDesc901C%     = simfilter, USB\VID_05C6&PID_901C
+%simfilter.DeviceDesc901D%     = simfilter, USB\VID_05C6&PID_901D
+%simfilter.DeviceDesc901F%     = simfilter, USB\VID_05C6&PID_901F
+%simfilter.DeviceDesc9020%     = simfilter, USB\VID_05C6&PID_9020
+%simfilter.DeviceDesc9021%     = simfilter, USB\VID_05C6&PID_9021
+%simfilter.DeviceDesc9022%     = simfilter, USB\VID_05C6&PID_9022
+%simfilter.DeviceDesc9025%     = simfilter, USB\VID_05C6&PID_9025
+%simfilter.DeviceDesc9026%     = simfilter, USB\VID_05C6&PID_9026
+%simfilter.DeviceDesc9028%     = simfilter, USB\VID_05C6&PID_9028
+%simfilter.DeviceDesc9029%     = simfilter, USB\VID_05C6&PID_9029
+%simfilter.DeviceDesc902C%     = simfilter, USB\VID_05C6&PID_902C
+%simfilter.DeviceDesc902D%     = simfilter, USB\VID_05C6&PID_902D
+%simfilter.DeviceDesc902E%     = simfilter, USB\VID_05C6&PID_902E
+%simfilter.DeviceDesc902F%     = simfilter, USB\VID_05C6&PID_902F
+%simfilter.DeviceDesc9030%     = simfilter, USB\VID_05C6&PID_9030
+%simfilter.DeviceDesc9031%     = simfilter, USB\VID_05C6&PID_9031
+%simfilter.DeviceDesc9032%     = simfilter, USB\VID_05C6&PID_9032
+%simfilter.DeviceDesc9033%     = simfilter, USB\VID_05C6&PID_9033
+%simfilter.DeviceDesc9034%     = simfilter, USB\VID_05C6&PID_9034
+%simfilter.DeviceDesc9035%     = simfilter4, USB\VID_05C6&PID_9035
+%simfilter.DeviceDesc9036%     = simfilter, USB\VID_05C6&PID_9036
+%simfilter.DeviceDesc9037%     = simfilter, USB\VID_05C6&PID_9037
+%simfilter.DeviceDesc9038%     = simfilter, USB\VID_05C6&PID_9038
+%simfilter.DeviceDesc903A%     = simfilter, USB\VID_05C6&PID_903A
+%simfilter.DeviceDesc903B%     = simfilter, USB\VID_05C6&PID_903B
+%simfilter.DeviceDesc903C%     = simfilter, USB\VID_05C6&PID_903C
+%simfilter.DeviceDesc903D%     = simfilter, USB\VID_05C6&PID_903D
+%simfilter.DeviceDesc903E%     = simfilter, USB\VID_05C6&PID_903E
+%simfilter.DeviceDesc903F%     = simfilter, USB\VID_05C6&PID_903F
+%simfilter.DeviceDesc9040%     = simfilter, USB\VID_05C6&PID_9040
+%simfilter.DeviceDesc9041%     = simfilter, USB\VID_05C6&PID_9041
+%simfilter.DeviceDesc9042%     = simfilter, USB\VID_05C6&PID_9042
+%simfilter.DeviceDesc9043%     = simfilter, USB\VID_05C6&PID_9043
+%simfilter.DeviceDesc9044%     = simfilter, USB\VID_05C6&PID_9044
+%simfilter.DeviceDesc9045%     = simfilter, USB\VID_05C6&PID_9045
+%simfilter.DeviceDesc9046%     = simfilter, USB\VID_05C6&PID_9046
+%simfilter.DeviceDesc9047%     = simfilter, USB\VID_05C6&PID_9047
+%simfilter.DeviceDesc9048%     = simfilter, USB\VID_05C6&PID_9048
+%simfilter.DeviceDesc9049%     = simfilter, USB\VID_05C6&PID_9049
+%simfilter.DeviceDesc904B%     = simfilter, USB\VID_05C6&PID_904B
+%simfilter.DeviceDesc904C%     = simfilter, USB\VID_05C6&PID_904C
+%simfilter.DeviceDesc904F%     = simfilter, USB\VID_05C6&PID_904F
+%simfilter.DeviceDesc9050%     = simfilter, USB\VID_05C6&PID_9050
+%simfilter.DeviceDesc9051%     = simfilter, USB\VID_05C6&PID_9051
+%simfilter.DeviceDesc9052%     = simfilter, USB\VID_05C6&PID_9052
+%simfilter.DeviceDesc9053%     = simfilter, USB\VID_05C6&PID_9053
+%simfilter.DeviceDesc9054%     = simfilter, USB\VID_05C6&PID_9054
+%simfilter.DeviceDesc9055%     = simfilter, USB\VID_05C6&PID_9055
+%simfilter.DeviceDesc9056%     = simfilter, USB\VID_05C6&PID_9056
+%simfilter.DeviceDesc9059%     = simfilter, USB\VID_05C6&PID_9059
+%simfilter.DeviceDesc905A%     = simfilter, USB\VID_05C6&PID_905A
+%simfilter.DeviceDesc905D%     = simfilter, USB\VID_05C6&PID_905D
+%simfilter.DeviceDesc905E%     = simfilter, USB\VID_05C6&PID_905E
+%simfilter.DeviceDesc905F%     = simfilter, USB\VID_05C6&PID_905F
+%simfilter.DeviceDesc9060%     = simfilter, USB\VID_05C6&PID_9060
+%simfilter.DeviceDesc9061%     = simfilter, USB\VID_05C6&PID_9061
+%simfilter.DeviceDesc9062%     = simfilter, USB\VID_05C6&PID_9062
+%simfilter.DeviceDesc9064%     = simfilter, USB\VID_05C6&PID_9064
+%simfilter.DeviceDesc9065%     = simfilter, USB\VID_05C6&PID_9065
+%simfilter.DeviceDesc9066%     = simfilter, USB\VID_05C6&PID_9066
+%simfilter.DeviceDesc9067%     = simfilter, USB\VID_05C6&PID_9067
+%simfilter.DeviceDesc9068%     = simfilter, USB\VID_05C6&PID_9068
+%simfilter.DeviceDesc9069%     = simfilter, USB\VID_05C6&PID_9069
+%simfilter.DeviceDesc9070%     = simfilter, USB\VID_05C6&PID_9070
+%simfilter.DeviceDesc9071%     = simfilter, USB\VID_05C6&PID_9071
+%simfilter.DeviceDesc9072%     = simfilter, USB\VID_05C6&PID_9072
+%simfilter.DeviceDesc9073%     = simfilter, USB\VID_05C6&PID_9073
+%simfilter.DeviceDesc9074%     = simfilter, USB\VID_05C6&PID_9074
+%simfilter.DeviceDesc9075%     = simfilter, USB\VID_05C6&PID_9075
+%simfilter.DeviceDesc9076%     = simfilter, USB\VID_05C6&PID_9076
+%simfilter.DeviceDesc9077%     = simfilter, USB\VID_05C6&PID_9077
+%simfilter.DeviceDesc9078%     = simfilter, USB\VID_05C6&PID_9078
+%simfilter.DeviceDesc9079%     = simfilter, USB\VID_05C6&PID_9079
+%simfilter.DeviceDesc9080%     = simfilter, USB\VID_05C6&PID_9080
+%simfilter.DeviceDesc9081%     = simfilter, USB\VID_05C6&PID_9081
+%simfilter.DeviceDesc9082%     = simfilter, USB\VID_05C6&PID_9082
+%simfilter.DeviceDesc9083%     = simfilter, USB\VID_05C6&PID_9083
+%simfilter.DeviceDesc9084%     = simfilter, USB\VID_05C6&PID_9084
+%simfilter.DeviceDesc9085%     = simfilter, USB\VID_05C6&PID_9085
+%simfilter.DeviceDesc9086%     = simfilter, USB\VID_05C6&PID_9086
+%simfilter.DeviceDesc9087%     = simfilter, USB\VID_05C6&PID_9087
+%simfilter.DeviceDesc9088%     = simfilter, USB\VID_05C6&PID_9088
+%simfilter.DeviceDesc9089%     = simfilter, USB\VID_05C6&PID_9089
+%simfilter.DeviceDesc908A%     = simfilter, USB\VID_05C6&PID_908A
+%simfilter.DeviceDesc908B%     = simfilter, USB\VID_05C6&PID_908B
+%simfilter.DeviceDesc908E%     = simfilter, USB\VID_05C6&PID_908E
+%simfilter.DeviceDesc908F%     = simfilter4, USB\VID_05C6&PID_908F
+%simfilter.DeviceDesc9090%     = simfilter, USB\VID_05C6&PID_9090
+%simfilter.DeviceDesc9091%     = simfilter, USB\VID_05C6&PID_9091
+%simfilter.DeviceDesc9092%     = simfilter, USB\VID_05C6&PID_9092
+%simfilter.DeviceDesc9093%     = simfilter, USB\VID_05C6&PID_9093
+%simfilter.DeviceDesc9094%     = simfilter, USB\VID_05C6&PID_9094
+%simfilter.DeviceDesc9095%     = simfilter, USB\VID_05C6&PID_9095
+%simfilter.DeviceDesc9096%     = simfilter, USB\VID_05C6&PID_9096
+%simfilter.DeviceDesc9097%     = simfilter, USB\VID_05C6&PID_9097
+%simfilter.DeviceDesc9098%     = simfilter, USB\VID_05C6&PID_9098
+%simfilter.DeviceDesc9099%     = simfilter, USB\VID_05C6&PID_9099
+%simfilter.DeviceDesc909A%     = simfilter, USB\VID_05C6&PID_909A
+%simfilter.DeviceDesc909B%     = simfilter, USB\VID_05C6&PID_909B
+%simfilter.DeviceDesc909C%     = simfilter, USB\VID_05C6&PID_909C
+%simfilter.DeviceDesc909D%     = simfilter, USB\VID_05C6&PID_909D
+%simfilter.DeviceDesc909E%     = simfilter, USB\VID_05C6&PID_909E
+%simfilter.DeviceDesc909F%     = simfilter, USB\VID_05C6&PID_909F
+%simfilter.DeviceDesc90A0%     = simfilter, USB\VID_05C6&PID_90A0
+%simfilter.DeviceDesc90A1%     = simfilter2, USB\VID_05C6&PID_90A1
+%simfilter.DeviceDesc90A2%     = simfilter, USB\VID_05C6&PID_90A2
+%simfilter.DeviceDesc90A3%     = simfilter, USB\VID_05C6&PID_90A3
+%simfilter.DeviceDesc90A5%     = simfilter3, USB\VID_05C6&PID_90A5
+%simfilter.DeviceDesc90A6%     = simfilter4, USB\VID_05C6&PID_90A6
+%simfilter.DeviceDesc90A7%     = simfilter, USB\VID_05C6&PID_90A7
+%simfilter.DeviceDesc90A8%     = simfilter, USB\VID_05C6&PID_90A8
+%simfilter.DeviceDesc90A9%     = simfilter, USB\VID_05C6&PID_90A9
+%simfilter.DeviceDesc90AA%     = simfilter, USB\VID_05C6&PID_90AA
+%simfilter.DeviceDesc90AB%     = simfilter, USB\VID_05C6&PID_90AB
+%simfilter.DeviceDesc90AC%     = simfilter, USB\VID_05C6&PID_90AC
+%simfilter.DeviceDesc90AD%     = simfilter, USB\VID_05C6&PID_90AD
+%simfilter.DeviceDesc90AE%     = simfilter4, USB\VID_05C6&PID_90AE
+%simfilter.DeviceDesc90AF%     = simfilter3, USB\VID_05C6&PID_90AF
+%simfilter.DeviceDesc90B0%     = simfilter, USB\VID_05C6&PID_90B0
+%simfilter.DeviceDesc90B2%     = simfilter, USB\VID_05C6&PID_90B2
+%simfilter.DeviceDesc90B3%     = simfilter, USB\VID_05C6&PID_90B3
+%simfilter.DeviceDesc90B4%     = simfilter, USB\VID_05C6&PID_90B4
+%simfilter.DeviceDesc90B5%     = simfilter, USB\VID_05C6&PID_90B5
+%simfilter.DeviceDesc90B6%     = simfilter, USB\VID_05C6&PID_90B6
+%simfilter.DeviceDesc90B7%     = simfilter, USB\VID_05C6&PID_90B7
+%simfilter.DeviceDesc90B8%     = simfilter, USB\VID_05C6&PID_90B8
+%simfilter.DeviceDesc90B9%     = simfilter, USB\VID_05C6&PID_90B9
+%simfilter.DeviceDesc9100%     = simfilter, USB\VID_05C6&PID_9100
+%simfilter.DeviceDesc9101%     = simfilter, USB\VID_05C6&PID_9101
+%simfilter.DeviceDesc9402%     = simfilter, USB\VID_05C6&PID_9402
+%simfilter.DeviceDesc9404%     = simfilter, USB\VID_05C6&PID_9404
+%simfilter.DeviceDesc920D%     = simfilter, USB\VID_05C6&PID_920D
+
+[SimTechFilter.NTamd64]
+%simfilter.DeviceDesc3197%     = simfilter, USB\VID_05C6&PID_3197
+%simfilter.DeviceDesc3199%     = simfilter, USB\VID_05C6&PID_3199
+%simfilter.DeviceDesc319A%     = simfilter, USB\VID_05C6&PID_319A
+%simfilter.DeviceDesc319B%     = simfilter, USB\VID_05C6&PID_319B
+%simfilter.DeviceDesc3200%     = simfilter, USB\VID_05C6&PID_3200
+%simfilter.DeviceDesc6000%     = simfilter, USB\VID_05C6&PID_6000
+%simfilter.DeviceDesc%         = simfilter, USB\VID_05C6&PID_7000
+%simfilter.DeviceDesc7001%     = simfilter, USB\VID_05C6&PID_7001
+%simfilter.DeviceDesc7002%     = simfilter, USB\VID_05C6&PID_7002
+%simfilter.DeviceDesc7101%     = simfilter, USB\VID_05C6&PID_7101
+%simfilter.DeviceDesc7102%     = simfilter, USB\VID_05C6&PID_7102
+%simfilter.DeviceDesc8000%     = simfilter, USB\VID_05C6&PID_8000
+%simfilter.DeviceDesc8001%     = simfilter, USB\VID_05C6&PID_8001
+%simfilter.DeviceDesc8002%     = simfilter, USB\VID_05C6&PID_8002
+%simfilter.DeviceDesc9000%     = simfilter, USB\VID_1E0E&PID_9000
+%simfilter.DeviceDesc9001%     = simfilter, USB\VID_1E0E&PID_9001
+%simfilter.DeviceDesc9002%     = simfilter, USB\VID_1E0E&PID_9002
+%simfilter.DeviceDesc9003%     = simfilter, USB\VID_1E0E&PID_9003
+%simfilter.DeviceDesc9004%     = simfilter, USB\VID_1E0E&PID_9004
+%simfilter.DeviceDesc9005%     = simfilter, USB\VID_1E0E&PID_9005
+%simfilter.DeviceDesc9006%     = simfilter, USB\VID_1E0E&PID_9006
+%simfilter.DeviceDesc9007%     = simfilter, USB\VID_1E0E&PID_9007
+%simfilter.DeviceDesc900A%     = simfilter, USB\VID_05C6&PID_900A
+%simfilter.DeviceDesc900B%     = simfilter, USB\VID_05C6&PID_900B
+%simfilter.DeviceDesc900C%     = simfilter, USB\VID_05C6&PID_900C
+%simfilter.DeviceDesc900D%     = simfilter, USB\VID_05C6&PID_900D
+%simfilter.DeviceDesc900F%     = simfilter, USB\VID_05C6&PID_900F
+%simfilter.DeviceDesc9010%     = simfilter, USB\VID_05C6&PID_9010
+%simfilter.DeviceDesc9011%     = simfilter, USB\VID_05C6&PID_9011
+%simfilter.DeviceDesc9012%     = simfilter, USB\VID_05C6&PID_9012
+%simfilter.DeviceDesc9013%     = simfilter, USB\VID_05C6&PID_9013
+%simfilter.DeviceDesc9016%     = simfilter, USB\VID_05C6&PID_9016
+%simfilter.DeviceDesc9017%     = simfilter, USB\VID_05C6&PID_9017
+%simfilter.DeviceDesc9018%     = simfilter, USB\VID_05C6&PID_9018
+%simfilter.DeviceDesc9019%     = simfilter, USB\VID_05C6&PID_9019
+%simfilter.DeviceDesc901B%     = simfilter, USB\VID_05C6&PID_901B
+%simfilter.DeviceDesc901C%     = simfilter, USB\VID_05C6&PID_901C
+%simfilter.DeviceDesc901D%     = simfilter, USB\VID_05C6&PID_901D
+%simfilter.DeviceDesc901F%     = simfilter, USB\VID_05C6&PID_901F
+%simfilter.DeviceDesc9020%     = simfilter, USB\VID_05C6&PID_9020
+%simfilter.DeviceDesc9021%     = simfilter, USB\VID_05C6&PID_9021
+%simfilter.DeviceDesc9022%     = simfilter, USB\VID_05C6&PID_9022
+%simfilter.DeviceDesc9025%     = simfilter, USB\VID_05C6&PID_9025
+%simfilter.DeviceDesc9026%     = simfilter, USB\VID_05C6&PID_9026
+%simfilter.DeviceDesc9028%     = simfilter, USB\VID_05C6&PID_9028
+%simfilter.DeviceDesc9029%     = simfilter, USB\VID_05C6&PID_9029
+%simfilter.DeviceDesc902C%     = simfilter, USB\VID_05C6&PID_902C
+%simfilter.DeviceDesc902D%     = simfilter, USB\VID_05C6&PID_902D
+%simfilter.DeviceDesc902E%     = simfilter, USB\VID_05C6&PID_902E
+%simfilter.DeviceDesc902F%     = simfilter, USB\VID_05C6&PID_902F
+%simfilter.DeviceDesc9030%     = simfilter, USB\VID_05C6&PID_9030
+%simfilter.DeviceDesc9031%     = simfilter, USB\VID_05C6&PID_9031
+%simfilter.DeviceDesc9032%     = simfilter, USB\VID_05C6&PID_9032
+%simfilter.DeviceDesc9033%     = simfilter, USB\VID_05C6&PID_9033
+%simfilter.DeviceDesc9034%     = simfilter, USB\VID_05C6&PID_9034
+%simfilter.DeviceDesc9035%     = simfilter4, USB\VID_05C6&PID_9035
+%simfilter.DeviceDesc9036%     = simfilter, USB\VID_05C6&PID_9036
+%simfilter.DeviceDesc9037%     = simfilter, USB\VID_05C6&PID_9037
+%simfilter.DeviceDesc9038%     = simfilter, USB\VID_05C6&PID_9038
+%simfilter.DeviceDesc903A%     = simfilter, USB\VID_05C6&PID_903A
+%simfilter.DeviceDesc903B%     = simfilter, USB\VID_05C6&PID_903B
+%simfilter.DeviceDesc903C%     = simfilter, USB\VID_05C6&PID_903C
+%simfilter.DeviceDesc903D%     = simfilter, USB\VID_05C6&PID_903D
+%simfilter.DeviceDesc903E%     = simfilter, USB\VID_05C6&PID_903E
+%simfilter.DeviceDesc903F%     = simfilter, USB\VID_05C6&PID_903F
+%simfilter.DeviceDesc9040%     = simfilter, USB\VID_05C6&PID_9040
+%simfilter.DeviceDesc9041%     = simfilter, USB\VID_05C6&PID_9041
+%simfilter.DeviceDesc9042%     = simfilter, USB\VID_05C6&PID_9042
+%simfilter.DeviceDesc9043%     = simfilter, USB\VID_05C6&PID_9043
+%simfilter.DeviceDesc9044%     = simfilter, USB\VID_05C6&PID_9044
+%simfilter.DeviceDesc9045%     = simfilter, USB\VID_05C6&PID_9045
+%simfilter.DeviceDesc9046%     = simfilter, USB\VID_05C6&PID_9046
+%simfilter.DeviceDesc9047%     = simfilter, USB\VID_05C6&PID_9047
+%simfilter.DeviceDesc9048%     = simfilter, USB\VID_05C6&PID_9048
+%simfilter.DeviceDesc9049%     = simfilter, USB\VID_05C6&PID_9049
+%simfilter.DeviceDesc904B%     = simfilter, USB\VID_05C6&PID_904B
+%simfilter.DeviceDesc904C%     = simfilter, USB\VID_05C6&PID_904C
+%simfilter.DeviceDesc904F%     = simfilter, USB\VID_05C6&PID_904F
+%simfilter.DeviceDesc9050%     = simfilter, USB\VID_05C6&PID_9050
+%simfilter.DeviceDesc9051%     = simfilter, USB\VID_05C6&PID_9051
+%simfilter.DeviceDesc9052%     = simfilter, USB\VID_05C6&PID_9052
+%simfilter.DeviceDesc9053%     = simfilter, USB\VID_05C6&PID_9053
+%simfilter.DeviceDesc9054%     = simfilter, USB\VID_05C6&PID_9054
+%simfilter.DeviceDesc9055%     = simfilter, USB\VID_05C6&PID_9055
+%simfilter.DeviceDesc9056%     = simfilter, USB\VID_05C6&PID_9056
+%simfilter.DeviceDesc9059%     = simfilter, USB\VID_05C6&PID_9059
+%simfilter.DeviceDesc905A%     = simfilter, USB\VID_05C6&PID_905A
+%simfilter.DeviceDesc905D%     = simfilter, USB\VID_05C6&PID_905D
+%simfilter.DeviceDesc905E%     = simfilter, USB\VID_05C6&PID_905E
+%simfilter.DeviceDesc905F%     = simfilter, USB\VID_05C6&PID_905F
+%simfilter.DeviceDesc9060%     = simfilter, USB\VID_05C6&PID_9060
+%simfilter.DeviceDesc9061%     = simfilter, USB\VID_05C6&PID_9061
+%simfilter.DeviceDesc9062%     = simfilter, USB\VID_05C6&PID_9062
+%simfilter.DeviceDesc9064%     = simfilter, USB\VID_05C6&PID_9064
+%simfilter.DeviceDesc9065%     = simfilter, USB\VID_05C6&PID_9065
+%simfilter.DeviceDesc9066%     = simfilter, USB\VID_05C6&PID_9066
+%simfilter.DeviceDesc9067%     = simfilter, USB\VID_05C6&PID_9067
+%simfilter.DeviceDesc9068%     = simfilter, USB\VID_05C6&PID_9068
+%simfilter.DeviceDesc9069%     = simfilter, USB\VID_05C6&PID_9069
+%simfilter.DeviceDesc9070%     = simfilter, USB\VID_05C6&PID_9070
+%simfilter.DeviceDesc9071%     = simfilter, USB\VID_05C6&PID_9071
+%simfilter.DeviceDesc9072%     = simfilter, USB\VID_05C6&PID_9072
+%simfilter.DeviceDesc9073%     = simfilter, USB\VID_05C6&PID_9073
+%simfilter.DeviceDesc9074%     = simfilter, USB\VID_05C6&PID_9074
+%simfilter.DeviceDesc9075%     = simfilter, USB\VID_05C6&PID_9075
+%simfilter.DeviceDesc9076%     = simfilter, USB\VID_05C6&PID_9076
+%simfilter.DeviceDesc9077%     = simfilter, USB\VID_05C6&PID_9077
+%simfilter.DeviceDesc9078%     = simfilter, USB\VID_05C6&PID_9078
+%simfilter.DeviceDesc9079%     = simfilter, USB\VID_05C6&PID_9079
+%simfilter.DeviceDesc9080%     = simfilter, USB\VID_05C6&PID_9080
+%simfilter.DeviceDesc9081%     = simfilter, USB\VID_05C6&PID_9081
+%simfilter.DeviceDesc9082%     = simfilter, USB\VID_05C6&PID_9082
+%simfilter.DeviceDesc9083%     = simfilter, USB\VID_05C6&PID_9083
+%simfilter.DeviceDesc9084%     = simfilter, USB\VID_05C6&PID_9084
+%simfilter.DeviceDesc9085%     = simfilter, USB\VID_05C6&PID_9085
+%simfilter.DeviceDesc9086%     = simfilter, USB\VID_05C6&PID_9086
+%simfilter.DeviceDesc9087%     = simfilter, USB\VID_05C6&PID_9087
+%simfilter.DeviceDesc9088%     = simfilter, USB\VID_05C6&PID_9088
+%simfilter.DeviceDesc9089%     = simfilter, USB\VID_05C6&PID_9089
+%simfilter.DeviceDesc908A%     = simfilter, USB\VID_05C6&PID_908A
+%simfilter.DeviceDesc908B%     = simfilter, USB\VID_05C6&PID_908B
+%simfilter.DeviceDesc908E%     = simfilter, USB\VID_05C6&PID_908E
+%simfilter.DeviceDesc908F%     = simfilter4, USB\VID_05C6&PID_908F
+%simfilter.DeviceDesc9090%     = simfilter, USB\VID_05C6&PID_9090
+%simfilter.DeviceDesc9091%     = simfilter, USB\VID_05C6&PID_9091
+%simfilter.DeviceDesc9092%     = simfilter, USB\VID_05C6&PID_9092
+%simfilter.DeviceDesc9093%     = simfilter, USB\VID_05C6&PID_9093
+%simfilter.DeviceDesc9094%     = simfilter, USB\VID_05C6&PID_9094
+%simfilter.DeviceDesc9095%     = simfilter, USB\VID_05C6&PID_9095
+%simfilter.DeviceDesc9096%     = simfilter, USB\VID_05C6&PID_9096
+%simfilter.DeviceDesc9097%     = simfilter, USB\VID_05C6&PID_9097
+%simfilter.DeviceDesc9098%     = simfilter, USB\VID_05C6&PID_9098
+%simfilter.DeviceDesc9099%     = simfilter, USB\VID_05C6&PID_9099
+%simfilter.DeviceDesc909A%     = simfilter, USB\VID_05C6&PID_909A
+%simfilter.DeviceDesc909B%     = simfilter, USB\VID_05C6&PID_909B
+%simfilter.DeviceDesc909C%     = simfilter, USB\VID_05C6&PID_909C
+%simfilter.DeviceDesc909D%     = simfilter, USB\VID_05C6&PID_909D
+%simfilter.DeviceDesc909E%     = simfilter, USB\VID_05C6&PID_909E
+%simfilter.DeviceDesc909F%     = simfilter, USB\VID_05C6&PID_909F
+%simfilter.DeviceDesc90A0%     = simfilter, USB\VID_05C6&PID_90A0
+%simfilter.DeviceDesc90A1%     = simfilter2, USB\VID_05C6&PID_90A1
+%simfilter.DeviceDesc90A2%     = simfilter, USB\VID_05C6&PID_90A2
+%simfilter.DeviceDesc90A3%     = simfilter, USB\VID_05C6&PID_90A3
+%simfilter.DeviceDesc90A5%     = simfilter3, USB\VID_05C6&PID_90A5
+%simfilter.DeviceDesc90A6%     = simfilter4, USB\VID_05C6&PID_90A6
+%simfilter.DeviceDesc90A7%     = simfilter, USB\VID_05C6&PID_90A7
+%simfilter.DeviceDesc90A8%     = simfilter, USB\VID_05C6&PID_90A8
+%simfilter.DeviceDesc90A9%     = simfilter, USB\VID_05C6&PID_90A9
+%simfilter.DeviceDesc90AA%     = simfilter, USB\VID_05C6&PID_90AA
+%simfilter.DeviceDesc90AB%     = simfilter, USB\VID_05C6&PID_90AB
+%simfilter.DeviceDesc90AC%     = simfilter, USB\VID_05C6&PID_90AC
+%simfilter.DeviceDesc90AD%     = simfilter, USB\VID_05C6&PID_90AD
+%simfilter.DeviceDesc90AE%     = simfilter4, USB\VID_05C6&PID_90AE
+%simfilter.DeviceDesc90AF%     = simfilter3, USB\VID_05C6&PID_90AF
+%simfilter.DeviceDesc90B0%     = simfilter, USB\VID_05C6&PID_90B0
+%simfilter.DeviceDesc90B2%     = simfilter, USB\VID_05C6&PID_90B2
+%simfilter.DeviceDesc90B3%     = simfilter, USB\VID_05C6&PID_90B3
+%simfilter.DeviceDesc90B4%     = simfilter, USB\VID_05C6&PID_90B4
+%simfilter.DeviceDesc90B5%     = simfilter, USB\VID_05C6&PID_90B5
+%simfilter.DeviceDesc90B6%     = simfilter, USB\VID_05C6&PID_90B6
+%simfilter.DeviceDesc90B7%     = simfilter, USB\VID_05C6&PID_90B7
+%simfilter.DeviceDesc90B8%     = simfilter, USB\VID_05C6&PID_90B8
+%simfilter.DeviceDesc90B9%     = simfilter, USB\VID_05C6&PID_90B9
+%simfilter.DeviceDesc9100%     = simfilter, USB\VID_05C6&PID_9100
+%simfilter.DeviceDesc9101%     = simfilter, USB\VID_05C6&PID_9101
+%simfilter.DeviceDesc9402%     = simfilter, USB\VID_05C6&PID_9402
+%simfilter.DeviceDesc9404%     = simfilter, USB\VID_05C6&PID_9404
+%simfilter.DeviceDesc920D%     = simfilter, USB\VID_05C6&PID_920D
+
+[simfilter.NT]  
+;-----------------------------------------------------------------
+; Get the standard stuff from USB.inf
+;-----------------------------------------------------------------
+Include   = USB.inf
+Needs     = Composite.Dev.NT
+CopyFiles = simfilter.NT.Copy
+
+[simfilter2.NT]  
+;-----------------------------------------------------------------
+; Get the standard stuff from USB.inf
+;-----------------------------------------------------------------
+Include   = USB.inf
+Needs     = Composite.Dev.NT
+CopyFiles = simfilter2.NT.Copy
+AddReg    = simfilterAddReg2
+
+[simfilter3.NT]  
+;-----------------------------------------------------------------
+; Get the standard stuff from USB.inf
+;-----------------------------------------------------------------
+Include   = USB.inf
+Needs     = Composite.Dev.NT
+CopyFiles = simfilter3.NT.Copy
+AddReg    = simfilterAddReg3
+
+[simfilter4.NT]  
+;-----------------------------------------------------------------
+; Get the standard stuff from USB.inf
+;-----------------------------------------------------------------
+Include   = USB.inf
+Needs     = Composite.Dev.NT
+CopyFiles = simfilter4.NT.Copy
+AddReg    = simfilterAddReg4
+
+[simfilterAddReg2]
+
+; Support Muxing
+HKR,, simDeviceMuxEnable, 0x00010001, 0x00000001
+
+; Start Interface
+HKR,, simDeviceStartIf, 0x00010001, 0x00000002
+
+; Number of Interfaces
+HKR,, simDeviceNumIf, 0x00010001, 0x00000001
+
+; Number of Mux Interfaces
+HKR,, simDeviceNumMuxIf, 0x00010001, 0x00000007
+
+[simfilterAddReg3]
+
+; Support Muxing
+HKR,, simDeviceMuxEnable, 0x00010001, 0x00000001
+
+; Start Interface
+HKR,, simDeviceStartIf, 0x00010001, 0x00000003
+
+; Number of Interfaces
+HKR,, simDeviceNumIf, 0x00010001, 0x00000001
+
+; Number of Mux Interfaces
+HKR,, simDeviceNumMuxIf, 0x00010001, 0x00000007
+
+[simfilterAddReg4]
+
+; Support Muxing
+HKR,, simDeviceMuxEnable, 0x00010001, 0x00000001
+
+; Start Interface
+HKR,, simDeviceStartIf, 0x00010001, 0x00000004
+
+; Number of Interfaces
+HKR,, simDeviceNumIf, 0x00010001, 0x00000001
+
+; Number of Mux Interfaces
+HKR,, simDeviceNumMuxIf, 0x00010001, 0x00000007
+
+[simfilter.NT.Copy]
+simlteusbfilter.sys
+
+[simfilter2.NT.Copy]
+simlteusbfilter.sys
+
+[simfilter3.NT.Copy]
+simlteusbfilter.sys
+
+[simfilter4.NT.Copy]
+simlteusbfilter.sys
+
+[DestinationDirs]
+simfilter.NT.Copy = 12
+simfilter2.NT.Copy = 12
+simfilter3.NT.Copy = 12
+simfilter4.NT.Copy = 12
+
+[simfilter.NT.HW]
+AddReg = LowerFilterAddReg
+
+[simfilter2.NT.HW]
+AddReg = LowerFilterAddReg
+
+[simfilter3.NT.HW]
+AddReg = LowerFilterAddReg
+
+[simfilter4.NT.HW]
+AddReg = LowerFilterAddReg
+
+[LowerFilterAddReg]
+HKR,,"LowerFilters",0x00010000,"simfilter"
+
+;-----------------------------------------------------------------
+; Filter Device Filter Service Section
+;-----------------------------------------------------------------
+[simfilter.NT.Services]
+Include    = USB.inf
+Needs      = Composite.Dev.NT.Services
+AddService = simfilter,, filter_Service_Inst 
+
+[simfilter2.NT.Services]
+Include    = USB.inf
+Needs      = Composite.Dev.NT.Services
+AddService = simfilter,, filter_Service_Inst 
+
+[simfilter3.NT.Services]
+Include    = USB.inf
+Needs      = Composite.Dev.NT.Services
+AddService = simfilter,, filter_Service_Inst 
+
+[simfilter4.NT.Services]
+Include    = USB.inf
+Needs      = Composite.Dev.NT.Services
+AddService = simfilter,, filter_Service_Inst 
+
+[filter_Service_Inst]
+DisplayName    = %simfilter.SvcDesc%                            
+ServiceType    = 1
+StartType      = 3
+ErrorControl   = 1
+ServiceBinary  = %12%\simlteusbfilter.sys                            
+
+[Strings]
+SimTech                    = "SimTech Incorporated"
+simSrcDisk                 = "SimTech USB Driver Disk"
+simfilter.DeviceDesc         = "SimTech USB Composite Device 7000"
+simfilter.DeviceDesc7001     = "SimTech USB Composite Device 7001"
+simfilter.DeviceDesc7002     = "SimTech USB Composite Device 7002"
+simfilter.DeviceDesc7101     = "SimTech USB Composite Device 7101"
+simfilter.DeviceDesc7102     = "SimTech USB Composite Device 7102"
+simfilter.DeviceDesc8000     = "SimTech USB Composite Device 8000"
+simfilter.DeviceDesc8001     = "SimTech USB Composite Device 8001"
+simfilter.DeviceDesc9000     = "SimTech USB Composite Device 9000"
+simfilter.DeviceDesc9001     = "SimTech USB Composite Device 9001"
+simfilter.DeviceDesc9003     = "SimTech USB Composite Device 9003"
+simfilter.DeviceDesc9005     = "SimTech USB Composite Device 9005"
+simfilter.DeviceDesc9007     = "SimTech USB Composite Device 9007"
+simfilter.DeviceDesc900A     = "SimTech USB Composite Device 900A"
+simfilter.DeviceDesc900B     = "SimTech USB Composite Device 900B"
+simfilter.DeviceDesc900C     = "SimTech USB Composite Device 900C"
+simfilter.DeviceDesc900D     = "SimTech USB Composite Device 900D"
+simfilter.DeviceDesc900F     = "SimTech USB Composite Device 900F"
+simfilter.DeviceDesc9010     = "SimTech USB Composite Device 9010"
+simfilter.DeviceDesc9011     = "SimTech USB Composite Device 9011"
+simfilter.DeviceDesc9021     = "SimTech USB Composite Device 9021"
+simfilter.DeviceDesc9022     = "SimTech USB Composite Device 9022"
+simfilter.DeviceDesc9025     = "SimTech USB Composite Device 9025"
+simfilter.DeviceDesc9026     = "SimTech USB Composite Device 9026"
+simfilter.DeviceDesc902E     = "SimTech USB Composite Device 902E"
+simfilter.DeviceDesc9031     = "SimTech USB Composite Device 9031"
+simfilter.DeviceDesc9032     = "SimTech USB Composite Device 9032"
+simfilter.DeviceDesc9033     = "SimTech USB Composite Device 9033"
+simfilter.DeviceDesc9034     = "SimTech USB Composite Device 9034"
+simfilter.DeviceDesc9035     = "SimTech USB Composite Device 9035"
+simfilter.DeviceDesc9036     = "SimTech USB Composite Device 9036"
+simfilter.DeviceDesc9037     = "SimTech USB Composite Device 9037"
+simfilter.DeviceDesc9038     = "SimTech USB Composite Device 9038"
+simfilter.DeviceDesc903B     = "SimTech USB Composite Device 903B"
+simfilter.DeviceDesc903C     = "SimTech USB Composite Device 903C"
+simfilter.DeviceDesc903D     = "SimTech USB Composite Device 903D"
+simfilter.DeviceDesc903E     = "SimTech USB Composite Device 903E"
+simfilter.DeviceDesc9043     = "SimTech USB Composite Device 9043"
+simfilter.DeviceDesc9046     = "SimTech USB Composite Device 9046"
+simfilter.DeviceDesc9047     = "SimTech USB Composite Device 9047"
+simfilter.DeviceDesc9048     = "SimTech USB Composite Device 9048"
+simfilter.DeviceDesc9049     = "SimTech USB Composite Device 9049"
+simfilter.DeviceDesc904B     = "SimTech USB Composite Device 904B"
+simfilter.DeviceDesc904C     = "SimTech USB Composite Device 904C"
+simfilter.DeviceDesc904F     = "SimTech USB Composite Device 904F"
+simfilter.DeviceDesc9050     = "SimTech USB Composite Device 9050"
+simfilter.DeviceDesc9051     = "SimTech USB Composite Device 9051"
+simfilter.DeviceDesc9052     = "SimTech USB Composite Device 9052"
+simfilter.DeviceDesc9053     = "SimTech USB Composite Device 9053"
+simfilter.DeviceDesc9054     = "SimTech USB Composite Device 9054"
+simfilter.DeviceDesc9055     = "SimTech USB Composite Device 9055"
+simfilter.DeviceDesc9056     = "SimTech USB Composite Device 9056"
+simfilter.DeviceDesc920D     = "SimTech Gobi 3000 USB Composite Device"
+simfilter.DeviceDesc3197     = "SimTech USB Composite Device 3197"
+simfilter.DeviceDesc3199     = "SimTech USB Composite Device 3199"
+simfilter.DeviceDesc319A     = "SimTech USB Composite Device 319A"
+simfilter.DeviceDesc319B     = "SimTech USB Composite Device 319B"
+simfilter.DeviceDesc3200     = "SimTech USB Composite Device 3200"
+simfilter.DeviceDesc6000     = "SimTech USB Composite Device 6000"
+simfilter.DeviceDesc8002     = "SimTech USB Composite Device 8002"
+simfilter.DeviceDesc9002     = "SimTech USB Composite Device 9002"
+simfilter.DeviceDesc9004     = "SimTech USB Composite Device 9004"
+simfilter.DeviceDesc9006     = "SimTech USB Composite Device 9006"
+simfilter.DeviceDesc9012     = "SimTech USB Composite Device 9012"
+simfilter.DeviceDesc9013     = "SimTech USB Composite Device 9013"
+simfilter.DeviceDesc9016     = "SimTech USB Composite Device 9016"
+simfilter.DeviceDesc9017     = "SimTech USB Composite Device 9017"
+simfilter.DeviceDesc9018     = "SimTech USB Composite Device 9018"
+simfilter.DeviceDesc9019     = "SimTech USB Composite Device 9019"
+simfilter.DeviceDesc901B     = "SimTech USB Composite Device 901B"
+simfilter.DeviceDesc901C     = "SimTech USB Composite Device 901C"
+simfilter.DeviceDesc901D     = "SimTech USB Composite Device 901D"
+simfilter.DeviceDesc901F     = "SimTech USB Composite Device 901F"
+simfilter.DeviceDesc9020     = "SimTech USB Composite Device 9020"
+simfilter.DeviceDesc9028     = "SimTech USB Composite Device 9028"
+simfilter.DeviceDesc9029     = "SimTech USB Composite Device 9029"
+simfilter.DeviceDesc902C     = "SimTech USB Composite Device 902C"
+simfilter.DeviceDesc902D     = "SimTech USB Composite Device 902D"
+simfilter.DeviceDesc902F     = "SimTech USB Composite Device 902F"
+simfilter.DeviceDesc9030     = "SimTech USB Composite Device 9030"
+simfilter.DeviceDesc903A     = "SimTech USB Composite Device 903A"
+simfilter.DeviceDesc903F     = "SimTech USB Composite Device 903F"
+simfilter.DeviceDesc9040     = "SimTech USB Composite Device 9040"
+simfilter.DeviceDesc9041     = "SimTech USB Composite Device 9041"
+simfilter.DeviceDesc9042     = "SimTech USB Composite Device 9042"
+simfilter.DeviceDesc9044     = "SimTech USB Composite Device 9044"
+simfilter.DeviceDesc9045     = "SimTech USB Composite Device 9045"
+simfilter.DeviceDesc9059     = "SimTech USB Composite Device 9059"
+simfilter.DeviceDesc905A     = "SimTech USB Composite Device 905A"
+simfilter.DeviceDesc905D     = "SimTech USB Composite Device 905D"
+simfilter.DeviceDesc905E     = "SimTech USB Composite Device 905E"
+simfilter.DeviceDesc905F     = "SimTech USB Composite Device 905F"
+simfilter.DeviceDesc9060     = "SimTech USB Composite Device 9060"
+simfilter.DeviceDesc9061     = "SimTech USB Composite Device 9061"
+simfilter.DeviceDesc9062     = "SimTech USB Composite Device 9062"
+simfilter.DeviceDesc9064     = "SimTech USB Composite Device 9064"
+simfilter.DeviceDesc9065     = "SimTech USB Composite Device 9065"
+simfilter.DeviceDesc9066     = "SimTech USB Composite Device 9066"
+simfilter.DeviceDesc9067     = "SimTech USB Composite Device 9067"
+simfilter.DeviceDesc9068     = "SimTech USB Composite Device 9068"
+simfilter.DeviceDesc9069     = "SimTech USB Composite Device 9069"
+simfilter.DeviceDesc9070     = "SimTech USB Composite Device 9070"
+simfilter.DeviceDesc9071     = "SimTech USB Composite Device 9071"
+simfilter.DeviceDesc9072     = "SimTech USB Composite Device 9072"
+simfilter.DeviceDesc9073     = "SimTech USB Composite Device 9073"
+simfilter.DeviceDesc9074     = "SimTech USB Composite Device 9074"
+simfilter.DeviceDesc9075     = "SimTech USB Composite Device 9075"
+simfilter.DeviceDesc9076     = "SimTech USB Composite Device 9076"
+simfilter.DeviceDesc9077     = "SimTech USB Composite Device 9077"
+simfilter.DeviceDesc9078     = "SimTech USB Composite Device 9078"
+simfilter.DeviceDesc9079     = "SimTech USB Composite Device 9079"
+simfilter.DeviceDesc9080     = "SimTech USB Composite Device 9080"
+simfilter.DeviceDesc9081     = "SimTech USB Composite Device 9081"
+simfilter.DeviceDesc9082     = "SimTech USB Composite Device 9082"
+simfilter.DeviceDesc9083     = "SimTech USB Composite Device 9083"
+simfilter.DeviceDesc9084     = "SimTech USB Composite Device 9084"
+simfilter.DeviceDesc9085     = "SimTech USB Composite Device 9085"
+simfilter.DeviceDesc9086     = "SimTech USB Composite Device 9086"
+simfilter.DeviceDesc9087     = "SimTech USB Composite Device 9087"
+simfilter.DeviceDesc9088     = "SimTech USB Composite Device 9088"
+simfilter.DeviceDesc9089     = "SimTech USB Composite Device 9089"
+simfilter.DeviceDesc908A     = "SimTech USB Composite Device 908A"
+simfilter.DeviceDesc908B     = "SimTech USB Composite Device 908B"
+simfilter.DeviceDesc908E     = "SimTech USB Composite Device 908E"
+simfilter.DeviceDesc908F     = "SimTech USB Composite Device 908F"
+simfilter.DeviceDesc9090     = "SimTech USB Composite Device 9090"
+simfilter.DeviceDesc9091     = "SimTech USB Composite Device 9091"
+simfilter.DeviceDesc9092     = "SimTech USB Composite Device 9092"
+simfilter.DeviceDesc9093     = "SimTech USB Composite Device 9093"
+simfilter.DeviceDesc9094     = "SimTech USB Composite Device 9094"
+simfilter.DeviceDesc9095     = "SimTech USB Composite Device 9095"
+simfilter.DeviceDesc9096     = "SimTech USB Composite Device 9096"
+simfilter.DeviceDesc9097     = "SimTech USB Composite Device 9097"
+simfilter.DeviceDesc9098     = "SimTech USB Composite Device 9098"
+simfilter.DeviceDesc9099     = "SimTech USB Composite Device 9099"
+simfilter.DeviceDesc909A     = "SimTech USB Composite Device 909A"
+simfilter.DeviceDesc909B     = "SimTech USB Composite Device 909B"
+simfilter.DeviceDesc909C     = "SimTech USB Composite Device 909C"
+simfilter.DeviceDesc909D     = "SimTech USB Composite Device 909D"
+simfilter.DeviceDesc909E     = "SimTech USB Composite Device 909E"
+simfilter.DeviceDesc909F     = "SimTech USB Composite Device 909F"
+simfilter.DeviceDesc90A0     = "SimTech USB Composite Device 90A0"
+simfilter.DeviceDesc90A1     = "SimTech USB Composite Device 90A1"
+simfilter.DeviceDesc90A2     = "SimTech USB Composite Device 90A2"
+simfilter.DeviceDesc90A3     = "SimTech USB Composite Device 90A3"
+simfilter.DeviceDesc90A5     = "SimTech USB Composite Device 90A5"
+simfilter.DeviceDesc90A6     = "SimTech USB Composite Device 90A6"
+simfilter.DeviceDesc90A7     = "SimTech USB Composite Device 90A7"
+simfilter.DeviceDesc90A8     = "SimTech USB Composite Device 90A8"
+simfilter.DeviceDesc90A9     = "SimTech USB Composite Device 90A9"
+simfilter.DeviceDesc90AA     = "SimTech USB Composite Device 90AA"
+simfilter.DeviceDesc90AB     = "SimTech USB Composite Device 90AB"
+simfilter.DeviceDesc90AC     = "SimTech USB Composite Device 90AC"
+simfilter.DeviceDesc90AD     = "SimTech USB Composite Device 90AD"
+simfilter.DeviceDesc90AE     = "SimTech USB Composite Device 90AE"
+simfilter.DeviceDesc90AF     = "SimTech USB Composite Device 90AF"
+simfilter.DeviceDesc90B0     = "SimTech USB Composite Device 90B0"
+simfilter.DeviceDesc90B2     = "SimTech USB Composite Device 90B2"
+simfilter.DeviceDesc90B3     = "SimTech USB Composite Device 90B3"
+simfilter.DeviceDesc90B4     = "SimTech USB Composite Device 90B4"
+simfilter.DeviceDesc90B5     = "SimTech USB Composite Device 90B5"
+simfilter.DeviceDesc90B6     = "SimTech USB Composite Device 90B6"
+simfilter.DeviceDesc90B7     = "SimTech USB Composite Device 90B7"
+simfilter.DeviceDesc90B8     = "SimTech USB Composite Device 90B8"
+simfilter.DeviceDesc90B9     = "SimTech USB Composite Device 90B9"
+simfilter.DeviceDesc9100     = "SimTech USB Composite Device 9100"
+simfilter.DeviceDesc9101     = "SimTech USB Composite Device 9101"
+simfilter.DeviceDesc9402     = "SimTech USB Composite Device 9402"
+simfilter.DeviceDesc9404     = "SimTech USB Composite Device 9404"
+simfilter.SvcDesc            = "SimTech USB Composite Device Filter Driver"

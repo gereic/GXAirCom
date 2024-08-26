@@ -32,6 +32,11 @@ void FanetLora::end(void){
 }
 
 String FanetLora::getMyDevId(void){
+    if (_myData.devId == 0){
+      MacAddr _myAddr;
+      _myAddr = fmac.readAddr();
+      _myData.devId = ((uint32_t)_myAddr.manufacturer << 16) + (uint32_t)_myAddr.id;
+    }
     return getDevId(_myData.devId);
 }
 
