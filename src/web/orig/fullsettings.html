@@ -57,6 +57,10 @@ function setVis(){
   document.getElementById("VisWifiOff").style.display='none';  
   document.getElementById("VisAvgFNT").style.display='none';
   document.getElementById("VisAvgWD").style.display='none';
+  document.getElementById("VisGSUpload1").style.display='none'; /*set GS invisible*/
+  document.getElementById("VisGSUpload2").style.display='none'; /*set GS invisible*/
+  document.getElementById("VisWU").style.display='none'; /*set weather-underground upload invisible*/
+  document.getElementById("VisWI").style.display='none'; /*set windy upload invisible*/
   if (document.getElementById("wificonnect").value != 2){
     document.getElementById("VisWifiOff").style.display=''; //show wifi-off
   }
@@ -101,15 +105,16 @@ function setVis(){
       document.getElementById("VisAvgFNT").style.display='';
       document.getElementById("VisAvgWD").style.display='';
       document.getElementById("VisWD").style.display=''; /*set weather-data invisible*/
+      if (document.getElementById("wificonnect").value == 2){ /* only if connection is always */
+        document.getElementById("VisWU").style.display=''; /*set weather-underground upload visible*/
+        document.getElementById("VisWI").style.display=''; /*set windy upload visible*/
+      }
       document.getElementById("tWu").innerHTML='Weather Underground Upload';
       document.getElementById("tWuEnable").innerHTML='enable sending weather-data to WU';
-      document.getElementById("tWuKey").innerHTML='KEY';
-      document.getElementById("VisWU").style.display=''; /*set weather-underground upload invisible*/
-      document.getElementById("tWi").innerHTML='windy Upload';
-      document.getElementById("tWi2").innerHTML='enable sending weather-data to windy';
+      document.getElementById("tWuKey").innerHTML='KEY';      
       document.getElementById("tWuIntervall").innerHTML='upload-interval [s] (default 300 -> 5min)';
       document.getElementById("tWdUpload").innerHTML='Weather Upload settings';
-      document.getElementById("VisWI").style.display=''; /*set windy upload invisible*/
+      
 
       if ((wsMode & wsModeBme) || (wsMode & wsModeDS18B20)){
         document.getElementById("VisWDBme").style.display='';  /*enable temp-correction for BME*/
@@ -124,8 +129,9 @@ function setVis(){
       document.getElementById("tWu").innerHTML='Broadcast weather-underground data to FANET';
       document.getElementById("tWuEnable").innerHTML='enable sending wu-data to FANET';
       document.getElementById("tWuKey").innerHTML='API-KEY (not station-Key)';
-      document.getElementById("VisWU").style.display=''; /*set weather-underground visible*/
-      document.getElementById("VisWI").style.display='none'; /*set windy upload invisible*/
+      if (document.getElementById("wificonnect").value == 2){ /* only if connection is always */
+        document.getElementById("VisWU").style.display=''; /*set weather-underground visible*/
+      }
       document.getElementById("tWdUpload").innerHTML='Weather query settings';
       document.getElementById("tWuIntervall").innerHTML='intervall for getting data [s]';
     }
@@ -133,18 +139,16 @@ function setVis(){
     document.getElementById("VisAirCraftType").style.display='none';    
     document.getElementById("tName").innerHTML='Ground Station name';
     document.getElementById("VisGS").style.display=''; /*set GS visible*/
-    document.getElementById("VisGSUpload1").style.display=''; /*set GS visible*/
-    document.getElementById("VisGSUpload2").style.display=''; /*set GS visible*/
+    if (document.getElementById("wificonnect").value == 2){ /* only if connection is always */
+      document.getElementById("VisGSUpload1").style.display=''; /*set GS visible*/
+      document.getElementById("VisGSUpload2").style.display=''; /*set GS visible*/
+    }
     document.getElementById("VisVario").style.display='none';
     document.getElementById("VisFanetTracking").style.display='none'; /*fanet-tracking mode in ground-station is important */
   }else{
     document.getElementById("VisAirCraftType").style.display='';
     document.getElementById("tName").innerHTML='Pilot name';
     document.getElementById("VisGS").style.display='none'; /*set GS invisible*/
-    document.getElementById("VisGSUpload1").style.display='none'; /*set GS invisible*/
-    document.getElementById("VisGSUpload2").style.display='none'; /*set GS invisible*/
-    document.getElementById("VisWU").style.display='none'; /*set weather-underground upload invisible*/
-    document.getElementById("VisWI").style.display='none'; /*set windy upload invisible*/
     if (bHasVario == 0){
       document.getElementById("VisVario").style.display='none';
     }else{
