@@ -31,6 +31,7 @@ function setVis(){
     document.getElementById("accCalib3").style.display=''; /*set calibration of ACC to invisible*/
     document.getElementById("accCalib4").style.display=''; /*set calibration of ACC to invisible*/
   }
+  document.getElementById("VisGsScreen").style.display='none'; //set screen option for ground-station to off
   document.getElementById("VisGsSrO").style.display='none';
   document.getElementById("VisGsSsO").style.display='none';
   document.getElementById("VisFrequ").style.display='none'; /*set Frequency-settings invisible*/
@@ -94,6 +95,9 @@ function setVis(){
     document.getElementById("visAccTemp2").style.display='';
   }    
   if (document.getElementById("mode").value == 1){ /*mode ground-station*/
+    if (document.getElementById("disp").value != 0){
+      document.getElementById("VisGsScreen").style.display=''; //set screen-option to visible
+    }    
     document.getElementById("VisOwnWs").style.display='';  /*enable Own weather-station  */
     if (document.getElementById("setView").value >= SETTING_ADVANCED){ /*we are advanced or expert*/
       document.getElementById("VisAWUS").style.display=''; /*set advanced weather upload settings visible  */
@@ -1000,7 +1004,7 @@ function onMessage(evt) {
 </tr>
 <tr>
 <th>Display Type</th>
-<td><select id="disp">
+<td><select onchange="setVis()" id="disp">
 <option value="0">no display</option>
 <option value="1">0.96' OLED</option>
 <option value="2">2.9' E-Ink</option>
@@ -1277,7 +1281,7 @@ function onMessage(evt) {
               <button type="button"  onclick="openGeoidCalc()" class="button byel" style="line-height: 1.7rem;">calculator (use EGM84-value)</button>
             </td>
           </tr>
-          <tr>            
+          <tr id="VisGsScreen">            
             <th>Screen option</th>
             <td><select id="gsScr">
               <option value="0">always on</option>
