@@ -896,7 +896,10 @@ int isDayTime(){
   if ((iSunRise >= 0) && (iSunSet >= 0)) {
     struct tm now;
     getLocalTime(&now,0);
-    if (now.tm_year < 117) return -3; //time not set yet    
+    if (now.tm_year < 117){
+      log_e("time not set");
+      return -3; //time not set yet    
+    } 
     int iAct = (now.tm_hour * 60) + now.tm_min;
     char time1[] = "00:00";
     char time2[] = "00:00";
@@ -907,6 +910,7 @@ int isDayTime(){
     if (iSunRise < iSunSet){
       if ((iAct >= iSunRise) && (iAct <= iSunSet)){
         // all ok. We are between sunrise and sunset
+        //log_i("day=1;%02d:%02d:%02d sunrise=%s sunset=%s iAct=%s",now.tm_hour,now.tm_min,now.tm_sec,time1,time2,time3);
         return 1;
       }else{
         printLocalTime();
@@ -2899,6 +2903,7 @@ void getRTC(){
     return;
   }
   if (pRtc3231 == NULL) pRtc3231 = new RTC_DS3231();
+  log_i("searching for DS3231 RTC");
   if (pRtc3231->begin(pI2cZero)) {
     log_i("found DS3231 RTC");
     pRtc3231->disable32K(); //we don't need the 32k output --> disable it
@@ -2927,6 +2932,7 @@ void getRTC(){
     printLocalTime();
     return;  
   }else{
+    log_i("no RTC3231 found");
     delete pRtc3231; //delete again
     pRtc3231 = NULL;
   }
@@ -5410,7 +5416,7 @@ void taskBackGround(void *pvParameters){
           }else{
             //check every 10 seconds
             
-            if (timeOver(tAct,tCheckDayTime,10000)){
+            if (timeOver(tAct,tCheckDayTime,60000)){
               tCheckDayTime = tAct;
               if (bPowersaveOk){              
                 if (isDayTime() == 0){
@@ -5495,7 +5501,9 @@ void taskBackGround(void *pvParameters){
               timeinfo.tm_min = min3;
               timeinfo.tm_sec = sec3;
               setAllTime(timeinfo);
-
+              #ifdef GSMODULE
+                setRTCTime(timeinfo);
+              #endif
               //setTime(hour3,min3, sec3, day3,month3, year3);
               
               //log_i("timestatus = %d",timeStatus());
