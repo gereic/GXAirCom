@@ -1800,9 +1800,9 @@ void setup() {
         log_i("time to sleep = %d --> %02d:%02d:%02d",tSleep,tSleep/60/60,(tSleep/60)%60,(tSleep)%60);
         esp_sleep_enable_timer_wakeup((uint64_t)tSleep * uS_TO_S_FACTOR); //set Timer for wakeup      
         //esp_wifi_stop();
-        #ifdef BLUETOOTH
-        stopBluetooth();
-        #endif
+        //#ifdef BLUETOOTH
+        //stopBluetooth();
+        //#endif
         //adc_power_off();
         //adc_power_release();
         esp_deep_sleep_start();
@@ -2383,7 +2383,7 @@ void setup() {
         printLocalTime();
         log_i("batt-voltage to less (%d%%) --> going to sleep again for 60min.",status.battery.percent);
         esp_sleep_enable_timer_wakeup((uint64_t)BATTSLEEPTIME * uS_TO_S_FACTOR); //set Timer for wakeup      
-        //esp_wifi_stop();
+        //esp_wifi_stop();        
         #ifdef BLUETOOTH
         log_i("disable bluetooth for power-saving");
         stopBluetooth();
@@ -2807,8 +2807,14 @@ void setRTCTime(tm &timeinfo){
       log_e("rtc is null");
       return;
     }
-    pRtc3231->adjust(DateTime(timeinfo.tm_year + 1900, timeinfo.tm_mon+1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec));  
-    log_i("adjust rtc-time to %04d-%02d-%02d_%d:%02d:%02d",timeinfo.tm_year + 1900, timeinfo.tm_mon+1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+    DateTime tAct = pRtc3231->now(); //read time and check time-difference
+    DateTime tNew = DateTime(timeinfo.tm_year + 1900, timeinfo.tm_mon+1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+    uint32_t tDiff = tNew.unixtime() - tAct.unixtime();    
+    if ((tDiff) >= 1){      
+      log_i("tAct=%d,tNew=%d,diff=%d",tAct.unixtime(),tNew.unixtime(),tDiff);
+      pRtc3231->adjust(tNew);  
+      log_i("timediff to big --> adjust rtc-time to %04d-%02d-%02d_%d:%02d:%02d",timeinfo.tm_year + 1900, timeinfo.tm_mon+1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);      
+    }
   }
 }
 
@@ -3351,7 +3357,7 @@ void taskBluetooth(void *pvParameters) {
 
   }else{
     //stop bluetooth-controller --> save some memory
-    stopBluetooth();
+    //stopBluetooth();
     log_i("stop task");
     vTaskDelete(xHandleBluetooth);
     return;    
@@ -5413,7 +5419,7 @@ void taskBackGround(void *pvParameters){
     if (WiFi.status() == WL_CONNECTED){
       if (timeOver(tAct,tGetTime,GETNTPINTERVALL)){
         tGetTime = tAct;
-        //log_i("get ntp-time");
+        log_i("get ntp-time");
         uint32_t tStart = millis();
         uint32_t tBeforeNtp = now();
         configTime(0, 0, "pool.ntp.org");
@@ -5423,9 +5429,6 @@ void taskBackGround(void *pvParameters){
           uint32_t tEnd = millis();
           //log_i("%04d%02d%02d-%02d:%02d:%02d",timeinfo.tm_year + 1900,timeinfo.tm_mon+1,timeinfo.tm_mday,timeinfo.tm_hour,timeinfo.tm_min, timeinfo.tm_sec);
           setAllTime(timeinfo);
-          #ifdef GSMODULE
-            setRTCTime(timeinfo);
-          #endif
           uint32_t tAfterNtp = now(); 
           tBeforeNtp += ((tEnd - tStart) / 1000);
           uint32_t tDist = tAfterNtp - tBeforeNtp;          
@@ -5433,7 +5436,10 @@ void taskBackGround(void *pvParameters){
             log_e("%ds delay timediff to big --> try again in 5 seconds");
             tGetTime = tAct - GETNTPINTERVALL + 5000; //try again in 5 second
           }else{
-            //log_i("get ntp-time OK",tDist);
+            log_i("get ntp-time OK");
+            #ifdef GSMODULE
+              setRTCTime(timeinfo);
+            #endif
             if (printLocalTime() == true){
               status.bTimeOk = true;
             } 
