@@ -362,6 +362,7 @@ void taskStandard(void *pvParameters);
 void taskBackGround(void *pvParameters);
 #ifdef BLUETOOTH
 void taskBluetooth(void *pvParameters);
+void stopBluetooth(void);
 #endif
 void taskMemory(void *pvParameters);
 void setupWifi();
@@ -1741,7 +1742,7 @@ void setup() {
   }
   //listSpiffsFiles();
   load_configFile(&setting); //load configuration
-  setting.RFMode = setting.RFMode & 0x03; //only FANET allowed !!
+  //setting.RFMode = setting.RFMode & 0x03; //only FANET allowed !!
   //setting.wifi.connect = eWifiMode::CONNECT_NONE;
   #ifdef GSM_MODULE
   //minimum cpu-frequency is here 80Mhz cause of GSM-Module
@@ -1749,18 +1750,10 @@ void setup() {
     setting.CPUFrequency = 80;
   }
   #else
-  if (setting.CPUFrequency <  20){
-    setting.CPUFrequency = 20;
+  if (setting.CPUFrequency <  10){
+    setting.CPUFrequency = 10;
   }  
   #endif
-  /*
-  if (setting.CPUFrequency <  80){
-    setCpuFrequencyMhz(uint32_t(80));
-  }else{
-    setCpuFrequencyMhz(uint32_t(setting.CPUFrequency));
-  }
-  log_i("set CPU-Speed to %dMHz",getCpuFrequencyMhz());
-  */
   //setting.boardType = eBoard::UNKNOWN;
   #ifdef S3CORE
     setting.boardType = T_BEAM_S3CORE;
@@ -1796,30 +1789,6 @@ void setup() {
   #ifdef GSM_MODULE
     status.gsm.bHasGSM = true;
   #endif
-
-
-  /*
-  pinMode(4, OUTPUT);
-  pinMode(5, OUTPUT);
-  pinMode(12, OUTPUT);
-  digitalWrite(12,HIGH); 
-  delay(500);
-  digitalWrite(4,LOW); 
-  digitalWrite(5,LOW); 
-  digitalWrite(12,LOW); 
-  delay(500);
-  log_i("start sleeping");
-  delay(500);
-  //Serial.end();
-  esp_bluedroid_disable();
-  esp_bluedroid_deinit();
-  esp_bt_controller_disable();
-  esp_bt_controller_deinit();
-  esp_bt_mem_release(ESP_BT_MODE_BTDM);
-  adc_power_off();  
-  esp_deep_sleep_start();
-  */
-
   #ifdef GSMODULE
   if (setting.Mode == eMode::GROUND_STATION){
     if ((reason2 == ESP_SLEEP_WAKEUP_TIMER) && (setting.gs.PowerSave == eGsPower::GS_POWER_SAFE)){
@@ -1832,11 +1801,7 @@ void setup() {
         esp_sleep_enable_timer_wakeup((uint64_t)tSleep * uS_TO_S_FACTOR); //set Timer for wakeup      
         //esp_wifi_stop();
         #ifdef BLUETOOTH
-        esp_bluedroid_disable();
-        esp_bluedroid_deinit();
-        esp_bt_controller_disable();
-        esp_bt_controller_deinit();
-        esp_bt_mem_release(ESP_BT_MODE_BTDM);
+        stopBluetooth();
         #endif
         //adc_power_off();
         //adc_power_release();
@@ -2287,7 +2252,7 @@ void setup() {
     break;
   case eBoard::HELTEC_WIRELESS_STICK_LITE_V3:
     log_i("Board=wireless-StickV3");
-
+    sButton[0].PinButton = 0; //pin for program-button
     PinLoraRst = 12;
     PinLoraDI0 = 14;
     PinLoraGPIO = 13;
@@ -2420,11 +2385,8 @@ void setup() {
         esp_sleep_enable_timer_wakeup((uint64_t)BATTSLEEPTIME * uS_TO_S_FACTOR); //set Timer for wakeup      
         //esp_wifi_stop();
         #ifdef BLUETOOTH
-        esp_bluedroid_disable();
-        esp_bluedroid_deinit();
-        esp_bt_controller_disable();
-        esp_bt_controller_deinit();
-        esp_bt_mem_release(ESP_BT_MODE_BTDM);
+        log_i("disable bluetooth for power-saving");
+        stopBluetooth();
         #endif
         //adc_power_off();
         //adc_power_release();
@@ -3365,7 +3327,19 @@ void taskMemory(void *pvParameters) {
 
 #ifdef BLUETOOTH
 
+void stopBluetooth(void){
+  log_i("stop bluetooth-controller");
+  //btStop();
+  esp_bluedroid_disable();
+  esp_bluedroid_deinit();
+  esp_bt_controller_disable();
+  esp_bt_controller_deinit();
+  esp_bt_mem_release(ESP_BT_MODE_BTDM); 
+  btStop(); 
+}
+
 void taskBluetooth(void *pvParameters) {
+  log_i("start bluetooth task");
   // BLEServer *pServer;
   //Put a 10 second delay before Seral BT start to allow settings to work.
   if ((setting.outputMode == eOutput::oBLUETOOTH)) delay(10000);
@@ -3377,9 +3351,7 @@ void taskBluetooth(void *pvParameters) {
 
   }else{
     //stop bluetooth-controller --> save some memory
-    esp_bt_controller_disable();
-    esp_bt_controller_mem_release(ESP_BT_MODE_BTDM);
-    //log_i("currHeap:%d,minHeap:%d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
+    stopBluetooth();
     log_i("stop task");
     vTaskDelete(xHandleBluetooth);
     return;    
@@ -3574,6 +3546,7 @@ void setWifi(bool on){
     //WiFi.softAPdisconnect(true);
     WiFi.disconnect(true,true);
     WiFi.mode(WIFI_MODE_NULL);
+    //adc_power_release();
     status.bWifiOn = false;
     log_i("switch WIFI OFF ready !");
     
@@ -5128,11 +5101,9 @@ void powerOff(){
   //esp_wifi_stop();
   #ifdef BLUETOOTH
   #ifndef S3CORE
-  esp_bluedroid_disable();
-  esp_bluedroid_deinit();
-  esp_bt_controller_disable();
-  esp_bt_controller_deinit();
-  esp_bt_mem_release(ESP_BT_MODE_BTDM);
+  #ifndef WIRELESS_STICK_V3
+  stopBluetooth();
+  #endif
   #endif
   #endif
   if (PinLora_SCK >= 0) pinMode(PinLora_SCK,INPUT);

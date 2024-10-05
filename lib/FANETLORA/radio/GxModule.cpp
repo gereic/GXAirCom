@@ -147,8 +147,8 @@ int16_t GxModule::SPIsetRegValue(uint8_t reg, uint8_t value, uint8_t msb, uint8_
   return(ERR_SPI_WRITE_FAILED);
 }
 
-void GxModule::SPIreadRegisterBurst(uint8_t reg, uint8_t numBytes, uint8_t* inBytes) {
-  SPItransfer(SPIreadCommand, reg, NULL, inBytes, numBytes);
+void GxModule::SPIreadRegisterBurst(uint8_t reg, uint8_t numBytes, uint8_t* inBytes,bool inverted ) {
+  SPItransfer(SPIreadCommand, reg, NULL, inBytes, numBytes,inverted);
 }
 
 uint8_t GxModule::SPIreadRegister(uint8_t reg) {
@@ -157,15 +157,15 @@ uint8_t GxModule::SPIreadRegister(uint8_t reg) {
   return(resp);
 }
 
-void GxModule::SPIwriteRegisterBurst(uint8_t reg, uint8_t* data, uint8_t numBytes) {
-  SPItransfer(SPIwriteCommand, reg, data, NULL, numBytes);
+void GxModule::SPIwriteRegisterBurst(uint8_t reg, uint8_t* data, uint8_t numBytes,bool inverted) {
+  SPItransfer(SPIwriteCommand, reg, data, NULL, numBytes,inverted);
 }
 
 void GxModule::SPIwriteRegister(uint8_t reg, uint8_t data) {
   SPItransfer(SPIwriteCommand, reg, &data, NULL, 1);
 }
 
-void GxModule::SPItransfer(uint8_t cmd, uint8_t reg, uint8_t* dataOut, uint8_t* dataIn, uint8_t numBytes) {
+void GxModule::SPItransfer(uint8_t cmd, uint8_t reg, uint8_t* dataOut, uint8_t* dataIn, uint8_t numBytes,bool inverted) {
   // start SPI transaction
   _spi->beginTransaction(_spiSettings);
 
@@ -189,7 +189,11 @@ void GxModule::SPItransfer(uint8_t cmd, uint8_t reg, uint8_t* dataOut, uint8_t* 
   if(cmd == SPIwriteCommand) {
     if(dataOut != NULL) {
       for(size_t n = 0; n < numBytes; n++) {
-        _spi->transfer(dataOut[n]);
+        if (inverted){
+          _spi->transfer(~dataOut[n]);
+        }else{
+          _spi->transfer(dataOut[n]);
+        }        
         GX_MODULE_VERBOSE_PRINT(dataOut[n], HEX);
         GX_MODULE_VERBOSE_PRINT('\t');
       }
@@ -197,7 +201,11 @@ void GxModule::SPItransfer(uint8_t cmd, uint8_t reg, uint8_t* dataOut, uint8_t* 
   } else if (cmd == SPIreadCommand) {
     if(dataIn != NULL) {
       for(size_t n = 0; n < numBytes; n++) {
-        dataIn[n] = _spi->transfer(0x00);
+        if (inverted){
+          dataIn[n] = ~_spi->transfer(0x00);
+        }else{
+          dataIn[n] = _spi->transfer(0x00);
+        }            
         GX_MODULE_VERBOSE_PRINT(dataIn[n], HEX);
         GX_MODULE_VERBOSE_PRINT('\t');
       }

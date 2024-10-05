@@ -24,7 +24,7 @@ extern volatile uint32_t gtReceived;
 //#define MAC_debug_mode				100
 #define RX_DEBUG 0
 //#define RX_DEBUG 1
-#define TX_DEBUG 1
+#define TX_DEBUG 0
 //#define FREQUENCYTEST
 
 
@@ -229,8 +229,6 @@ private:
 	long setup_frequency;
 	
 	/* used for interrupt handler */
-	uint8_t rx_frame[MAC_FRAME_LENGTH];
-	int num_received = 0;	
 
 	static void frameRxWrapper(int length);
 	void frameReceived(int length);
@@ -255,7 +253,7 @@ private:
 
 	void sendUdpData(const uint8_t *buffer,int len);
 	uint32_t long legacy_next_tx = 0;
-	uint8_t LegacyBuffer [26];
+	uint8_t FlarmBuffer [26];
 	uint32_t _ppsMillis = 0;
 	uint8_t _ppsCount = 0;
 	eLoraRegion eLoraRegion = NONE;

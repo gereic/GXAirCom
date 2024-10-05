@@ -72,6 +72,10 @@
 // SX127x series common LoRa registers
 #define SX127X_REG_FIFO                               0x00
 #define SX127X_REG_OP_MODE                            0x01
+#define SX127X_REG_FSKBitrateMsb                      0x02
+#define SX127X_REG_FSKBitrateLsb                      0x03
+#define SX127X_REG_FSKFdevMsb                         0x04
+#define SX127X_REG_FSKFdevLsb                         0x05
 #define SX127X_REG_FRF_MSB                            0x06
 #define SX127X_REG_FRF_MID                            0x07
 #define SX127X_REG_FRF_LSB                            0x08
@@ -104,17 +108,29 @@
 #define SX127X_REG_MAX_PAYLOAD_LENGTH                 0x23
 #define SX127X_REG_HOP_PERIOD                         0x24
 #define SX127X_REG_FIFO_RX_BYTE_ADDR                  0x25
+#define SX127X_REG_FSKPreambleMsb                     0x26
+#define SX127X_REG_FSKPreambleLsb                     0x26
+#define SX127X_REG_FSKSyncConfig                      0x27
 #define SX127X_REG_FEI_MSB                            0x28
 #define SX127X_REG_FEI_MID                            0x29
 #define SX127X_REG_FEI_LSB                            0x2A
 #define SX127X_REG_RSSI_WIDEBAND                      0x2C
+#define SX127X_REG_FSKPacketConfig1                   0x30
+#define SX127X_REG_FSKPacketConfig2                   0x31
 #define SX127X_REG_DETECT_OPTIMIZE                    0x31
+#define SX127X_REG_FSKPayloadLength                   0x32
 #define SX127X_REG_INVERT_IQ                          0x33
+#define SX127X_REG_FifoThresh                         0x35
 #define SX127X_REG_DETECTION_THRESHOLD                0x37
 #define SX127X_REG_SYNC_WORD                          0x39
+#define SX127X_REG_FSKImageCal                        0x3B
 #define SX127X_REG_DIO_MAPPING_1                      0x40
 #define SX127X_REG_DIO_MAPPING_2                      0x41
 #define SX127X_REG_VERSION                            0x42
+#define SX127X_REG_PaDac                              0x4D
+#define SX127X_REG_BitRateFrac                        0x5D
+
+#define SX127X_RF_FIFOTHRESH_TXSTARTCONDITION_FIFONOTEMPTY 0x80
 
 // SX127X_REG_IRQ_FLAGS
 #define SX127X_CLEAR_IRQ_FLAG_RX_TIMEOUT              0b10000000  //  7     7     timeout
@@ -148,6 +164,10 @@
 #define SX127X_FLAG_TIMEOUT                           0b00000100  //  2     2     timeout occurred
 #define SX127X_FLAG_PREAMBLE_DETECT                   0b00000010  //  1     1     valid preamble was detected
 #define SX127X_FLAG_SYNC_ADDRESS_MATCH                0b00000001  //  0     0     sync address matched
+
+// SX127X FSK ImageCal defines
+#define SX127X_RF_IMAGECAL_IMAGECAL_START      0x40
+#define SX127X_RF_IMAGECAL_IMAGECAL_RUNNING    0x20
 
 //SX127X_IRQ FLAGS Lora
 #define SX127X_IRQ_RX_TIMEOUT					0x80
@@ -205,10 +225,13 @@ public:
   bool isReceiving();
   int16_t setCodingRate(uint8_t cr);
   int16_t transmit(uint8_t* data, size_t len);
+  int16_t FSKTx(uint32_t frequency,uint8_t* data, size_t len);  
+  int16_t FSKRx(uint32_t frequency);
   bool isRxMessage();
   int16_t switchFSK(float frequency);
   int16_t switchLORA(float frequency,uint16_t loraBandwidth);
   float get_airlimit(void);
+  bool isFskMode(void);
   
   //int16_t setFrequency(float frequency);
   uint8_t gain = 0; //0 --> auto-gain, 1--> highest gain; 6 --> lowest gain
@@ -278,6 +301,8 @@ private:
   int16_t SPItransfer(uint8_t* cmd, uint8_t cmdLen, bool write, uint8_t* dataOut, uint8_t* dataIn, uint8_t numBytes, bool waitForBusy, uint32_t timeout = 5000);
   void checkRet(int16_t value);
   int sx_channel_free4tx();
+  void configChannel (uint32_t frequency);
+  bool calibrated = false;
 
 };
 #endif

@@ -13,6 +13,9 @@
 #include <Arduino.h>
 #include "lib_crc.h"
 
+//#define DEBUG_FLARM_ERRORS
+
+
 /*
 #ifndef M_PI
   #define M_PI		3.14159265358979323846
@@ -196,7 +199,6 @@ void flarm_getFrequencyChannels(uint8_t zone,float *frequency, uint8_t *channels
 uint32_t flarm_calculate_freq_channel(uint32_t timestamp, uint32_t nch);
 void flarm_init_aircraft_state(AircraftState *aircraft);
 void flarm_update_aircraft_state(AircraftState *aircraft);
-void flarm_create_packet(AircraftState *aircraft, uint8_t *packet);
 void flarm_update_position_speed_direction(AircraftState *aircraft);
 void flarm_update_airborne(AircraftState *aircraft);
 void flarm_update_turn_state(AircraftState *aircraft);
@@ -204,14 +206,12 @@ void flarm_calculate_speed_scaling(AircraftState *aircraft);
 void flarm_update_height(AircraftState *aircraft);
 void flarm_update_accuracy(AircraftState *aircraft);
 void flarm_extrapolate_velocity_vector(AircraftState *aircraft);
-size_t flarm_encrypt(void *flarm_pkt, long timestamp);
 size_t flarm_decrypt(void *flarm_pkt, long timestamp);
-uint8_t flarm_parity(uint32_t x);
 unsigned short flarm_getCkSum(byte* ba, int len);
-int8_t flarm_decode(void *flarm_pkt, ufo_t *this_aircraft, ufo_t *fop);
-bool flarm_v7_decode(void *flarm_pkt, ufo_t *this_aircraft, ufo_t *fop);
-size_t flarm_v7_encode(AircraftState *aircraft, uint8_t *packet, long timestamp);
-void flarm_v7_debugBuffer(uint8_t *flarm_pkt,ufo_t *this_aircraft);
 
+bool flarm_decode(void *flarm_pkt, ufo_t *this_aircraft, ufo_t *fop);
+size_t flarm_encode(void *flarm_pkt, AircraftState *aircraft, long timestamp);
+
+void flarm_v7_debugBuffer(uint8_t *flarm_pkt,ufo_t *this_aircraft);
 
 #endif

@@ -473,6 +473,9 @@ int16_t LoRaClass::begin(float freq, float bw, uint8_t sf, uint8_t cr, uint8_t s
       GxModule::digitalWrite(pGxModule->getRst(), HIGH);
       GxModule::delay(6); //wait min 5 ms until module is ready
       GxModule::attachInterrupt(digitalPinToInterrupt(pGxModule->getIrq()), setFlag, RISING);
+      sx1276setOpMode(SX1276_OPMODE_FSK_SLEEP);
+      uint8_t rVersion = pGxModule->SPIreadRegister(SX127X_REG_VERSION);
+      log_i("sx1276-Version %d",rVersion);
       return state;
       break;
   }
@@ -535,6 +538,7 @@ int16_t LoRaClass::readData(uint8_t* data, size_t len){
         // put module to standby
         //we have to read the register in order to read data
         if (len == 26){
+          //pGxModule->SPIreadRegisterBurst(0x00, len, data,true);
           uint8_t rx_frame[len*2];
           pGxModule->SPIreadRegisterBurst(0x00, len*2, rx_frame);
           uint8_t val1, val2;
@@ -684,6 +688,64 @@ void LoRaClass::checkRet(int16_t value){
   }
 }
 
+int16_t LoRaClass::FSKRx(uint32_t frequency){
+  int16_t ret = 0;
+  pGxModule->SPIsetRegValue(SX127X_REG_OP_MODE, SX1276_OPMODE_FSK_SLEEP);
+  //log_i("op-mode=%d",pGxModule->SPIreadRegister(SX127X_REG_OP_MODE));  
+
+  // enter standby mode (warm up)
+  pGxModule->SPIsetRegValue(SX127X_REG_OP_MODE, SX1276_OPMODE_FSK_STANDBY);
+
+  configChannel(frequency);
+
+  pGxModule->SPIwriteRegister(SX127X_REG_FSKBitrateMsb, 0x01); // 100 kbps
+  pGxModule->SPIwriteRegister(SX127X_REG_FSKBitrateLsb, 0x40);
+
+  pGxModule->SPIwriteRegister(SX127X_REG_LNA, 0x20 | 0x03); // max gain, boost enable
+
+  pGxModule->SPIwriteRegister(SX127X_REG_FIFO_ADDR_PTR, 0x0E); // AFC off, AGC on, trigger on preamble?!?
+
+  pGxModule->SPIwriteRegister(SX127X_REG_IRQ_FLAGS, 0x02); // 125kHz SSb; BW >= (DR + 2 X FDEV)
+
+  pGxModule->SPIwriteRegister(SX127X_REG_RX_NB_BYTES, 0x11); // 166.6kHz SSB
+
+  pGxModule->SPIwriteRegister(SX127X_REG_SYMB_TIMEOUT_LSB, 0x85); // enable, 1 bytes, 5 chip errors
+
+  pGxModule->SPIwriteRegister(SX127X_REG_FSKSyncConfig, (0x30 | 6));
+
+  pGxModule->SPIwriteRegister(0x28,0x99); //RegSyncValue1
+  pGxModule->SPIwriteRegister(0x29,0xA5); //RegSyncValue2
+  pGxModule->SPIwriteRegister(0x2A,0xA9); //RegSyncValue3
+  pGxModule->SPIwriteRegister(0x2B,0x55); //RegSyncValue4
+  pGxModule->SPIwriteRegister(0x2C,0x66); //RegSyncValue5
+  pGxModule->SPIwriteRegister(0x2D,0x65); //RegSyncValue6
+  pGxModule->SPIwriteRegister(0x2E,0x96); //RegSyncValue7
+  pGxModule->SPIwriteRegister(0x2F,0X00); //RegSyncValue8  
+
+  pGxModule->SPIwriteRegister(SX127X_REG_FSKPacketConfig1, 0x20); //Manchester
+  pGxModule->SPIwriteRegister(SX127X_REG_FSKPacketConfig2, 0x40); // packet mode
+
+  pGxModule->SPIwriteRegister(SX127X_REG_FSKPayloadLength,FSK_PACKET_LENGTH);
+
+  pGxModule->SPIwriteRegister(SX127X_REG_FSKFdevMsb, 0x03); // +/- 50kHz
+  pGxModule->SPIwriteRegister(SX127X_REG_FSKFdevLsb, 0x33);  
+
+  pGxModule->SPIsetRegValue(SX127X_REG_DIO_MAPPING_1, 0x00, 7, 6); //REG_DIO_MAPPING_1 --> DIO0_PACK_PAYLOAD_READY
+  pGxModule->SPIwriteRegister(0x3E, 0b11111111); //REG_IRQ_FLAGS_1
+  pGxModule->SPIwriteRegister(0x3F, 0b11111111); //REG_IRQ_FLAGS_2
+
+  // set RF switch (if present)
+  pGxModule->setRfSwitchState(HIGH, LOW);
+  //iRet = sx1276setOpMode(SX1276_MODE_FS_MODE_RX); //RegOpMode --> set Module to RXCONTINUOUS
+  receivedFlag = false;
+  enableInterrupt = true;
+  _fskMode = true;
+  pGxModule->SPIwriteRegister(SX127X_REG_OP_MODE,SX1276_OPMODE_FSK_RX);
+
+  ret = 0;
+  return ret;
+}
+
 int16_t LoRaClass::switchFSK(float frequency){
   //Bitrate=100kHz
   //BT0.5
@@ -785,9 +847,10 @@ int16_t LoRaClass::switchFSK(float frequency){
       //set bitrate to 100kBps
       pGxModule->SPIwriteRegister(0x02,0x01); //RegBitrateMsb 100kbps
       pGxModule->SPIwriteRegister(0x03,0x40); //RegBitrateLsb
+      pGxModule->SPIwriteRegister(0x5D,0x00); //RegBitrateFrac
       //set deviation to 50kHz
       pGxModule->SPIwriteRegister(0x04,0x03); //RegFdevMsb Frequency deviation +/- 50kHz
-      pGxModule->SPIwriteRegister(0x05,0x33); //RegFdevLsb
+      pGxModule->SPIwriteRegister(0x05,0x33); //RegFdevLsb Fdev = 50000Hz / 61Hz = 819 (0x333)
       //calculate register values
       uint32_t FRF = (frequency * (uint32_t(1) << 19)) / 32.0;
       // write registers
@@ -797,7 +860,7 @@ int16_t LoRaClass::switchFSK(float frequency){
 
       //pGxModule->SPIwriteRegister(0x09,0xFC); //RegPaConfig
       pGxModule->SPIwriteRegister(0x09,0xFF); //RegPaConfig PA_Boost on, max_power=15, Output Power 17dBm
-      pGxModule->SPIwriteRegister(0x0A,0x49); //RegPaRamp
+      pGxModule->SPIwriteRegister(0x0A,0b00011000); // unused=000, LowPnTxPllOff=1, PaRamp=1000 //RegPaRamp set 50us PA ramp-up time
       pGxModule->SPIwriteRegister(0x0B,0x2B); //RegOcp
       pGxModule->SPIwriteRegister(0x0C,0x23); //RegLna max gain, default LNA current
       //pGxModule->SPIwriteRegister(0x0D,0x0E); //RegRxConfig AFC off, AGC on, trigger on preamble?!?
@@ -821,7 +884,7 @@ int16_t LoRaClass::switchFSK(float frequency){
       pGxModule->SPIwriteRegister(0x21,0x00); //RegRxTimeout2
       pGxModule->SPIwriteRegister(0x22,0x00); //RegRxTimeout3
       pGxModule->SPIwriteRegister(0x23,0x00); //RegRxDelay
-      pGxModule->SPIwriteRegister(0x24,0x05); //RegOsc
+      pGxModule->SPIwriteRegister(0x24,0x05); //RegOsc FXOSC/32 FXOSC = 32Mhz --> 1Mhz
       pGxModule->SPIwriteRegister(0x25,0x00); //RegPreambleMsb
       pGxModule->SPIwriteRegister(0x26,0x02); //RegPreambleLsb //preamble-size 2
       pGxModule->SPIwriteRegister(0x27,0x36); //RegSyncConfig Sync-Word-Size = 6 Preamble-Type = 55
@@ -848,6 +911,7 @@ int16_t LoRaClass::switchFSK(float frequency){
       pGxModule->SPIwriteRegister(0x40,0x00); //RegDioMapping1
       pGxModule->SPIwriteRegister(0x41,0x00); //RegDioMapping2
       pGxModule->SPIwriteRegister(0x4B,0x09); //RegTcxo Power up tcxo
+      
       pGxModule->SPIwriteRegister(0x61,0x19); //RegAgcRef
       pGxModule->SPIwriteRegister(0x62,0x0C); //RegAgcThresh1
       pGxModule->SPIwriteRegister(0x63,0x4B); //RegAgcThresh2
@@ -879,6 +943,10 @@ int16_t LoRaClass::switchFSK(float frequency){
   _fskMode = true;
   //log_i("FSK-Mode On %d",micros()-tBegin);
   return 0;
+}
+
+bool LoRaClass::isFskMode(void){
+  return _fskMode;
 }
 
 bool LoRaClass::isReceiving(){
@@ -1520,6 +1588,115 @@ int LoRaClass::sx_channel_free4tx(){
 	return ERR_NONE;
 }
 
+int16_t LoRaClass::FSKTx(uint32_t frequency,uint8_t* data, size_t len){
+  //log_i("txFSK");
+  // calculate timeout (5ms + 500 % of expected time-on-air)
+  uint32_t timeout = 36000;
+  //log_i("timeout=%d",timeout);
+  int16_t ret = 0;
+  pGxModule->SPIsetRegValue(SX127X_REG_OP_MODE, SX1276_OPMODE_FSK_SLEEP);
+  delay(1); //wait a little bit
+  pGxModule->SPIwriteRegister(SX127X_REG_OP_MODE, SX1276_MODE_SLEEP );
+  //log_i("op-mode=%d",pGxModule->SPIreadRegister(SX127X_REG_OP_MODE));
+  pGxModule->SPIwriteRegister(SX127X_REG_FSKBitrateMsb, 0x01); // 100 kbps
+  pGxModule->SPIwriteRegister(SX127X_REG_FSKBitrateLsb, 0x40);
+  pGxModule->SPIwriteRegister(SX127X_REG_BitRateFrac,   0x00);  
+  pGxModule->SPIwriteRegister(SX127X_REG_FSKFdevMsb, 0x03); // +/- 50kHz
+  pGxModule->SPIwriteRegister(SX127X_REG_FSKFdevLsb, 0x33);
+  // frame and packet handler settings
+  pGxModule->SPIwriteRegister(SX127X_REG_FSKPreambleMsb, 0x00);  
+  pGxModule->SPIwriteRegister(SX127X_REG_FSKPreambleLsb,2);
+  pGxModule->SPIwriteRegister(SX127X_REG_FSKSyncConfig, (0x30 | 6)); //syncword-size - 1
+
+  pGxModule->SPIwriteRegister(SX127X_REG_FSKPacketConfig1, 0x20); //Whitening_Manchester
+  //pGxModule->SPIwriteRegister(SX127X_REG_FSKPacketConfig1,0x00); //RegPacketConfig1 WHITENING_NONE
+  pGxModule->SPIwriteRegister(SX127X_REG_FSKPacketConfig2, 0x40);
+
+  pGxModule->SPIwriteRegister(0x28,0x99); //RegSyncValue1
+  pGxModule->SPIwriteRegister(0x29,0xA5); //RegSyncValue2
+  pGxModule->SPIwriteRegister(0x2A,0xA9); //RegSyncValue3
+  pGxModule->SPIwriteRegister(0x2B,0x55); //RegSyncValue4
+  pGxModule->SPIwriteRegister(0x2C,0x66); //RegSyncValue5
+  pGxModule->SPIwriteRegister(0x2D,0x65); //RegSyncValue6
+  pGxModule->SPIwriteRegister(0x2E,0x96); //RegSyncValue7
+  pGxModule->SPIwriteRegister(0x2F,0X00); //RegSyncValue8  
+
+  configChannel(frequency);
+
+  pGxModule->SPIwriteRegister(SX127X_REG_PaDac, 0x84); // normal power
+  pGxModule->SPIwriteRegister(SX127X_REG_PA_CONFIG, 0x80 | (14 - 2)); // BOOST (2..17dBm)
+
+  // set 50us PA ramp-up time
+  pGxModule->SPIwriteRegister(SX127X_REG_PA_RAMP, 0b00011000); // unused=000, LowPnTxPllOff=1, PaRamp=1000
+
+  // set the IRQ mapping DIO0=PacketSent DIO1=NOP DIO2=NOP
+  pGxModule->SPIwriteRegister(SX127X_REG_DIO_MAPPING_1, 0x00);
+  // set DIO mapping
+  pGxModule->SPIsetRegValue(0x40, 0b00000000, 7, 6); //REG_DIO_MAPPING_1 --> DIO0_PACK_PACKET_SENT
+
+  // clear interrupt flags
+  pGxModule->SPIwriteRegister(0x3E, 0b11111111); //REG_IRQ_FLAGS_1
+  pGxModule->SPIwriteRegister(0x3F, 0b11111111); //REG_IRQ_FLAGS_2
+
+  // setup FIFO
+  pGxModule->SPIwriteRegister(SX127X_REG_FifoThresh, SX127X_RF_FIFOTHRESH_TXSTARTCONDITION_FIFONOTEMPTY ); 
+    
+  
+
+  // initialize the payload size and address pointers
+  pGxModule->SPIwriteRegister(SX127X_REG_FSKPayloadLength, FSK_PACKET_LENGTH); // (insert length byte into payload))
+  pGxModule->SPIwriteRegisterBurst(0x00, data, FSK_PACKET_LENGTH,true); //REG_FIFO
+
+  /*
+  uint8_t tx_frame[FSK_PACKET_LENGTH*2];
+  for (int i = 0;i < FSK_PACKET_LENGTH * 2; i++){            
+    tx_frame[i] = ManchesterEncode[(data[i>>1] >> 4) & 0x0F];
+    tx_frame[i+1] = ManchesterEncode[(data[i>>1]) & 0x0F];
+    i++;
+  }     
+  pGxModule->SPIwriteRegisterBurst(0x00, tx_frame, FSK_PACKET_LENGTH*2); //REG_FIFO
+  pGxModule->SPIwriteRegister(SX127X_REG_FSKPayloadLength, 0x34); // (insert length byte into payload))
+  */
+
+  // set RF switch (if present)
+  pGxModule->setRfSwitchState(LOW, HIGH);
+
+  // now we actually start the transmission
+  pGxModule->SPIwriteRegister(SX127X_REG_OP_MODE, SX1276_OPMODE_FSK_TX);  
+
+  uint32_t start = GxModule::micros();
+  while(!GxModule::digitalRead(pGxModule->getIrq())) {
+    GxModule::yield();
+    if(GxModule::micros() - start > timeout) {
+      ret = -5;
+      break;
+    }
+  }
+  //uint32_t tSend = GxModule::micros() - start;
+  //log_i("sending took %d",tSend);
+  pGxModule->SPIwriteRegister(0x3E, 0b11111111); //REG_IRQ_FLAGS_1
+  pGxModule->SPIwriteRegister(0x3F, 0b11111111); //REG_IRQ_FLAGS_2
+  return ret;
+}
+
+void LoRaClass::configChannel (uint32_t frequency){
+  // set frequency: FQ = (FRF * 32 Mhz) / (2 ^ 19)
+  uint64_t frf = ((uint64_t)frequency << 19) / 32000000;
+
+  pGxModule->SPIwriteRegister(SX127X_REG_FRF_MSB, frf >> 16);
+  pGxModule->SPIwriteRegister(SX127X_REG_FRF_MID, frf >> 8);
+  pGxModule->SPIwriteRegister(SX127X_REG_FRF_LSB, frf >> 0);
+
+  // run one-time receiver chain calibration (in STANDBY mode!)
+  if (!bCalibrated) {
+    log_i("calibrate sx1276");
+    bCalibrated = true;
+    pGxModule->SPIwriteRegister(SX127X_REG_FSKImageCal, SX127X_RF_IMAGECAL_IMAGECAL_START);
+    while ( pGxModule->SPIreadRegister(SX127X_REG_FSKImageCal) & SX127X_RF_IMAGECAL_IMAGECAL_RUNNING );
+    log_i("calibration done");
+  }
+}
+
 int16_t LoRaClass::transmit(uint8_t* data, size_t len){
   //log_i("transmit l=%d",len);
 	/* channel accessible? */
@@ -1580,6 +1757,8 @@ int16_t LoRaClass::transmit(uint8_t* data, size_t len){
               break;
             }
           }
+          uint32_t tSend = GxModule::micros() - start;
+          //log_i("sending took %d",tSend);
           pGxModule->SPIwriteRegister(0x3E, 0b11111111); //REG_IRQ_FLAGS_1
           pGxModule->SPIwriteRegister(0x3F, 0b11111111); //REG_IRQ_FLAGS_2
           sx1276setOpMode(SX1276_MODE_STANDBY);//RegOpMode --> set Module to standby

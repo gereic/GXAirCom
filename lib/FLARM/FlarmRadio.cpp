@@ -6,6 +6,33 @@
 
 #include "FlarmRadio.h"
 
+
+void flarm_create_packet(AircraftState *aircraft, uint8_t *packet);
+size_t flarm_encrypt(void *flarm_pkt, long timestamp);
+size_t flarm_v7_encode(AircraftState *aircraft, uint8_t *packet, long timestamp);
+uint8_t flarm_parity(uint32_t x);
+bool flarm_v6_decode(void *flarm_pkt, ufo_t *this_aircraft, ufo_t *fop);
+
+
+//static bool use_v6_on_tx = true;
+
+size_t flarm_encode(void *flarm_pkt, AircraftState *aircraft, long timestamp) {
+    /*
+    if (use_v6_on_tx) {
+      use_v6_on_tx = false;
+      log_i("Tx_V6");
+      flarm_create_packet(aircraft, (uint8_t *)flarm_pkt);
+      return flarm_encrypt(flarm_pkt,timestamp);
+    }
+    use_v6_on_tx = true;
+    */
+    //flarm_create_packet(aircraft, (uint8_t *)flarm_pkt);
+    //return flarm_encrypt(flarm_pkt,timestamp);   
+    //log_i("Tx_V7");
+    return flarm_v7_encode(aircraft,(uint8_t *)flarm_pkt,timestamp);
+
+}
+
 void printbuffer(uint8_t *buffer){
   char hexBuffer[3];
   for(int i=0; i<26; i++){
@@ -598,10 +625,19 @@ void make_v7_key(uint32_t key[4]) {
   } while (--q > 0);
 }
 
-bool flarm_v7_decode(void *flarm_pkt, ufo_t *this_aircraft, ufo_t *fop){
+bool flarm_decode(void *flarm_pkt, ufo_t *this_aircraft, ufo_t *fop){
   const uint32_t xxtea_key[4] = FLARM_KEY5;
   uint32_t key_v7[4];
   flarm_v7_packet_t *pkt = (flarm_v7_packet_t *) flarm_pkt;
+  if (pkt->type == 0){
+    //log_i("V6 protocol");
+    return flarm_v6_decode(flarm_pkt,this_aircraft,fop);
+  }else if (pkt->type != 2){
+    #ifdef DEBUG_FLARM_ERRORS
+    log_e("wrong Flarm-protocol %d --> discarding",pkt->type);
+    #endif
+    return false; //wrong protocoll --> discarding
+  }
   uint32_t *wpkt     = (uint32_t *) flarm_pkt;
   uint32_t timestamp = (uint32_t) this_aircraft->timestamp;  
 
@@ -618,12 +654,75 @@ bool flarm_v7_decode(void *flarm_pkt, ufo_t *this_aircraft, ufo_t *fop){
   wpkt[4] ^= key_v7[2];
   wpkt[5] ^= key_v7[3];
 
+  /*
   if ((pkt->_unk1 == 0) && (pkt->_unk2 == 0) && (pkt->_unk3 == 3) && (pkt->_unk4 == 0) && (pkt->_unk5 == 3) && (pkt->_unk6 == 0) && (pkt->_unk7 == 0) && (pkt->_unk8 == 0) && (pkt->_unk9 == 0) && (pkt->_unk10 == 0)){
     //ok
   }else{
     log_i("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",pkt->_unk1,pkt->_unk2,pkt->_unk3,pkt->_unk4,pkt->_unk5,pkt->_unk6,pkt->_unk7,pkt->_unk8,pkt->_unk9,pkt->_unk10);
     return false;
   }
+  */
+
+  if (pkt->_unk1 != 0){
+    #ifdef DEBUG_FLARM_ERRORS
+    log_e("_unk1");
+    #endif
+    return false;
+  }  
+  if (pkt->_unk2 != 0){
+    #ifdef DEBUG_FLARM_ERRORS
+    log_e("_unk2");
+    #endif
+    return false;
+  }  
+  if (pkt->_unk3 != 3){
+    #ifdef DEBUG_FLARM_ERRORS
+    log_e("_unk3");
+    #endif
+    return false;
+  }  
+  if (pkt->_unk4 != 0){
+    #ifdef DEBUG_FLARM_ERRORS
+    log_e("_unk4");
+    #endif
+    return false;
+  }  
+  if (pkt->_unk5 != 3){
+    #ifdef DEBUG_FLARM_ERRORS
+    log_e("_unk5");
+    #endif
+    return false;
+  }  
+  if (pkt->_unk6 != 0){
+    #ifdef DEBUG_FLARM_ERRORS
+    log_e("_unk6");
+    #endif
+    return false;
+  }  
+  if (pkt->_unk7 != 0){
+    #ifdef DEBUG_FLARM_ERRORS
+    log_e("_unk7");
+    #endif
+    return false;
+  }  
+  if (pkt->_unk8 != 0){
+    #ifdef DEBUG_FLARM_ERRORS
+    log_e("_unk8");
+    #endif
+    return false;
+  }  
+  if (pkt->_unk9 != 0){
+    #ifdef DEBUG_FLARM_ERRORS
+    log_e("_unk9");
+    #endif
+    return false;
+  }  
+  if (pkt->_unk10 != 0){
+    #ifdef DEBUG_FLARM_ERRORS
+    log_e("_unk10");
+    #endif
+    return false;
+  }  
 
   fop->addr          = pkt->addr;
   fop->addr_type     = pkt->addr_type;
@@ -666,10 +765,15 @@ bool flarm_v7_decode(void *flarm_pkt, ufo_t *this_aircraft, ufo_t *fop){
   fop->course        = course / 2;
 
     /* TODO */
+  //log_i("lat=%d,lon=%d,ts=%d",pktpkt->tstamp);  
+  //flarm_v7_debugBuffer((uint8_t *)flarm_pkt,this_aircraft);
   return true;
 }
 
 size_t flarm_v7_encode(AircraftState *aircraft, uint8_t *packet, long timestamp){
+		//time_t tUnix;
+		//time(&tUnix);
+    long tUnix = timestamp + 1;
     const uint32_t xxtea_key[4] = FLARM_KEY5;
     uint32_t key_v7[4];
 
@@ -680,12 +784,14 @@ size_t flarm_v7_encode(AircraftState *aircraft, uint8_t *packet, long timestamp)
     //uint8_t acft_type  = this_aircraft->aircraft_type > AIRCRAFT_TYPE_STATIC ?
     //                     AIRCRAFT_TYPE_UNKNOWN : this_aircraft->aircraft_type;
 
-    int32_t lat        = (aircraft->extrapolated_lat_deg_e7);
-    int32_t lon        = (aircraft->extrapolated_lon_deg_e7);
-    int16_t alt = (int16_t) (aircraft->extrapolated_height_m);
-    //uint32_t timestamp = (uint32_t) timestamp;
+    //int32_t lat        = (aircraft->extrapolated_lat_deg_e7);
+    //int32_t lon        = (aircraft->extrapolated_lon_deg_e7);
+    //int16_t alt = (int16_t) (aircraft->extrapolated_height_m);
+    int32_t lat        = (aircraft->gps->lat_deg_e7);
+    int32_t lon        = (aircraft->gps->lon_deg_e7);
+    int16_t alt = (int16_t) (aircraft->gps->height_m);
 
-    float course       = aircraft->extrapolated_heading_deg_e1;
+    float course       = (float)aircraft->gps->heading_deg_e1/10;
     float speedf       = (float)aircraft->gspeed_filtered_cm_s / 100.; //aircraft->gps.; /* m/s */
     float vsf          = (float)aircraft->vel_u_filtered_cm_s / 100.; //this_aircraft->vs / (_GPS_FEET_PER_METER * 60.0); /* m/s */
 
@@ -703,9 +809,8 @@ size_t flarm_v7_encode(AircraftState *aircraft, uint8_t *packet, long timestamp)
     pkt->no_track      = aircraft->config->no_tracking_mode;
 
 
-    pkt->tstamp        = timestamp & 0xF;
+    pkt->tstamp        = tUnix & 0xF;
     pkt->aircraft_type = aircraft->config->type;
-    //log_i("lat=%d,lon=%d,alt=%d,adrType=%d,ts=%d,aircraftType=%d",lat,lon,alt,aircraft->config->addressType,timestamp,aircraft->config->type);
 
     alt += 1000;
     if (alt < 0) { alt = 0; }
@@ -714,13 +819,13 @@ size_t flarm_v7_encode(AircraftState *aircraft, uint8_t *packet, long timestamp)
     pkt->lat = ((lat / 52) + (lat & 0x40 /* TBD */ ? (lat < 0 ? -1 : 1) : 0)) & 0xFFFFF;
 
     int ilat           = abs(lat / 10000000); //(int)fabs(this_aircraft->latitude);
-    log_i("ilat=%d",ilat);
+    //log_i("ilat=%d",ilat);
     if (ilat > 89) { ilat = 89; }
     int32_t lon_div    = (ilat < 14) ? 52 : lon_div_table[ilat-14];
 
     pkt->lon           = (lon / lon_div) & 0xFFFFF;
 
-    pkt->turn          = 0; /* TBD */
+    pkt->turn          = enscale_signed(aircraft->filtered_delta_heading_deg_e1 * 2,6,2); /* TBD */
 
     uint16_t speed10   = (uint16_t) roundf(speedf * 10.0f);
     pkt->hs            = enscale_unsigned(speed10, 8, 2); /* 0 ... 3832 */
@@ -730,6 +835,12 @@ size_t flarm_v7_encode(AircraftState *aircraft, uint8_t *packet, long timestamp)
 
     pkt->course        = (int) (course * 2);
     pkt->airborne      = aircraft->is_airborne ? 2 : 1;
+
+    //log_i("hp=%d,vp=%d",aircraft->hacc_m,aircraft->vacc_m);
+    pkt->hp = enscale_unsigned(aircraft->gps->hacc_cm / 10,3,3); //GNSS horizontal accuracy, meters times 10, enscaled(3,3)
+    pkt->vp = enscale_unsigned(aircraft->gps->vacc_cm * 4 / 1000 ,2,3); //GNSS vertical accuracy, meters times 4, enscaled(2,3)
+    //pkt->hp = 24;
+    //pkt->vp = 12;
 
 /*
  * TODO
@@ -749,7 +860,7 @@ size_t flarm_v7_encode(AircraftState *aircraft, uint8_t *packet, long timestamp)
 
     key_v7[0]          = wpkt[0];
     key_v7[1]          = wpkt[1];
-    key_v7[2]          = timestamp >> 4;
+    key_v7[2]          = tUnix >> 4;
     key_v7[3]          = FLARM_KEY4;
 
     make_v7_key(key_v7);
@@ -760,7 +871,7 @@ size_t flarm_v7_encode(AircraftState *aircraft, uint8_t *packet, long timestamp)
     wpkt[5] ^= key_v7[3];
 
     flarm_btea(&wpkt[2], 4, xxtea_key);
-    printbuffer(packet);
+    //printbuffer(packet);
     return (sizeof(flarm_v7_packet_t));
 
 }
@@ -774,7 +885,7 @@ size_t flarm_decrypt(void *flarm_pkt, long timestamp)
   return (sizeof(flarm_packet_t));
 }
 
-unsigned short flarm_getCkSum(byte* ba, int len)
+unsigned short flarm_getCkSum(uint8_t* ba, int len)
 {
   uint16_t crc16 = 0xffff;  /* seed value */
   crc16 = update_crc_ccitt(crc16, 0x31);
@@ -782,12 +893,12 @@ unsigned short flarm_getCkSum(byte* ba, int len)
   crc16 = update_crc_ccitt(crc16, 0xB6);
     
   for (int i =0;i<len;i++)
-    crc16 = update_crc_ccitt(crc16, (uint8_t)(ba[i]));
+    crc16 = update_crc_ccitt(crc16, (ba[i]));
 
  return crc16;    
 } 
 
-int8_t flarm_decode(void *flarm_pkt, ufo_t *this_aircraft, ufo_t *fop) {
+bool flarm_v6_decode(void *flarm_pkt, ufo_t *this_aircraft, ufo_t *fop) {
 
   flarm_packet_t *pkt = (flarm_packet_t *) flarm_pkt;
 
@@ -806,24 +917,32 @@ int8_t flarm_decode(void *flarm_pkt, ufo_t *this_aircraft, ufo_t *fop) {
   pkt_parity = pkt_parity % 2;
 
   if (pkt->addr == 0){
+    #ifdef DEBUG_FLARM_ERRORS
     log_e("addr = 0");
-    return -8;    
+    #endif
+    return false;    
   }
   if (pkt->aircraft_type == 0){
+    #ifdef DEBUG_FLARM_ERRORS
     log_e("aircraft_type = 0");
-    return -9;    
+    #endif
+    return false;    
   }
   if (pkt->type != 0){
+    #ifdef DEBUG_FLARM_ERRORS
     log_e("unknown message type=%02X",pkt->type);
-    return -10;
+    #endif
+    return false;
   }
   if (pkt->zero1 != 0){
+    #ifdef DEBUG_FLARM_ERRORS
     log_e("unknown message zero1=%02X",pkt->zero1);
-    return -11;
+    #endif
+    return false;
   }
   if (pkt->zero2 != 0){
     //log_e("unknown message zero2=%02X",pkt->zero2);
-    return -13;
+    return false;
   }
 
   bool bParityErr = false;
@@ -832,7 +951,9 @@ int8_t flarm_decode(void *flarm_pkt, ufo_t *this_aircraft, ufo_t *fop) {
   //V6 and below sends parity-bit (could be 0 or 1)
   if ((origParity != 0) && (origParity != pkt_parity)) { 
   //if (origParity != pkt_parity) {
+    #ifdef DEBUG_FLARM_ERRORS
     log_e("bad parity of decoded packet: %02X!=%02X",origParity,pkt_parity);        
+    #endif
     bParityErr = true;
     //return -1;
   }
@@ -901,7 +1022,7 @@ int8_t flarm_decode(void *flarm_pkt, ufo_t *this_aircraft, ufo_t *fop) {
     char Buffer[500];	
     sprintf(Buffer,"adr=%06X;adrType=%d,lat=%.06f,lon=%.06f,alt=%.01f,speed=%.01f,course=%.01f,climb=%.01f\n", fop->addr,fop->addr_type,fop->latitude,fop->longitude,fop->altitude,fop->speed,fop->course,fop->vs);
     log_e("%s",&Buffer[0]);
-    return -1;
+    return false;
  }
 
   if ((pkt->turnrate != TURN_RATE_ON_GROUND) && (pkt->turnrate != TURN_RATE_RIGHT_TURN) && (pkt->turnrate != TURN_RATE_NO_TURN) && (pkt->turnrate != TURN_RATE_LEFT_TURN)){
@@ -909,34 +1030,38 @@ int8_t flarm_decode(void *flarm_pkt, ufo_t *this_aircraft, ufo_t *fop) {
     char Buffer[500];	
     sprintf(Buffer,"adr=%06X;adrType=%d,lat=%.06f,lon=%.06f,alt=%.01f,speed=%.01f,course=%.01f,climb=%.01f\n", fop->addr,fop->addr_type,fop->latitude,fop->longitude,fop->altitude,fop->speed,fop->course,fop->vs);
     log_e("%s",&Buffer[0]);
-    return -12;
+    return false;
   }
 
 
-  return 0;
+  return true;
 }
 
 void flarm_v7_debugBuffer(uint8_t *flarm_pkt,ufo_t *this_aircraft){
-  uint16_t crc16_2 = (uint16_t(flarm_pkt[24]) << 8) + uint16_t(flarm_pkt[25]);
-  uint16_t crc16 =  flarm_getCkSum(flarm_pkt,24);
+  uint8_t newPacket[26];
+  memcpy(&newPacket[0],flarm_pkt,26);
+  uint16_t crc16_2 = (uint16_t(newPacket[24]) << 8) + uint16_t(newPacket[25]);
+  uint16_t crc16 =  flarm_getCkSum(newPacket,24);
   if (crc16 != crc16_2){
     log_e("wrong Checksum %04X!=%04X",crc16,crc16_2);
     return;
   } 
-  flarm_v7_packet_t *pkt = (flarm_v7_packet_t *)flarm_pkt;
+  flarm_v7_packet_t *pkt = (flarm_v7_packet_t *)newPacket;
   if (pkt->type != 2){
     log_e("packet type %d != 2",pkt->type);
     return;
   } 
   ufo_t air={0};
-  bool bOk = flarm_v7_decode(flarm_pkt,this_aircraft,&air);
+  bool bOk = flarm_decode(newPacket,this_aircraft,&air);
   if (!bOk){
     log_e("flarm-package not ok");
     return;
   }
-  log_i("id=%06X,addr_type=%d,lat=%d,lon=%D,alt=%d,ab=%d,turn=%d,hs=%d,vs=%d,hp=%d,vp=%d",pkt->addr,pkt->addr_type,pkt->lat,pkt->lon,pkt->alt,pkt->airborne,pkt->turn,pkt->hs,pkt->vs,pkt->hp,pkt->vp);
+  log_i("%d,id=%06X,addr_type=%d,lat=%d,lon=%D,alt=%d,ab=%d,turn=%d,hs=%d,vs=%d,hp=%d,vp=%d",millis(),pkt->addr,pkt->addr_type,pkt->lat,pkt->lon,pkt->alt,pkt->airborne,pkt->turn,pkt->hs,pkt->vs,pkt->hp,pkt->vp);
   log_i("aircraft=%d,course=%d,nt=%d,st=%d,tstmp=%d",pkt->aircraft_type,pkt->course,pkt->no_track,pkt->stealth,pkt->tstamp);
+  log_i("u1=%d,u2=%d,u3=%d,u4=%d,u5=%d,u6=%d,u7=%d,u8=%d,u9=%d,u10=%d,",pkt->_unk1,pkt->_unk2,pkt->_unk3,pkt->_unk4,pkt->_unk5,pkt->_unk6,pkt->_unk7,pkt->_unk8,pkt->_unk9,pkt->_unk10);
   log_i("flarm package ok");
+
 }
 
 

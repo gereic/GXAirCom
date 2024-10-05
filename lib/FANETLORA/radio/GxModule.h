@@ -9,6 +9,24 @@
 #include <Arduino.h>
 
 
+// opmodes
+#define OPMODE_MASK           0x07
+#define OPMODE_SLEEP          0
+#define OPMODE_STANDBY        1
+#define OPMODE_FSTX           2
+#define OPMODE_TX             3
+#define OPMODE_FSRX           4
+#define OPMODE_RX             5
+#define OPMODE_RX_SINGLE      6
+#define OPMODE_CAD            7
+
+#define SX1276_OPMODE_FSK_SLEEP      (0b00001000+OPMODE_SLEEP)
+#define SX1276_OPMODE_FSK_STANDBY    (0b00001000+OPMODE_STANDBY) // (reset value of RegOpMode)
+#define SX1276_OPMODE_FSK_FSTX       (0b00001000+OPMODE_FSTX)
+#define SX1276_OPMODE_FSK_TX         (0b00001000+OPMODE_TX)
+#define SX1276_OPMODE_FSK_FSRX       (0b00001000+OPMODE_FSRX)
+#define SX1276_OPMODE_FSK_RX         (0b00001000+OPMODE_RX)
+
 #define SX1276_MODE_SLEEP   0b00000000
 #define SX1276_MODE_STANDBY 0b00000001
 #define SX1276_MODE_TX 0b00000011
@@ -209,7 +227,7 @@ class GxModule {
 
       \param inBytes Pointer to array that will hold the read data.
     */
-    void SPIreadRegisterBurst(uint8_t reg, uint8_t numBytes, uint8_t* inBytes);
+    void SPIreadRegisterBurst(uint8_t reg, uint8_t numBytes, uint8_t* inBytes,bool inverted = false);
 
     /*!
       \brief SPI basic read method. Use of this method is reserved for special cases, SPIgetRegValue should be used instead.
@@ -229,7 +247,7 @@ class GxModule {
 
       \param numBytes Number of bytes that will be written.
     */
-    void SPIwriteRegisterBurst(uint8_t reg, uint8_t* data, uint8_t numBytes);
+    void SPIwriteRegisterBurst(uint8_t reg, uint8_t* data, uint8_t numBytes,bool inverted = false);
 
     /*!
       \brief SPI basic write method. Use of this method is reserved for special cases, SPIsetRegValue should be used instead.
@@ -253,7 +271,7 @@ class GxModule {
 
       \param numBytes Number of bytes to transfer.
     */
-    void SPItransfer(uint8_t cmd, uint8_t reg, uint8_t* dataOut, uint8_t* dataIn, uint8_t numBytes);
+    void SPItransfer(uint8_t cmd, uint8_t reg, uint8_t* dataOut, uint8_t* dataIn, uint8_t numBytes,bool inverted = false);
 
     // pin number access methods
 

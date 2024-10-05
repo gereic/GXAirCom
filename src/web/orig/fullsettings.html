@@ -217,8 +217,8 @@ function getRfMode(){
   var Ret = 0;
   if (document.getElementById("FntRx").checked) Ret += 1;
   if (document.getElementById("FntTx").checked) Ret += 2;
-  //if (document.getElementById("LegRx").checked) Ret += 4;
-  //if (document.getElementById("LegTx").checked) Ret += 8;
+  if (document.getElementById("FlarmRx").checked) Ret += 4;
+  if (document.getElementById("FlarmTx").checked) Ret += 8;
   return Ret;
 }
 
@@ -236,20 +236,18 @@ function setRfMode(mode){
   }else{
     e.checked = false;
   }
-  /*
-  e = document.getElementById("LegRx");
+  e = document.getElementById("FlarmRx");
   if (mode & 4){
     e.checked = true;
   }else{
     e.checked = false;
   }
-  e = document.getElementById("LegTx");
+  e = document.getElementById("FlarmTx");
   if (mode & 8){
     e.checked = true;
   }else{
     e.checked = false;
   }
-  */
 }
 
 function getMQTTMode(){
@@ -999,7 +997,7 @@ function onMessage(evt) {
   <option value="80">80MHz</option>
   <option value="40">40MHz</option>
   <option value="20">20MHz</option>
-  <!--<option value="10">10MHz</option>-->
+  <option value="10">10MHz</option>
 </select></td>
 </tr>
 <tr>
@@ -1083,16 +1081,14 @@ function onMessage(evt) {
             <th>FANET TX (sending Fanet-MSG)</th>
             <td><input type="checkbox" id="FntTx"></td>
           </tr>
-          <!--
           <tr>
             <th>Flarm RX (receiving Flarm-MSG)</th>
-            <td><input type="checkbox" id="LegRx"></td>
+            <td><input type="checkbox" id="FlarmRx"></td>
           </tr>
           <tr>
             <th>Flarm TX (sending Flarm-MSG)</th>
-            <td><input type="checkbox" id="LegTx"></td>
+            <td><input type="checkbox" id="FlarmTx"></td>
           </tr>
-          -->
           <tr id="VisFanetTracking">
             <th>fanet-tracking-mode</th>
             <td><select id="fntMode">

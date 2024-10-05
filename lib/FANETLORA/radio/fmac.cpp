@@ -262,8 +262,9 @@ void FanetMac::sendUdpData(const uint8_t *buffer,int len){
 void FanetMac::frameReceived(int length)
 {
 	/* quickly read registers */
-	num_received = length;
-	int state = radio.readData(rx_frame, length);
+	int num_received = length;
+	uint8_t rx_frame[MAC_FRAME_LENGTH];	
+	int state = radio.readData(&rx_frame[0], num_received);
 	if (state != ERR_NONE) {
 		if (state == ERR_CRC_MISMATCH) {
 			//log_e("CRC error!");
@@ -318,10 +319,10 @@ void FanetMac::frameReceived(int length)
 			Serial.print(Buffer);
 		}
 		#endif
-    if (length != 26){ //FSK-Frame is fixed 26Bytes long
-			#if RX_DEBUG > 0
-			log_e("rx size 26!=%d",length);
-			#endif
+    if (num_received != 26){ //FSK-Frame is fixed 26Bytes long
+			//#if RX_DEBUG > 0
+			log_e("rx size 26!=%d",num_received);
+			//#endif
 			return;
 		}		
 		#if RX_DEBUG > 0
@@ -378,19 +379,8 @@ void FanetMac::frameReceived(int length)
 		}
 
 		//bool v7packet = false;
-		flarm_v7_packet_t *pkt = (flarm_v7_packet_t *)&rx_frame[0];
-		if (pkt->type == 2){
-			//new protocoll
-			//v7packet = true;
-			//log_i("new protocol received");
-		//}else if (pkt->addr_type == 0){
-		//	log_i("old protocol received");
-		}else{
-			//#if RX_DEBUG > 0
-      //log_e("flarm: wrong packet type %d",pkt->type);
-			//#endif
-      return;
-		}
+		//flarm_v7_packet_t *pkt = (flarm_v7_packet_t *)&rx_frame[0];
+		//log_i("prot type=%d",pkt->type);
     ufo_t air={0};
     ufo_t myAircraft={0};
     myAircraft.latitude = lat;
@@ -400,14 +390,23 @@ void FanetMac::frameReceived(int length)
 		uint8_t newPacket[26];
 		uint32_t tOffset = 0;	
 		bool bOk = false;
-		int8_t ret = 0;
+		//int8_t ret = 0;
 		int i = 0;
-		//flarm_v7_debugBuffer(&rx_frame[0],&myAircraft);
+		//flarm_v7_debugBuffer(&rx_frame[0],&myAircraft);		
 		for(i = 0;i < 5; i++){
 			memcpy(&newPacket[0],&rx_frame[0],26);
 			myAircraft.timestamp = tUnix + tOffset;
-			bOk = flarm_v7_decode(&newPacket[0],&myAircraft,&air);
-			if (bOk) break;
+			//flarm_v7_debugBuffer(&newPacket[0],&myAircraft);
+			bOk = flarm_decode(&newPacket[0],&myAircraft,&air);
+			if (bOk){				
+				float dist = distance(myAircraft.latitude,myAircraft.longitude,air.latitude,air.longitude, 'K');
+				if (dist > 32.0){
+					log_e("distance %.1f > 32km --> error ",dist);
+					bOk = false;
+				}else{
+					break;
+				}				
+			}
 			if (i == 0){
 				tOffset = 1;
 			}else if (i == 1){
@@ -418,20 +417,17 @@ void FanetMac::frameReceived(int length)
 				tOffset = -2;
 			}				
 		}
-		//if (i > 0){
-		//	pkt = (flarm_v7_packet_t *)&newPacket[0];
-		//	log_i("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",bOk,i,pkt->_unk1,pkt->_unk2,pkt->_unk3,pkt->_unk4,pkt->_unk5,pkt->_unk6,pkt->_unk7,pkt->_unk8,pkt->_unk9,pkt->_unk10);
-		//}
+		
+		#if RX_DEBUG > 0
+		if ((bOk == true) && (i > 0)){
+			flarm_v7_packet_t *pkt = (flarm_v7_packet_t *)&newPacket[0];
+			log_i("id=%06X,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",pkt->addr,bOk,i,pkt->_unk1,pkt->_unk2,pkt->_unk3,pkt->_unk4,pkt->_unk5,pkt->_unk6,pkt->_unk7,pkt->_unk8,pkt->_unk9,pkt->_unk10);
+		}
+		#endif
 		/*
-		if (bOk){
-
+		if (bOk == true){
+			flarm_v7_debugBuffer(&rx_frame[0],&myAircraft);
 		}
-		float dist = distance(myAircraft.latitude,myAircraft.longitude,air.latitude,air.longitude, 'K');  
-		uint8_t ok = 1;
-		if (dist > 10){
-			ok = 0;
-		}
-		log_i("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",bOk,ok,i,pkt->_unk1,pkt->_unk2,pkt->_unk3,pkt->_unk4,pkt->_unk5,pkt->_unk6,pkt->_unk7,pkt->_unk8,pkt->_unk9,pkt->_unk10);
 		*/
 		if (bOk){
 			//log_i("legacy ok");
@@ -455,9 +451,9 @@ void FanetMac::frameReceived(int length)
 			rxLegCount++;
 		}else{
 			//log_e("error decoding legacy");
-			#if RX_DEBUG > 0
-			log_e("error decoding legacy %d",ret);
-			#endif
+			//#if RX_DEBUG > 0
+			//log_e("error decoding legacy %d",ret);
+			//#endif
 			return;
 		}
   }else{
@@ -823,14 +819,14 @@ void FanetMac::handleIRQ(){
 		
 		int16_t packetSize = radio.getPacketLength();
 		#if RX_DEBUG > 1
-		//log_i("new package arrived %d",packetSize);
+		  //log_i("new package arrived %d",packetSize);
 		#endif
 		if (packetSize > 0){
 			//log_i("packet receive %d",packetSize);			
 			fmac.frameReceived(packetSize);
 			
 		}
-		radio.startReceive();
+  	radio.startReceive();
 	}
 	return;
 }
@@ -1061,7 +1057,7 @@ void FanetMac::handleTxLegacy()
 				if (((millis() - _ppsMillis) >= LEGACY_8684_BEGIN-LEGACY_RANGE) && (ppsCount != _ppsCount)){
 					tMillis = _ppsMillis;		
 					ppsCount = _ppsCount;		
-					if (myApp->createLegacy(LegacyBuffer)){
+					if (myApp->createLegacy(&FlarmBuffer[0])){
 						//send flarm 868.4 Mhz
 						legacy_next_tx = tMillis + uint32_t(random(LEGACY_8684_BEGIN,LEGACY_8684_END - LEGACY_SEND_TIME));
 						bSend8682 = false;
@@ -1072,7 +1068,7 @@ void FanetMac::handleTxLegacy()
 				if (((millis() - _ppsMillis) >= LEGACY_8682_BEGIN-LEGACY_RANGE) && (ppsCount != _ppsCount)){
 					tMillis = _ppsMillis;	
 					ppsCount = _ppsCount;			
-					if (myApp->createLegacy(LegacyBuffer)){
+					if (myApp->createLegacy(&FlarmBuffer[0])){
 						//send flarm 868.2 Mhz
 						legacy_next_tx = tMillis + uint32_t(random(LEGACY_8682_BEGIN,LEGACY_8682_END - LEGACY_SEND_TIME));
 						bSend8682 = true;
@@ -1083,7 +1079,7 @@ void FanetMac::handleTxLegacy()
 			if (((millis() - _ppsMillis) >= 200) && (ppsCount != _ppsCount)){
 				tMillis = _ppsMillis;		
 				ppsCount = _ppsCount;		
-				if (myApp->createLegacy(LegacyBuffer)){
+				if (myApp->createLegacy(&FlarmBuffer[0])){
 					legacy_next_tx = tMillis + uint32_t(random(200,800));
 					bSend8682 = false;
 				}
@@ -1092,7 +1088,7 @@ void FanetMac::handleTxLegacy()
 		/*
 		if (((millis() - _ppsMillis) <= LEGACY_8684_BEGIN-100) && (_RfMode.bits.FntTx)){
 			tMillis = _ppsMillis;				
-			if (myApp->createLegacy(LegacyBuffer)){
+			if (myApp->createLegacy(&FlarmBuffer[0])){
 				//send Legacy 868.4 Mhz
 				legacy_next_tx = tMillis + uint32_t(random(LEGACY_8684_BEGIN,LEGACY_8684_END));
 				bSend8682 = false;
@@ -1101,7 +1097,7 @@ void FanetMac::handleTxLegacy()
 		else if ((millis() - _ppsMillis) <= LEGACY_8682_BEGIN-100){
 			tMillis = _ppsMillis;		
 			if (!_RfMode.bits.FntTx){ 		
-				if (myApp->createLegacy(LegacyBuffer)){
+				if (myApp->createLegacy(&FlarmBuffer[0])){
 					//send Legacy 868.2 Mhz
 					legacy_next_tx = tMillis + uint32_t(random(LEGACY_8682_BEGIN,LEGACY_8682_END));
 					bSend8682 = true;
@@ -1115,8 +1111,8 @@ void FanetMac::handleTxLegacy()
 	}else if (millis() >= legacy_next_tx){		
 		#if TX_DEBUG > 0
 			uint32_t tStart = micros();
-		#endif
-		
+		#endif		
+
 		uint8_t oldMode = _actMode;
 		if (bSend8682){
 			//log_i("sending legacy 868.2 %d",millis() - tMillis);
@@ -1134,7 +1130,7 @@ void FanetMac::handleTxLegacy()
 			}
 		}
 		//radio.isReceiving(); //check radio is receiving
-		int16_t state = radio.transmit(LegacyBuffer, sizeof(LegacyBuffer));
+		int16_t state = radio.transmit(FlarmBuffer, sizeof(FlarmBuffer));
 		if (state != ERR_NONE){
 			log_e("error TX state=%d",state);
 		}else{
@@ -1289,7 +1285,7 @@ void FanetMac::handleTx()
 	}else{
 		//log_i("TX OK");
 		txFntCount++;
-	}	
+	}
 	state = radio.startReceive();
 	if (state != ERR_NONE) {
 			log_e("startReceive failed, code %d",state);
