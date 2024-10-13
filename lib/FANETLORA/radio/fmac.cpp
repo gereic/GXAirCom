@@ -373,7 +373,7 @@ void FanetMac::frameReceived(int length)
 		uint16_t crc16 =  flarm_getCkSum(rx_frame,24);
 		if (crc16 != crc16_2){
 			#if RX_DEBUG > 0
-			log_e("%d Legacy: wrong Checksum %04X!=%04X",millis(),crc16,crc16_2);
+			log_e("%d Flarm: wrong Checksum %04X!=%04X",millis(),crc16,crc16_2);
 			#endif
 			return;
 		}
@@ -424,12 +424,18 @@ void FanetMac::frameReceived(int length)
 			log_i("id=%06X,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",pkt->addr,bOk,i,pkt->_unk1,pkt->_unk2,pkt->_unk3,pkt->_unk4,pkt->_unk5,pkt->_unk6,pkt->_unk7,pkt->_unk8,pkt->_unk9,pkt->_unk10);
 		}
 		#endif
-		/*
+		#ifdef DEBUG_FLARM_RX
 		if (bOk == true){
 			flarm_v7_debugBuffer(&rx_frame[0],&myAircraft);
 		}
-		*/
+		#endif
 		if (bOk){
+			/*
+			if (air.addr == 0x111ECD){
+				float dist = distance(myAircraft.latitude,myAircraft.longitude,air.latitude,air.longitude, 'K');
+				log_i("111ECD,dist=%d,couse=%.1f,vs=%.1f,hs=%.1f",int32_t(dist * 1000),air.course,air.vs,air.speed);
+			}
+			*/
 			//log_i("legacy ok");
 			frm = new Frame();
 			frm->src.manufacturer = uint8_t(air.addr >> 16);

@@ -885,14 +885,14 @@ bool FanetLora::createLegacy(uint8_t *buffer){
 	buffer[24]=(crc16 >>8);
   buffer[25]=crc16;  
 
-  /*
+  #ifdef DEBUG_FLARM_TX_BUFFER
   ufo_t myAircraft={0};
   myAircraft.latitude = _myData.lat;
   myAircraft.longitude = _myData.lon;
   myAircraft.geoid_separation = _geoIdAltitude;   
   myAircraft.timestamp = _myData.timestamp;
   flarm_v7_debugBuffer(&buffer[0],&myAircraft);
-  */
+  #endif
   return true;
 }
 
@@ -1376,6 +1376,13 @@ void FanetLora::setMyTrackingData(trackingData *tData,float geoidAlt,uint32_t pp
     flarmGpsData.vel_n_cm_s = int32_t(flarmGpsData.gspeed_cm_s * cosf(radians(tData->heading)));
     flarmGpsData.vel_e_cm_s = int32_t(flarmGpsData.gspeed_cm_s * sinf(radians(tData->heading)));    
     flarmGpsData.heading_deg_e1 = int32_t(tData->heading * 10);
+    flarmGpsData.hacc_cm = uint32_t(tData->hdop);
+    flarmGpsData.vacc_cm = uint32_t(float(tData->hdop) * 1.7);
+    /* 
+      Just as a general observation, the vertical accuracy of GNSS/GPS receivers is typically 
+      1.7 times the horizontal accuracy. For example, a receiver with 1 m 2DRMS 
+      horizontal accuracy would likely provide closer to 2 m vertical accuracy    
+    */
     //log_i("speed=%d,speed2=%.1f",flarmGpsData.gspeed_cm_s,tData->speed);
     //log_i("lat=%d,lon=%d,h=%d,vario=%d,speed=%d,heading=%d",flarmGpsData.lat_deg_e7,flarmGpsData.lon_deg_e7,flarmGpsData.height_m,flarmGpsData.vel_u_cm_s,flarmGpsData.gspeed_cm_s,flarmGpsData.heading_deg_e1);
     flarm_update_aircraft_state(&flarmAircraftState); //update Flarm aircraftstate

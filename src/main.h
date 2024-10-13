@@ -501,6 +501,7 @@ struct statusGPS{
   float speed;
   float course;
   float geoidAlt;
+  uint8_t hdop; //hdop in 1/10m
   char Date[10];
   char Time[10];  
   uint32_t tCycle;  

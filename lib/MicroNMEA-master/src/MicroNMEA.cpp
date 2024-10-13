@@ -205,8 +205,9 @@ void MicroNMEA::clear(void)
 {
 	_navSystem = '\0';
 	_numSat = 0;
-	_hdop = 255;
+	_hdop = 0xFFFF;
 	_isValid = false;
+	_isNewMsgValid = false;
 	_latitude = 999000000L;
 	_longitude = 999000000L;
 	_altitude = _geoidAlt = _speed = _course = LONG_MIN;
@@ -276,6 +277,14 @@ const char* MicroNMEA::parseTime(const char* s)
 	_minute = parseUnsignedInt(s + 2, 2);
 	_second = parseUnsignedInt(s + 4, 2);
 	_hundredths = parseUnsignedInt(s + 7, 2);
+	uint32_t newTime;
+	newTime = (uint32_t(_hour) * 60 *60) + (uint32_t(_minute) * 60) + uint32_t(_second);
+	//Serial.println(newTime);
+	if (actTimestamp == newTime){
+		//Serial.println("new data ok");
+		_isNewMsgValid = true; //we have GPRMC and GPGGA
+	} 
+	actTimestamp = newTime;	
 	return skipField(s + 9);
 }
 
@@ -318,7 +327,7 @@ bool MicroNMEA::processGGA(const char *s)
 	_isValid = (*s == '1' || *s == '2');
 	s += 2; // Skip position fix flag and comma
 	_numSat = parseFloat(s, 0, &s);
-	_hdop = parseFloat(s, 1, &s);
+	_hdop = parseFloat(s, 2, &s);
 	_altitude = parseFloat(s, 3, &s);
 	s += 2; // unit an comma
 	_geoidAlt = parseFloat(s, 3, &s);

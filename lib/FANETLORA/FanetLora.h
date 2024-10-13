@@ -19,6 +19,7 @@
 #include "FlarmRadio.h"
 
 
+//#define DEBUG_FLARM_TX_BUFFER
 
 #define FANET_DEBUG
 
@@ -159,6 +160,7 @@ public:
     float lat; //latitude
     float lon; //longitude
     float altitude; //altitude [m]
+    uint16_t hdop; //Horizontal Dilution of Precision [1/100m]
     aircraft_t aircraftType; //
     uint8_t addressType;
     float speed; //km/h

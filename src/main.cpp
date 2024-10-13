@@ -83,6 +83,7 @@ XPowersLibInterface *PMU = NULL;
 #include <oled.h>
 #endif
 
+//#define LOGGER
 #ifdef LOGGER
 #include <Logger.h>
 #include "driver/rtc_io.h"
@@ -1935,7 +1936,7 @@ void setup() {
 
     break;
   case eBoard::T_BEAM_V07:
-    log_i("Board=T_BEAM_V07/TTGO_T3_V1_6");
+    log_i("Board=T_BEAM_V07");
     //PinGPSRX = 34;
     //PinGPSTX = 39;
     PinGPSRX = 12; //T-Beam V07
@@ -1977,9 +1978,12 @@ void setup() {
       PinWindSpeed = 39;
     }    
     break;
-  /*
-  case BOARD_TTGO_T3_V1_6:
-    log_i("Board=TTGO_T3_V1_6");
+  case eBoard::TTGO_T3_V1_6:
+    log_i("Board=TTGO T3 V1.6");
+    PinGPSRX = 36;
+    PinGPSTX = 15;
+    PinPPS = 39;
+
     PinLoraRst = 23;
     PinLoraDI0 = 26;
     PinLora_SS = 18;
@@ -1987,23 +1991,18 @@ void setup() {
     PinLora_MOSI = 27;
     PinLora_SCK = 5;
 
-    PinOledRst = -1;
+    PinBeaconLed = 25;
+
     PinOledSDA = 21;
     PinOledSCL = 22;
 
-    PinBaroSDA = 13;
-    PinBaroSCL = 14;
-
-
-    PinBuzzer = 0;
-
-    pI2cOne->begin(PinOledSDA, PinOledSCL);
     // voltage-divier 100kOhm and 100kOhm
     // vIn = (R1+R2)/R2 * VOut
     PinADCVoltage = 35;
-    adcVoltageMultiplier = 2.5f; // not sure if it is ok ?? don't have this kind of board
+    adcVoltageMultiplier = 2.12f;    
+
+    pI2cOne->begin(PinOledSDA, PinOledSCL);
     break;
-  */
   case eBoard::HELTEC_LORA:
     log_i("Board=HELTEC_LORA");
     //PinGPSRX = 34;
@@ -4111,9 +4110,10 @@ bool sendCmd2NMEA(const char* s,const char* sRet){
 }
 
 bool setupQuetelGps(void){
-  log_e("************ config GPS *************");
-  if (sendCmd2NMEA("$PQTXT,W,0,0","$PQTXT,W,OK*0A")){ //set GPTXT to off
+  log_i("************ config GPS *************");
+  if (sendCmd2NMEA("$PQTXT,W,0,1","$PQTXT,W,OK*0A")){ //set GPTXT to off
     //we got response --> Quetel-chip
+    sendCmd2NMEA("$PMTK353,1,0,1,0,0","$PMTK001,353,3,1,0,1,0,0,13*07"); //enable GPS & Galileo
     sendCmd2NMEA("$PMTK314,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0","$PMTK001,314,3*36"); //set nmea-output to GPRMC and GPGGA
     return true;
     //sendCmd2NMEA("$PMTK251,9600",""); //set Baudrate to 9600
@@ -4364,6 +4364,8 @@ void taskStandard(void *pvParameters){
     //clear serial buffer
     while (NMeaSerial.available())
       NMeaSerial.read();
+    //delay(100);
+    //sendCmd2NMEA("$PMTK353,1,0,1,0,0","$PMTK001,353,3,1,0,1,0,0,13*07"); //enable GPS & Galileo
   }
   
   if (PinPPS > 0){  
@@ -4813,8 +4815,11 @@ void taskStandard(void *pvParameters){
       }
       if (ppsTriggered){
         ppsTriggered = false;
-        tLastPPS = tAct;
+        nmea.clearNewMsgValid();
+        tLastPPS = tAct;      
         //log_i("PPS-Triggered t=%d",status.gps.tCycle);
+      }
+      if (nmea.isNewMsgValid()){
         //log_i("lat=%d;lon=%d",nmea.getLatitude(),nmea.getLongitude());
         //long alt2 = 0;
         //nmea.getAltitude(alt2);
@@ -4837,7 +4842,8 @@ void taskStandard(void *pvParameters){
           }else{
             status.gps.speed = nmea.getSpeed()*1.852/1000.; //speed in cm/s --> we need km/h
             status.gps.course = nmea.getCourse()/1000.;
-
+          status.gps.hdop = nmea.getHDOP();
+          //log_i("hdop=%d",status.gps.hdop);
           // create a global variable for logger igc file name based on GPS datetime
             //set today date
             // if got a correct date i.e. with year
@@ -4875,6 +4881,7 @@ void taskStandard(void *pvParameters){
           MyFanetData.lat = status.gps.Lat;
           MyFanetData.lon = status.gps.Lon;
           MyFanetData.altitude = status.gps.alt;
+          MyFanetData.hdop = status.gps.hdop;
           //log_i("lat=%.6f;lon=%.6f;alt=%.1f;geoAlt=%.1f",status.gps.Lat,status.gps.Lon,status.gps.alt,geoidalt/1000.);
           if (fanet.onGround){
             MyFanetData.speed = 0.0;
@@ -4912,6 +4919,7 @@ void taskStandard(void *pvParameters){
           status.gps.course = 0.0;
           status.gps.NumSat = 0;
           status.gps.geoidAlt = 0;
+          status.gps.hdop = 0;
           if (!status.vario.bHasVario) status.vario.ClimbRate = 0.0;
           oldAlt = 0.0;
         }
@@ -4927,6 +4935,7 @@ void taskStandard(void *pvParameters){
         status.gps.geoidAlt = 0.0;
         status.gps.course = 0.0;
         status.gps.NumSat = 0;
+        status.gps.hdop = 0;
       }
     }else{
       if ((PinPPS < 0) && (!status.gps.bExtGps)){
@@ -5433,7 +5442,7 @@ void taskBackGround(void *pvParameters){
           tBeforeNtp += ((tEnd - tStart) / 1000);
           uint32_t tDist = tAfterNtp - tBeforeNtp;          
           if (tDist > 1){
-            log_e("%ds delay timediff to big --> try again in 5 seconds");
+            log_e("%ds delay timediff to big --> try again in 5 seconds",tDist);
             tGetTime = tAct - GETNTPINTERVALL + 5000; //try again in 5 second
           }else{
             log_i("get ntp-time OK");

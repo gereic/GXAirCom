@@ -26,6 +26,7 @@ extern volatile uint32_t gtReceived;
 //#define RX_DEBUG 1
 #define TX_DEBUG 0
 //#define FREQUENCYTEST
+//#define DEBUG_FLARM_RX
 
 
 

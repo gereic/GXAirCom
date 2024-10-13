@@ -654,14 +654,13 @@ bool flarm_decode(void *flarm_pkt, ufo_t *this_aircraft, ufo_t *fop){
   wpkt[4] ^= key_v7[2];
   wpkt[5] ^= key_v7[3];
 
-  /*
-  if ((pkt->_unk1 == 0) && (pkt->_unk2 == 0) && (pkt->_unk3 == 3) && (pkt->_unk4 == 0) && (pkt->_unk5 == 3) && (pkt->_unk6 == 0) && (pkt->_unk7 == 0) && (pkt->_unk8 == 0) && (pkt->_unk9 == 0) && (pkt->_unk10 == 0)){
+  if ((pkt->_unk1 == 0) && (pkt->_unk2 == 0) && (pkt->_unk3 == 3) && (pkt->_unk4 == 0) && (pkt->_unk5 == 3) && (pkt->_unk6 == 0) && (pkt->_unk7 == 0) && (pkt->_unk8 == 0) && ((pkt->_unk9 == 0) || (pkt->_unk9 == 2)) && (pkt->_unk10 == 0)){
     //ok
   }else{
     log_i("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",pkt->_unk1,pkt->_unk2,pkt->_unk3,pkt->_unk4,pkt->_unk5,pkt->_unk6,pkt->_unk7,pkt->_unk8,pkt->_unk9,pkt->_unk10);
-    return false;
+    //return false;
   }
-  */
+  //log_i("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",pkt->_unk1,pkt->_unk2,pkt->_unk3,pkt->_unk4,pkt->_unk5,pkt->_unk6,pkt->_unk7,pkt->_unk8,pkt->_unk9,pkt->_unk10);
 
   if (pkt->_unk1 != 0){
     #ifdef DEBUG_FLARM_ERRORS
@@ -711,7 +710,7 @@ bool flarm_decode(void *flarm_pkt, ufo_t *this_aircraft, ufo_t *fop){
     #endif
     return false;
   }  
-  if (pkt->_unk9 != 0){
+  if ((pkt->_unk9 != 0) && (pkt->_unk9 != 2)){
     #ifdef DEBUG_FLARM_ERRORS
     log_e("_unk9");
     #endif
@@ -731,6 +730,14 @@ bool flarm_decode(void *flarm_pkt, ufo_t *this_aircraft, ufo_t *fop){
   fop->stealth       = pkt->stealth;
   fop->no_track      = pkt->no_track;
   fop->aircraft_type = pkt->aircraft_type;
+  if (pkt->airborne == 1){
+    fop->airborne = false;
+    fop->onGround = true;
+  }else{
+    fop->airborne = true;
+    fop->onGround = false;
+  }
+  
 
   float ref_lat      = this_aircraft->latitude;
   float ref_lon      = this_aircraft->longitude;
@@ -756,14 +763,16 @@ bool flarm_decode(void *flarm_pkt, ufo_t *this_aircraft, ufo_t *fop){
   fop->longitude     = (float)lon / 1e7;
 
   uint16_t speed10   = (uint16_t) descale(pkt->hs, 8, 2);
-  fop->speed         = speed10 / (10 * _GPS_KMH_2_MPS);
+
+  fop->speed         = speed10 * MS_KMH / 10;
 
   int16_t vs10       = (int16_t) descale(pkt->vs, 6, 2);
-  fop->vs            = ((float) vs10) / 10.0; //* (_GPS_FEET_PER_METER * 6.0);
+  fop->vs            = ((float) vs10) / 10.0;
 
   float course       = pkt->course;
   fop->course        = course / 2;
 
+  //log_i("sp10=%d:%.1f,vs10=%d",speed10,fop->speed,vs10);
     /* TODO */
   //log_i("lat=%d,lon=%d,ts=%d",pktpkt->tstamp);  
   //flarm_v7_debugBuffer((uint8_t *)flarm_pkt,this_aircraft);
@@ -773,7 +782,7 @@ bool flarm_decode(void *flarm_pkt, ufo_t *this_aircraft, ufo_t *fop){
 size_t flarm_v7_encode(AircraftState *aircraft, uint8_t *packet, long timestamp){
 		//time_t tUnix;
 		//time(&tUnix);
-    long tUnix = timestamp + 1;
+    long tUnix = timestamp;
     const uint32_t xxtea_key[4] = FLARM_KEY5;
     uint32_t key_v7[4];
 
@@ -836,11 +845,10 @@ size_t flarm_v7_encode(AircraftState *aircraft, uint8_t *packet, long timestamp)
     pkt->course        = (int) (course * 2);
     pkt->airborne      = aircraft->is_airborne ? 2 : 1;
 
-    //log_i("hp=%d,vp=%d",aircraft->hacc_m,aircraft->vacc_m);
-    pkt->hp = enscale_unsigned(aircraft->gps->hacc_cm / 10,3,3); //GNSS horizontal accuracy, meters times 10, enscaled(3,3)
-    pkt->vp = enscale_unsigned(aircraft->gps->vacc_cm * 4 / 1000 ,2,3); //GNSS vertical accuracy, meters times 4, enscaled(2,3)
-    //pkt->hp = 24;
-    //pkt->vp = 12;
+    //pkt->hp = enscale_unsigned(aircraft->gps->hacc_cm / 10,3,3); //GNSS horizontal accuracy, meters times 10, enscaled(3,3)
+    //pkt->vp = enscale_unsigned(aircraft->gps->vacc_cm * 4 / 100 ,2,3); //GNSS vertical accuracy, meters times 4, enscaled(2,3)
+    pkt->hp = 30; //FANET+
+    pkt->vp = 17; //FANET+
 
 /*
  * TODO

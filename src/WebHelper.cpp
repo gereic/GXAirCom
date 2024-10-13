@@ -1347,7 +1347,7 @@ void sendPage(uint8_t pageNr,uint8_t clientNr){
             doc["TYPE"] = fanet.getAircraftType(fanet.neighbours[i].aircraftType);
             doc["STATE"] = fanet.getType(fanet.neighbours[i].type);
             if ((status.gps.Lat != 0) && (status.gps.Lon != 0 )){
-              doc["DIST"] =  String(distance(status.gps.Lat,status.gps.Lon,fanet.neighbours[i].lat,fanet.neighbours[i].lon, 'K'),1);
+              doc["DIST"] =  String(distance(status.gps.Lat,status.gps.Lon,fanet.neighbours[i].lat,fanet.neighbours[i].lon, 'K'),3);
             }else{
               doc["DIST"] = "";
             }

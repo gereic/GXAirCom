@@ -56,14 +56,26 @@ public:
 		return _numSat;
 	}
 
-	// Horizontal dilution of precision, in tenths
-	uint8_t getHDOP(void) const {
+	// Horizontal dilution of precision, in hundredts of meter
+	uint16_t getHDOP(void) const {
 		return _hdop;
 	}
 
 	// Validity of latest fix
 	bool isValid(void) const {
 		return _isValid;
+	}
+
+	void clearNewMsgValid(void){
+		actTimestamp = 0;
+		_isNewMsgValid = false;
+	}
+
+	bool isNewMsgValid(void) {
+		bool ret = false;
+		ret = _isNewMsgValid;
+		_isNewMsgValid = false;
+		return ret;
 	}
 
 	// Latitude in millionths of a degree. North is positive.
@@ -180,6 +192,7 @@ private:
 	// Variables parsed and kept for user
 	char _navSystem;
 	bool _isValid;
+	bool _isNewMsgValid;
 	String _fixTime; //fixtime
 	long _latitude, _longitude; // In millionths of a degree
 	long _altitude; // In millimetres
@@ -189,7 +202,8 @@ private:
 	uint16_t _year;
 	uint8_t _month, _day, _hour, _minute, _second, _hundredths;
 	uint8_t _numSat;
-	uint8_t _hdop;
+	uint16_t _hdop;
+	uint32_t actTimestamp;
 
 	void (*_badChecksumHandler)(const MicroNMEA &nmea);
 	void (*_unknownSentenceHandler)(const MicroNMEA &nmea);

@@ -93,7 +93,7 @@ Bits 156-165: course direction, degrees (0-360) times 2
 Bits 166-167: 2-bit integer, 1 when stationary, 2 when moving, 3 when circling
 Bits 168-173: GNSS horizontal accuracy, meters times 10, enscaled(3,3)
 Bits 174-178: GNSS vertical accuracy, meters times 4, enscaled(2,3)
-Bits 179-183: unknown data
+Bits 179-183: unknown data (Flarm 0, FANET+ 2)
 Bits 184-191: always 0?
 
 Unlike in the old protocol, the data (latitude, longitude, course direction) are for the current moment, not some time in the future.  But, like in the old protocol, the speed and turnrate are referenced to the ground, and thus oscillate up and down while the aircraft is circling in wind.

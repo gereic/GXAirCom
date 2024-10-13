@@ -26,6 +26,7 @@
 */
 
 #define _GPS_KMH_2_MPS 0.277778
+#define MS_KMH 3.6
 
 
 #define FLARM_KEY1 { 0xe43276df, 0xdca83759, 0x9802b8ac, 0x4675a56b, \
