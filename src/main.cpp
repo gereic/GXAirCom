@@ -85,8 +85,11 @@ XPowersLibInterface *PMU = NULL;
 
 //#define LOGGER
 #ifdef LOGGER
-#include <Logger.h>
-#include "driver/rtc_io.h"
+#include "FS.h"
+#include "SD.h"
+#include "SPI.h"
+//#include <Logger.h>
+//#include "driver/rtc_io.h"
 #endif
 
 
@@ -408,6 +411,8 @@ void getRTCTime();
 #ifdef AIRMODULE
 bool setupUbloxConfig(void);
 bool setupQuetelGps(void);
+bool checkGPSBaudrates(void);
+bool checkGPSBaud(uint32_t baud);
 #endif
 
 constexpr uint32_t commonBaudRates[] = {9600, 19200, 38400, 57600, 115200};
@@ -1981,7 +1986,7 @@ void setup() {
   case eBoard::TTGO_T3_V1_6:
     log_i("Board=TTGO T3 V1.6");
     PinGPSRX = 36;
-    PinGPSTX = 15;
+    PinGPSTX = 19;
     PinPPS = 39;
 
     PinLoraRst = 23;
@@ -4076,12 +4081,45 @@ void sendLK8EX(uint32_t tAct){
 }
 
 #ifdef AIRMODULE
+
+bool checkGPSBaudrates(void){
+  if (checkGPSBaud(setting.gps.Baud)){
+    log_i("gps connection ok with baud %d",setting.gps.Baud);
+    return true; //found with gps-baudrate which is set in settings
+  } 
+  for (int i = 0; i < commonBaudRatesSize;i++) {
+    log_i("gps: Trying baudrate=%d %d/%d",commonBaudRates[i],i,commonBaudRatesSize);
+    if (checkGPSBaud(commonBaudRates[i])){
+      setting.gps.Baud = commonBaudRates[i];
+      write_gpsBaud();
+      return true;
+    } 
+  }  
+  return false;
+}
+
+bool checkGPSBaud(uint32_t baud){
+  NMeaSerial.updateBaudRate(baud);
+  while(NMeaSerial.available()) NMeaSerial.read(); //clear input-buffer
+  uint32_t tStart = millis();
+  while((millis() - tStart) < 1100){
+    if (NMeaSerial.available()){
+      if (nmea.process(NMeaSerial.read())){
+        log_i("gps: baudrate with %d ok",baud);
+        return true;
+      }
+    }      
+  }
+  return false;
+}
 bool sendCmd2NMEA(const char* s,const char* sRet){
+  size_t lLen = strlen(sRet);
   char buffer[MAXSTRING];
   int pos = 0;
   pos += snprintf(&buffer[pos],MAXSTRING-pos,s);
   pos = flarmDataPort.addChecksum(buffer,MAXSTRING);
   log_i("%s",buffer);
+  while(NMeaSerial.available()) NMeaSerial.read(); //clear receive buffer
   NMeaSerial.write(&buffer[0]);  
   uint32_t tstart = millis();
   //wait for response
@@ -4093,16 +4131,20 @@ bool sendCmd2NMEA(const char* s,const char* sRet){
       c = NMeaSerial.read();
       //Serial.printf("%c",c);
       if (c == '$') pos = 0;
+      /*
       if (c == '\r'){
         Serial.println(buffer);
+      }
+      */
+      buffer[pos] = c;
+      pos++;
+      buffer[pos] = 0; //zero-termination !!
+      if (pos == lLen){
         if (strcmp(sRet,buffer) == 0){
           log_i("successful transmitted");
           return true;
         }
       }
-      buffer[pos] = c;
-      pos++;
-      buffer[pos] = 0; //zero-termination !!
     }
     delay(1);
   }
@@ -4111,23 +4153,39 @@ bool sendCmd2NMEA(const char* s,const char* sRet){
 
 bool setupQuetelGps(void){
   log_i("************ config GPS *************");
-  if (sendCmd2NMEA("$PQTXT,W,0,1","$PQTXT,W,OK*0A")){ //set GPTXT to off
-    //we got response --> Quetel-chip
-    sendCmd2NMEA("$PMTK353,1,0,1,0,0","$PMTK001,353,3,1,0,1,0,0,13*07"); //enable GPS & Galileo
-    sendCmd2NMEA("$PMTK314,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0","$PMTK001,314,3*36"); //set nmea-output to GPRMC and GPGGA
-    return true;
-    //sendCmd2NMEA("$PMTK251,9600",""); //set Baudrate to 9600
-    /*
-    log_i("update Baudrate to 57600");
-    sendCmd2NMEA("$PMTK251,57600",""); //set Baudrate to 57600
-    NMeaSerial.updateBaudRate(57600);
-    //clear serial buffer
-    while (NMeaSerial.available())
-      NMeaSerial.read();
-    */    
-  }else{
-    return false;
+  bool bOk = false;
+  char sQuery[20];
+  sprintf(sQuery,"$PQVERNO,R");
+  flarmDataPort.addChecksum(sQuery,20);
+  for (int i = 0;i < 3;i++){
+    if (sendCmd2NMEA(sQuery,"$PQVERNO,R,")){ //set GPTXT to off
+    //if (sendCmd2NMEA("$PQTXT,W,0,1","$PQTXT,W,OK*0A")){ //set GPTXT to off
+      bOk = true;
+      break;
+    }
+    delay(500);
   }
+  if (bOk == false) return false;
+  //we got response --> Quetel-chip
+  //sendCmd2NMEA("$PMTK353,1,1,1,0,0","$PMTK001,353,3,1,1,1,0,0,15*00"); //enable GPS & Glonass & Galileo
+  sendCmd2NMEA("$PMTK353,1,1,0,0,0","$PMTK001,353,3"); //enable GPS & Glonass
+  //sendCmd2NMEA("$PMTK353,1,0,0,0,0","$PMTK001,353,3,1,0,0,0,0,1*35"); //enable GPS
+  sendCmd2NMEA("$PMTK314,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0","$PMTK001,314,3"); //set nmea-output to GPRMC and GPGGA
+  //sendCmd2NMEA("$PMTK225,0*2B","$PMTK001,225,3*35"); //power save mode normal mode
+
+  //sendCmd2NMEA("$PMTK605*31",""); //read Firmware
+  //sendCmd2NMEA("$PMTK104*37",""); //factory settings
+  //sendCmd2NMEA("$PMTK251,9600",""); //set Baudrate to 9600
+  log_i("update Baudrate to %d",GPSBAUDRATE);
+  char chs[20];
+  sprintf(chs,"$PMTK251,%d",GPSBAUDRATE);    
+  sendCmd2NMEA(chs,""); //set Baudrate to 57600
+  //clear serial buffer
+  NMeaSerial.updateBaudRate(GPSBAUDRATE);
+  setting.gps.Baud = GPSBAUDRATE;
+  write_gpsBaud();
+  //delay(100); 
+  return true;   
 }
 
 bool setupUbloxConfig(){
@@ -4361,9 +4419,11 @@ void taskStandard(void *pvParameters){
   if (PinGPSRX >= 0){
     NMeaSerial.begin(setting.gps.Baud,SERIAL_8N1,PinGPSRX,PinGPSTX,false);
     log_i("GPS Baud=%d,8N1,RX=%d,TX=%d",setting.gps.Baud,PinGPSRX,PinGPSTX);
+    delay(1000); //wait 1 second until power is stable
+    checkGPSBaudrates();
     //clear serial buffer
-    while (NMeaSerial.available())
-      NMeaSerial.read();
+    //while (NMeaSerial.available())
+    //  NMeaSerial.read();
     //delay(100);
     //sendCmd2NMEA("$PMTK353,1,0,1,0,0","$PMTK001,353,3,1,0,1,0,0,13*07"); //enable GPS & Galileo
   }
@@ -5136,12 +5196,47 @@ void powerOff(){
 // logger task to manage new and update of igc track log
 void taskLogger(void * pvPArameters){
 
-  Logger logger;
+  #define SD_CS 13
+  #define SD_SCK 14
+  #define SD_MOSI 15
+  #define SD_MISO 2
+  pinMode(SD_CS, OUTPUT);
+  pinMode(SD_SCK, OUTPUT);
+  pinMode(SD_MOSI, OUTPUT);
+  pinMode(SD_MISO, INPUT_PULLUP);
+  SPIClass sd_spi(VSPI);
+  // SD Card
+  sd_spi.begin(SD_SCK, SD_MISO, SD_MOSI, SD_CS);
+  if (!SD.begin(SD_CS, sd_spi,80000000)){
+    log_e("SD Card: mounting failed.");
+    log_i("stop task");
+    vTaskDelete(xHandleLogger);    
+    return;    
+  }else{
+    log_i("SD Card: mounted.");  
 
+  } 
+  sdcard_type_t cardType = SD.cardType();
+  if(cardType == CARD_MMC){
+      log_i("SD Card Type: MMC");
+  } else if(cardType == CARD_SD){
+      log_i("SD Card Type: SDSC");
+  } else if(cardType == CARD_SDHC){
+      log_i("SD Card Type: SDHC");
+  } else {
+      log_i("SD Card Type: UNKNOWN");
+  }  
+  uint64_t cardSize = SD.cardSize() / (1024 * 1024);
+  log_i("SD Card Size: %dMB", cardSize);
+    
+  //Logger logger;
+
+  /*
   pinMode(2, INPUT_PULLUP);
   pinMode(15, INPUT_PULLUP);
   pinMode(4, OUTPUT);
   digitalWrite(4,LOW);
+  SDMMCFS
   if (!SD_MMC.begin()){
     pinMode(2, INPUT_PULLUP);
     pinMode(4, OUTPUT);
@@ -5150,13 +5245,14 @@ void taskLogger(void * pvPArameters){
   }
 
   logger.begin();
-  delay(10);
+  */
+  //delay(10);
   while(1){
-    logger.run();
+    //logger.run();
     delay(900);
     if ((WebUpdateRunning) || (bPowerOff)) break;
   }
-  if (bPowerOff) logger.end();
+  //if (bPowerOff) logger.end();
   log_i("stop task");
   vTaskDelete(xHandleLogger);
 }

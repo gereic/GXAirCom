@@ -256,7 +256,8 @@ bool MicroNMEA::process(char c)
 				(*_badChecksumHandler)(*this);
 		}
 		// Return true for a complete, non-empty, sentence (even if not a valid one).
-		return *_buffer != '\0'; //
+		return false; //we return only true, if we have a valid sentence
+		//return *_buffer != '\0'; //
 	}
 	else {
 		*_ptr = c;

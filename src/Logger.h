@@ -13,6 +13,8 @@ extern struct statusData status;
 #define __LOGGER_H__
 
 #include <Arduino.h>
+//#include <SPI.h>
+//#include <SD.h>
 #include "FS.h"
 #include "SD_MMC.h"
 #include "main.h"
