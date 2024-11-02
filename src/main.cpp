@@ -5654,9 +5654,9 @@ void taskBackGround(void *pvParameters){
   bool bSunsetOk = false;
   Dusk2Dawn dusk2dawn(setting.gs.lat,setting.gs.lon, 0);
   uint8_t actDay = 0;
-  WiFiUDP ntpUDP;
-  NTPClient timeClient(ntpUDP);
   #endif
+  WiFiUDP ntpUDP;
+  NTPClient timeClient(ntpUDP);  
   
   setupWifi();
   setWifi(!setting.wifi.uMode.bits.disableWifiAtStartup);
