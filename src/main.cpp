@@ -4221,6 +4221,24 @@ bool setupUbloxConfig(){
         log_e("ublox: error setting parameter %d",UBX_NMEA_GLL);
         continue;
       }
+#ifdef T_BEAM_T22_STRATUX
+      if (!ublox.enableNMEAMessage(UBX_NMEA_GST,COM_PORT_UART1)){
+        log_e("ublox: error setting parameter %d",UBX_NMEA_GST);
+        continue;
+      }
+      if (!ublox.enableNMEAMessage(UBX_NMEA_GSV,COM_PORT_UART1)){
+        log_e("ublox: error setting parameter %d",UBX_NMEA_GSV);
+        continue;
+      }
+      if (!ublox.enableNMEAMessage(UBX_NMEA_VTG,COM_PORT_UART1)){
+        log_e("ublox: error setting parameter %d",UBX_NMEA_VTG);
+        continue;
+      }
+      if (!ublox.enableNMEAMessage(UBX_NMEA_GSA,COM_PORT_UART1)){
+        log_e("ublox: error setting parameter %d",UBX_NMEA_GSA);
+        continue;
+      }
+#else
       if (!ublox.disableNMEAMessage(UBX_NMEA_GSV,COM_PORT_UART1)){
         log_e("ublox: error setting parameter %d",UBX_NMEA_GSV);
         continue;
@@ -4234,7 +4252,7 @@ bool setupUbloxConfig(){
         log_e("ublox: error setting parameter %d",UBX_NMEA_GSA);
         continue;
       }
-
+#endif
       //enable nmea-sentences
       if (!ublox.enableNMEAMessage(UBX_NMEA_GGA,COM_PORT_UART1)){
         log_e("ublox: error setting parameter %d",UBX_NMEA_GGA);
