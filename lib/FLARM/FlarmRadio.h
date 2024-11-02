@@ -25,6 +25,12 @@
 #endif
 */
 
+#define MAXSTRING 255
+
+#ifdef FLARMLOGGER
+extern SemaphoreHandle_t FlarmLogQueue;
+#endif
+
 #define _GPS_KMH_2_MPS 0.277778
 #define MS_KMH 3.6
 
@@ -214,5 +220,6 @@ bool flarm_decode(void *flarm_pkt, ufo_t *this_aircraft, ufo_t *fop);
 size_t flarm_encode(void *flarm_pkt, AircraftState *aircraft, long timestamp);
 
 void flarm_v7_debugBuffer(uint8_t *flarm_pkt,ufo_t *this_aircraft);
+void flarm_debugLog(uint32_t tPps,uint8_t *flarm_pkt,ufo_t *this_aircraft);
 
 #endif

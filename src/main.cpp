@@ -3,6 +3,8 @@
 #include <WiFi.h>
 //#include <esp_wifi.h>
 #include <WiFiClient.h>
+#include <WiFiUdp.h>
+#include <NTPClient.h>
 #include <SPI.h>
 //#include <LoRa.h>
 #include <FanetLora.h>
@@ -83,11 +85,11 @@ XPowersLibInterface *PMU = NULL;
 #include <oled.h>
 #endif
 
-//#define LOGGER
-#ifdef LOGGER
+//#define FLARMLOGGER
+#ifdef FLARMLOGGER
 #include "FS.h"
-#include "SD.h"
-#include "SPI.h"
+#include <SD.h>
+#include <SPI.h>
 //#include <Logger.h>
 //#include "driver/rtc_io.h"
 #endif
@@ -100,12 +102,14 @@ XPowersLibInterface *PMU = NULL;
 #include <WeatherUnderground.h>
 #include <Windy.h>
 
-#include <DFRobot_SD3031.h>
+//#include <DFRobot_SD3031.h>
 #include <RTClib.h>
 
 RTC_DS3231 *pRtc3231 = NULL;
 
 #endif
+
+
 
 
 #define uS_TO_S_FACTOR 1000000uL  /* Conversion factor for micro seconds to seconds */
@@ -211,6 +215,8 @@ const char* airwhere_web_ip = "37.128.187.9";
 SemaphoreHandle_t ble_queue = nullptr;
 SemaphoreHandle_t RxBleQueue = nullptr;
 #endif
+
+
 
 uint32_t psRamSize = 0;
 
@@ -341,7 +347,8 @@ void taskEInk(void *pvParameters);
 #if defined(SSD1306) || defined(SH1106G)
 void taskOled(void *pvParameters);
 #endif
-#ifdef LOGGER
+#ifdef FLARMLOGGER
+SemaphoreHandle_t FlarmLogQueue = nullptr;
 void taskLogger(void *pvParameters);
 #endif
 #ifdef GSM_MODULE
@@ -2414,7 +2421,7 @@ xOutputMutex = xSemaphoreCreateMutex();
   if (setting.Mode == eMode::AIR_MODULE){
 
     //adding logger task
-    #ifdef LOGGER
+    #ifdef FLARMLOGGER
       xTaskCreatePinnedToCore(taskLogger, "taskLogger", 6500, NULL, 4, &xHandleLogger, ARDUINO_RUNNING_CORE1); //background Logger
     #endif
     //#ifndef S3CORE  //still in progress
@@ -2802,11 +2809,14 @@ void taskGsm(void *pvParameters){
 #ifdef GSMODULE
 void setRTCTime(tm &timeinfo){
   //log_i("set time of RTC to %04d%02d%02d-%02d:%02d:%02d",timeinfo.tm_year + 1900,timeinfo.tm_mon+1,timeinfo.tm_mday,timeinfo.tm_hour,timeinfo.tm_min,timeinfo.tm_sec);
+  /*
   if (status.rtc.module == RTC_3031){
     DFRobot_SD3031 rtc(pI2cZero);
     if (rtc.begin())return;
     rtc.setTime(timeinfo.tm_year + 1900,timeinfo.tm_mon+1,timeinfo.tm_mday,timeinfo.tm_hour,timeinfo.tm_min,timeinfo.tm_sec);
-  }else if (status.rtc.module == RTC_3231){
+  }else 
+  */
+  if (status.rtc.module == RTC_3231){
     if (pRtc3231 == NULL){
       log_e("rtc is null");
       return;
@@ -2814,15 +2824,25 @@ void setRTCTime(tm &timeinfo){
     DateTime tAct = pRtc3231->now(); //read time and check time-difference
     DateTime tNew = DateTime(timeinfo.tm_year + 1900, timeinfo.tm_mon+1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
     uint32_t tDiff = tNew.unixtime() - tAct.unixtime();    
-    if ((tDiff) >= 1){      
-      log_i("tAct=%d,tNew=%d,diff=%d",tAct.unixtime(),tNew.unixtime(),tDiff);
-      pRtc3231->adjust(tNew);  
-      log_i("timediff to big --> adjust rtc-time to %04d-%02d-%02d_%d:%02d:%02d",timeinfo.tm_year + 1900, timeinfo.tm_mon+1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);      
+    if (tDiff == 0){
+      return; //nothing to do
     }
+    for (int i = 0; i < 3; i++){
+      pRtc3231->adjust(tNew);  
+      log_i("timediff to big (%d) --> adjust rtc-time to %04d-%02d-%02d_%d:%02d:%02d",tDiff,timeinfo.tm_year + 1900, timeinfo.tm_mon+1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);      
+      tAct = pRtc3231->now(); //read time and check time-difference
+      tDiff = tNew.unixtime() - tAct.unixtime();
+      if (tDiff == 0) return; //ready
+    }
+    delete pRtc3231; //delete again
+    pRtc3231 = NULL;
+    log_e("time can't be set --> remove rtc");
+    status.rtc.module = RTC_NONE;
   }
 }
 
 void getRTCTime(){
+  /*
   if (status.rtc.module == RTC_3031){
     DFRobot_SD3031 rtc(pI2cZero);
     if (rtc.begin())return;
@@ -2840,7 +2860,9 @@ void getRTCTime(){
     timeinfo.tm_sec = rtcTime.second;
     setAllTime(timeinfo); //we have to set time to GPS-Time for decoding.  
     status.bTimeOk = true;
-  }else if (status.rtc.module == RTC_3231){
+  }else 
+  */
+  if (status.rtc.module == RTC_3231){
     if (pRtc3231 == NULL){
       log_e("rtc is null");
       return;
@@ -2863,6 +2885,7 @@ void getRTCTime(){
 }
 
 void getRTC(){
+  /*
   DFRobot_SD3031 rtc(pI2cZero);
   if (!rtc.begin()){
     log_i("found SD3031 RTC");
@@ -2874,6 +2897,7 @@ void getRTC(){
     printLocalTime();    
     return;
   }
+  */
   if (pRtc3231 == NULL) pRtc3231 = new RTC_DS3231();
   log_i("searching for DS3231 RTC");
   if (pRtc3231->begin(pI2cZero)) {
@@ -4082,11 +4106,14 @@ void sendLK8EX(uint32_t tAct){
 
 #ifdef AIRMODULE
 
-bool checkGPSBaudrates(void){
-  if (checkGPSBaud(setting.gps.Baud)){
-    log_i("gps connection ok with baud %d",setting.gps.Baud);
-    return true; //found with gps-baudrate which is set in settings
+bool checkGPSBaudrates(void){  
+  for (int i = 0; i < 2;i++) { //try 2 times with baud in settings
+    if (checkGPSBaud(setting.gps.Baud)){
+      log_i("gps connection ok with baud %d",setting.gps.Baud);
+      return true; //found with gps-baudrate which is set in settings
+    } 
   } 
+  //try other baudrates
   for (int i = 0; i < commonBaudRatesSize;i++) {
     log_i("gps: Trying baudrate=%d %d/%d",commonBaudRates[i],i,commonBaudRatesSize);
     if (checkGPSBaud(commonBaudRates[i])){
@@ -4419,7 +4446,7 @@ void taskStandard(void *pvParameters){
   if (PinGPSRX >= 0){
     NMeaSerial.begin(setting.gps.Baud,SERIAL_8N1,PinGPSRX,PinGPSTX,false);
     log_i("GPS Baud=%d,8N1,RX=%d,TX=%d",setting.gps.Baud,PinGPSRX,PinGPSTX);
-    delay(1000); //wait 1 second until power is stable
+    delay(2000); //wait 1 second until power is stable
     checkGPSBaudrates();
     //clear serial buffer
     //while (NMeaSerial.available())
@@ -5192,7 +5219,163 @@ void powerOff(){
 
 }
 
-#ifdef LOGGER
+#ifdef FLARMLOGGER
+void listDir(fs::FS &fs, const char * dirname, uint8_t levels){
+  Serial.printf("Listing directory: %s\n", dirname);
+
+  File root = fs.open(dirname);
+  if(!root){
+    Serial.println("Failed to open directory");
+    return;
+  }
+  if(!root.isDirectory()){
+    Serial.println("Not a directory");
+    return;
+  }
+
+  File file = root.openNextFile();
+  while(file){
+    if(file.isDirectory()){
+      Serial.print("  DIR : ");
+      Serial.println(file.name());
+      if(levels){
+        listDir(fs, file.name(), levels -1);
+      }
+    } else {
+      Serial.print("  FILE: ");
+      Serial.print(file.name());
+      Serial.print("  SIZE: ");
+      Serial.println(file.size());
+    }
+    file = root.openNextFile();
+  }
+}
+
+void createDir(fs::FS &fs, const char * path){
+  Serial.printf("Creating Dir: %s\n", path);
+  if(fs.mkdir(path)){
+    Serial.println("Dir created");
+  } else {
+    Serial.println("mkdir failed");
+  }
+}
+
+void removeDir(fs::FS &fs, const char * path){
+  Serial.printf("Removing Dir: %s\n", path);
+  if(fs.rmdir(path)){
+    Serial.println("Dir removed");
+  } else {
+    Serial.println("rmdir failed");
+  }
+}
+
+void readFile(fs::FS &fs, const char * path){
+  Serial.printf("Reading file: %s\n", path);
+
+  File file = fs.open(path);
+  if(!file){
+    Serial.println("Failed to open file for reading");
+    return;
+  }
+
+  Serial.print("Read from file: ");
+  while(file.available()){
+    Serial.write(file.read());
+  }
+  file.close();
+}
+
+void writeFile(fs::FS &fs, const char * path, const char * message){
+  Serial.printf("Writing file: %s\n", path);
+
+  File file = fs.open(path, FILE_WRITE);
+  if(!file){
+    Serial.println("Failed to open file for writing");
+    return;
+  }
+  if(file.print(message)){
+    Serial.println("File written");
+  } else {
+    Serial.println("Write failed");
+  }
+  file.close();
+}
+
+void appendFile(fs::FS &fs, const char * path, const char * message){
+  //log_i("Appending to file: %s\n", path);
+  File file = fs.open(path, FILE_APPEND);
+  if(!file){
+    log_e("Failed to open file for appending");
+    return;
+  }
+  if(file.print(message)){
+    //log_i("Message appended");
+  } else {
+    log_e("Append failed");
+  }
+  file.close();
+}
+
+void renameFile(fs::FS &fs, const char * path1, const char * path2){
+  //log_i("Renaming file %s to %s\n", path1, path2);
+  if (fs.rename(path1, path2)) {
+    //log_i("File renamed");
+  } else {
+    log_e("Rename failed");
+  }
+}
+
+void deleteFile(fs::FS &fs, const char * path){
+ //log_i("Deleting file: %s\n", path);
+  if(fs.remove(path)){
+    //log_i("File deleted");
+  } else {
+    log_e("Delete failed");
+  }
+}
+
+void testFileIO(fs::FS &fs, const char * path){
+  File file = fs.open(path);
+  static uint8_t buf[512];
+  size_t len = 0;
+  uint32_t start = millis();
+  uint32_t end = start;
+  if(file){
+    len = file.size();
+    size_t flen = len;
+    start = millis();
+    while(len){
+      size_t toRead = len;
+      if(toRead > 512){
+        toRead = 512;
+      }
+      file.read(buf, toRead);
+      len -= toRead;
+    }
+    end = millis() - start;
+    Serial.printf("%u bytes read for %u ms\n", flen, end);
+    file.close();
+  } else {
+    Serial.println("Failed to open file for reading");
+  }
+
+
+  file = fs.open(path, FILE_WRITE);
+  if(!file){
+    Serial.println("Failed to open file for writing");
+    return;
+  }
+
+  size_t i;
+  start = millis();
+  for(i=0; i<2048; i++){
+    file.write(buf, 512);
+  }
+  end = millis() - start;
+  Serial.printf("%u bytes written for %u ms\n", 2048 * 512, end);
+  file.close();
+}
+
 // logger task to manage new and update of igc track log
 void taskLogger(void * pvPArameters){
 
@@ -5204,17 +5387,18 @@ void taskLogger(void * pvPArameters){
   pinMode(SD_SCK, OUTPUT);
   pinMode(SD_MOSI, OUTPUT);
   pinMode(SD_MISO, INPUT_PULLUP);
-  SPIClass sd_spi(VSPI);
+  //SPIClass sd_spi(VSPI);
+  SPIClass sd_spi(HSPI);
   // SD Card
   sd_spi.begin(SD_SCK, SD_MISO, SD_MOSI, SD_CS);
-  if (!SD.begin(SD_CS, sd_spi,80000000)){
+  //if (!SD.begin(SD_CS, sd_spi,4000000,"/sd",5,true)){
+  if (!SD.begin(SD_CS,sd_spi)){ 
     log_e("SD Card: mounting failed.");
     log_i("stop task");
     vTaskDelete(xHandleLogger);    
     return;    
   }else{
     log_i("SD Card: mounted.");  
-
   } 
   sdcard_type_t cardType = SD.cardType();
   if(cardType == CARD_MMC){
@@ -5228,28 +5412,79 @@ void taskLogger(void * pvPArameters){
   }  
   uint64_t cardSize = SD.cardSize() / (1024 * 1024);
   log_i("SD Card Size: %dMB", cardSize);
-    
+
+  /*
+  listDir(SD, "/", 0);
+  createDir(SD, "/mydir");
+  listDir(SD, "/", 0);
+  removeDir(SD, "/mydir");
+  listDir(SD, "/", 2);
+  writeFile(SD, "/hello.txt", "Hello ");
+  appendFile(SD, "/hello.txt", "World!\n");
+  readFile(SD, "/hello.txt");
+  deleteFile(SD, "/foo.txt");
+  renameFile(SD, "/hello.txt", "/foo.txt");
+  readFile(SD, "/foo.txt");
+  testFileIO(SD, "/test.txt");
+  */
+  log_i("Total space: %lluMB", SD.totalBytes() / (1024 * 1024));
+  log_i("Used space: %lluMB", SD.usedBytes() / (1024 * 1024));
+
+  char sFilename[20];
+  /*
+  strcpy(&sFilename[0],"/test.log");  
+  File file = SD.open(sFilename, FILE_WRITE);
+  if(file){
+    if(file.print("test\r\n")){
+        log_i("File written");
+    } else {
+        log_i("Write failed");
+    }  
+    file.close();
+  }else{
+      log_i("Failed to open file for writing");
+  }
+  */
   //Logger logger;
 
   /*
-  pinMode(2, INPUT_PULLUP);
-  pinMode(15, INPUT_PULLUP);
-  pinMode(4, OUTPUT);
-  digitalWrite(4,LOW);
-  SDMMCFS
-  if (!SD_MMC.begin()){
-    pinMode(2, INPUT_PULLUP);
-    pinMode(4, OUTPUT);
-    digitalWrite(4,LOW);
-    SD_MMC.begin("/sdcard", true);
-  }
-
   logger.begin();
   */
   //delay(10);
+  bool bFileNameOk = false;
+  char sRec[MAXSTRING];
+  FlarmLogQueue = xQueueCreate(5, sizeof(sRec));
   while(1){
     //logger.run();
-    delay(900);
+    if (!bFileNameOk){
+      if ((status.gps.Fix == 1) && (status.gps.NumSat >= 4)){
+        time_t now;
+        struct tm timeinfo;
+        time(&now);
+        gmtime_r(&now, &timeinfo);
+        strftime(sFilename, sizeof(sFilename), "/%y%m%d-%H%M%S.log", &timeinfo);
+        //strcpy(&sFilename[0],"/test.log");
+        //writeFile(SD, &sFilename[0], "firstline\r\n"); //create file
+        log_i("filename=%s",sFilename);   
+        bFileNameOk = true;
+        log_i("GPS-FIX OK --> start logging");
+      }
+    }else{
+      if ((status.gps.Fix != 1) || (status.gps.NumSat < 4)){
+        bFileNameOk = false;
+        log_i("no GPS-Fix stop logging");
+      }
+    }
+    //check log-queue
+    if (FlarmLogQueue) {
+      BaseType_t status = xQueueReceive(FlarmLogQueue, &sRec[0], 0);
+      if (status == pdTRUE) {
+        appendFile(SD, &sFilename[0], &sRec[0]);
+        //log_i("Flarm-Debug received:%s",sRec);
+      }      
+    }    
+    
+    delay(1);
     if ((WebUpdateRunning) || (bPowerOff)) break;
   }
   //if (bPowerOff) logger.end();
@@ -5419,6 +5654,8 @@ void taskBackGround(void *pvParameters){
   bool bSunsetOk = false;
   Dusk2Dawn dusk2dawn(setting.gs.lat,setting.gs.lon, 0);
   uint8_t actDay = 0;
+  WiFiUDP ntpUDP;
+  NTPClient timeClient(ntpUDP);
   #endif
   
   setupWifi();
@@ -5432,6 +5669,7 @@ void taskBackGround(void *pvParameters){
 
   tBattEmpty = millis();
   tGetTime = millis() - GETNTPINTERVALL + 5000; //we refresh NTP-Time 5 sec. after internet is connected
+  timeClient.begin();
   while (1){
     uint32_t tAct = millis();
     if  (status.wifiSTA.state != IDLE){
@@ -5527,12 +5765,16 @@ void taskBackGround(void *pvParameters){
         log_i("get ntp-time");
         uint32_t tStart = millis();
         uint32_t tBeforeNtp = now();
-        configTime(0, 0, "pool.ntp.org");
-        adjustTime(0);
+        //configTime(0, 0, "pool.ntp.org");
+        //adjustTime(0);
         struct tm timeinfo;
-        if(getLocalTime(&timeinfo)){
+        //delay(5000); //wait 5 seconds until ntp-time is set.
+        //if(getLocalTime(&timeinfo)){
+        if (timeClient.forceUpdate()){
+          time_t tNow = timeClient.getEpochTime();
+          localtime_r(&tNow,&timeinfo);
           uint32_t tEnd = millis();
-          //log_i("%04d%02d%02d-%02d:%02d:%02d",timeinfo.tm_year + 1900,timeinfo.tm_mon+1,timeinfo.tm_mday,timeinfo.tm_hour,timeinfo.tm_min, timeinfo.tm_sec);
+          log_i("%04d%02d%02d-%02d:%02d:%02d",timeinfo.tm_year + 1900,timeinfo.tm_mon+1,timeinfo.tm_mday,timeinfo.tm_hour,timeinfo.tm_min, timeinfo.tm_sec);
           setAllTime(timeinfo);
           uint32_t tAfterNtp = now(); 
           tBeforeNtp += ((tEnd - tStart) / 1000);

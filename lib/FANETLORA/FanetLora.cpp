@@ -885,6 +885,15 @@ bool FanetLora::createLegacy(uint8_t *buffer){
 	buffer[24]=(crc16 >>8);
   buffer[25]=crc16;  
 
+  #ifdef FLARMLOGGER
+  ufo_t myAircraft={0};
+  myAircraft.latitude = _myData.lat;
+  myAircraft.longitude = _myData.lon;
+  myAircraft.geoid_separation = _geoIdAltitude;   
+  myAircraft.timestamp = _myData.timestamp;
+  flarm_debugLog(_ppsMillis,&buffer[0],&myAircraft);
+  #endif
+
   #ifdef DEBUG_FLARM_TX_BUFFER
   ufo_t myAircraft={0};
   myAircraft.latitude = _myData.lat;
