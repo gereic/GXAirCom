@@ -4248,7 +4248,7 @@ bool setupUbloxConfig(){
         log_e("ublox: error setting parameter %d",UBX_NMEA_GLL);
         continue;
       }
-#ifdef T_BEAM_T22_STRATUX
+#ifdef T_BEAM_STRATUX
       if (!ublox.enableNMEAMessage(UBX_NMEA_GST,COM_PORT_UART1)){
         log_e("ublox: error setting parameter %d",UBX_NMEA_GST);
         continue;

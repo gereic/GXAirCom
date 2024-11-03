@@ -1,0 +1,43 @@
+name: PlatformIO CI
+
+on:
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - '**.md'
+      - '**.yml'
+  workflow_dispatch:
+  
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+
+    - name: Install PlatformIO CLI
+      run: |
+        python -m pip install --upgrade pip
+        pip install platformio
+
+    - name: Build project
+      run: |
+        platformio run
+
+    - name: Run Unit Tests
+      run: |
+        platformio test
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: GXAirCom
+        path: |
+         bin/T-Beam-Stratux/v7.0.0/
+        if-no-files-found: error
