@@ -29,7 +29,7 @@ jobs:
 
     - name: Build project
       run: |
-        platformio run --target T-Beam-Stratux
+        platformio run
 
     - uses: actions/upload-artifact@v4
       with:
