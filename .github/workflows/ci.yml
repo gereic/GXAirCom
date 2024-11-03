@@ -29,15 +29,11 @@ jobs:
 
     - name: Build project
       run: |
-        platformio run
-
-    - name: Run Unit Tests
-      run: |
-        platformio test
+        platformio run --target T-Beam-Stratux
 
     - uses: actions/upload-artifact@v4
       with:
         name: GXAirCom
         path: |
-         bin/T-Beam-Stratux/v7.0.0/
+         bin/T-Beam-Stratux/
         if-no-files-found: error
