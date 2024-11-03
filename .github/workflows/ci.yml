@@ -30,9 +30,10 @@ jobs:
     - name: Build project
       run: |
         platformio run
-        cp bin/psRam/v7.0.0/spiffs.bin bin/T-Beam-Stratux/v7.0.0/
-        cp T-Beam-Stratux.csv bin/T-Beam-Stratux/v7.0.0/
-        cp boot_app0.bin bin/T-Beam-Stratux/v7.0.0/
+        cd $GITHUB_WORKSPACE
+        cp -f $GITHUB_WORKSPACE/T-Beam-Stratux.csv $GITHUB_WORKSPACE/bin/T-Beam-Stratux/v7.0.0/
+        cp -f $GITHUB_WORKSPACE/bin/boot_app0.bin $GITHUB_WORKSPACE/bin/T-Beam-Stratux/v7.0.0/
+        cp -f $GITHUB_WORKSPACE/bin/psRam/v7.0.0/spiffs.bin $GITHUB_WORKSPACE/bin/T-Beam-Stratux/v7.0.0/
 
     - uses: actions/upload-artifact@v4
       with:
