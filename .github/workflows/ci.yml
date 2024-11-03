@@ -17,11 +17,6 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.x'
-
     - name: Install PlatformIO CLI
       run: |
         python -m pip install --upgrade pip
@@ -31,9 +26,12 @@ jobs:
       run: |
         platformio run
         cd $GITHUB_WORKSPACE
-        cp -f $GITHUB_WORKSPACE/T-Beam-Stratux.csv $GITHUB_WORKSPACE/bin/T-Beam-Stratux/v7.0.0/
-        cp -f $GITHUB_WORKSPACE/bin/boot_app0.bin $GITHUB_WORKSPACE/bin/T-Beam-Stratux/v7.0.0/
-        cp -f $GITHUB_WORKSPACE/bin/psRam/v7.0.0/spiffs.bin $GITHUB_WORKSPACE/bin/T-Beam-Stratux/v7.0.0/
+        cp -f .pio/build/T-Beam-Stratux/firmware.bin bin/T-Beam-Stratux/v7.0.0/firmware.bin
+        cp -f .pio/build/T-Beam-Stratux/partitions.bin bin/T-Beam-Stratux/v7.0.0/partitions.bin
+        cp -f T-Beam-Stratux.csv bin/T-Beam-Stratux/v7.0.0/
+        cp -f bin/bootloader_dio_40m.bin bin/T-Beam-Stratux/v7.0.0/bootloader.bin
+        cp -f bin/boot_app0.bin bin/T-Beam-Stratux/v7.0.0/
+        cp -f bin/psRam/v7.0.0/spiffs.bin bin/T-Beam-Stratux/v7.0.0/
 
     - uses: actions/upload-artifact@v4
       with:
