@@ -1072,6 +1072,46 @@ void flarm_v7_debugBuffer(uint8_t *flarm_pkt,ufo_t *this_aircraft){
 
 }
 
+void flarm_debugLog(uint32_t tPps,uint8_t *flarm_pkt,ufo_t *this_aircraft){
+  uint8_t newPacket[26];
+  memcpy(&newPacket[0],flarm_pkt,26);
+  uint16_t crc16_2 = (uint16_t(newPacket[24]) << 8) + uint16_t(newPacket[25]);
+  uint16_t crc16 =  flarm_getCkSum(newPacket,24);
+  if (crc16 != crc16_2){
+    log_e("wrong Checksum %04X!=%04X",crc16,crc16_2);
+    return;
+  } 
+  flarm_v7_packet_t *pkt = (flarm_v7_packet_t *)newPacket;
+  if (pkt->type != 2){
+    log_e("packet type %d != 2",pkt->type);
+    return;
+  } 
+  ufo_t air={0};
+  bool bOk = flarm_decode(newPacket,this_aircraft,&air);
+  if (!bOk){
+    log_e("flarm-package not ok");
+    return;
+  }
+  char sLine[MAXSTRING];
+  //sprintf(sLine,"%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d\n",millis()-tPps,pkt->addr,pkt->type,pkt->addr_type,pkt->_unk1,pkt->_unk2,pkt->stealth,pkt->no_track,pkt->_unk3,pkt->_unk4,pkt->_unk5,pkt->_unk6,pkt->_unk7,pkt->tstamp,pkt->aircraft_type,pkt->_unk8,pkt->alt,pkt->lat,pkt->lon,pkt->turn,pkt->hs,pkt->vs,pkt->course,pkt->airborne,pkt->hp,pkt->vp,pkt->_unk9,pkt->_unk10);
+  int pos = 0;
+  pos += snprintf(&sLine[pos],MAXSTRING-pos,"%d;%06X;",int(millis()-tPps),air.addr);
+  pos += snprintf(&sLine[pos],MAXSTRING-pos,"%d;%d;%d;%d;%d;",air.addr_type,air.stealth,air.no_track,pkt->tstamp,air.aircraft_type);
+  pos += snprintf(&sLine[pos],MAXSTRING-pos,"%.2f;%.6f;%.6f;%d;%d;",air.altitude,air.latitude,air.longitude,pkt->turn,pkt->hs);
+  pos += snprintf(&sLine[pos],MAXSTRING-pos,"%d;%.1f;%d;%d;%d",pkt->vs,air.course,pkt->airborne,pkt->hp,pkt->vp);
+  //log_i("%s",sLine);
+  pos += snprintf(&sLine[pos],MAXSTRING-pos,"\r\n");
+  #ifdef FLARMLOGGER
+    if (FlarmLogQueue) {
+		  BaseType_t status = xQueueSendToBack(FlarmLogQueue,&sLine,0);
+			if (status != pdTRUE){
+			  log_w("FlarmLogQueue full -> reset queue");
+				xQueueReset(FlarmLogQueue);
+			} 
+    }   
+  #endif
+}
+
 
 
 

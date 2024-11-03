@@ -427,16 +427,25 @@ void FanetMac::frameReceived(int length)
 		#ifdef DEBUG_FLARM_RX
 		if (bOk == true){
 			flarm_v7_debugBuffer(&rx_frame[0],&myAircraft);
+
 		}
 		#endif
+
 		if (bOk){
+			#ifdef FLARMLOGGER
+			int iFrequ = int(fmac.actflarmFreq * 10);
+			if (iFrequ == 8682){
+				flarm_debugLog(_ppsMillis,&rx_frame[0],&myAircraft);
+			}
+			//log_i("%.2f",fmac.actflarmFreq);
+			#endif
 			/*
 			if (air.addr == 0x111ECD){
 				float dist = distance(myAircraft.latitude,myAircraft.longitude,air.latitude,air.longitude, 'K');
 				log_i("111ECD,dist=%d,couse=%.1f,vs=%.1f,hs=%.1f",int32_t(dist * 1000),air.course,air.vs,air.speed);
 			}
 			*/
-			//log_i("legacy ok");
+			//log_i("flarm-package ok");
 			frm = new Frame();
 			frm->src.manufacturer = uint8_t(air.addr >> 16);
 			frm->src.id = uint16_t(air.addr & 0x0000FFFF);
