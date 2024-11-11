@@ -417,7 +417,7 @@ void getRTCTime();
 #endif
 #ifdef AIRMODULE
 bool setupUbloxConfig(void);
-bool setupQuetelGps(void);
+bool setupQuectelGps(void);
 bool checkGPSBaudrates(void);
 bool checkGPSBaud(uint32_t baud);
 #endif
@@ -4127,7 +4127,7 @@ bool checkGPSBaudrates(void){
 }
 
 bool checkGPSBaud(uint32_t baud){
-  NMeaSerial.updateBaudRate(baud);
+  NMeaSerial.updateBaudRate(baud);  
   while(NMeaSerial.available()) NMeaSerial.read(); //clear input-buffer
   uint32_t tStart = millis();
   while((millis() - tStart) < 1100){
@@ -4176,11 +4176,14 @@ bool sendCmd2NMEA(const char* s,const char* sRet){
     }
     delay(1);
   }
+  log_e("error sending cmd to GPS");
   return false;
 }
 
-bool setupQuetelGps(void){
+bool setupQuectelGps(void){
   log_i("************ config GPS *************");
+  checkGPSBaudrates();
+  NMeaSerial.begin(setting.gps.Baud,SERIAL_8N1,PinGPSRX,PinGPSTX,false); //reinit TX-Pin, cause it is used twice
   bool bOk = false;
   char sQuery[20];
   sprintf(sQuery,"$PQVERNO,R");
@@ -4194,7 +4197,8 @@ bool setupQuetelGps(void){
     delay(500);
   }
   if (bOk == false) return false;
-  //we got response --> Quetel-chip
+  //we got response --> Quectel-chip
+  sendCmd2NMEA("$PQTXT,W,0,1","$PQTXT,W,OK*0A");
   //sendCmd2NMEA("$PMTK353,1,1,1,0,0","$PMTK001,353,3,1,1,1,0,0,15*00"); //enable GPS & Glonass & Galileo
   sendCmd2NMEA("$PMTK353,1,1,0,0,0","$PMTK001,353,3"); //enable GPS & Glonass
   //sendCmd2NMEA("$PMTK353,1,0,0,0,0","$PMTK001,353,3,1,0,0,0,0,1*35"); //enable GPS
@@ -4218,14 +4222,16 @@ bool setupQuetelGps(void){
 
 bool setupUbloxConfig(){
   SFE_UBLOX_GNSS ublox;
+  NMeaSerial.begin(setting.gps.Baud,SERIAL_8N1,PinGPSRX,PinGPSTX,false); //reinit TX-Pin, cause maybe it is used twice
   ublox.begin(NMeaSerial);
   ublox.factoryReset();
+
   delay(2000); //wait for hardware again !!
   for (int i = 0; i < 3; i++){
     uint8_t tryBaudPos=0;
     do {
       log_i("ublox: Trying baudRate=%d %d/%d",commonBaudRates[tryBaudPos],tryBaudPos,commonBaudRatesSize);
-      NMeaSerial.updateBaudRate(commonBaudRates[tryBaudPos]);
+      NMeaSerial.updateBaudRate(commonBaudRates[tryBaudPos]);      
       delay(500);
     } while (!ublox.isConnected() && (++tryBaudPos < commonBaudRatesSize));
     if (tryBaudPos >= commonBaudRatesSize) {
@@ -4463,7 +4469,7 @@ void taskStandard(void *pvParameters){
 
   #ifdef AIRMODULE
   if (PinGPSRX >= 0){
-    NMeaSerial.begin(setting.gps.Baud,SERIAL_8N1,PinGPSRX,PinGPSTX,false);
+    NMeaSerial.begin(setting.gps.Baud,SERIAL_8N1,PinGPSRX,-1,false); //clear Tx-Pin, cause maybe it is used twice
     log_i("GPS Baud=%d,8N1,RX=%d,TX=%d",setting.gps.Baud,PinGPSRX,PinGPSTX);
     delay(2000); //wait 1 second until power is stable
     checkGPSBaudrates();
@@ -4595,7 +4601,7 @@ void taskStandard(void *pvParameters){
     if (status.tMaxLoop < status.tLoop) status.tMaxLoop = status.tLoop;
     #ifdef AIRMODULE    
     if (command.ConfigGPS == 1){    
-      if (setupQuetelGps()){
+      if (setupQuectelGps()){
         command.ConfigGPS = 2; //setting ok
         delay(2000);
         esp_restart();
@@ -5498,7 +5504,9 @@ void taskLogger(void * pvPArameters){
     if (FlarmLogQueue) {
       BaseType_t status = xQueueReceive(FlarmLogQueue, &sRec[0], 0);
       if (status == pdTRUE) {
-        appendFile(SD, &sFilename[0], &sRec[0]);
+        if (bFileNameOk){
+          appendFile(SD, &sFilename[0], &sRec[0]);
+        }        
         //log_i("Flarm-Debug received:%s",sRec);
       }      
     }    
