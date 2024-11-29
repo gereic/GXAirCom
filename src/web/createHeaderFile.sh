@@ -20,9 +20,6 @@ for i in orig/*.{css,js,html}; do
 done
 
 rm ../../data/*.*
-#cp stripped/*.html ../../data/
-#cp stripped/*.js ../../data/
-#cp stripped/*.css ../../data/
 
 pushd stripped >/dev/null
 for i in *.gz; do
