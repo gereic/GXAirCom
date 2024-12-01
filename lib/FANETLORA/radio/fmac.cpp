@@ -434,7 +434,7 @@ void FanetMac::frameReceived(int length)
 		if (bOk){
 			#ifdef FLARMLOGGER
 			int iFrequ = int(fmac.actflarmFreq * 10);
-			if (iFrequ == 8682){
+			if (iFrequ == 8684){
 				flarm_debugLog(_ppsMillis,&rx_frame[0],&myAircraft);
 			}
 			//log_i("%.2f",fmac.actflarmFreq);

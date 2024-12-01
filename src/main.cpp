@@ -773,6 +773,13 @@ void printChipInfo(void){
   log_i("silicon revision %d, ", chip_info.revision);
   log_i("%dMB %s flash", spi_flash_get_chip_size() / (1024 * 1024),
           (chip_info.features & CHIP_FEATURE_EMB_FLASH) ? "embedded" : "external");
+	uint64_t chipmacid = ESP.getEfuseMac();
+  log_i("ESP32ChipID=%04X%08X",(uint16_t)(chipmacid>>32),(uint32_t)chipmacid);//print chip-id  
+	uint8_t myDevId[3];
+	myDevId[0] = ManuId;//Manufacturer GetroniX
+	myDevId[1] = uint8_t(chipmacid >> 32); //last 2 Bytes of MAC
+	myDevId[2] = uint8_t(chipmacid >> 40);
+  log_i("dev_id=%02X%02X%02X",myDevId[0],myDevId[1],myDevId[2]);          
 }
 
 
@@ -1364,6 +1371,7 @@ void setupWifi(){
   while(host_name.length() == 0){
     delay(100); //wait until we have the devid
   }
+  //delay(2000); //wait 2 seconds until power is stable
   log_i("setup Wifi");
   status.bInternetConnected = false;
   status.wifiSTA.state = IDLE;
@@ -4307,6 +4315,7 @@ bool setupUbloxConfig(){
       }
 
       uint8_t ubloxType = payloadCfg[33] - '0';
+      log_i("ublox: Version %d detected", ubloxType);
       if (ubloxType<6) {
         ubloxType = 6;
       } else if (ubloxType>10) {
@@ -4319,8 +4328,9 @@ bool setupUbloxConfig(){
       log_i("ublox: Retreive constellations that are enabled");
       customCfg = {UBX_CLASS_CFG, UBX_CFG_GNSS, 0, 0, 0, payloadCfg, 0, 0, SFE_UBLOX_PACKET_VALIDITY_NOT_DEFINED, SFE_UBLOX_PACKET_VALIDITY_NOT_DEFINED};
       bool constellationsReceived = true;
-      if (ublox.sendCommand(&customCfg) != SFE_UBLOX_STATUS_DATA_RECEIVED){
-        log_e("ublox: error getting parameter UBX-CFG-GNSS, also not trying to set it");
+      sfe_ublox_status_e ret = ublox.sendCommand(&customCfg,3000);
+      if (ret != SFE_UBLOX_STATUS_DATA_RECEIVED){
+        log_e("ublox: error getting parameter UBX-CFG-GNSS, also not trying to set it ret=%d",ret);
         constellationsReceived=false;
       }
 
@@ -4364,9 +4374,9 @@ bool setupUbloxConfig(){
       if (setNMEA != NULL){
         log_i("ublox: setting parameter UBX-CFG-NMEA");
         customCfg = {UBX_CLASS_CFG, UBX_CFG_NMEA, lenNMEA, 0, 0, setNMEA, 0, 0, SFE_UBLOX_PACKET_VALIDITY_NOT_DEFINED, SFE_UBLOX_PACKET_VALIDITY_NOT_DEFINED};
-        if (ublox.sendCommand(&customCfg) != SFE_UBLOX_STATUS_DATA_SENT){
-          log_e("ublox: error setting parameter UBX-CFG-NMEA");
-          continue;
+        ret = ublox.sendCommand(&customCfg);
+        if (ret != SFE_UBLOX_STATUS_DATA_SENT){
+          log_e("ublox: error setting parameter UBX-CFG-NMEA ret=%d",ret);
         }
       }
 
@@ -4601,11 +4611,18 @@ void taskStandard(void *pvParameters){
     if (status.tMaxLoop < status.tLoop) status.tMaxLoop = status.tLoop;
     #ifdef AIRMODULE    
     if (command.ConfigGPS == 1){    
-      if (setupQuectelGps()){
-        command.ConfigGPS = 2; //setting ok
-        delay(2000);
-        esp_restart();
-      }else if (setupUbloxConfig()){
+      bool bCheckQuectelGps = true;
+      if ((setting.boardType ==  T_BEAM) || (setting.boardType ==  T_BEAM_V07)){
+        bCheckQuectelGps = false;
+      }
+      if (bCheckQuectelGps){
+        if (setupQuectelGps()){
+          command.ConfigGPS = 2; //setting ok
+          delay(2000);
+          esp_restart();
+        }
+      }
+      if (setupUbloxConfig()){
         command.ConfigGPS = 2; //setting ok
         delay(2000);
         esp_restart();
