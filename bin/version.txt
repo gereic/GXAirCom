@@ -392,3 +392,9 @@ added settings for weather-station if only DS18B20 installed
 V6.0.1
 Bugfix sending WU-Data to FANET via wifi
 Bugfix deepsleep on gs-station with rtc
+
+V7.0.0
+readded Flarm V7 protocol
+
+V7.1.0
+recoded peet-bros-anemometer ... ready for testing in real conditions

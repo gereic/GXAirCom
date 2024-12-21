@@ -9,139 +9,168 @@ at the same time. We can use simple non-interruptable interrupts and still
 be pretty sure not to lose any events.
 
 Useful resources:
+    https://github.com/guywithaview/peet-bros-wind/tree/master
     http://arduino.cc/en/Tutorial/DigitalPins
     http://learn.parallax.com/reed-switch-arduino-demo
     http://www.agrolan.co.il/UploadProductFiles/AWVPRO.pdf
 
 http://www.peetbros.com/shop/item.aspx?itemid=137
 
-Connectors used:
-* GND - the two ground wires towards the anemometer.
-* pin 2 - rotating pin on anemometer.
-* pin 3 - direction pin on anemometer.
-
-Remaining:
-* power saving, it uses ~40mA on an Uno now.
-lastRotationAt
-
 */
 
 #include <PeetBros.h>
 
-#define PETTBROSDEBOUNCE 10
 
-volatile unsigned int rotation_took0;
-volatile unsigned int rotation_took1;
-volatile signed int direction_latency0;
-volatile signed int direction_latency1;
-volatile unsigned long last_rotation_at = millis();
-//volatile uint32_t dirCnt = 0;
-//volatile uint32_t speedCnt = 0;
-volatile unsigned long lastRotIsr = 0;
-volatile unsigned long lastSpeedIsr = 0;
+const unsigned long DEBOUNCE = 10000ul;      // Minimum switch time in microseconds
+const unsigned long TIMEOUT = 1500000ul;       // Maximum time allowed between speed pulses in microseconds
 
-volatile unsigned long lastRotAt = millis();
-volatile unsigned int rotTook0;
-volatile unsigned int rotTook1;
-volatile signed int dirLatency = 0;
+// speed is actually stored as (km/h). Deviations below should match these units.
+const int BAND_0 =  20;
+const int BAND_1 =  150;
+
+const int SPEED_DEV_LIMIT_0 =  10;     // Deviation from last measurement to be valid. Band_0: 0 to 20 kmh
+const int SPEED_DEV_LIMIT_1 = 20;     // Deviation from last measurement to be valid. Band_1: 20 to 150 kmh
+const int SPEED_DEV_LIMIT_2 = 55;     // Deviation from last measurement to be valid. Band_2: 150+ kmh
+
+// Should be larger limits as lower speed, as the direction can change more per speed update
+const int DIR_DEV_LIMIT_0 = 25;     // Deviation from last measurement to be valid. Band_0: 0 to 20 kmh
+const int DIR_DEV_LIMIT_1 = 18;     // Deviation from last measurement to be valid. Band_1: 20 to 150 kmh
+const int DIR_DEV_LIMIT_2 = 10;     // Deviation from last measurement to be valid. Band_2: 150+ kmh
+
+volatile unsigned long speedPulse = 0ul;    // Time capture of speed pulse
+volatile unsigned long dirPulse = 0ul;      // Time capture of direction pulse
+volatile unsigned long speedTime = 0ul;     // Time between speed pulses (microseconds)
+volatile unsigned long directionTime = 0ul; // Time between direction pulses (microseconds)
+volatile boolean PB_newData = false;           // New speed pulse received
+int8_t _wspeedPin = -1;
+int8_t _wDirPin = -1;
 
 void IRAM_ATTR isr_rotated();
 void IRAM_ATTR isr_direction();
-bool valid_sensordata();
-float wspeed_to_real();
-float wdir_to_degrees();
-void print_debug();
+float PB_actSpeed;
+float PB_actDir;
+bool PB_valid;
 
 void peetBros_init(int8_t windSpeedPin,int8_t windDirPin){
-
-  rotation_took0 = 0;
-  rotation_took1 = 0;
-  direction_latency0 = 0;
-  direction_latency1 = 0;
-  dirLatency = 0;
+  PB_valid = false;
+  PB_actSpeed = 0.0;
+  PB_actDir = 0.0;
+  _wspeedPin = windSpeedPin;
+  _wDirPin = windDirPin;
   pinMode(windSpeedPin, INPUT);
   pinMode(windDirPin, INPUT);
   log_i("speedPin=%d,dirPin=%d",windSpeedPin,windDirPin);
-  attachInterrupt(digitalPinToInterrupt(windSpeedPin), isr_rotated, RISING);
-  attachInterrupt(digitalPinToInterrupt(windDirPin), isr_direction, RISING);
+  attachInterrupt(digitalPinToInterrupt(windSpeedPin), isr_rotated, FALLING);
+  attachInterrupt(digitalPinToInterrupt(windDirPin), isr_direction, FALLING);
+}
+
+boolean checkDirDev(float kmh, float dev)
+{
+    if (kmh < BAND_0)
+    {
+        if ((abs(dev) < DIR_DEV_LIMIT_0) || (abs(dev) > 360 - DIR_DEV_LIMIT_0)) return true;
+    }
+    else if (kmh < BAND_1)
+    {
+        if ((abs(dev) < DIR_DEV_LIMIT_1) || (abs(dev) > 360 - DIR_DEV_LIMIT_1)) return true;
+    }
+    else
+    {
+        if ((abs(dev) < DIR_DEV_LIMIT_2) || (abs(dev) > 360 - DIR_DEV_LIMIT_2)) return true;
+    }
+    return false;
+}
+
+boolean checkSpeedDev(float kmh, float dev)
+{
+    if (kmh < BAND_0)
+    {
+        if (abs(dev) < SPEED_DEV_LIMIT_0) return true;
+    }
+    else if (kmh < BAND_1)
+    {
+        if (abs(dev) < SPEED_DEV_LIMIT_1) return true;
+    }
+    else
+    {
+        if (abs(dev) < SPEED_DEV_LIMIT_2) return true;
+    }
+    return false;
+}
+
+void peetBrosRun(){
+  unsigned long dirPulse_, speedPulse_;
+  unsigned long speedTime_;
+  unsigned long directionTime_; 
+  bool _newData;
+  float windSpeed;
+  float rps,kmh = 0,dev;
+  static float prevKmh = 0;
+  int16_t windDirection = 0;
+  static int16_t prevDir = 0;
+
+  noInterrupts();
+  dirPulse_ = dirPulse;
+  speedPulse_ = speedPulse;
+  speedTime_ = speedTime;
+  directionTime_ = directionTime;
+  _newData = PB_newData;
+  PB_newData = false;
+  interrupts();
+
+
+  if (_newData == false){
+    //log_i("no new Data");
+    return;
+  }
+  // Make speed zero, if the pulse delay is too long
+  if (micros() - speedPulse_ > TIMEOUT){
+    log_i("no rotation");
+    PB_valid = false;
+    return;
+  }
+  if (speedTime_ <= 0){   
+    PB_valid = false;
+    log_i("speedTime=0"); 
+    return;
+  } 
+  rps = 1000000.0/double(speedTime_);
+  if (rps < 0.010){
+    PB_actSpeed = 0.0;
+    PB_actDir = 0.0;
+    PB_valid = false;
+    return;
+  }
+  if (rps < 3.229){
+    kmh = (-0.1095*(rps * rps) + 2.9318*rps - 0.1412) * 1.6094; 
+  }else if (rps < 54.362){
+    kmh = (0.0052*(rps * rps) + 2.1980*rps + 1.1091) * 1.6094;
+  }else{
+    kmh = (0.1104*(rps * rps) - 9.5685*rps + 329.87) * 1.6094;    
+  }  
+  dev = (kmh - prevKmh);
+  prevKmh = kmh;
+  //log_i("dt=%d,st=%d,speed=%.2f,rps=%.2f,dev=%.1f",directionTime_,speedTime_,PB_actSpeed,rps,dev);
+  if (checkSpeedDev(kmh,dev) == false) return; //not valid speed change
+  PB_actSpeed = kmh;    
+  if (directionTime_ > speedTime_) return;
+  // Calculate direction from captured pulse times
+  windDirection = ((directionTime_ * 360) / speedTime_) % 360;  
+  dev = float(windDirection - prevDir);  
+  prevDir = windDirection;
+  
+  if (checkDirDev(kmh, dev) == false) return; //not valid dir change
+  //log_i("dir=%d,speed=%.2f,rps=%.2ff",windDirection,PB_actSpeed,rps);
+  PB_actDir = float(windDirection);
+  PB_valid = true;
 }
 
 uint8_t peetBrosgetNewData(float *Dir, float *Speed){
-  noInterrupts();
-  if (!valid_sensordata()){
-    interrupts();
-    return(255);
-  } 
-  //Serial.printf("d=%d,s=%d\n",dirCnt,speedCnt);
-  *Speed = wspeed_to_real(); // kmh
-  *Dir = wdir_to_degrees(); //0-360 deg
-  interrupts();
-  if (isnan(*Speed) || isnan(*Dir)){
-    return 255; //error not valid value
-  }
+  if (PB_valid == false) return 255;
+  *Dir = PB_actDir;
+  *Speed = PB_actSpeed;
+  PB_valid = false;
   return 1;
-}
-
-void print_debug() {
-  Serial.print("since last_rot: ");
-  Serial.print(millis() - last_rotation_at); Serial.print("ms; ");
-  Serial.print("last dur: ");
-  Serial.print(rotation_took0); Serial.print("ms; ");
-  Serial.print("wspeed: ");
-  Serial.print(wspeed_to_real()); Serial.print("km/h; ");
-  Serial.print("last dir_lat: ");
-  Serial.print(direction_latency1); Serial.print("ms; ");
-  Serial.print("wdir: ");
-  Serial.print(wdir_to_degrees()); Serial.print(" degrees; ");
-  Serial.println();
-}
-
-
-bool valid_sensordata() {
-  // XXX: wrapping timers?
-  if ((lastRotAt + 10*1000 < millis()) || (dirLatency < 0)) return(false);
-  else return(true);
-}
-
-float wspeed_to_real() {
-  float mph = NAN;
-
-  //if (!valid_sensordata()) return(NAN);
-
-  // avoid rewriting documented formulas.
-  float r0 = 1.0 / (rotTook0 / 1000.0);
-  float r1 = 1.0 / (rotTook1 / 1000.0);
-
-  if (r0 < 0.010) mph = 0.0;
-  else if (r0 < 3.229) mph = -0.1095*r1 + 2.9318*r0 - 0.1412;
-  else if (r0 < 54.362) mph = 0.0052*r1 + 2.1980*r0 + 1.1091;
-  else if (r0 < 66.332) mph = 0.1104*r1 - 9.5685*r0 + 329.87;
-
-  if (isinf(mph) || isnan(mph) || mph < 0.0) return(NAN);
-
-  //float meters_per_second = mph * 0.48037;
-  //float knots = mph * 0.86897;
-  float kmh = mph * 1.60934;
-  return(kmh);
-}
-
-float wdir_to_degrees() {
-  float windangle;
-
-  //if (!valid_sensordata()) return(NAN);
-  //if (dirLatency < 0) return(NAN);
-
-  float avg_rotation_time = ((float(rotTook0) + float(rotTook1)) / 2.0);
-
-  float phaseshift = float(dirLatency) / avg_rotation_time;
-
-  if (isnan(phaseshift) || isinf(phaseshift)) windangle = NAN;
-  else if (phaseshift == 0.0) windangle = 360.0;
-  else if (phaseshift > 0.99) windangle = 360.0;
-  else windangle = 360.0 * phaseshift;
-
-  //Serial.printf("%.2fms; %.2fps; %.2fdeg\n",avg_rotation_time,phaseshift,windangle);
-  return(windangle);
 }
 
 /*
@@ -152,35 +181,19 @@ float wdir_to_degrees() {
  * rotation took.
 */
 void isr_rotated() {
-  //unsigned long diff = lastSpeedIsr - millis();
-  //if (diff < PETTBROSDEBOUNCE) return; //debounce
-  //lastSpeedIsr = millis();
-  unsigned long now = millis();
-  unsigned int last_rotation_took;
-  //speedCnt++;
-  // Handle wrapping counters.
-  if (now < last_rotation_at)
-    last_rotation_took = now + (ULONG_MAX - last_rotation_at);
-  else
-    last_rotation_took = now - last_rotation_at;
-
-  // I'd love to log this somewhere, but no Serial inside an ISR.
-  if (last_rotation_took < 0)
-    last_rotation_took = 0;
-
-  last_rotation_at = now;
-
-  rotation_took1 = rotation_took0;
-  rotation_took0 = last_rotation_took;
-
-  direction_latency1 = direction_latency0;
-  if (direction_latency1 >= 0) {
-    lastRotAt = last_rotation_at;
-    rotTook0 = rotation_took0;
-    rotTook1 = rotation_took1;
-    dirLatency = direction_latency1;
+  // Despite the interrupt being set to FALLING edge, double check the pin is now LOW
+  if (((micros() - speedPulse) > DEBOUNCE) && (digitalRead(_wspeedPin) == LOW))
+  {
+      // Work out time difference between last pulse and now
+      speedTime = micros() - speedPulse;
+      // Direction pulse should have occured after the last speed pulse
+      //if ((PB_newData = false) && (dirPulse - speedPulse >= 0)){
+      if (dirPulse - speedPulse >= 0){
+        directionTime = dirPulse - speedPulse;
+        PB_newData = true;
+      }
+      speedPulse = micros();    // Capture time of the new speed pulse
   }
-  direction_latency0 = -1;
 }
 
 /*
@@ -192,17 +205,9 @@ void isr_rotated() {
  *
 */
 void IRAM_ATTR isr_direction() { 
-  //unsigned long diff = lastRotIsr - millis();
-  //if (diff < PETTBROSDEBOUNCE) return; //debounce
-  //lastRotIsr = millis();
-  unsigned long now = millis();
-  unsigned int direction_latency;
-  //dirCnt++;
-  if (now < last_rotation_at)
-    direction_latency = now + (ULONG_MAX - last_rotation_at);
-  else
-    direction_latency = now - last_rotation_at;
-
-  direction_latency0 = direction_latency;
+  if (((micros() - dirPulse) > DEBOUNCE) && (digitalRead(_wDirPin) == LOW))
+  {
+    dirPulse = micros();        // Capture time of direction pulse
+  }
 }
 

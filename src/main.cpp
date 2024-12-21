@@ -2969,7 +2969,8 @@ void taskWeather(void *pvParameters){
     vTaskDelete(xHandleWeather);
     return;    
   }
-  const TickType_t xDelay = 1000 / portTICK_PERIOD_MS;   //only every 1sek.
+  //const TickType_t xDelay = 1000 / portTICK_PERIOD_MS;   //only every 1sek.
+  const TickType_t xDelay = 10 / portTICK_PERIOD_MS;   //only every 10ms.
   TickType_t xLastWakeTime = xTaskGetTickCount (); //get actual tick-count
   tUploadData = millis();
   tSendData = millis();
@@ -3221,8 +3222,8 @@ void taskWeather(void *pvParameters){
 
     }
     if ((WebUpdateRunning) || (bPowerOff)) break;
-    vTaskDelayUntil( &xLastWakeTime, xDelay); //wait until next cycle
-    //delay(1);
+    //vTaskDelayUntil( &xLastWakeTime, xDelay); //wait until next cycle
+    delay(200);
   }
   log_i("stop task");
   vTaskDelete(xHandleWeather); //delete weather-task

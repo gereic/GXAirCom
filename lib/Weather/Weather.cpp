@@ -331,6 +331,9 @@ void Weather::run(void){
 	float temp = 0;
 	float rawPressure = 0;
   bool bReadOk = false;
+  if (aneometerType == eAnemometer::PEETBROS){
+    peetBrosRun();
+  }
   if ((tAct - tOld) >= WEATHER_REFRESH){
     int i = 0;
     uint8_t bmeRet = 0;
