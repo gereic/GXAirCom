@@ -400,19 +400,9 @@ void Weather::run(void){
     } else if (aneometerType == eAnemometer::ADS_A1015 && _bHasADS) {
       checkAdsAneometer();
     } else if (aneometerType == eAnemometer::PEETBROS) {
-      float Dir = 0.0;
-      float Speed = 0.0;
-      uint8_t ret = peetBrosgetNewData(&Dir,&Speed);
-      //log_i("dir=%.1f,speed=%0.1f,ret=%d",Dir,Speed,ret);
-      if (ret == 1){
-        _weather.WindDir = Dir; //0-360degrees
-        _weather.WindSpeed = Speed; //[km/h]]
-        if (_weather.WindSpeed > _weather.WindGust) _weather.WindGust = _weather.WindSpeed; 
-
-      }else{
-        _weather.WindDir = 0.0; //winddir can't be measured
-        _weather.WindSpeed = 0.0; //[km/h]]
-      }
+      uint8_t ret = peetBrosgetNewData(&_weather.WindDir,&_weather.WindSpeed);
+      if (_weather.WindSpeed > _weather.WindGust) _weather.WindGust = _weather.WindSpeed; 
+      //log_i("dir=%.1f,speed=%0.1f,ret=%d",_weather.WindDir,_weather.WindSpeed,ret);
     }else{
       checkAneometer();
     }

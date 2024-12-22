@@ -3223,7 +3223,7 @@ void taskWeather(void *pvParameters){
     }
     if ((WebUpdateRunning) || (bPowerOff)) break;
     //vTaskDelayUntil( &xLastWakeTime, xDelay); //wait until next cycle
-    delay(200);
+    delay(100);
   }
   log_i("stop task");
   vTaskDelete(xHandleWeather); //delete weather-task
