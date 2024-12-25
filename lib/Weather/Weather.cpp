@@ -401,6 +401,9 @@ void Weather::run(void){
       checkAdsAneometer();
     } else if (aneometerType == eAnemometer::PEETBROS) {
       uint8_t ret = peetBrosgetNewData(&_weather.WindDir,&_weather.WindSpeed);
+      _weather.WindDir += _winddirOffset;
+      while (_weather.WindDir < 0) { _weather.WindDir += 360.0; }
+      while (_weather.WindDir > 360) { _weather.WindDir -= 360.0; }      
       if (_weather.WindSpeed > _weather.WindGust) _weather.WindGust = _weather.WindSpeed; 
       //log_i("dir=%.1f,speed=%0.1f,ret=%d",_weather.WindDir,_weather.WindSpeed,ret);
     }else{
