@@ -221,5 +221,6 @@ size_t flarm_encode(void *flarm_pkt, AircraftState *aircraft, long timestamp);
 
 void flarm_v7_debugBuffer(uint8_t *flarm_pkt,ufo_t *this_aircraft);
 void flarm_debugLog(uint32_t tPps,uint8_t *flarm_pkt,ufo_t *this_aircraft);
+void flarm_debugAircraft(ufo_t *air,ufo_t *this_aircraft);
 
 #endif

@@ -654,12 +654,14 @@ bool flarm_decode(void *flarm_pkt, ufo_t *this_aircraft, ufo_t *fop){
   wpkt[4] ^= key_v7[2];
   wpkt[5] ^= key_v7[3];
 
+  #ifdef DEBUG_FLARM_ERRORS
   if ((pkt->_unk1 == 0) && (pkt->_unk2 == 0) && (pkt->_unk3 == 3) && (pkt->_unk4 == 0) && (pkt->_unk5 == 3) && (pkt->_unk6 == 0) && (pkt->_unk7 == 0) && (pkt->_unk8 == 0) && ((pkt->_unk9 == 0) || (pkt->_unk9 == 2)) && (pkt->_unk10 == 0)){
     //ok
   }else{
     log_i("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",pkt->_unk1,pkt->_unk2,pkt->_unk3,pkt->_unk4,pkt->_unk5,pkt->_unk6,pkt->_unk7,pkt->_unk8,pkt->_unk9,pkt->_unk10);
     //return false;
   }
+  #endif
   //log_i("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",pkt->_unk1,pkt->_unk2,pkt->_unk3,pkt->_unk4,pkt->_unk5,pkt->_unk6,pkt->_unk7,pkt->_unk8,pkt->_unk9,pkt->_unk10);
 
   if (pkt->_unk1 != 0){
@@ -1110,6 +1112,15 @@ void flarm_debugLog(uint32_t tPps,uint8_t *flarm_pkt,ufo_t *this_aircraft){
 			} 
     }   
   #endif
+}
+
+void flarm_debugAircraft(ufo_t *air,ufo_t *this_aircraft){
+  char sLine[MAXSTRING];
+  int pos = 0;
+  pos += snprintf(&sLine[pos],MAXSTRING-pos,"adr=%06X;",air->addr);
+  pos += snprintf(&sLine[pos],MAXSTRING-pos,"adrType=%d;aircraftType=%d;",air->addr_type,air->aircraft_type);
+  pos += snprintf(&sLine[pos],MAXSTRING-pos,"alt=%.2f;lat=%.6f;lon=%.6f;",air->altitude,air->latitude,air->longitude);
+  log_i("%s",sLine);  
 }
 
 

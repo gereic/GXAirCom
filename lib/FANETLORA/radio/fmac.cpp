@@ -400,8 +400,10 @@ void FanetMac::frameReceived(int length)
 			bOk = flarm_decode(&newPacket[0],&myAircraft,&air);
 			if (bOk){				
 				float dist = distance(myAircraft.latitude,myAircraft.longitude,air.latitude,air.longitude, 'K');
-				if (dist > 32.0){
-					log_e("distance %.1f > 32km --> error ",dist);
+				if (dist > 100.0){
+					//flarm_v7_debugBuffer(&rx_frame[0],&myAircraft);
+					flarm_debugAircraft(&air,&myAircraft);
+					log_e("distance %.1f > 100km --> error ",dist);
 					bOk = false;
 				}else{
 					break;
@@ -430,7 +432,6 @@ void FanetMac::frameReceived(int length)
 
 		}
 		#endif
-
 		if (bOk){
 			#ifdef FLARMLOGGER
 			int iFrequ = int(fmac.actflarmFreq * 10);
