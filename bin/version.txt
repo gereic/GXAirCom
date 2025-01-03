@@ -398,3 +398,6 @@ readded Flarm V7 protocol
 
 V7.1.0
 recoded peet-bros-anemometer ... ready for testing in real conditions
+
+v8.0.0
+implemented sim7080G for heltec wireless-stick v3 (Ground-Station with modem)

@@ -118,34 +118,6 @@ function onMessage(evt) {
             document.getElementById("VisFuelSensor").style.display='none';
           }
           continue;
-        }else if (key == "GSMStat"){
-          var value = parseInt(myObj[key]);
-          var text = "";
-          if (value == 1){
-            text = "connecting";
-          }else if (value == 2){
-            text = "connected";
-          }else{
-            text = "disconnected";
-          }
-          document.getElementById(key).value = text;
-          continue;
-        }else if (key == "GSMMode"){
-          var value = parseInt(myObj[key]);
-          var text = "";
-          if (value == 0){
-            text = "no service";
-          }else if (value == 1){
-            text = "GSM";
-          }else if (value == 3){
-            text = "EGPRS";
-          }else if (value == 7){
-            text = "LTE M1";
-          }else if (value == 9){
-            text = "LTE NB";
-          }
-          document.getElementById(key).value = text;
-          continue;
         }else if (key == "GSMRssi"){
           var text = "";
           var value = parseInt(myObj[key]);
@@ -519,7 +491,7 @@ function onMessage(evt) {
           </tr>
           <tr>
             <th>network mode</th>
-            <td><input type="text" id="GSMMode"></td>
+            <td><input type="text" id="GSMNWSTAT"></td>
           </tr>
           <tr>
             <th>signal strength</th>

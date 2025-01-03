@@ -357,7 +357,7 @@ void PowerOffModem();
 //void readSMS();
 //void sendStatus();
 #endif
-#ifdef TINY_GSM_MODEM_SIM7000
+#if defined(TINY_GSM_MODEM_SIM7000) || defined(TINY_GSM_MODEM_SIM7080)
 void setupSim7000Gps();
 #endif
 void add2OutputString(String s);
@@ -2289,6 +2289,12 @@ void setup() {
 
     PinOneWire = 4; //pin for one-Wire
 
+    #ifdef TINY_GSM_MODEM_SIM7080
+      PinGsmRst = 7; //is PowerKey
+      PinGsmTx = 5;
+      PinGsmRx = 6;
+    #endif
+
     pinMode(35,OUTPUT);
     digitalWrite(35,LOW); //switch user-LED off
 
@@ -2393,7 +2399,6 @@ void setup() {
 
   #ifdef GSMODULE
   if (setting.Mode == eMode::GROUND_STATION){
-    //if ((reason2 == ESP_SLEEP_WAKEUP_TIMER) && (setting.gs.PowerSave == eGsPower::GS_POWER_BATT_LIFE)){
       if ((setting.gs.PowerSave == eGsPower::GS_POWER_BATT_LIFE) || (setting.gs.PowerSave == eGsPower::GS_POWER_SAFE)){
       printBattVoltage(millis()); //read Battery-level
       log_i("Batt %dV; %d%%",status.battery.voltage,status.battery.percent);
@@ -2407,8 +2412,6 @@ void setup() {
         log_i("disable bluetooth for power-saving");
         stopBluetooth();
         #endif
-        //adc_power_off();
-        //adc_power_release();
         esp_deep_sleep_start();
       }
     }
@@ -2510,7 +2513,7 @@ bool connectModem(){
   //log_i("signal quality %d",status.gsm.SignalQuality);
   status.gsm.sOperator = modem.getOperator();
   //log_i("operator=%s",status.gsm.sOperator.c_str());
-  #ifdef TINY_GSM_MODEM_SIM7000
+  #if defined(TINY_GSM_MODEM_SIM7000) || defined(TINY_GSM_MODEM_SIM7080)
   bool bAutoreport;
   if (modem.getNetworkSystemMode(bAutoreport,status.gsm.networkstat)){        
     //log_i("network system mode %d",status.gsm.networkstat);
@@ -2531,7 +2534,7 @@ bool factoryResetModem(){
     digitalWrite(PinGsmRst,HIGH);
     delay(100);
     digitalWrite(PinGsmRst,LOW);
-    delay(1000);
+    delay(1200);
     digitalWrite(PinGsmRst,HIGH);
     delay(6000); //wait until modem is ok now
   }  
@@ -2573,14 +2576,14 @@ bool initModem(){
     digitalWrite(PinGsmRst,HIGH);
     delay(100);
     digitalWrite(PinGsmRst,LOW);
-    delay(1000);
+    delay(1200);
     digitalWrite(PinGsmRst,HIGH);
-    delay(6000); //wait until modem is ok now
+    delay(3000); //wait until modem is ok now
   }
-  #ifdef TINY_GSM_MODEM_SIM7000
-    //on SIM7000 be use other baudrate !!
-    if (!TestModemconnection(115200)){      
-      if (!TestModemconnection(GSM_MAX_BAUD)){
+  #if defined(TINY_GSM_MODEM_SIM7000) || defined(TINY_GSM_MODEM_SIM7080)
+    //on SIM7000 we use other baudrate !!    
+    if (!TestModemconnection(GSM_MAX_BAUD)){
+      if (!TestModemconnection(115200)){      
         log_e("modem-connection not OK");
         return false;
       }
@@ -2606,7 +2609,7 @@ bool initModem(){
     return false; 
   }
   
-  #ifdef TINY_GSM_MODEM_SIM7000
+  #if defined(TINY_GSM_MODEM_SIM7000) || defined(TINY_GSM_MODEM_SIM7080)
 
   if (status.gsm.baud != GSM_MAX_BAUD){
     log_i("GSM-Modem switch baudrate to %d",GSM_MAX_BAUD);
@@ -2656,9 +2659,10 @@ void PowerOffModem(){
       modem.gprsDisconnect();
       log_i("switch radio off");
       modem.radioOff();  
-
-      #ifdef TINY_GSM_MODEM_SIM7000
-        digitalWrite(5,HIGH);
+      #if defined(TINY_GSM_MODEM_SIM7000) || defined(TINY_GSM_MODEM_SIM7080)
+        #ifdef TINY_GSM_MODEM_SIM7000
+          digitalWrite(5,HIGH);
+        #endif
         //Power-off SIM7000-module
         modem.sleepEnable(false); // required in case sleep was activated and will apply after reboot
         for (int i = 0; i < 10;i++){
@@ -2671,10 +2675,18 @@ void PowerOffModem(){
         //it restarts itself all the time --> we set the module to sleep-mode
         log_i("set modem to sleep-mode");
         modem.sendAT(GF("+CSCLK=2"));
-
         delay(1000);
       #endif
-      digitalWrite(PinGsmRst,LOW);
+      if (PinGsmRst >= 0){
+        pinMode(PinGsmRst,INPUT); //switch to input, so it is floating        
+        /*
+        #if defined(TINY_GSM_MODEM_SIM7080)
+          
+        #else
+          digitalWrite(PinGsmRst,LOW);
+        #endif
+        */
+      }      
       if (PinGsmPower >= 0){
         // Turn off the Modem power first
         digitalWrite(PinGsmPower, LOW);
@@ -2685,7 +2697,7 @@ void PowerOffModem(){
   }
 }
 
-#ifdef TINY_GSM_MODEM_SIM7000
+#if defined(TINY_GSM_MODEM_SIM7000) || defined(TINY_GSM_MODEM_SIM7080)
 void setupSim7000Gps(){
   xSemaphoreTake( xGsmMutex, portMAX_DELAY );
   modem.sendAT("+SGPIO=0,4,1,1");
@@ -2704,6 +2716,7 @@ void taskGsm(void *pvParameters){
   }
   if (PinGsmRst >= 0){
     pinMode(PinGsmRst, OUTPUT); //set GsmReset to output
+    digitalWrite(PinGsmRst,HIGH);
   }
   status.gsm.sOperator = ""; 
   GsmSerial.begin(115200,SERIAL_8N1,PinGsmRx,PinGsmTx,false); //baud, config, rx, tx, invert
@@ -2714,10 +2727,18 @@ void taskGsm(void *pvParameters){
   static uint32_t tCheckConn = millis() - GSM_CHECK_TIME_CON; //check every 60sec.
   //static uint32_t tCheckSms = millis() - GSM_CHECK_TIME_SMS;
   // Set preferred message format to text mode
-
+  delay(1000); //wait 2 seconds until power is stable
   xSemaphoreTake( xGsmMutex, portMAX_DELAY );
   //factoryResetModem();
-  initModem();
+
+  //we try it twice because on sim7080, the power-pin switches the modem on and off
+  //so it can be, that we switch it off
+  for (int i = 0;i<2;i++){ 
+    if (initModem()){
+      break;
+    }
+  }
+  
   xSemaphoreGive( xGsmMutex );
   if (setting.wifi.connect != eWifiMode::CONNECT_NONE){
     log_i("stop task");
@@ -2740,7 +2761,7 @@ void taskGsm(void *pvParameters){
   while(1){
     tAct = millis();
     
-    #ifdef TINY_GSM_MODEM_SIM7000
+    #if defined(TINY_GSM_MODEM_SIM7000) || defined(TINY_GSM_MODEM_SIM7080)
     if (command.getGpsPos == 1){
       setupSim7000Gps();
     }else if (command.getGpsPos == 2){
@@ -2749,7 +2770,7 @@ void taskGsm(void *pvParameters){
       xSemaphoreTake( xGsmMutex, portMAX_DELAY );
       if (modem.getGPS(&lat, &lon, &speed, &alt, &vsat, &usat, &accuracy)) {
         log_i("GPS-Position: lat:%.6f lon:%.6f alt:%.2f vsat:%d usat:%d accuracy:%.2f",lat,lon,alt,vsat,usat,accuracy);
-        if (usat >= 6){ //only if we have more then 6 satellites in view
+        if ((usat >= 6) || ((accuracy < 2.0) && (vsat >= 10))){ //only if we have more then 6 satellites in view or accuracy < 2.0m on SIM7080 we get only accuracy
           setting.gs.lat = lat;
           setting.gs.lon = lon;
           setting.gs.alt = alt;
@@ -2778,7 +2799,7 @@ void taskGsm(void *pvParameters){
           if (status.gsm.sOperator.length() == 0){
             status.gsm.sOperator = modem.getOperator();
           }
-          #ifdef TINY_GSM_MODEM_SIM7000
+          #if defined(TINY_GSM_MODEM_SIM7000) || defined(TINY_GSM_MODEM_SIM7080)
           bool bAutoreport;
           if (modem.getNetworkSystemMode(bAutoreport,status.gsm.networkstat)){        
             //log_i("network system mode %d",status.gsm.networkstat);

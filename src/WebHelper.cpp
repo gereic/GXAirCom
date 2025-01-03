@@ -99,6 +99,23 @@ String getEthState(eConnectionState state){
   return "";
 }
 
+#ifdef GSM_MODULE
+String getNetWorkStat(int16_t state){
+  switch (state){
+    case 0:
+      return "no service";
+    case 1:
+      return "GSM";
+    case 3:
+      return "EGPRS";
+    case 7:
+      return "LTE M1";
+    case 9:
+      return "LTE NB";
+  }
+  return "";
+}
+#endif
 
 // Callback: receiving any WebSocket message
 void onWebSocketEvent(uint8_t client_num,
@@ -177,8 +194,8 @@ void onWebSocketEvent(uint8_t client_num,
           doc["wifiSTAState"] = getEthState(status.wifiSTA.state);
         #ifdef GSM_MODULE
           doc["GSMRssi"] = status.gsm.SignalQuality;
-          doc["GSMStat"] = status.modemstatus;
-          doc["GSMMode"] = status.gsm.networkstat;
+          doc["GSMStat"] = getEthState(status.modemstatus);
+          doc["GSMNWSTAT"] = getNetWorkStat(status.gsm.networkstat);
           doc["GSMCOPS"] = status.gsm.sOperator;
         #endif
           serializeJson(doc, msg_buf);
@@ -1174,12 +1191,17 @@ void sendPage(uint8_t pageNr,uint8_t clientNr){
       if (mStatus.gsm.networkstat != status.gsm.networkstat){
         bSend = true;
         mStatus.gsm.networkstat = status.gsm.networkstat;
-        doc["GSMMode"] = status.gsm.networkstat;
-      }        
+        doc["GSMNWSTAT"] = getNetWorkStat(status.gsm.networkstat);
+      }
+      if (!mStatus.gsm.sOperator.equals(status.gsm.sOperator)){
+        bSend = true;
+        mStatus.gsm.sOperator = status.gsm.sOperator;
+        doc["GSMCOPS"] = status.gsm.sOperator; 
+      }      
       if (mStatus.modemstatus != status.modemstatus){
         bSend = true;
         mStatus.modemstatus = status.modemstatus;
-        doc["GSMStat"] = status.modemstatus;
+        doc["GSMStat"] = getEthState(status.modemstatus);
       }    
       #endif
       if (bSend){

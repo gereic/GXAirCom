@@ -238,6 +238,7 @@ void GxMqtt::subscribe(){
     connState = 10;
   } else {
     log_i("failed, rc=%d --> try again in 1min",pPubSubClient->state());
+    pPubSubClient->disconnect();
   }
 }
 
