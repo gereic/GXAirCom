@@ -2693,6 +2693,8 @@ void PowerOffModem(){
       }
       xSemaphoreGive( xGsmMutex );
       break;
+    }else{
+      log_i("can't get Mutex for GSM");
     }
   }
 }
@@ -2730,21 +2732,19 @@ void taskGsm(void *pvParameters){
   delay(1000); //wait 2 seconds until power is stable
   xSemaphoreTake( xGsmMutex, portMAX_DELAY );
   //factoryResetModem();
-
   //we try it twice because on sim7080, the power-pin switches the modem on and off
   //so it can be, that we switch it off
   for (int i = 0;i<2;i++){ 
     if (initModem()){
       break;
     }
-  }
-  
+  }  
   xSemaphoreGive( xGsmMutex );
   if (setting.wifi.connect != eWifiMode::CONNECT_NONE){
     log_i("stop task");
-    xSemaphoreTake( xGsmMutex, portMAX_DELAY );
+    //xSemaphoreTake( xGsmMutex, portMAX_DELAY );
     PowerOffModem();  
-    xSemaphoreGive( xGsmMutex );  
+    //xSemaphoreGive( xGsmMutex );  
     vTaskDelete(xHandleGsm); //delete weather-task
     return;
   }
