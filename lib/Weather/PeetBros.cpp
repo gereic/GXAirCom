@@ -28,6 +28,10 @@ const unsigned long TIMEOUT = 2000000ul;       // Maximum time allowed between s
 const int BAND_0 =  20;
 const int BAND_1 =  150;
 
+const float filterGain = 0.25;               // Filter gain on direction output filter. Range: 0.0 to 1.0
+                                             // 1.0 means no filtering. A smaller number increases the filtering
+
+
 const int SPEED_DEV_LIMIT_0 =  10;     // Deviation from last measurement to be valid. Band_0: 0 to 20 kmh
 const int SPEED_DEV_LIMIT_1 = 20;     // Deviation from last measurement to be valid. Band_1: 20 to 150 kmh
 const int SPEED_DEV_LIMIT_2 = 55;     // Deviation from last measurement to be valid. Band_2: 150+ kmh
@@ -51,6 +55,7 @@ float PB_actSpeed;
 float PB_actDir;
 uint32_t tsPB_valid =  0;
 uint8_t PB_valid = false;
+volatile float dirOut = 0.0;      // Direction output in degrees
 
 void pb_attachInterrupts(int8_t speedPin,int8_t dirPin){
   attachInterrupt(digitalPinToInterrupt(speedPin), isr_rotated, FALLING);
@@ -174,8 +179,20 @@ void peetBrosRun(){
   if (checkDirDev(kmh, dev) == false){    
     return; //not valid dir change
   }
+  float delta = (windDirection - dirOut);
+  if (delta < -180)
+  {
+    delta = delta + 360;    // Take the shortest path when filtering
+  }
+  else if (delta > +180)
+  {
+    delta = delta - 360;
+  }
+  // Perform filtering to smooth the direction output
+  dirOut = (int)(dirOut + (round(filterGain * delta))) % 360;
+  if (dirOut < 0) dirOut = dirOut + 360;
   PB_actSpeed = kmh; 
-  PB_actDir = float(windDirection);
+  PB_actDir = float(dirOut);
   tsPB_valid = millis();
   PB_valid = 1;
 }
