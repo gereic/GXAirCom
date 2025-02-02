@@ -102,10 +102,11 @@ XPowersLibInterface *PMU = NULL;
 #include <WeatherUnderground.h>
 #include <Windy.h>
 
-//#include <DFRobot_SD3031.h>
+#include <DFRobot_SD3031.h>
 #include <RTClib.h>
 
 RTC_DS3231 *pRtc3231 = NULL;
+DFRobot_SD3031 *pRtc3031 = NULL;
 
 #endif
 
@@ -2838,18 +2839,9 @@ void taskGsm(void *pvParameters){
 #ifdef GSMODULE
 void setRTCTime(tm &timeinfo){
   //log_i("set time of RTC to %04d%02d%02d-%02d:%02d:%02d",timeinfo.tm_year + 1900,timeinfo.tm_mon+1,timeinfo.tm_mday,timeinfo.tm_hour,timeinfo.tm_min,timeinfo.tm_sec);
-  /*
-  if (status.rtc.module == RTC_3031){
-    DFRobot_SD3031 rtc(pI2cZero);
-    if (rtc.begin())return;
-    rtc.setTime(timeinfo.tm_year + 1900,timeinfo.tm_mon+1,timeinfo.tm_mday,timeinfo.tm_hour,timeinfo.tm_min,timeinfo.tm_sec);
-  }else 
-  */
-  if (status.rtc.module == RTC_3231){
-    if (pRtc3231 == NULL){
-      log_e("rtc is null");
-      return;
-    }
+  if ((status.rtc.module == RTC_3031) && (pRtc3031)){
+    pRtc3031->setTime(timeinfo.tm_year + 1900,timeinfo.tm_mon+1,timeinfo.tm_mday,timeinfo.tm_hour,timeinfo.tm_min,timeinfo.tm_sec);
+  }else if ((status.rtc.module == RTC_3231) && (pRtc3231)){
     DateTime tAct = pRtc3231->now(); //read time and check time-difference
     DateTime tNew = DateTime(timeinfo.tm_year + 1900, timeinfo.tm_mon+1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
     uint32_t tDiff = tNew.unixtime() - tAct.unixtime();    
@@ -2871,14 +2863,11 @@ void setRTCTime(tm &timeinfo){
 }
 
 void getRTCTime(){
-  /*
-  if (status.rtc.module == RTC_3031){
-    DFRobot_SD3031 rtc(pI2cZero);
-    if (rtc.begin())return;
-    status.rtc.temp = float(rtc.getTemperatureC());
-    status.rtc.voltage = rtc.getVoltage();
+  if ((status.rtc.module == RTC_3031) && (pRtc3031)){
+    status.rtc.temp = float(pRtc3031->getTemperatureC());
+    status.rtc.voltage = pRtc3031->getVoltage();
     //log_i("RTC temp=%dC;Batt=%.2fV",status.rtc.temp,status.rtc.voltage);  
-    sTimeData_t rtcTime =  rtc.getRTCTime();
+    sTimeData_t rtcTime =  pRtc3031->getRTCTime();
     //log_i("%04d%02d%02d-%02d:%02d:%02d",rtcTime.year,rtcTime.month,rtcTime.day,rtcTime.hour,rtcTime.minute,rtcTime.second);
     struct tm timeinfo;
     timeinfo.tm_year = rtcTime.year - 1900;
@@ -2889,13 +2878,7 @@ void getRTCTime(){
     timeinfo.tm_sec = rtcTime.second;
     setAllTime(timeinfo); //we have to set time to GPS-Time for decoding.  
     status.bTimeOk = true;
-  }else 
-  */
-  if (status.rtc.module == RTC_3231){
-    if (pRtc3231 == NULL){
-      log_e("rtc is null");
-      return;
-    }
+  }else if ((status.rtc.module == RTC_3231) && (pRtc3231)){
     status.rtc.temp = int(pRtc3231->getTemperature());
     status.rtc.voltage = 0.0;
     DateTime now = pRtc3231->now();
@@ -2914,21 +2897,21 @@ void getRTCTime(){
 }
 
 void getRTC(){
-  /*
-  DFRobot_SD3031 rtc(pI2cZero);
-  if (!rtc.begin()){
+  log_i("searching for RTC");
+  if (pRtc3031 == NULL) pRtc3031 = new DFRobot_SD3031(pI2cZero);
+  if (!pRtc3031->begin()){
     log_i("found SD3031 RTC");
-    rtc.disable32k(); //we don't need the 32k output --> disable it
-    rtc.clearAlarm();
-    rtc.setAlarm(rtc.eEveryDay,4,0,0);
+    pRtc3031->disable32k(); //we don't need the 32k output --> disable it
+    pRtc3031->clearAlarm();
+    pRtc3031->setAlarm(pRtc3031->eEveryDay,4,0,0);
     status.rtc.module = RTC_3031;
     getRTCTime();
     printLocalTime();    
     return;
   }
-  */
+  delete pRtc3031; //delete again
+  pRtc3031 = NULL;  
   if (pRtc3231 == NULL) pRtc3231 = new RTC_DS3231();
-  log_i("searching for DS3231 RTC");
   if (pRtc3231->begin(pI2cZero)) {
     log_i("found DS3231 RTC");
     pRtc3231->disable32K(); //we don't need the 32k output --> disable it
@@ -2956,11 +2939,10 @@ void getRTC(){
     getRTCTime();
     printLocalTime();
     return;  
-  }else{
-    log_i("no RTC3231 found");
-    delete pRtc3231; //delete again
-    pRtc3231 = NULL;
   }
+  log_i("no RTC found");
+  delete pRtc3231; //delete again
+  pRtc3231 = NULL;
 }
 
 
