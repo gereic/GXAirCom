@@ -1746,7 +1746,7 @@ void setup() {
   }
   #endif
   printChipInfo();
-  log_i("compiled at %s",compile_date);
+  log_i("compiled at %s",compile_date.c_str());
   log_i("current free heap: %d, minimum ever free heap: %d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
 
   //esp_sleep_wakeup_cause_t reason = print_wakeup_reason(); //print reason for wakeup
