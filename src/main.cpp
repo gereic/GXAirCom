@@ -39,6 +39,9 @@
 #include "XPowersLib.h"
 #include "TimeDefs.h"
 
+
+#define SEND_RAW_WIND_DATA
+
 XPowersLibInterface *PMU = NULL;
 
 
@@ -309,6 +312,11 @@ String sNmeaIn = "";
 
 char* pWd = NULL;
 uint8_t wdCount = 0;
+
+#ifdef SEND_RAW_WIND_DATA
+char* pWdRaw = NULL;
+uint8_t wdRawCount = 0;
+#endif
 
 
 TaskHandle_t xHandleBaro = NULL;
@@ -2945,6 +2953,26 @@ void getRTC(){
   pRtc3231 = NULL;
 }
 
+#ifdef SEND_RAW_WIND_DATA
+void sendRawWeatherData(Weather::weatherData *weather){
+  static uint32_t tsend = millis();
+  if (!timeOver(millis(),tsend,1000)){
+    return;
+  }
+  tsend = millis();
+  static char msg_buf[500];
+  pWdRaw = &msg_buf[0];
+  StaticJsonDocument<500> doc;                      //Memory pool
+  char buff[30];
+  snprintf (buff,sizeof(buff)-1,"%04d-%02d-%02dT%02d:%02d:%02d+00:00",year(),month(),day(),hour(),minute(),second()); // ISO 8601
+  doc["DT"] = buff;
+  doc["wDir"] = round2(weather->WindDir);
+  doc["wSpeed"] = round2(weather->WindSpeed);
+  doc["wGust"] = round2(weather->WindGust);
+  serializeJson(doc, pWdRaw, 500);
+  wdRawCount++;
+}
+#endif
 
 void taskWeather(void *pvParameters){
   static uint32_t tUploadData; //first sending is in Sending-intervall to have steady-values
@@ -2995,6 +3023,10 @@ void taskWeather(void *pvParameters){
       if (weather.getValues(&wData)){
         //log_i("wdata:wDir=%f;wSpeed=%f,temp=%f,h=%f,p=%f",wData.WindDir,wData.WindSpeed,wData.temp,wData.Humidity,wData.Pressure);
         //if ((status.weather.vaneVAlue != wData.vaneValue) || (wData.vaneValue < 1023)){ //we check, if analog-value is changing, when there is an error, we get always 1023 for analog-read
+        #ifdef SEND_RAW_WIND_DATA
+        sendRawWeatherData(&wData);
+        #endif
+
         if ((wData.vaneValue != 0x03FF) || (setting.wd.anemometer.AnemometerType != eAnemometer::DAVIS)){ //0x03FF=1023 we check, if analog-value is changing, when there is an error, we get always 1023 for analog-read
           tWindOk = tAct;
           status.weather.error.bits.VanevalueInvalid = false;
@@ -4447,6 +4479,9 @@ void taskStandard(void *pvParameters){
 
   GxMqtt *pMqtt = NULL;
   static uint8_t myWdCount = 0;
+  #ifdef SEND_RAW_WIND_DATA
+  static uint8_t myWdRawCount = 0;
+  #endif
   if (setting.mqtt.mode.bits.enable){
     pMqtt = new(GxMqtt);
     #ifdef GSM_MODULE
@@ -4695,6 +4730,12 @@ void taskStandard(void *pvParameters){
         pMqtt->sendTopic("WD",pWd,false);
         myWdCount = wdCount;
       }
+      #ifdef SEND_RAW_WIND_DATA
+        if (myWdRawCount != wdRawCount){
+          pMqtt->sendTopic("WD_Raw",pWdRaw,false);
+          myWdRawCount = wdRawCount;
+        }
+      #endif
     } 
     #ifdef BLUETOOTH    
     if (RxBleQueue) {
@@ -4858,7 +4899,6 @@ void taskStandard(void *pvParameters){
           StaticJsonDocument<500> doc;                      //Memory pool
           char buff[30];
           char msg_buf[500];
-          pWd = &msg_buf[0];
           snprintf (buff,sizeof(buff)-1,"%04d-%02d-%02dT%02d:%02d:%02d+00:00",year(),month(),day(),hour(),minute(),second()); // ISO 8601
           doc["DT"] = buff;
           doc["ID"] = fanet.getDevId(weatherData.devId);

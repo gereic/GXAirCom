@@ -159,6 +159,22 @@ bool Weather::begin(TwoWire *pi2c, SettingsData &setting, int8_t oneWirePin, int
     _weather.bWindSpeed = true;
     _weather.bWindDir = true;    
     peetBros_init(windSpeedPin,windDirPin);
+  } else if (aneometerType == eAnemometer::MISOL){
+    //init-code for aneometer Misol
+    _windDirPin = windDirPin;
+    if (windDirPin >= 0){
+      _weather.bWindDir = true;
+      pinMode(_windDirPin, INPUT);
+    }
+    if (windSpeedPin >= 0){
+      _weather.bWindSpeed = true;
+      pinMode(windSpeedPin, INPUT);
+      attachInterrupt(digitalPinToInterrupt(windSpeedPin), windspeedhandler, FALLING);
+    }
+    timer = timerBegin(0, 80, true);
+    timerAttachInterrupt(timer, &onTimer, true);
+    timerAlarmWrite(timer, 2000000, true); //every 2 seconds
+    timerAlarmEnable(timer);    
   }else{
     //init-code for aneometer DAVIS6410
     _windDirPin = windDirPin;
@@ -218,15 +234,25 @@ void Weather::setWindDirOffset(int16_t winddirOffset){
 }
 
 float Weather::calcWindspeed(void){
-  return (float)_actPulseCount * 1.609;
+  if (aneometerType == eAnemometer::MISOL){
+    // 2.4km/h = 1 impuls per second 
+    // --> 1.2km/h = 1 impuls in 2 seconds
+    return (float)_actPulseCount * 1.2;
+  }else{
+    return (float)_actPulseCount * 1.609;
+  }
 }
 
 void Weather::checkAneometer(void){
   if (_weather.bWindDir){
     VaneValue = analogRead(_windDirPin);
-    _weather.vaneValue = VaneValue;
-    winddir = (map(VaneValue, 0, 1023, 0, 359) + _winddirOffset) % 360;
-    _weather.WindDir = winddir;
+    if (aneometerType == eAnemometer::MISOL){
+      log_i("analog-value of wind-vane:%d",VaneValue);
+    }else{
+      _weather.vaneValue = VaneValue;
+      winddir = (map(VaneValue, 0, 1023, 0, 359) + _winddirOffset) % 360;
+      _weather.WindDir = winddir;  
+    }
   }
   if (_weather.bWindSpeed){
     if (timerIrq){
@@ -406,6 +432,8 @@ void Weather::run(void){
       while (_weather.WindDir > 360) { _weather.WindDir -= 360.0; }      
       if (_weather.WindSpeed > _weather.WindGust) _weather.WindGust = _weather.WindSpeed; 
       //log_i("dir=%.1f,speed=%0.1f,ret=%d",_weather.WindDir,_weather.WindSpeed,ret);
+    } else if (aneometerType == eAnemometer::MISOL){
+      checkAneometer();
     }else{
       checkAneometer();
     }
