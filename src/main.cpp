@@ -40,7 +40,7 @@
 #include "TimeDefs.h"
 
 
-#define SEND_RAW_WIND_DATA
+//#define SEND_RAW_WIND_DATA
 
 XPowersLibInterface *PMU = NULL;
 
