@@ -230,8 +230,10 @@ void onWebSocketEvent(uint8_t client_num,
           doc["gpslon"] = String(status.gps.Lon,6);
           doc["gpsAlt"] = String(status.gps.alt,1);
           doc["gpsGAlt"] = String(status.gps.geoidAlt,1);
+          doc["fanetFrequ"] = fanet.getLoraFrequency();
           doc["fanetTx"] = status.fanetTx;
           doc["fanetRx"] = status.fanetRx;
+          doc["legFrequ"] = fanet.getFlarmFrequency();
           doc["legTx"] = status.legTx;
           doc["legRx"] = status.legRx;
           doc["tLoop"] = status.tLoop;
@@ -977,6 +979,7 @@ void sendPage(uint8_t pageNr,uint8_t clientNr){
   static uint16_t counter = 0;
   static uint32_t tCount20 = millis();
   static uint32_t tCount30 = millis();
+  static float flarmFrequ = 0;
   switch (pageNr) {
     case 2:
       //page info.html
@@ -1139,7 +1142,14 @@ void sendPage(uint8_t pageNr,uint8_t clientNr){
         bSend = true;
         mStatus.fanetRx = status.fanetRx;
         doc["fanetRx"] = status.fanetRx;
-      }    
+      }  
+      
+      
+      if (flarmFrequ != fanet.getFlarmFrequency()){
+        bSend = true;
+        flarmFrequ = fanet.getFlarmFrequency();
+        doc["legFrequ"] = flarmFrequ;
+      }
       if (mStatus.legTx != status.legTx){
         bSend = true;
         mStatus.legTx = status.legTx;

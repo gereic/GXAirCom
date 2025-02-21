@@ -278,7 +278,7 @@ struct VarioSettings{
 
 	struct WeatherStationModeBits
 	{
-			unsigned enable:1, hasBME:1, rainSensor:1, ds18B20:1, b4:1, b5:1, b6:1, b7:1;
+			unsigned enable:1, hasBME:1, rainSensor:1, ds18B20:1, SHT20:1, b5:1, b6:1, b7:1;
 	};
 
   	union uWeatherStationMode

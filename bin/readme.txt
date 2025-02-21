@@ -250,8 +250,8 @@ SDA 2
 SCL 3 
 
 ******** Anemometer (Davis 6410) *********
-WINDDIR_PIN 33
-WINDSPEED_PIN 34  (use external Pull 4,7k)
+WINDDIR_PIN 6
+WINDSPEED_PIN 7  (use external Pull 4,7k)
 
 
 

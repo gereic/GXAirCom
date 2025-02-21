@@ -13,6 +13,7 @@ const wsModeEn = 1;
 const wsModeBme = 2;
 const wsModeRain = 4;
 const wsModeDS18B20 = 8;
+const wsModeSHT20 = 16;
 function resetMaxLoopTime(){
   var obj = {rLoopTime : 1};
   doSend(JSON.stringify(obj));
@@ -43,6 +44,9 @@ function setVis(){
       document.getElementById("VisWdPress").style.display='';
     }else if (wsMode & wsModeDS18B20){
       document.getElementById("VisWdTemp").style.display='';
+    }else if (wsMode & wsModeSHT20){
+      document.getElementById("VisWdTemp").style.display='';
+      document.getElementById("VisWdHum").style.display='';
     }
     if (wsMode & wsModeRain){
       document.getElementById("VisWdR1h").style.display='';
@@ -365,6 +369,10 @@ function onMessage(evt) {
       <table style="width:100&#37;">
         <tbody>
           <tr>
+            <th>frequency [MHz]</th>
+            <td><input type="text" id="fanetFrequ" disabled></td>
+          </tr>
+          <tr>
             <th>rx-count</th>
             <td><input type="text" id="fanetRx" disabled></td>
           </tr>
@@ -381,6 +389,10 @@ function onMessage(evt) {
       <legend><b>FLARM</b></legend>
       <table style="width:100&#37;">
         <tbody>
+          <tr>
+            <th>frequency [MHz]</th>
+            <td><input type="text" id="legFrequ" disabled></td>
+          </tr>
           <tr>
             <th>rx-count</th>
             <td><input type="text" id="legRx" disabled></td>

@@ -14,6 +14,7 @@
  const wsModeBme = 2;
  const wsModeRain = 4;
  const wsModeDS18B20 = 8;
+ const wsModeSHT20 = 16;
 /*this function sets visible depending on actual option*/
 function setFts(){
       document.getElementById("traccarsrv").value="http://tracking.fivl.it:5055/";
@@ -120,7 +121,7 @@ function setVis(){
       document.getElementById("tWdUpload").innerHTML='Weather Upload settings';
       
 
-      if ((wsMode & wsModeBme) || (wsMode & wsModeDS18B20)){
+      if ((wsMode & wsModeBme) || (wsMode & wsModeDS18B20) || (wsMode & wsModeSHT20)){
         document.getElementById("VisWDBme").style.display='';  /*enable temp-correction for BME*/
       }
       if (document.getElementById("wdAnemo").value == 2){
@@ -181,6 +182,7 @@ function setVis(){
   document.getElementById("wdModeHasBME").checked = wsMode & wsModeBme;
   document.getElementById("wdModeRainSensor").checked = wsMode & wsModeRain;
   document.getElementById("wdModeDS18B20").checked = wsMode & wsModeDS18B20;
+  document.getElementById("wdModeSHT20").checked = wsMode & wsModeSHT20;
 }
 
 function setWsMode(){
@@ -190,6 +192,7 @@ function setWsMode(){
   if (document.getElementById("wdModeHasBME").checked) wsMode += 2;
   if (document.getElementById("wdModeRainSensor").checked) wsMode += 4;
   if (document.getElementById("wdModeDS18B20").checked) wsMode += 8;
+  if (document.getElementById("wdModeSHT20").checked) wsMode += 16;
   setVis();
 }
 
@@ -199,6 +202,7 @@ function getWsMode(){
   if (document.getElementById("wdModeHasBME").checked) Ret += 2;
   if (document.getElementById("wdModeRainSensor").checked) Ret += 4;
   if (document.getElementById("wdModeDS18B20").checked) Ret += 8;
+  if (document.getElementById("wdModeSHT20").checked) Ret += 16;
   return Ret;
 }
 
@@ -1340,6 +1344,10 @@ function onMessage(evt) {
           <tr>
             <th>DS18B20</th>
             <td><input onchange="setWsMode()" type="checkbox" id="wdModeDS18B20"></td>
+          </tr>
+          <tr>
+            <th>SHT20</th>
+            <td><input onchange="setWsMode()" type="checkbox" id="wdModeSHT20"></td>
           </tr>
           <tr id="VisWDBme">
             <th>offset Temperature [K]</th>

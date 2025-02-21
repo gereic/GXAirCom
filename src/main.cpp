@@ -2333,8 +2333,8 @@ void setup() {
 
     //pI2cOne->begin(PinBaroSDA, PinBaroSCL);
 
-    PinWindDir = 33;
-    PinWindSpeed =34;    
+    PinWindDir = 6;
+    PinWindSpeed =7;    
 
     pinMode(35,OUTPUT);
     digitalWrite(35,LOW); //switch user-LED off

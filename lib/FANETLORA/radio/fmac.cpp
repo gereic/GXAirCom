@@ -572,9 +572,11 @@ void FanetMac::switchMode(uint8_t mode,bool bStartReceive){
 		actflarmFreq = 0.0;
 	}else if (mode == MODE_FSK_8682){
 		actflarmFreq = 868.2;
+		flarmFrequency = 868.2;
 		radio.switchFSK(actflarmFreq);
 	}else if (mode == MODE_FSK_8684){
 		actflarmFreq = 868.4;
+		flarmFrequency = 868.4;
 		radio.switchFSK(actflarmFreq);
 	}else if (mode == MODE_FSK){		
 		time(&tUnix);
