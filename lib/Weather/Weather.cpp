@@ -468,7 +468,7 @@ void Weather::run(void){
       uint8_t ret = tx20getNewData(&Dir,&Speed);
       if (ret == 1){
         _weather.vaneValue = int16_t(float(Dir) * 22.5);
-        _weather.WindDir = (int16_t(float(Dir) * 22.5) + _winddirOffset) % 360;
+        _weather.WindDir = (float(Dir) * 22.5) + _winddirOffset;
         _weather.WindSpeed = float(Speed) / 10.0 * 3.6; //[1/10m/s] --> [km/h]
         if (_weather.WindSpeed > _weather.WindGust) _weather.WindGust = _weather.WindSpeed; 
       }
@@ -476,9 +476,9 @@ void Weather::run(void){
       checkAdsAneometer();
     } else if (aneometerType == eAnemometer::PEETBROS) {
       uint8_t ret = peetBrosgetNewData(&_weather.WindDir,&_weather.WindSpeed);
-      _weather.WindDir += _winddirOffset;
-      while (_weather.WindDir < 0) { _weather.WindDir += 360.0; }
-      while (_weather.WindDir > 360) { _weather.WindDir -= 360.0; }      
+      if (ret == 1){
+        _weather.WindDir += _winddirOffset; //we got new data --> add winddir-offset
+      }      
       if (_weather.WindSpeed > _weather.WindGust) _weather.WindGust = _weather.WindSpeed; 
       //log_i("dir=%.1f,speed=%0.1f,ret=%d",_weather.WindDir,_weather.WindSpeed,ret);
     } else if (aneometerType == eAnemometer::MISOL){
@@ -486,7 +486,8 @@ void Weather::run(void){
     }else{
       checkAneometer();
     }
-    
+    while (_weather.WindDir < 0) { _weather.WindDir += 360.0; }
+    while (_weather.WindDir >= 360) { _weather.WindDir -= 360.0; }    
     checkRainSensor();
     bNewWeather = true;
     tOld = tAct;
