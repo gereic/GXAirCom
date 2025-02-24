@@ -22,6 +22,7 @@
 #include "main.h"
 #include <ADS1X15.h>
 #include <PeetBros.h>
+#include <SHT2x.h>
 
 #define DEG2RAD M_PI / 180.0
 #define RAD2DEG 180.0 / M_PI
@@ -71,6 +72,7 @@ private:
     void checkRainSensor(void);
     float calcWindspeed(void);
     Adafruit_BME280 bme;
+    SHT2x *sht;
     //uint16_t avgFactor; //factor for avg-factor
     float _tempOffset = 0;
     int16_t _winddirOffset = 0;
@@ -101,6 +103,7 @@ private:
     uint8_t aneometerType = 0;
     bool _bHasBME = false;
     bool _bHasDS18B20 = false;
+    bool _bHasSHT20 = false;
     ADS1015 _ADS1015;
     bool initADS(AnemometerSettings &anSettings);
     bool _bHasADS = false;

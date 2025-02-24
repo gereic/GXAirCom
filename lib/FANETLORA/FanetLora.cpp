@@ -1337,7 +1337,7 @@ int FanetLora::serialize_service(weatherData *wData,uint8_t*& buffer){
     buffer[index] = uint8_t(round(wData->Humidity * 10 / 4)); //Humidity (+1byte: in 0.4% (%rh*10/4))
     index++;
   }
-  if (wData->bHumidity){
+  if (wData->bBaro){
     int16_t *pInt;
     pInt = (int16_t *)&buffer[index];
     //pkt->baro = int16_t(round((wData->Baro - 430.0) * 10));  //Barometric pressure normailized (+2byte: in 10Pa, offset by 430hPa, unsigned little endian (hPa-430)*10)
@@ -1357,6 +1357,13 @@ void FanetLora::writeMsgType4(weatherData *wData){
   frm->forward = true;
   frm->payload_length = serialize_service(wData,frm->payload);
   frm2txBuffer(frm);
+}
+
+float FanetLora::getLoraFrequency(void){
+  return fmac.loraFrequency;
+}
+float FanetLora::getFlarmFrequency(void){
+  return fmac.flarmFrequency;
 }
 
 void FanetLora::setMyTrackingData(trackingData *tData,float geoidAlt,uint32_t ppsMillis){

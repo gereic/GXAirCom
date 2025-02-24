@@ -243,6 +243,16 @@ SCL 34
 WINDDIR_PIN 2
 WINDSPEED_PIN 3  (use external Pull 4,7k)
 
+************* Pins for HELTEC_LORA_V3 ***************
+
+******** BARO *********
+SDA 2
+SCL 3 
+
+******** Anemometer (Davis 6410) *********
+WINDDIR_PIN 6
+WINDSPEED_PIN 7  (use external Pull 4,7k)
+
 
 
 

@@ -259,9 +259,7 @@ private:
 	uint8_t _ppsCount = 0;
 	eLoraRegion eLoraRegion = NONE;
 	uint8_t flarmZone = 0;
-	float loraFrequency = 0.0;
 	uint16_t loraBandwidth = 0;
-	float flarmFrequency = 0.0;
 	uint8_t flarmChannels = 0;
 	float actflarmFreq = 0.0;
 
@@ -278,6 +276,8 @@ public:
 	uint16_t rxFntCount = 0;
 	uint16_t txLegCount = 0;
 	uint16_t rxLegCount = 0;
+	float loraFrequency = 0.0;
+	float flarmFrequency = 0.0;
 
 	FanetMac() : myTimer(MAC_SLOT_MS, stateWrapper), myAddr(_myAddr) { }
 	~FanetMac() { }

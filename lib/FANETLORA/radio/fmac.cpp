@@ -563,6 +563,7 @@ bool FanetMac::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int8_t rese
 void FanetMac::switchMode(uint8_t mode,bool bStartReceive){
   time_t tUnix = 0;
 	uint32_t channel = 0;
+	//log_i("switch to mode %d",mode);
 	#if RX_DEBUG > 1
 	uint32_t tBegin = micros();
 	bool bChanged = false;
@@ -572,9 +573,11 @@ void FanetMac::switchMode(uint8_t mode,bool bStartReceive){
 		actflarmFreq = 0.0;
 	}else if (mode == MODE_FSK_8682){
 		actflarmFreq = 868.2;
+		flarmFrequency = 868.2;
 		radio.switchFSK(actflarmFreq);
 	}else if (mode == MODE_FSK_8684){
 		actflarmFreq = 868.4;
+		flarmFrequency = 868.4;
 		radio.switchFSK(actflarmFreq);
 	}else if (mode == MODE_FSK){		
 		time(&tUnix);
@@ -586,6 +589,7 @@ void FanetMac::switchMode(uint8_t mode,bool bStartReceive){
 			bChanged = true;
 			#endif
 			actflarmFreq = frequ;
+			//log_i("switch to frequency %.3f",frequ);
 			radio.switchFSK(actflarmFreq);
 		}
 	}
@@ -1043,8 +1047,13 @@ void FanetMac::setRegion(float lat, float lon){
 	if (bstartRec){
 		if (_RfMode.bits.FntRx){
 			switchMode(MODE_LORA);
-		}else{
-			switchMode(MODE_FSK_8682);
+		}else if (_RfMode.bits.LegRx){
+			if (flarmZone == 1){
+				switchMode(MODE_FSK_8682);
+			}else{
+				switchMode(MODE_FSK);
+			}
+			
 		}
 	}
 }

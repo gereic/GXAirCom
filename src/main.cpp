@@ -39,6 +39,9 @@
 #include "XPowersLib.h"
 #include "TimeDefs.h"
 
+
+//#define SEND_RAW_WIND_DATA
+
 XPowersLibInterface *PMU = NULL;
 
 
@@ -102,10 +105,11 @@ XPowersLibInterface *PMU = NULL;
 #include <WeatherUnderground.h>
 #include <Windy.h>
 
-//#include <DFRobot_SD3031.h>
+#include <DFRobot_SD3031.h>
 #include <RTClib.h>
 
 RTC_DS3231 *pRtc3231 = NULL;
+DFRobot_SD3031 *pRtc3031 = NULL;
 
 #endif
 
@@ -308,6 +312,11 @@ String sNmeaIn = "";
 
 char* pWd = NULL;
 uint8_t wdCount = 0;
+
+#ifdef SEND_RAW_WIND_DATA
+char* pWdRaw = NULL;
+uint8_t wdRawCount = 0;
+#endif
 
 
 TaskHandle_t xHandleBaro = NULL;
@@ -1745,7 +1754,7 @@ void setup() {
   }
   #endif
   printChipInfo();
-  log_i("compiled at %s",compile_date);
+  log_i("compiled at %s",compile_date.c_str());
   log_i("current free heap: %d, minimum ever free heap: %d", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
 
   //esp_sleep_wakeup_cause_t reason = print_wakeup_reason(); //print reason for wakeup
@@ -2324,8 +2333,8 @@ void setup() {
 
     //pI2cOne->begin(PinBaroSDA, PinBaroSCL);
 
-    //PinWindDir = 2;
-    //PinWindSpeed = 3;    
+    PinWindDir = 6;
+    PinWindSpeed =7;    
 
     pinMode(35,OUTPUT);
     digitalWrite(35,LOW); //switch user-LED off
@@ -2838,18 +2847,9 @@ void taskGsm(void *pvParameters){
 #ifdef GSMODULE
 void setRTCTime(tm &timeinfo){
   //log_i("set time of RTC to %04d%02d%02d-%02d:%02d:%02d",timeinfo.tm_year + 1900,timeinfo.tm_mon+1,timeinfo.tm_mday,timeinfo.tm_hour,timeinfo.tm_min,timeinfo.tm_sec);
-  /*
-  if (status.rtc.module == RTC_3031){
-    DFRobot_SD3031 rtc(pI2cZero);
-    if (rtc.begin())return;
-    rtc.setTime(timeinfo.tm_year + 1900,timeinfo.tm_mon+1,timeinfo.tm_mday,timeinfo.tm_hour,timeinfo.tm_min,timeinfo.tm_sec);
-  }else 
-  */
-  if (status.rtc.module == RTC_3231){
-    if (pRtc3231 == NULL){
-      log_e("rtc is null");
-      return;
-    }
+  if ((status.rtc.module == RTC_3031) && (pRtc3031)){
+    pRtc3031->setTime(timeinfo.tm_year + 1900,timeinfo.tm_mon+1,timeinfo.tm_mday,timeinfo.tm_hour,timeinfo.tm_min,timeinfo.tm_sec);
+  }else if ((status.rtc.module == RTC_3231) && (pRtc3231)){
     DateTime tAct = pRtc3231->now(); //read time and check time-difference
     DateTime tNew = DateTime(timeinfo.tm_year + 1900, timeinfo.tm_mon+1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
     uint32_t tDiff = tNew.unixtime() - tAct.unixtime();    
@@ -2871,14 +2871,11 @@ void setRTCTime(tm &timeinfo){
 }
 
 void getRTCTime(){
-  /*
-  if (status.rtc.module == RTC_3031){
-    DFRobot_SD3031 rtc(pI2cZero);
-    if (rtc.begin())return;
-    status.rtc.temp = float(rtc.getTemperatureC());
-    status.rtc.voltage = rtc.getVoltage();
+  if ((status.rtc.module == RTC_3031) && (pRtc3031)){
+    status.rtc.temp = float(pRtc3031->getTemperatureC());
+    status.rtc.voltage = pRtc3031->getVoltage();
     //log_i("RTC temp=%dC;Batt=%.2fV",status.rtc.temp,status.rtc.voltage);  
-    sTimeData_t rtcTime =  rtc.getRTCTime();
+    sTimeData_t rtcTime =  pRtc3031->getRTCTime();
     //log_i("%04d%02d%02d-%02d:%02d:%02d",rtcTime.year,rtcTime.month,rtcTime.day,rtcTime.hour,rtcTime.minute,rtcTime.second);
     struct tm timeinfo;
     timeinfo.tm_year = rtcTime.year - 1900;
@@ -2889,13 +2886,7 @@ void getRTCTime(){
     timeinfo.tm_sec = rtcTime.second;
     setAllTime(timeinfo); //we have to set time to GPS-Time for decoding.  
     status.bTimeOk = true;
-  }else 
-  */
-  if (status.rtc.module == RTC_3231){
-    if (pRtc3231 == NULL){
-      log_e("rtc is null");
-      return;
-    }
+  }else if ((status.rtc.module == RTC_3231) && (pRtc3231)){
     status.rtc.temp = int(pRtc3231->getTemperature());
     status.rtc.voltage = 0.0;
     DateTime now = pRtc3231->now();
@@ -2914,21 +2905,21 @@ void getRTCTime(){
 }
 
 void getRTC(){
-  /*
-  DFRobot_SD3031 rtc(pI2cZero);
-  if (!rtc.begin()){
+  log_i("searching for RTC");
+  if (pRtc3031 == NULL) pRtc3031 = new DFRobot_SD3031(pI2cZero);
+  if (!pRtc3031->begin()){
     log_i("found SD3031 RTC");
-    rtc.disable32k(); //we don't need the 32k output --> disable it
-    rtc.clearAlarm();
-    rtc.setAlarm(rtc.eEveryDay,4,0,0);
+    pRtc3031->disable32k(); //we don't need the 32k output --> disable it
+    pRtc3031->clearAlarm();
+    pRtc3031->setAlarm(pRtc3031->eEveryDay,4,0,0);
     status.rtc.module = RTC_3031;
     getRTCTime();
     printLocalTime();    
     return;
   }
-  */
+  delete pRtc3031; //delete again
+  pRtc3031 = NULL;  
   if (pRtc3231 == NULL) pRtc3231 = new RTC_DS3231();
-  log_i("searching for DS3231 RTC");
   if (pRtc3231->begin(pI2cZero)) {
     log_i("found DS3231 RTC");
     pRtc3231->disable32K(); //we don't need the 32k output --> disable it
@@ -2956,13 +2947,32 @@ void getRTC(){
     getRTCTime();
     printLocalTime();
     return;  
-  }else{
-    log_i("no RTC3231 found");
-    delete pRtc3231; //delete again
-    pRtc3231 = NULL;
   }
+  log_i("no RTC found");
+  delete pRtc3231; //delete again
+  pRtc3231 = NULL;
 }
 
+#ifdef SEND_RAW_WIND_DATA
+void sendRawWeatherData(Weather::weatherData *weather){
+  static uint32_t tsend = millis();
+  if (!timeOver(millis(),tsend,1000)){
+    return;
+  }
+  tsend = millis();
+  static char msg_buf[500];
+  pWdRaw = &msg_buf[0];
+  StaticJsonDocument<500> doc;                      //Memory pool
+  char buff[30];
+  snprintf (buff,sizeof(buff)-1,"%04d-%02d-%02dT%02d:%02d:%02d+00:00",year(),month(),day(),hour(),minute(),second()); // ISO 8601
+  doc["DT"] = buff;
+  doc["wDir"] = round2(weather->WindDir);
+  doc["wSpeed"] = round2(weather->WindSpeed);
+  doc["wGust"] = round2(weather->WindGust);
+  serializeJson(doc, pWdRaw, 500);
+  wdRawCount++;
+}
+#endif
 
 void taskWeather(void *pvParameters){
   static uint32_t tUploadData; //first sending is in Sending-intervall to have steady-values
@@ -3013,6 +3023,10 @@ void taskWeather(void *pvParameters){
       if (weather.getValues(&wData)){
         //log_i("wdata:wDir=%f;wSpeed=%f,temp=%f,h=%f,p=%f",wData.WindDir,wData.WindSpeed,wData.temp,wData.Humidity,wData.Pressure);
         //if ((status.weather.vaneVAlue != wData.vaneValue) || (wData.vaneValue < 1023)){ //we check, if analog-value is changing, when there is an error, we get always 1023 for analog-read
+        #ifdef SEND_RAW_WIND_DATA
+        sendRawWeatherData(&wData);
+        #endif
+
         if ((wData.vaneValue != 0x03FF) || (setting.wd.anemometer.AnemometerType != eAnemometer::DAVIS)){ //0x03FF=1023 we check, if analog-value is changing, when there is an error, we get always 1023 for analog-read
           tWindOk = tAct;
           status.weather.error.bits.VanevalueInvalid = false;
@@ -4465,6 +4479,9 @@ void taskStandard(void *pvParameters){
 
   GxMqtt *pMqtt = NULL;
   static uint8_t myWdCount = 0;
+  #ifdef SEND_RAW_WIND_DATA
+  static uint8_t myWdRawCount = 0;
+  #endif
   if (setting.mqtt.mode.bits.enable){
     pMqtt = new(GxMqtt);
     #ifdef GSM_MODULE
@@ -4713,6 +4730,12 @@ void taskStandard(void *pvParameters){
         pMqtt->sendTopic("WD",pWd,false);
         myWdCount = wdCount;
       }
+      #ifdef SEND_RAW_WIND_DATA
+        if (myWdRawCount != wdRawCount){
+          pMqtt->sendTopic("WD_Raw",pWdRaw,false);
+          myWdRawCount = wdRawCount;
+        }
+      #endif
     } 
     #ifdef BLUETOOTH    
     if (RxBleQueue) {
@@ -4876,7 +4899,6 @@ void taskStandard(void *pvParameters){
           StaticJsonDocument<500> doc;                      //Memory pool
           char buff[30];
           char msg_buf[500];
-          pWd = &msg_buf[0];
           snprintf (buff,sizeof(buff)-1,"%04d-%02d-%02dT%02d:%02d:%02d+00:00",year(),month(),day(),hour(),minute(),second()); // ISO 8601
           doc["DT"] = buff;
           doc["ID"] = fanet.getDevId(weatherData.devId);
@@ -4989,6 +5011,9 @@ void taskStandard(void *pvParameters){
           //log_i("latlon=%d,%d",nmea.getLatitude(),nmea.getLongitude());
           status.gps.Lat = nmea.getLatitude() / 1000000.;
           status.gps.Lon = nmea.getLongitude() / 1000000.;  
+          //only for testing NZ
+          //status.gps.Lat = -41.0605988;
+          //status.gps.Lon = 175.3534596;  
           #ifdef FLARMTEST
             status.gps.Lat = setting.gs.lat;
             status.gps.Lon = setting.gs.lon;

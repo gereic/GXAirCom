@@ -106,9 +106,15 @@ bool Weather::begin(TwoWire *pi2c, SettingsData &setting, int8_t oneWirePin, int
   actDay = 0;
   _bHasBME = setting.wd.mode.bits.hasBME;
   _bHasDS18B20 = setting.wd.mode.bits.ds18B20;
+  _bHasSHT20 = setting.wd.mode.bits.SHT20;
   anSettings = setting.wd.anemometer;
   aneometerType = anSettings.AnemometerType;
-
+  if (_bHasSHT20){
+    sht = new SHT2x(pI2c);
+    if (!sht->begin()){
+      log_e("sht20 not connected");
+    }
+  }
   //log_i("onewire pin=%d",oneWirePin);
   if (oneWirePin >= 0){
     oneWire.begin(oneWirePin);
@@ -159,6 +165,22 @@ bool Weather::begin(TwoWire *pi2c, SettingsData &setting, int8_t oneWirePin, int
     _weather.bWindSpeed = true;
     _weather.bWindDir = true;    
     peetBros_init(windSpeedPin,windDirPin);
+  } else if (aneometerType == eAnemometer::MISOL){
+    //init-code for aneometer Misol
+    _windDirPin = windDirPin;
+    if (windDirPin >= 0){
+      _weather.bWindDir = true;
+      pinMode(_windDirPin, INPUT);
+    }
+    if (windSpeedPin >= 0){
+      _weather.bWindSpeed = true;
+      pinMode(windSpeedPin, INPUT);
+      attachInterrupt(digitalPinToInterrupt(windSpeedPin), windspeedhandler, FALLING);
+    }
+    timer = timerBegin(0, 80, true);
+    timerAttachInterrupt(timer, &onTimer, true);
+    timerAlarmWrite(timer, 2000000, true); //every 2 seconds
+    timerAlarmEnable(timer);    
   }else{
     //init-code for aneometer DAVIS6410
     _windDirPin = windDirPin;
@@ -218,15 +240,54 @@ void Weather::setWindDirOffset(int16_t winddirOffset){
 }
 
 float Weather::calcWindspeed(void){
-  return (float)_actPulseCount * 1.609;
+  if (aneometerType == eAnemometer::MISOL){
+    // 2.4km/h = 1 impuls per second 
+    // --> 1.2km/h = 1 impuls in 2 seconds
+    return (float)_actPulseCount * 1.2;
+  }else{
+    return (float)_actPulseCount * 1.609;
+  }
+}
+
+uint8_t getMilosDirection(uint16_t vaneValue){
+  uint16_t dirValues[16] = {793,400,458,76,85,58,176,117,278,235,629,599,995,835,910,702};
+  uint8_t actIndex = 0;
+  uint16_t maxOffset = 0xFFFF;
+  if (vaneValue == 1023) return 0; //no wind-vane connected
+  for (int i = 0;i < 16;i++){
+    uint16_t actOffset = abs((int16_t)vaneValue - (int16_t)dirValues[i]);
+    if (actOffset < maxOffset){
+      maxOffset = actOffset;
+      actIndex = i;
+    }
+  }
+  return actIndex;
 }
 
 void Weather::checkAneometer(void){
   if (_weather.bWindDir){
-    VaneValue = analogRead(_windDirPin);
-    _weather.vaneValue = VaneValue;
-    winddir = (map(VaneValue, 0, 1023, 0, 359) + _winddirOffset) % 360;
-    _weather.WindDir = winddir;
+    //VaneValue = analogRead(_windDirPin);
+    analogRead(_windDirPin);//skip first measurement
+    uint32_t adc_reading = 0;
+    for (int i = 0; i < 4; i++) { //make 4 readings and create avg
+      uint16_t thisReading = analogRead(_windDirPin);
+      adc_reading += thisReading;
+    }    
+    VaneValue = adc_reading / 4;
+    if (aneometerType == eAnemometer::MISOL){      
+      //R2 = (Uout * R1)/(Uin-Uout)
+      float Uout = (float)VaneValue * 3.3 / 1023;
+      uint32_t resistor = uint32_t((Uout * 10000)/(3.3-Uout));
+      winddir = (float)((((int16_t)getMilosDirection(VaneValue) * 225) + (_winddirOffset * 10)) % 3600) / 10.0;
+      //log_i("analog-value of wind-vane:%d;resistor=%d;dir=%.2f",VaneValue,resistor,winddir);
+      _weather.vaneValue = VaneValue;
+      _weather.WindDir = winddir;  
+
+    }else{
+      _weather.vaneValue = VaneValue;
+      winddir = (map(VaneValue, 0, 1023, 0, 359) + _winddirOffset) % 360;
+      _weather.WindDir = winddir;  
+    }
   }
   if (_weather.bWindSpeed){
     if (timerIrq){
@@ -387,13 +448,27 @@ void Weather::run(void){
         log_e("error reading oneWire");
       }
     }
+    if (_bHasSHT20){
+      for (i = 0;i < 3;i++){
+        if (sht->read()){
+          _weather.temp = sht->getTemperature() + _tempOffset; // in °C
+          _weather.bTemp = true;
+          _weather.bHumidity = true;
+          _weather.Humidity = sht->getHumidity(); // in %
+          //log_i("t=%.2f;hum=%.2f",_weather.temp,_weather.Humidity);  
+          break;
+        }
+        delay(500);
+        log_e("error reading sht20 %d",i);        
+      } 
+    }
     if (aneometerType == eAnemometer::TX20){
       uint8_t Dir;
       uint16_t Speed;
       uint8_t ret = tx20getNewData(&Dir,&Speed);
       if (ret == 1){
         _weather.vaneValue = int16_t(float(Dir) * 22.5);
-        _weather.WindDir = (int16_t(float(Dir) * 22.5) + _winddirOffset) % 360;
+        _weather.WindDir = (float(Dir) * 22.5) + _winddirOffset;
         _weather.WindSpeed = float(Speed) / 10.0 * 3.6; //[1/10m/s] --> [km/h]
         if (_weather.WindSpeed > _weather.WindGust) _weather.WindGust = _weather.WindSpeed; 
       }
@@ -401,15 +476,18 @@ void Weather::run(void){
       checkAdsAneometer();
     } else if (aneometerType == eAnemometer::PEETBROS) {
       uint8_t ret = peetBrosgetNewData(&_weather.WindDir,&_weather.WindSpeed);
-      _weather.WindDir += _winddirOffset;
-      while (_weather.WindDir < 0) { _weather.WindDir += 360.0; }
-      while (_weather.WindDir > 360) { _weather.WindDir -= 360.0; }      
+      if (ret == 1){
+        _weather.WindDir += _winddirOffset; //we got new data --> add winddir-offset
+      }      
       if (_weather.WindSpeed > _weather.WindGust) _weather.WindGust = _weather.WindSpeed; 
       //log_i("dir=%.1f,speed=%0.1f,ret=%d",_weather.WindDir,_weather.WindSpeed,ret);
+    } else if (aneometerType == eAnemometer::MISOL){
+      checkAneometer();
     }else{
       checkAneometer();
     }
-    
+    while (_weather.WindDir < 0) { _weather.WindDir += 360.0; }
+    while (_weather.WindDir >= 360) { _weather.WindDir -= 360.0; }    
     checkRainSensor();
     bNewWeather = true;
     tOld = tAct;

@@ -278,6 +278,8 @@ public:
   uint8_t getFlarmAircraftType(trackingData *tData);
   uint8_t getFlarmAircraftType(aircraft_t aircraftType);
   void getRxTxCount(uint16_t *pFntRx,uint16_t *pFntTx,uint16_t *pLegRx,uint16_t *pLegTx);
+  float getLoraFrequency(void);
+  float getFlarmFrequency(void);
   neighbour neighbours[MAXNEIGHBOURS];
   weatherData weatherDatas[MAXWEATHERDATAS];
   uint8_t weathercount;
