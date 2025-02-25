@@ -4059,6 +4059,7 @@ void Fanet2FlarmData(FanetLora::trackingData *FanetData,FlarmtrackingData *Flarm
   FlarmDataData->lat = FanetData->lat;
   FlarmDataData->lon = FanetData->lon;
   FlarmDataData->speed = FanetData->speed;
+  FlarmDataData->addressType = (FanetData->addressType) & 0x7F; //clear highest bit (is set for FANET-Msg)
 }
 
 void sendLXPW(uint32_t tAct){
