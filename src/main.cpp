@@ -5013,8 +5013,8 @@ void taskStandard(void *pvParameters){
           status.gps.Lat = nmea.getLatitude() / 1000000.;
           status.gps.Lon = nmea.getLongitude() / 1000000.;  
           //only for testing NZ
-          status.gps.Lat = -41.0605988;
-          status.gps.Lon = 175.3534596;  
+          //status.gps.Lat = -41.0605988;
+          //status.gps.Lon = 175.3534596;  
           #ifdef FLARMTEST
             status.gps.Lat = setting.gs.lat;
             status.gps.Lon = setting.gs.lon;
