@@ -16,6 +16,42 @@ Baro::Baro(){
   //FilterAlt(1.0f, 1.0f, 0.01f);
 }
 
+bool Baro::initBMP3XX(void){
+  uint8_t error;
+  bool ret = false;
+  for (sensorAdr = 0x76; sensorAdr <= 0x77; sensorAdr++)
+  {
+    log_i("check device at address 0x%X !",sensorAdr);
+    pI2c->beginTransmission(sensorAdr);
+    error = pI2c->endTransmission();
+    if (error == 0){
+      log_i("I2C device found at address 0x%X !",sensorAdr);
+      ret = bmp3xx.begin_I2C(sensorAdr,pI2c);
+      log_i("check sensor on adr 0x%X ret=%d",sensorAdr,ret);
+      if (ret){
+        log_i("found sensor BMP3XX on adr 0x%X",sensorAdr);
+        break;
+      }
+    }
+    else
+    {
+      log_i("Checking device at address 0x%X returned error %X", sensorAdr, error);
+    }
+  }
+
+  if (!ret) return false;
+
+  uint8_t chipId = bmp3xx.chipID();
+  if ((chipId == BMP3_CHIP_ID) || (chipId == BMP390_CHIP_ID))
+  log_i("found sensor BMP3xx on adr 0x%X",sensorAdr);
+  sensorType = SENSORTYPE_BMP3XX; //init to no sensor connected
+  //sensor found --> set sampling
+  bmp3xx.setPressureOversampling(BMP3_OVERSAMPLING_8X);
+  bmp3xx.setTemperatureOversampling(BMP3_NO_OVERSAMPLING);
+  bmp3xx.setIIRFilterCoeff(BMP3_IIR_FILTER_DISABLE);
+  return true;
+}
+
 bool Baro::initBME280(void){
   uint8_t error;
   sensorAdr = 0x76;
@@ -529,6 +565,9 @@ uint8_t Baro::begin(TwoWire *pi2c,SemaphoreHandle_t *_xMutex){
   }else if (initMS5611()){
     log_i("found MS5611");
     ret = 2; //GY-86-Board
+  }else if (initBMP3XX()){
+    log_i("found BMP3xx");
+    ret = 3; //BMP3xx;
   }else{
     return 0;
   }
@@ -942,6 +981,39 @@ void Baro::runBME280(uint32_t tAct){
   }
 }
 
+void Baro::runBMP3XX(uint32_t tAct){
+  static uint32_t tOld = millis();
+  //if ((tAct - tOld) >= 10)
+  {
+    if (!bmp3xx.performReading()) {
+      log_e("Failed to perform reading :(");
+      initBMP3XX();
+      return;
+    }
+    if (countReadings < 10){
+      countReadings++;
+    }else{
+      if (countReadings == 10){
+        logData.newData = 0x80;
+        countReadings++;
+      }
+      logData.temp = static_cast<float>(bmp3xx.temperature);
+      logData.pressure = static_cast<float>(bmp3xx.pressure);
+      logData.altitude = ms5611.getAltitude(bmp3xx.pressure);
+      logData.loopTime = tAct - tOld;
+      calcClimbing();
+      if (logData.newData == 0x80){
+        logData.newData = 0;
+        bNewValues = false;
+      }else{
+        copyValues();        
+        logData.newData = 1;
+        bNewValues = true;
+      }
+    }
+  }
+}
+
 void Baro::run(void){
   //static uint32_t tOld;  
   uint32_t tAct = millis();
@@ -950,6 +1022,8 @@ void Baro::run(void){
     runMS5611(tAct);
   }else if (sensorType == SENSORTYPE_BME280){
     runBME280(tAct);
+  }else if (sensorType == SENSORTYPE_BMP3XX){
+    runBMP3XX(tAct);
   }
 
   #ifdef BARO_DEBUG

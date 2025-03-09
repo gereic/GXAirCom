@@ -261,6 +261,7 @@ void FanetMac::sendUdpData(const uint8_t *buffer,int len){
 /* this is executed in a non-linear fashion */
 void FanetMac::frameReceived(int length)
 {
+	//log_i("Frame received");
 	/* quickly read registers */
 	int num_received = length;
 	uint8_t rx_frame[MAC_FRAME_LENGTH];	
@@ -584,12 +585,13 @@ void FanetMac::switchMode(uint8_t mode,bool bStartReceive){
 		channel = flarm_calculate_freq_channel(tUnix,(uint32_t)flarmChannels);
 		float frequ = 0.0;
 		frequ = flarmFrequency + (float(channel * 400) / 1000.0);
-		if (actflarmFreq != frequ){
+		log_i("frequ=%.2f,channel=%d",frequ,channel);
+		if ((actflarmFreq != frequ) || (1 == 1)){
 			#if RX_DEBUG > 1
 			bChanged = true;
 			#endif
 			actflarmFreq = frequ;
-			//log_i("switch to frequency %.3f",frequ);
+			log_i("switch to frequency %.3f",frequ);
 			radio.switchFSK(actflarmFreq);
 		}
 	}
