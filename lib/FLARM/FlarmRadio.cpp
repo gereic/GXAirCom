@@ -196,6 +196,7 @@ void flarm_getFrequencyChannels(uint8_t zone,float *frequency, uint8_t *channels
 }
 
 uint32_t flarm_calculate_freq_channel(uint32_t timestamp, uint32_t nch) {
+  if (nch <= 1) return 0;
   uint32_t nts = ~timestamp;
   uint32_t ts16 = timestamp * uint32_t(32768) + nts;
   uint32_t v4096 = (ts16 >> 12) ^ ts16;
