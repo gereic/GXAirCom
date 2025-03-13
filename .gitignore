@@ -11,3 +11,5 @@ bin/mqttupdate.py
 _04settings
 GXAirCom.code-workspace
 peet_bros_calculation.xlsx
+src/web/cygwin1.dll
+src/web/gzip.exe

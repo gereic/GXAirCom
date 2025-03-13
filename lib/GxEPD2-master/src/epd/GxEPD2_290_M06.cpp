@@ -2,8 +2,7 @@
 // Requires HW SPI and Adafruit_GFX. Caution: these e-papers require 3.3V supply AND data lines!
 //
 // based on Demo Example from Good Display: http://www.e-paper-display.com/download_list/downloadcategoryid=34&isMode=false.html
-// Controller: UC8151 (IL0373) : https://www.good-display.com/public/html/pdfjs/viewer/viewernew.html?file=https://v4.cecdn.yun300.cn/100001_1909185148/UC8151D.pdf
-// Controller: IL0373 (UC8151) : http://www.e-paper-display.com/download_detail/downloadsId=535.html
+// Controller: UC8151D : https://www.good-display.com/public/html/pdfjs/viewer/viewernew.html?file=https://v4.cecdn.yun300.cn/100001_1909185148/UC8151D.pdf
 //
 // Author: Jean-Marc Zingg
 //
@@ -64,6 +63,7 @@ void GxEPD2_290_M06::writeImage(const uint8_t bitmap[], int16_t x, int16_t y, in
   _writeCommand(0x91); // partial in
   _setPartialRamArea(x1, y1, w1, h1);
   _writeCommand(0x13);
+  _startTransfer();
   for (int16_t i = 0; i < h1; i++)
   {
     for (int16_t j = 0; j < w1 / 8; j++)
@@ -84,9 +84,10 @@ void GxEPD2_290_M06::writeImage(const uint8_t bitmap[], int16_t x, int16_t y, in
         data = bitmap[idx];
       }
       if (invert) data = ~data;
-      _writeData(data);
+      _transfer(data);
     }
   }
+  _endTransfer();
   _writeCommand(0x92); // partial out
   delay(1); // yield() to avoid WDT on ESP8266 and ESP32
 }
@@ -118,6 +119,7 @@ void GxEPD2_290_M06::writeImagePart(const uint8_t bitmap[], int16_t x_part, int1
   _writeCommand(0x91); // partial in
   _setPartialRamArea(x1, y1, w1, h1);
   _writeCommand(0x13);
+  _startTransfer();
   for (int16_t i = 0; i < h1; i++)
   {
     for (int16_t j = 0; j < w1 / 8; j++)
@@ -138,9 +140,10 @@ void GxEPD2_290_M06::writeImagePart(const uint8_t bitmap[], int16_t x_part, int1
         data = bitmap[idx];
       }
       if (invert) data = ~data;
-      _writeData(data);
+      _transfer(data);
     }
   }
+  _endTransfer();
   _writeCommand(0x92); // partial out
   delay(1); // yield() to avoid WDT on ESP8266 and ESP32
 }

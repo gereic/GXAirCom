@@ -24,6 +24,7 @@ class GxEPD2_290_T94_V2 : public GxEPD2_EPD
   public:
     // attributes
     static const uint16_t WIDTH = 128;
+    static const uint16_t WIDTH_VISIBLE = WIDTH;
     static const uint16_t HEIGHT = 296;
     static const GxEPD2::Panel panel = GxEPD2::GDEM029T94;
     static const bool hasColor = false;
@@ -76,7 +77,6 @@ class GxEPD2_290_T94_V2 : public GxEPD2_EPD
     void _PowerOn();
     void _PowerOff();
     void _InitDisplay();
-    void _Init_Full();
     void _Init_Part();
     void _Update_Full();
     void _Update_Part();

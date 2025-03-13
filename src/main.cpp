@@ -1395,7 +1395,7 @@ void setupWifi(){
 }
 
 void printSettings(){
-  log_i("**** SETTINGS " VERSION " build:%s ******",&compile_date[0]);
+  log_i("**** SETTINGS " VERSION " build:%s ******",compile_date.c_str());
   log_i("Access-point password=%s",setting.wifi.appw.c_str());
   log_i("Board-Type=%d",setting.boardType);
   log_i("Display-Type=%d",setting.displayType);
@@ -1793,6 +1793,10 @@ void setup() {
   #endif
   #ifdef Heltec_Lora_V3
     setting.boardType = HELTEC_LORA_V3;
+  #endif
+  #ifdef VISIONMASTER_E290
+    setting.boardType = HELTEC_VISION_MASTER_E290;
+    setting.displayType = EINK2_9_E290;
   #endif
   if (setting.boardType == eBoard::UNKNOWN){
     checkBoardType();
@@ -2345,6 +2349,57 @@ void setup() {
     PinADCVoltage = 1;
     adcVoltageMultiplier =  5.2636f;
     break;
+
+    case eBoard::HELTEC_VISION_MASTER_E290:
+    log_i("Board=Vision Master E290");
+    sButton[0].PinButton = 0; //pin for program-button
+    PinLoraRst = 12;
+    PinLoraDI0 = 14;
+    PinLoraGPIO = 13;
+    PinLora_SS = 8;
+    PinLora_MISO = 11;
+    PinLora_MOSI = 10;
+    PinLora_SCK = 9;
+
+    PinBaroSDA = 39;  // Quicklink
+    PinBaroSCL = 38;  // Quicklink
+
+    pI2cOne->begin(PinBaroSDA, PinBaroSCL);
+
+    if (setting.Mode==AIR_MODULE) {
+     PinGPSRX = 47;
+     PinGPSTX = 48;
+     PinPPS =17;
+     //V3.0.0 changed from PIN 0 to PIN 25
+     PinBuzzer = 45;   // same as user LED !!
+  } else {
+     // not enough analog Input pins !!!
+     // most are already occupied by E-Ink
+     PinWindDir = 17;
+     PinWindSpeed = 48;    
+     PinOneWire = 17; //pin for one-Wire  DS18B20
+    }
+
+    //e-ink
+    PinEink_Busy   =  6;
+    PinEink_Rst    =  5;
+    PinEink_Dc     =  4;
+    PinEink_Cs     =  3;
+    PinEink_Clk    =  2;
+    PinEink_Din    =  1;   // = MOSI
+
+    pinMode(18,OUTPUT);
+    digitalWrite(18,HIGH); //switch on power for EInk
+
+    pinMode(45,OUTPUT);
+    digitalWrite(45,LOW); //switch user-LED off
+
+//    PinExtPower = 18;   //pin for external Voltage-control
+    PinADCCtrl = 46;    //pin for reading battery-voltage 
+    PinADCVoltage = 7;  // pin for analog input reading battery-voltage 
+    // Voltage divider 390k and 100K
+    adcVoltageMultiplier =  5.5113;
+    break;
   case eBoard::UNKNOWN:
     log_e("unknown Board --> please correct");
     break;
@@ -2397,9 +2452,16 @@ void setup() {
     delay(500); //wait until devices are on
   }
   if (PinADCCtrl >= 0){
-    pinMode(PinADCCtrl, OUTPUT); //we have to set pin to measure voltage of Battery
-    digitalWrite(PinADCCtrl,LOW); //set output to Low, so we can measure the voltage  
-    log_i("set adcCtrl"); 
+    if (setting.boardType == eBoard::HELTEC_VISION_MASTER_E290) {
+      // on this board there is a transistor before the MOS-FET, so signal is inverted
+      pinMode(PinADCCtrl, OUTPUT); //we have to set pin to measure voltage of Battery
+      digitalWrite(PinADCCtrl,HIGH); //set output to high, so we can measure the voltage  
+      log_i("set adcCtrl HIGH"); 
+     } else {  
+       pinMode(PinADCCtrl, OUTPUT); //we have to set pin to measure voltage of Battery
+       digitalWrite(PinADCCtrl,LOW); //set output to Low, so we can measure the voltage  
+       log_i("set adcCtrl LOW"); 
+     }
     delay(100); 
   }
   if (PinADCVoltage >= 0){
@@ -4531,7 +4593,7 @@ void taskStandard(void *pvParameters){
   long frequency = FREQUENCY868;
   fanet.setRFMode(setting.RFMode);
   uint8_t radioChip = RADIO_SX1276;
-  if ((setting.boardType == eBoard::T_BEAM_SX1262) || (setting.boardType == eBoard::T_BEAM_S3CORE) || (setting.boardType == eBoard::HELTEC_WIRELESS_STICK_LITE_V3) || (setting.boardType == eBoard::HELTEC_LORA_V3)) radioChip = RADIO_SX1262;
+  if ((setting.boardType == eBoard::T_BEAM_SX1262) || (setting.boardType == eBoard::T_BEAM_S3CORE) || (setting.boardType == eBoard::HELTEC_WIRELESS_STICK_LITE_V3) || (setting.boardType == eBoard::HELTEC_LORA_V3) || (setting.boardType == eBoard::HELTEC_VISION_MASTER_E290)) radioChip = RADIO_SX1262;
 
   // When the requested Address type is ICAO then the devId of the device must be set to your mode-s address
   // See Flarm Dataport Specification for details
@@ -5590,17 +5652,20 @@ void taskOled(void *pvParameters){
 
 #ifdef EINK
 void taskEInk(void *pvParameters){
-  if ((status.displayType != EINK2_9) && (status.displayType != EINK2_9_V2)){
-    log_i("stop task");
+  if ((status.displayType != EINK2_9) && (status.displayType != EINK2_9_V2) && (status.displayType != EINK2_9_E290)) {
     vTaskDelete(xHandleEInk);
     return;
   }
   Screen screen;
-  if (setting.displayType == EINK2_9_V2){
-    screen.begin(1,PinEink_Cs,PinEink_Dc,PinEink_Rst,PinEink_Busy,PinEink_Clk,PinEink_Din); //display-type 1
+  if (setting.displayType == EINK2_9_E290){
+    screen.begin(2,PinEink_Cs,PinEink_Dc,PinEink_Rst,PinEink_Busy,PinEink_Clk,PinEink_Din); //display-type 2
   }else{
-    screen.begin(0,PinEink_Cs,PinEink_Dc,PinEink_Rst,PinEink_Busy,PinEink_Clk,PinEink_Din);
-  }  
+    if (setting.displayType == EINK2_9_V2){
+      screen.begin(1,PinEink_Cs,PinEink_Dc,PinEink_Rst,PinEink_Busy,PinEink_Clk,PinEink_Din); //display-type 1
+    }else{
+      screen.begin(0,PinEink_Cs,PinEink_Dc,PinEink_Rst,PinEink_Busy,PinEink_Clk,PinEink_Din);
+    }  
+  }
   while(1){
     screen.run();
     delay(10);

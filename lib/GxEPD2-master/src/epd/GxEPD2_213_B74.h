@@ -21,6 +21,7 @@ class GxEPD2_213_B74 : public GxEPD2_EPD
   public:
     // attributes
     static const uint16_t WIDTH = 128;
+    static const uint16_t WIDTH_VISIBLE = 122;
     static const uint16_t HEIGHT = 250;
     static const GxEPD2::Panel panel = GxEPD2::GDEM0213B74;
     static const bool hasColor = false;
@@ -73,8 +74,6 @@ class GxEPD2_213_B74 : public GxEPD2_EPD
     void _PowerOn();
     void _PowerOff();
     void _InitDisplay();
-    void _Init_Full();
-    void _Init_Part();
     void _Update_Full();
     void _Update_Part();
 };

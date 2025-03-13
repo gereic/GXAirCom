@@ -11,6 +11,7 @@
 
 //GxEPD2_BW<GxEPD2_290, GxEPD2_290::HEIGHT> e_ink(GxEPD2_290(EINK_CS, EINK_DC, EINK_RST, EINK_BUSY));
 //GxEPD2_BW<GxEPD2_290_T94, GxEPD2_290_T94::HEIGHT> e_ink2(GxEPD2_290_T94(EINK_CS, EINK_DC, EINK_RST, EINK_BUSY));
+//GxEPD2_BW<GxEPD2_290_BS, GxEPD2_290_BS::HEIGHT> e_ink3(GxEPD2_290_BS(/*CS=5*/ 3, /*DC=*/ 4, /*RST=*/ 5, /*BUSY=*/ 6)); // DEPG0290BS 128x296, SSD1680
 
 Screen::Screen(){
 }
@@ -18,25 +19,37 @@ Screen::Screen(){
 bool Screen::begin(uint8_t type,int8_t cs,int8_t dc,int8_t rst,int8_t busy,int8_t clk, int8_t din){
   bInit = false;
   log_i("starting E-Ink type=%d;cs=%d,dc=%d,rst=%d,busy=%d,clk=%d,din=%d",type,cs,dc,rst,busy,clk,din);
-  if (type == 1){
+  if (type == 2){
     //GxEPD2_BW<GxEPD2_290_T94, GxEPD2_290_T94::HEIGHT> *e_ink = new GxEPD2_BW<GxEPD2_290_T94, GxEPD2_290_T94::HEIGHT>(GxEPD2_290_T94(cs, dc, rst, busy));
-    GxEPD2_BW<GxEPD2_290_T94_V2, GxEPD2_290_T94_V2::HEIGHT> *e_ink = new GxEPD2_BW<GxEPD2_290_T94_V2, GxEPD2_290_T94_V2::HEIGHT>(GxEPD2_290_T94_V2(cs, dc, rst, busy));
-    e_ink->epd2.init(clk, din, 0, true, false); // define or replace SW_SCK, SW_MOSI)
-    e_ink->init(0);
+    //GxEPD2_BW<GxEPD2_290_T94_V2, GxEPD2_290_T94_V2::HEIGHT> *e_ink = new GxEPD2_BW<GxEPD2_290_T94_V2, GxEPD2_290_T94_V2::HEIGHT>(GxEPD2_290_T94_V2(cs, dc, rst, busy));
+    GxEPD2_BW<GxEPD2_290_BS, GxEPD2_290_BS::HEIGHT> *e_ink = new GxEPD2_BW<GxEPD2_290_BS, GxEPD2_290_BS::HEIGHT> (GxEPD2_290_BS(cs, dc, rst, busy));;
+    //e_ink->epd2.init(clk, din, 0, true, 20 , true); // define or replace SW_SCK, SW_MOSI)
+    //e_ink->init(0);
+    e_ink->epd2.init(2, 1, 0, true, 20, false); // define or replace SW_SCK, SW_MOSI
+    e_ink->init(0); 
     pEInk = e_ink;
-    //e_ink2.epd2.init(EINK_CLK, EINK_DIN, 0, true, false); // define or replace SW_SCK, SW_MOSI
-    //e_ink2.init(0); // needed to init upper level
-    //pEInk = &e_ink2;
-    log_i("display-type 2.9 V2");
+    log_i("display-type 2.9 E290");
   }else{
-    GxEPD2_BW<GxEPD2_290, GxEPD2_290::HEIGHT> *e_ink = new GxEPD2_BW<GxEPD2_290, GxEPD2_290::HEIGHT>(GxEPD2_290(cs, dc, rst, busy));
-    e_ink->epd2.init(clk, din, 0, true, false); // define or replace SW_SCK, SW_MOSI)
-    e_ink->init(0);
-    pEInk = e_ink;
-    //e_ink.epd2.init(EINK_CLK, EINK_DIN, 0, true, false); // define or replace SW_SCK, SW_MOSI
-    //e_ink.init(0); // needed to init upper level
-    //pEInk = &e_ink;
-    log_i("display-type 2.9 V1");
+   if (type == 1){
+     //GxEPD2_BW<GxEPD2_290_T94, GxEPD2_290_T94::HEIGHT> *e_ink = new GxEPD2_BW<GxEPD2_290_T94, GxEPD2_290_T94::HEIGHT>(GxEPD2_290_T94(cs, dc, rst, busy));
+     GxEPD2_BW<GxEPD2_290_T94_V2, GxEPD2_290_T94_V2::HEIGHT> *e_ink = new GxEPD2_BW<GxEPD2_290_T94_V2, GxEPD2_290_T94_V2::HEIGHT>(GxEPD2_290_T94_V2(cs, dc, rst, busy));
+     e_ink->epd2.init(clk, din, 0, true, false); // define or replace SW_SCK, SW_MOSI)
+     e_ink->init(0);
+     pEInk = e_ink;
+     //e_ink2.epd2.init(EINK_CLK, EINK_DIN, 0, true, false); // define or replace SW_SCK, SW_MOSI
+     //e_ink2.init(0); // needed to init upper level
+     //pEInk = &e_ink2;
+     log_i("display-type 2.9 V2");
+    }else{
+      GxEPD2_BW<GxEPD2_290, GxEPD2_290::HEIGHT> *e_ink = new GxEPD2_BW<GxEPD2_290, GxEPD2_290::HEIGHT>(GxEPD2_290(cs, dc, rst, busy));
+      e_ink->epd2.init(clk, din, 0, true, false); // define or replace SW_SCK, SW_MOSI)
+      e_ink->init(0);
+      pEInk = e_ink;
+      //e_ink.epd2.init(EINK_CLK, EINK_DIN, 0, true, false); // define or replace SW_SCK, SW_MOSI
+      //e_ink.init(0); // needed to init upper level
+      //pEInk = &e_ink;
+      log_i("display-type 2.9 V1");
+    }
   }
   //e_ink3 = new GxEPD2_290_T94(EINK_CS, EINK_DC, EINK_RST, EINK_BUSY);
   //e_ink3 = new GxEPD2_BW<GxEPD2_290_T94, GxEPD2_290_T94::HEIGHT>(GxEPD2_290_T94(EINK_CS, EINK_DC, EINK_RST, EINK_BUSY));

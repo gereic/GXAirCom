@@ -6,7 +6,7 @@
 - For SPI e-paper displays from Dalian Good Display 
 - and SPI e-paper boards from Waveshare
 
-### important note :
+### important note:
 - the display panels are for 3.3V supply and 3.3V data lines
 - never connect data lines directly to 5V Arduino data pins, use e.g. 4k7/10k resistor divider
 - series resistor only is not enough for reliable operation (back-feed effect through protection diodes)
@@ -15,9 +15,11 @@
 - the actual Waveshare display boards now have level converters and series regulator, safe for 5V
 - use 3k3 pull-down on SS for ESP8266 for boards with level converters
 - note that 7.5" e-paper displays don't work reliable if fed from 3.3V Arduino pin
-- note that Waveshare bords with "clever" reset circuit may need shortened reset pulse
+- note that Waveshare boards with "clever" reset circuit may need shortened reset pulse
 - use `init(115200, true, 2, false)` for Waveshare boards with "clever" reset circuit
-- note that Waveshare bords with "clever" reset circuit need 1k pull-up on RST on ESP8266, or different pin
+- note that Waveshare boards with "clever" reset circuit need 1k pull-up on RST on ESP8266, or different pin
+- note that the new Waveshare Universal e-Paper Raw Panel Driver HAT Rev 2.3 needs PWR connected to VCC or driven HIGH
+- see https://www.waveshare.com/wiki/E-Paper_Driver_HAT
 
 ### Paged Drawing, Picture Loop
  - This library uses paged drawing to limit RAM use and cope with missing single pixel update support
@@ -42,7 +44,10 @@
 ### Supporting Arduino Forum Topics:
 
 - Waveshare e-paper displays with SPI: http://forum.arduino.cc/index.php?topic=487007.0
-- Good Display ePaper for Arduino : https://forum.arduino.cc/index.php?topic=436411.0
+- Good Display ePaper for Arduino : https://forum.arduino.cc/index.php?topic=436411.0
+- Note that these topics are closed. Use only for reference.
+- The Arduino Forum is no longer watched and answered by the Author.
+- New questions or issues should be posted on https://github.com/ZinggJM/GxEPD2/discussions
 
 ### Note on documentation
 - GxEPD2 uses Adafruit_GFX for Graphics and Text support, which is well documented there
@@ -51,63 +56,259 @@
 - for the concept of paged drawing and picture loop see: 
 - https://github.com/olikraus/u8glib/wiki/tpictureloop
 
+### Note on issues and pull requests
+- issues should be reported in the Arduino Forum Displays.
+- issues on GitHub are disabled; there were too many false issues.
+- pull requests are not welcome, will not be merged.
+- pull requests can't be disabled, but will be closed.
+- please place information about interesting fork additions in the Arduino Forum Displays.
+
 ### Supported SPI e-paper panels from Good Display:
-- GDEW0102T4     1.02" b/w
-- GDEP015OC1     1.54" b/w
-- GDEH0154D67    1.54" b/w, replacement for GDEP015OC1
-- GDEW0154T8     1.54" b/w 152x152
-- GDEW0154M09    1.54" b/w 200x200
-- GDEW0154M10    1.54" b/w 152x152 DES
-- GDEW0154Z04    1.54" b/w/r 200x200
-- GDEH0154Z90    1.54" b/w/r, replacement for GDEW0154Z04
-- GDE0213B1      2.13" b/w
-- GDEH0213B72    2.13" b/w, replacement for GDE0213B1
-- GDEH0213B73    2.13" b/w, new replacement for GDE0213B1, GDEH0213B72
-- GDEM0213B74    2.13" b/w
-- GDEW0213I5F    2.13" b/w flexible
-- GDEW0213T5D    2.13" b/w
-- GDEW0213M21    2.13" b/w DES
-- GDEW0213Z16    2.13" b/w/r
-- GDEW0213Z19    2.13" b/w/r
-- GDEH029A1      2.9" b/w
-- GDEW029T5      2.9" b/w
-- GDEW029T5D     2.9" b/w
-- GDEW029I6FD    2.9" b/w flexible
-- GDEM029T94     2.9" b/w
-- GDEW029M06     2.9" b/w DES
-- GDEW029Z10     2.9" b/w/r
-- GDEW029Z13     2.9" b/w/r
-- GDEM029C90     2.9" b/w/y
-- GDEW026T0      2.6" b/w
-- GDEW026M01     2.6" b/w DES
-- GDEW027C44     2.7" b/w/r
-- GDEW027W3      2.7" b/w
-- GDEW0371W7     3.7" b/w
-- GDEW042T2      4.2" b/w
-- GDEW042M01     4.2" b/w DES
-- GDEW042Z15     4.2" b/w/r
-- GDEQ042Z21     4.2" b/w/r (Waveshare V2)
+- GDEW0102T4     1.02" b/w 80x128, UC8175
+- DEPG0150BN     1.50" b/w 200x200, SSD1681, e.g. LILYGO® TTGO T5 V2.4.1 1.50 inch
+- GDEP015OC1     1.54" b/w 200x200, IL3829, no longer available
+- GDEH0154D67    1.54" b/w 200x200, SSD1681, replacement for GDEP015OC1
+- GDEW0154T8     1.54" b/w 152x152, UC8151 (IL0373)
+- GDEW0154M09    1.54" b/w 200x200, JD79653A
+- GDEW0154M10    1.54" b/w 152x152, UC8151D, DES
+- GDEY0154D67    1.54" b/w 200x200, SSD1681
+- GDEW0154Z04    1.54" b/w/r 200x200, IL0376F, no longer available
+- GDEH0154Z90    1.54" b/w/r 200x200, SSD1681, replacement for GDEW0154Z04
+- GDE0213B1      2.13" b/w 122x250, IL3895, phased out
+- GDEH0213B72    2.13" b/w 122x250, SSD1675A (IL3897), replacement for GDE0213B1
+- GDEH0213B73    2.13" b/w 122x250, SSD1675B, new replacement for GDE0213B1, GDEH0213B72
+- GDEM0213B74    2.13" b/w 122x250, SSD1680
+- GDEW0213I5F    2.13" b/w 104x212, UC8151 (IL0373), flexible
+- GDEW0213T5D    2.13" b/w 104x212, UC8151 (IL0373)
+- GDEW0213M21    2.13" b/w 104x212, UC8151 (IL0373), DES
+- GDEW0213Z16    2.13" b/w/r 104x212, UC8151 (IL0373)
+- GDEW0213Z19    2.13" b/w/r 104x212, UC8151D
+- GDEY0213Z98    2.13" b/w/r 122x250, SSD1680
+- GDEY0213F51    2.13" 4-color 122x250, JD79661
+- DEPG0213BN     2.13" b/w 122x250, SSD1680, e.g. LILYGO® TTGO T5 V2.3.1 2.13 inch
+- GDEY0213B74    2.13" b/w 122x250, SSD1680
+- GDEW026T0      2.6" b/w 152x296, UC8151 (IL0373)
+- GDEW026M01     2.6" b/w 152x296, UC8151 (IL0373), DES
+- DEPG0266BN     2.66" b/w 152x296, SSD1680, e.g. LILYGO® TTGO T5 2.66 inch
+- GDEY0266Z90    2.66" b/w/r 152x296, SSD1680
+- GDEY0266F51H   2.66" 4-color 184x460, JD79667
+- GDEW027C44     2.7" b/w/r 176x264, IL91874
+- GDEW027W3      2.7" b/w 176x264, EK79652 (IL91874)
+- GDEY027T91     2.7" b/w 176x264, SSD1680
+- GDEH029A1      2.9" b/w 128x296, SSD1608 (IL3820)
+- GDEW029T5      2.9" b/w 128x296, UC8151 (IL0373)
+- GDEW029T5D     2.9" b/w 128x296, UC8151D
+- GDEW029I6FD    2.9" b/w 128x296, UC8151D, flexible
+- GDEM029T94     2.9" b/w 128x296, SSD1680
+- GDEW029M06     2.9" b/w 128x296, UC8151D, DES
+- GDEW029Z10     2.9" b/w/r 128x296, UC8151 (IL0373)
+- GDEH029Z13     2.9" b/w/r 128x296, UC8151D
+- GDEM029C90     2.9" b/w/y 128x296, SSD1680
+- DEPG0290BS     2.9" b/w 128x296, SSD1680, e.g. LILYGO® TTGO T5 V2.4.1 2.9"
+- GDEY029T94     2.9" b/w 128x296, SSD1680
+- GDEY029T71H    2.9" b/w 168x384, SSD1685
+- GDEY029F51H    2.9" 4-color 168x384, JD79667
+- Waveshare3inch4color 3.0" 4-color 168x400
+- GDEQ031T10     3.1" b/w 240x320, UC8253
+- ED037TC1       3.7" b/w 280x480, SSD1677, Waveshare 3.7"
+- GDEW0371W7     3.7" b/w 240x416, UC8171 (IL0324)
+- GDEW042T2      4.2" b/w 400x300, UC8176 (IL0398)
+- GDEW042M01     4.2" b/w 400x300, UC8176 (IL0398), DES
+- GDEW042Z15     4.2" b/w/r 400x300, UC8176 (IL0398)
+- GDEQ042Z21     4.2" b/w/r 400x300, UC8276, (Waveshare V2)
+- GDEY042Z98     4.2" b/w/r 400x300, SSD1683
+- GDEY042T81     4.2" b/w 400x300, SSD1683
+- GDEY0420F51    4.2" 4-color 400x300, HX8717
+- GDEQ0426T82    4.26" b/w 800x480, SSD1677
+- Waveshare437inch4color Waveshare 4.37" 4-color e-paper display 512x368 
 - ACeP565        5.65" Waveshare 5.65" 7-color e-paper display 600x448
-- GDEW0583T7     5.83" b/w
-- GDEW0583T8     5.83" b/w 648x460
-- GDEW075T8      7.5" b/w
-- GDEW075T7      7.5" b/w 800x480
-- GDEW075Z09     7.5" b/w/r
-- GDEW075Z08     7.5" b/w/r 800x480
-- GDEH075Z90     7.5" b/w/r 880x528
-- GDEH116T91    11.6" b/w 960x640
-- GDEW1248T3    12.48 b/w 1304x984
+- GDEP0565D90    5.65" 7-color 600x448
+- GDEY0579T93    5.79" b/w 792x272, SSD1683
+- GDEY0579Z93    5.79" b/w/r 792x272, SSD1683
+- GDEY0579F51    5.79" 4-color 792x272, HX8717
+- GDEW0583T7     5.83" b/w 600x448, UC8159c (IL0371)
+- GDEW0583T8     5.83" b/w 648x480, EK79655 (GD7965)
+- GDEW0583Z83    5.83" b/w/r 648x480, EK79655 (GD7965)
+- GDEQ0583T31    5.83" b/w 648x480, UC8179
+- GDEQ0583Z31    5.83" b/w/r 648x480, UC8179C
+- GDEY073D46     7.3" 800x480 7-color
+- GDEP073E01     7.3" 800x480 7-color
+- ACeP730        7.3" Waveshare 7-color e-paper display 800x480, PhotoPainter
+- GDEW075T8      7.5" b/w 640x384, UC8159c (IL0371)
+- GDEW075T7      7.5" b/w 800x480, EK79655 (GD7965)
+- GDEY075T7      7.5" b/w 800x480, UC8179 (GD7965)
+- GDEW075Z09     7.5" b/w/r 640x384, UC8159c (IL0371)
+- GDEW075Z08     7.5" b/w/r 800x480, EK79655 (GD7965)
+- GDEH075Z90     7.5" b/w/r 880x528, SSD1677
+- GDEM102T91    10.2" b/w 960x640, SSD1677
+- GDEM1085T51   10.85 b/w 1360x480, JD79686AB
+- GDEH116T91    11.6" b/w 960x640, SSD1677
+- GDEY116Z91    11.6" b/w/r 960x640, SSD1677
+- GDEY116F51    11.6" 4-color 960x640, SSD2677
+- GDEW1248T3    12.48" b/w 1304x984, UC8179
+- GDEY1248Z51   12.48" b/w/r 1304x984, UC8179
+- GDEM133T91    13.3" b/w 960x680, SSD1677
+- GDEM133Z91    13.3" b/w/r 960x680, SSD1677
 #### Supported SPI e-paper panels & boards from Waveshare: compare with Good Display, same panel
 #### other supported panels
+- GYE042A87     4.2" b/w 400x300, SSD1683 (HINK-E042-A07-FPC-A1)
+- SE0420NQ04    4.2" b/w 400x300, UC8276C (OPM042A2_V1.0)
 - ED060SCT        6" grey levels, on Waveshare e-Paper IT8951 Driver HAT
 - ED060KC1        6" grey levels, 1448x1072, on Waveshare e-Paper IT8951 Driver HAT
-- ED078KC2        7.8" grey levels, 1872x1404, on Waveshare e-Paper IT8951 Driver HAT
+- ED078KC2      7.8" grey levels, 1872x1404, on Waveshare e-Paper IT8951 Driver HAT
+- ES103TC1     10.3" grey levels, 1872x1404, on Waveshare e-Paper IT8951 Driver HAT
 
 ### I can and will only support e-paper panels I have!
-- promotion panels from suppliers are welcome, to add support to GxEPD2
-- donation panels from users are welcome, to add support to GxEPD2
+- I can accept panel donations to add support to GxEPD2.
+- But only few panels at any time, and only panels from known sources. 
+- Adding support will take as much time as needed.
 
-### Version 1.3.9
+### Version 1.6.2
+- fixed support for GDEY029T71H 2.9" b/w 168x384, SSD1685
+- GxEPD2_WiFi_Example: added direct (non-buffered) BMP download to 7-color displays
+- some minor fixes
+#### Version 1.6.1
+- fixed and updated GxEPD2_WiFi_Example
+#### Version 1.6.0
+- updated support for GDEY029T94: fixed a partial refresh issue
+- updated support for GDEY042T81: fixed fast full refresh for 2024 panel version
+- updated support for GDEP073E01: fixed color mapping for its native color values
+- updated GxEPD2_display_selection_new_style.h: added Arduino Nano Every, Arduino Nano ESP32, Arduino Nano IoT.
+#### Version 1.5.9
+- added Power Save command (PWS) to GDEY075T7 init (issue with dithered bitmaps)
+- added support for GDEY0579T93 5.79" b/w 792x272, SSD1683
+- added support for GDEY0579Z93 5.79" b/w/r 792x272, SSD1683
+- added support for GDEY0579F51 5.79" 4-color 792x272, HX8717
+- the GDEY0579F51 has partial window addressing capability, 
+- but of little use, because the controller buffer is modified during refresh
+- partial window refresh can't be used on GDEY0579F51, refresh is full screen
+- added support for GDEY042Z98 4.2" b/w/r 400x300, SSD1683
+- GDEY042Z98 has "fast" full refresh and supports fast b/w partial refresh
+- added support for GDEP073E01 7.3" 800x480 7-color
+#### Version 1.5.8
+- added support for GDEP0565D90 5.65" 7-color 600x448
+- added support for GDEY116F51 11.6"  4-color 960x640, SSD2677
+- added support for GDEY029T71H 2.9" b/w 168x384, SSD1685
+#### Version 1.5.7
+- added support for GDEY0213F51 2.13" 4-color 122x250, JD79661
+- added support for GDEM1085T51 10.85 b/w 1360x480, JD79686AB
+#### Version 1.5.6
+- version for ongoing fixes and additions
+- added support for GYE042A87  4.2" b/w 400x300
+- added support for SE0420NQ04 4.2" b/w 400x300
+- added support for GDEQ0583Z31 5.83" b/w/r 648x480
+- added support for GDEM102T91 10.2" b/w 960x640, SSD1677
+- added support for GDEY116Z91 11.6" b/w/r 960x640, SSD1677
+- added support for GDEM133T91 13.3" b/w 960x680, SSD1677
+- added support for GDEM133Z91 13.3" b/w/r 960x680, SSD1677
+- improved differential refresh for SE0420NQ04
+- improved full refresh for SE0420NQ04
+- fixed driver class GxEPD2_213.cpp
+#### Version 1.5.5
+- updated 7-color driver classes (design cleanup fixed)
+- note: Waveshare PhotoPainter doesn't work with MBED Pico package
+- note: use package https://github.com/earlephilhower/arduino-pico for PhotoPainter
+#### Version 1.5.4
+- added support for GDEQ031T10 3.1" b/w 240x320
+- updated support for GDEY075T7 7.5" b/w 800x480
+- renamed driver class GxEPD2_750_YT7 to GxEPD2_750_GDEY075T7
+- the actual GDEY075T7 panels have fast full refresh capability
+- added support for Waveshare 7.3" 7-color, driver class GxEPD2_730c_ACeP_730
+- added support for Waveshare 7.3" 7-color PhotoPainter with RPi Pico RP2040
+- updated b/w driver classes for SSD controllers
+- updated 7-color driver classes (design cleanup)
+#### Version 1.5.3
+- added support for GDEQ0426T82 4.26" b/w 800x480
+- added support for GDEY0266F51H 2.66" 4-color 184x460
+- added support for GDEY029F51H 2.9" 4-color 168x384
+- added support for GDEY0420F51 4.2" 4-color 400x300
+- added support for Waveshare 3.00" 4-color e-paper display 168x400
+- updated support for Waveshare 4.37" 4-color e-paper display 512x368
+- the 4-color displays have partial window addressing and refresh
+- renamed GDEY042T91 to its new official name GDEY042T81
+#### Version 1.5.2
+- added support for Waveshare 4.37" 4-color e-paper display 512x368
+- fixed __has_include test (for packages that don't support __has_include)
+- added WIDTH_VISIBLE for correct graphics width for 2.13" b/w 122x250
+- added end() method, to release SPI and reset all pins to INPUT
+#### Version 1.5.1
+- added support for GDEY0154D67 1.54" b/w 200x200
+- added support for GDEY0213B74 2.13" b/w 128x250
+- updated support for GDEY027T91 2.7" b/w 176x264
+- renamed driver class for GDEY027T91 to GxEPD2_270_GDEY027T91
+- added support for GDEY029T94 2.9" b/w 128x296
+- added support for GDEY042T91 4.2" b/w 400x300
+- added support for GDEQ0583T31 5.83" b/w 648x480
+- these panels have fast full refresh capability
+- fast full refresh can be disabled in the class header for low temperature use
+- added support for GDEY073D46 7.3" 800x480 7-color
+- all these new panels have been donated by Good Display
+- added __has_include test to GxEPD2_BW.h, GxEPD2_3C.h, GxEPD2_7C
+- this allows to remove or put aside unused driver classes for faster compile
+- several fixes and improvements
+#### Version 1.5.0
+- added support for GDEY075T7 7.5" b/w 800x480
+- updated GxEPD2_Example, added HSPI use for Waveshare ESP32 Driver Board
+- updated GxEPD2_SD_AVR_Example, fixes for BMP handling
+- updated GxEPD2_SD_Example, fixes for BMP handling, added HSPI use for Waveshare ESP32 Driver Board
+- updated GxEPD2_SerialFlash_Example, fixes for BMP handling
+- updated GxEPD2_SerialFlash_Loader, updated https certificates and use
+- updated GxEPD2_Spiffs_Example, fixes for BMP handling
+- updated GxEPD2_Spiffs_Loader, updated https certificates and use
+- added GxEPD2_WiFi_CertStore_Example, use of a BearSSL CertStore on ESP8266, like a browser
+- added GxEPD2_WiFi_CertStore_Loader, download root certificates (from Mozilla) to ESP8266 flash
+- updated GxEPD2_WiFi_Example, fixes for BMP handling, updated https certificates and use
+- updated GxEPD2_WS_ESP32_Driver, added HSPI use for Waveshare ESP32 Driver Board
+#### Version 1.4.9
+- added missing constructor lines to GxEPD2_display_selection.h
+- added panel details to comments in GxEPD2_display_selection.h
+- added panel details to Supported SPI e-paper panels in README.md
+#### Version 1.4.8
+- added support for GDEY027T91 2.7" b/w 176x264
+- added support for GDEY1248Z51 12.48" b/w/r 1304x984
+- fixed name of panel DEPG0150BN
+- updated certificate and fingerprint for GitHub download in GxEPD2_WiFi_Example
+#### Version 1.4.7
+- added support for DEPG0150BN 1.50" b/w 200x200, e.g. LILYGO® TTGO T5 V2.4.1 1.50 inch
+- added support for DEPG0213BN 2.13" b/w 128x250, e.g. LILYGO® TTGO T5 V2.3.1 2.13 inch
+- added support for DEPG0266BN 2.66" b/w 152x296, e.g. LILYGO® TTGO T5 2.66 inch
+- added support for DEPG0290BS 2.9"  b/w 128x296, e.g. LILYGO® TTGO T5 V2.4.1 2.9"
+- added support for ES103TC1 10.3" grey levels, 1872x1404, on Waveshare e-Paper IT8951 Driver HAT
+#### Version 1.4.6
+- added support for GDEY0266Z90 2.66" b/w/r 152x296
+- added support for GDEW0583Z83 5.83" b/w/r 648x460
+#### Version 1.4.5
+- added support for GDEY0213Z98 2.13" b/w/r 122x250
+- tested with LOLIN 2.13" Tri-Color eInk / ePaper 250x122 Display Shield
+- https://www.aliexpress.com/item/1005003020667903.html
+#### Version 1.4.4
+- interim update to solve compiler warnings (ALL for GCC for AVR)
+#### Version 1.4.3
+- added option to select an alternate HW SPI channel and/or SPI settings
+- by method selectSPI(SPIClass& spi, SPISettings spi_settings) of driver base class GxEPD2_EPD
+- by calling selectSPI before calling init() of display class
+- or by calling extended init() method that has these parameters added
+- tested with RPi Pico RP2040 using Good Display DESPI-PICO connection shield
+- updated GxEPD2_Example to show use with DESPI-PICO
+- DESPI-PICO: see https://www.good-display.com/product/393.html
+#### Version 1.4.2
+- added support for Waveshare 3.7" b/w board and panel ED037TC1
+- waveform tables for ED037TC1 are taken unmodified from Waveshare demo code
+- refresh behavior with ED037TC1 with GxEPD2 is not perfect, could not be resolved
+- ISSUE RESOLVED: RESE needs to be 3 ohms on DESPI-C02 for this panel, Waveshare schematics is wrong
+- added differential refresh for GDEH116T91, waveform table taken from ED037TC1
+- differential refresh for GDEH116T91 looks ok; can be disabled with hasFastPartialUpdate = false
+- increased sustain phase for differential refresh on GDEW042T2
+#### Version 1.4.1
+- fix for Waveshare "clever" reset circuit: power controller before reset pulse
+#### Version 1.4.0
+- changed the default reset duration to 10ms instead of 20ms
+- changed the delay after reset to 10ms or reset duration, whichever is higher, instead of 200ms
+- added a busyCallback feature, to allow to service periodic actions during wait for BUSY termination
+- ` // register a callback function to be called during _waitWhileBusy continuously. `
+- ` void setBusyCallback(void (*busyCallback)(const void*), const void* busy_callback_parameter = 0); `
+- added example GxEPD2_RotaryUsingBusyCallback.ino
+#### Version 1.3.9
 - fix for STM32 official package pin number range (int16_t)
 - fix for refresh(int16_t x, int16_t y, int16_t w, int16_t h) methods screen intersection
 #### Version 1.3.8
