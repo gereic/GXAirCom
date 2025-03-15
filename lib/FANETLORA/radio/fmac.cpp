@@ -207,7 +207,7 @@ int serialize_legacyTracking(ufo_t *Data,uint8_t*& buffer){
 	else
 		((uint16_t*)buffer)[3] = alt;
 	/* online tracking */
-	((uint16_t*)buffer)[3] |= !Data->stealth<<15;
+	((uint16_t*)buffer)[3] |= !(Data->stealth || Data->no_track)<<15;
 	/* aircraft type */
 	//((uint16_t*)buffer)[3] |= (LP_Flarm2FanetAircraft((eFlarmAircraftType)Data->aircraft_type)&0x7)<<12;
 	((uint16_t*)buffer)[3] |= (Flarm2FanetAircraft((eFlarmAircraftType)Data->aircraft_type)&0x7)<<12;
