@@ -3922,6 +3922,13 @@ void checkReceivedLine(const char *ch_str){
     // Handle request for configuration request
     writePGXCFSentence();
     return;
+  }else if (!strncmp(ch_str,"$PFLAC,R,RADIOID",16)){
+    // Handle request ID
+    char buffer[MAXSTRING];
+    snprintf(buffer,MAXSTRING,"$PFLAC,A,RADIOID,%d,%s", MyFanetData.addressType, fanet.getMyDevId().c_str());
+    int pos = flarmDataPort.addChecksum(buffer,MAXSTRING);
+    sendData2Client(buffer, pos);
+    return;
   }else if (!strncmp(ch_str,"$PGXCF,",7)){
     // Handle configuration setting
     readPGXCFSentence(ch_str);
