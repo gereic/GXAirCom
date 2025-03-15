@@ -842,6 +842,7 @@ void sendFlarmData(uint32_t tAct){
           tFanetData.lat = fanet.neighbours[i].lat;
           tFanetData.lon = fanet.neighbours[i].lon;
           tFanetData.speed = fanet.neighbours[i].speed;
+          tFanetData.OnlineTracking = fanet.neighbours[i].OnlineTracking;
           Fanet2FlarmData(&tFanetData,&PilotFlarmData);
           char sOut[MAXSTRING];
           int pos = flarmDataPort.writeFlarmData(sOut,MAXSTRING,&myFlarmData,&PilotFlarmData);
@@ -3289,7 +3290,7 @@ void taskBaro(void *pvParameters){
   #ifdef S3CORE
   uint8_t baroSensor = baro.begin(pI2cOne,&xI2C1Mutex);
   #else
-  pI2cZero->begin(PinBaroSDA,PinBaroSCL,400000); //init i2c
+  pI2cZero->begin(PinBaroSDA,PinBaroSCL,400000u); //init i2c
   uint8_t baroSensor = baro.begin(pI2cZero,&xI2C0Mutex);
   #endif
   baro.setKalmanSettings(setting.vario.sigmaP,setting.vario.sigmaA);
@@ -3921,6 +3922,13 @@ void checkReceivedLine(const char *ch_str){
     // Handle request for configuration request
     writePGXCFSentence();
     return;
+  }else if (!strncmp(ch_str,"$PFLAC,R,RADIOID",16)){
+    // Handle request ID
+    char buffer[MAXSTRING];
+    snprintf(buffer,MAXSTRING,"$PFLAC,A,RADIOID,%d,%s", MyFanetData.addressType, fanet.getMyDevId().c_str());
+    int pos = flarmDataPort.addChecksum(buffer,MAXSTRING);
+    sendData2Client(buffer, pos);
+    return;
   }else if (!strncmp(ch_str,"$PGXCF,",7)){
     // Handle configuration setting
     readPGXCFSentence(ch_str);
@@ -4060,6 +4068,7 @@ void Fanet2FlarmData(FanetLora::trackingData *FanetData,FlarmtrackingData *Flarm
   FlarmDataData->lon = FanetData->lon;
   FlarmDataData->speed = FanetData->speed;
   FlarmDataData->addressType = (FanetData->addressType) & 0x7F; //clear highest bit (is set for FANET-Msg)
+  FlarmDataData->noTrack = !FanetData->OnlineTracking;
 }
 
 void sendLXPW(uint32_t tAct){
@@ -4477,6 +4486,7 @@ void taskStandard(void *pvParameters){
   
   tFanetData.rssi = 0;
   MyFanetData.rssi = 0;
+  MyFanetData.OnlineTracking = true; //this could be a setting
 
   GxMqtt *pMqtt = NULL;
   static uint8_t myWdCount = 0;
@@ -5060,7 +5070,7 @@ void taskStandard(void *pvParameters){
               if (fanet.onGround){
                 ogn.sendGroundTrackingData(now(),status.gps.Lat,status.gps.Lon,status.gps.alt,fanet.getDevId(tFanetData.devId),fanet.state,MyFanetData.addressType,0.0);
               }else{
-                ogn.sendTrackingData(now(),status.gps.Lat,status.gps.Lon,status.gps.alt,status.gps.speed,MyFanetData.heading,status.vario.ClimbRate,fanet.getMyDevId() ,(Ogn::aircraft_t)fanet.getFlarmAircraftType(&MyFanetData),MyFanetData.addressType,fanet.doOnlineTracking,0.0);
+                ogn.sendTrackingData(now(),status.gps.Lat,status.gps.Lon,status.gps.alt,status.gps.speed,MyFanetData.heading,status.vario.ClimbRate,fanet.getMyDevId() ,(Ogn::aircraft_t)fanet.getFlarmAircraftType(&MyFanetData),MyFanetData.addressType,MyFanetData.OnlineTracking,0.0);
               }
               
             } 

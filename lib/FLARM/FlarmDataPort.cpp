@@ -84,7 +84,7 @@ int FlarmDataPort::writeFlarmData(char *buffer, size_t size,FlarmtrackingData *m
     Serial.print("relNorth=");Serial.println(relNorth);
     Serial.print("relEast=");Serial.println(relEast);
     */
-    snprintf(buffer,size,"$PFLAA,0,%d,%d,%d,%d,%s,%d,0,%.01f,%.01f,%X",(int32_t)round(relNorth),(int32_t)round(relEast),(int32_t)round(relVert),movePilotData->addressType, movePilotData->DevId.c_str(),(int32_t)round(movePilotData->heading),currentSpeed,movePilotData->climb,uint8_t(movePilotData->aircraftType));
+    snprintf(buffer,size,"$PFLAA,0,%d,%d,%d,%d,%s,%d,,%d,%.01f,%X,%d",(int32_t)round(relNorth),(int32_t)round(relEast),(int32_t)round(relVert),movePilotData->addressType, movePilotData->DevId.c_str(),(int32_t)round(movePilotData->heading),(int32_t)currentSpeed,movePilotData->climb,uint8_t(movePilotData->aircraftType), movePilotData->noTrack);
     return addChecksum(buffer,size);
     //String movingpilotData = "$PFLAA,0," + String((int32_t)round(relNorth)) + "," + String((int32_t)round(relEast)) + "," + String((int32_t)round(relVert)) + ",2," +
     //		                    movePilotData->DevId + "," + (int32_t)round(movePilotData->heading) + ",0,"  +
@@ -118,7 +118,7 @@ String Flarm::writeFlarmData(FlarmtrackingData *myData,FlarmtrackingData *movePi
 
 int FlarmDataPort::writeDataPort(char *buffer, size_t size){
     if (neighbors > 99) neighbors = 99; //no more then 99 neighbors
-    snprintf(buffer,size,"$PFLAU,%d,1,%d,1,0,0,0,0,0",neighbors,GPSState);
+    snprintf(buffer,size,"$PFLAU,%d,1,%d,1,0,,0,,,",neighbors,GPSState);
     return addChecksum(buffer,size);
     //Serial.printf("length=%d\r\n",strlen(buffer));
 }
@@ -138,7 +138,7 @@ int FlarmDataPort::addChecksum(char *buffer, size_t size){
 }
 
 int FlarmDataPort::writeVersion(char *buffer, size_t size){
-    snprintf(buffer,size,"$PFLAV,A,1.00,1.00,GXAircom");
+    snprintf(buffer,size,"$PFLAV,A,1.00,1.00,"); //no obstacle database
     return addChecksum(buffer,size);
 }
 

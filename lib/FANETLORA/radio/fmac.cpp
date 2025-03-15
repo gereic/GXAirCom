@@ -207,7 +207,7 @@ int serialize_legacyTracking(ufo_t *Data,uint8_t*& buffer){
 	else
 		((uint16_t*)buffer)[3] = alt;
 	/* online tracking */
-	((uint16_t*)buffer)[3] |= !Data->stealth<<15;
+	((uint16_t*)buffer)[3] |= !(Data->stealth || Data->no_track)<<15;
 	/* aircraft type */
 	//((uint16_t*)buffer)[3] |= (LP_Flarm2FanetAircraft((eFlarmAircraftType)Data->aircraft_type)&0x7)<<12;
 	((uint16_t*)buffer)[3] |= (Flarm2FanetAircraft((eFlarmAircraftType)Data->aircraft_type)&0x7)<<12;
@@ -232,21 +232,20 @@ int serialize_legacyTracking(ufo_t *Data,uint8_t*& buffer){
 	return 11; //FANET_LORA_TYPE1_SIZE - 2;
 }
 
-
-uint8_t FanetMac::getAddressType(uint8_t manuId){
-	//  GxAircom            Skytraxx          XCTracer
-	if (manuId == 0x08 || manuId == 0x11 || manuId == 0x20 || manuId == 0xDD || manuId == 0xDE || manuId == 0xDF){
-			return 2; //address type FLARM
-			//log_i("address=%s Flarm",devId.c_str());
-	/*
-	}else if (manuId == 0x08){
-			return 3; //address type OGN        
-			//log_i("address=%s OGN",devId.c_str());
-	*/
-	}else{
-			return 0; //address type unknown
-	}
-}
+// uint8_t FanetMac::getAddressType(uint8_t manuId){
+// 	//  GxAircom            Skytraxx          XCTracer
+// 	if (manuId == 0x08 || manuId == 0x11 || manuId == 0x20 || manuId == 0xDD || manuId == 0xDE || manuId == 0xDF){
+// 			return 2; //address type FLARM
+// 			//log_i("address=%s Flarm",devId.c_str());
+// 	/*
+// 	}else if (manuId == 0x08){
+// 			return 3; //address type OGN        
+// 			//log_i("address=%s OGN",devId.c_str());
+// 	*/
+// 	}else{
+// 			return 0; //address type unknown
+// 	}
+// }
 
 void FanetMac::sendUdpData(const uint8_t *buffer,int len){
 	if ((WiFi.status() == WL_CONNECTED) || (WiFi.softAPgetStationNum() > 0)){ //connected to wifi or a client is connected to me
@@ -480,7 +479,8 @@ void FanetMac::frameReceived(int length)
 		//frm->timeStamp = now;
 		frm->timeStamp = uint32_t(now());
 		//log_i("%d",frm->timeStamp);
-		frm->AddressType = getAddressType(frm->src.manufacturer) + 0x80; //set highest Bit, so we know, that it was a Fanet-MSG
+		//frm->AddressType = getAddressType(frm->src.manufacturer) + 0x80; //set highest Bit, so we know, that it was a Fanet-MSG
+		frm->AddressType = 2 + 0x80; //Fanet is always type 2, set highest Bit, so we know, that it was a Fanet-MSG
 		rxFntCount++;
   }  
 	frm->rssi = rssi;

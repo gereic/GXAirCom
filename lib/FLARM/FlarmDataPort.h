@@ -42,6 +42,7 @@ typedef struct {
   float speed; //km/h
   float climb; //m/s
   float heading; //deg
+  bool noTrack; //no online tracking
 } FlarmtrackingData;
 
 

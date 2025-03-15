@@ -216,6 +216,7 @@ public:
     int rssi; //rssi
     uint8_t type; //tracking-type (11... online tracking 7X .... ground tracking)s
     uint8_t addressType;
+    bool OnlineTracking;
   } neighbour;
 
   typedef struct {
@@ -286,7 +287,6 @@ public:
   trackingData _myData;
   bool autobroadcast = false; //autobroadcast
   bool autoSendName = false; //send Fanet-name
-  bool doOnlineTracking = true; //online-tracking
   bool onGround = false;
   status_t state = hiking;
 

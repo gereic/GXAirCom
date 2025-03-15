@@ -243,7 +243,7 @@ private:
 	void handleTxLegacy();
 	void handleRx();
 	void switchMode(uint8_t mode,bool bStartReceive = true);
-	uint8_t getAddressType(uint8_t manuId);
+	//uint8_t getAddressType(uint8_t manuId);
   //void coord2payload_absolut(float lat, float lon, uint8_t *buf);
 
 	bool isNeighbor(MacAddr addr);
