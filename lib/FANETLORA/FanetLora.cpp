@@ -393,6 +393,7 @@ void FanetLora::insertDataToNeighbour(uint32_t devId, trackingData *Data){
   neighbours[index].rssi = Data->rssi;
   neighbours[index].type = Data->type;
   neighbours[index].addressType = Data->addressType;
+  neighbours[index].OnlineTracking = Data->OnlineTracking;
 }
 
 void FanetLora::clearNeighboursWeather(uint32_t tAct){
@@ -1239,7 +1240,7 @@ int FanetLora::serialize_GroundTracking(trackingData *Data,uint8_t*& buffer){
 	Frame::coord2payload_absolut(Data->lat, Data->lon, buffer);
 
 	/* state */
-	buffer[6] = (state&0x0F)<<4 | (!!doOnlineTracking);
+	buffer[6] = (state&0x0F)<<4 | (Data->OnlineTracking);
 
 	return FANET_LORA_TYPE7_SIZE;
 }
@@ -1256,7 +1257,7 @@ int FanetLora::serialize_tracking(trackingData *Data,uint8_t*& buffer){
 	else
 		((uint16_t*)buffer)[3] = alt;
 	/* online tracking */
-	((uint16_t*)buffer)[3] |= !!doOnlineTracking<<15;
+	((uint16_t*)buffer)[3] |= Data->OnlineTracking<<15;
 	/* aircraft type */
 	((uint16_t*)buffer)[3] |= (Data->aircraftType&0x7)<<12;
 
@@ -1374,6 +1375,7 @@ void FanetLora::setMyTrackingData(trackingData *tData,float geoidAlt,uint32_t pp
     _myData.lat = tData->lat;
     _myData.lon = tData->lon;
     _myData.speed = tData->speed;
+    _myData.OnlineTracking = tData->OnlineTracking;
     fmac.lat = _myData.lat;
     fmac.lon = _myData.lon;
     fmac.geoidAlt = geoidAlt;
