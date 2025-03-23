@@ -36,6 +36,7 @@ function setVis(){
   document.getElementById("VisGsSrO").style.display='none';
   document.getElementById("VisGsSsO").style.display='none';
   document.getElementById("VisFrequ").style.display='none'; /*set Frequency-settings invisible*/
+  document.getElementById("VisFreqCor").style.display='none'; /*set Frequency-settings invisible*/
   document.getElementById("VisAWUS").style.display='none'; /*set advanced weahter upload settings invisible    */
   document.getElementById("VisAWFFNT").style.display='none'; /*set advanced weahter upload settings invisible   */   
   document.getElementById("VisWD").style.display='none'; /*set weather-data invisible*/
@@ -68,7 +69,7 @@ function setVis(){
   }
   if (document.getElementById("setView").value == SETTING_EXPERT){ /*we are expert user*/
     document.getElementById("VisFrequ").style.display=''; /*set Frequency-settings visible*/
-
+    document.getElementById("VisFreqCor").style.display='';
   }
   if (document.getElementById("gsPs").value == 1){ /*set offset for sunset and sunrise visible */
     document.getElementById("VisGsSrO").style.display='';
@@ -522,6 +523,7 @@ getValue(obj,
     "setView",
     "board",
     "Frequ",
+    "FrqCor",
     "disp",
     "dispRot",
     "type",
@@ -665,6 +667,7 @@ function sendValues(){
     "setView",
     "board",
     "Frequ",
+    "FrqCor",
     "disp",
     "dispRot",
     "type",
@@ -1078,6 +1081,10 @@ function onMessage(evt) {
       <legend><b>RF-Module settings</b></legend>
       <table style="width:100&#37;">
         <tbody>
+          <tr id="VisFreqCor">
+            <th>Frequency Correction (max. +/- 30kHz) [kHz]</th>
+            <td><input type="number" id="FrqCor" min="-30" max="30" step="1"></td>
+          </tr>
           <tr>
             <th>FANET RX (receiving Fanet-MSG)</th>
             <td><input type="checkbox" id="FntRx"></td>

@@ -9,6 +9,7 @@ void load_configFile(SettingsData* pSetting){
   pSetting->wifi.appw = preferences.getString("APPW","12345678");
   pSetting->boardType = eBoard(preferences.getUChar("BOARDTYPE",eBoard::UNKNOWN)); //
   pSetting->CPUFrequency = preferences.getUChar("CPUFREQU",240); //
+  pSetting->FrqCor = preferences.getLong("FrqCor",0); //
   pSetting->bHasExtPowerSw = preferences.getUChar("EXTPWSW",0); //external power-switch
   pSetting->RFMode = preferences.getUChar("RFM",11); //default FntRx + FntTx + LegTx
   pSetting->awLiveTracking = preferences.getUChar("AWLIVE",0); //
@@ -174,6 +175,7 @@ void write_configFile(SettingsData* pSetting){
   preferences.putString("APPW",pSetting->wifi.appw);
   preferences.putUChar("BOARDTYPE",pSetting->boardType); //
   preferences.putUChar("CPUFREQU",pSetting->CPUFrequency); //
+  preferences.putLong("FrqCor",pSetting->FrqCor);
   preferences.putUChar("EXTPWSW",pSetting->bHasExtPowerSw); //
   preferences.putUChar("RFM",pSetting->RFMode);
   preferences.putUChar("AWLIVE",pSetting->awLiveTracking); //

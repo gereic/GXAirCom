@@ -4317,10 +4317,13 @@ bool setupUbloxConfig(){
         continue;
       }
       //xcguide uses GSA für GPS-Fix
+      /*
       if (!ublox.disableNMEAMessage(UBX_NMEA_GSA,COM_PORT_UART1)){
         log_e("ublox: error setting parameter %d",UBX_NMEA_GSA);
         continue;
       }
+      */
+      ublox.enableNMEAMessage(UBX_NMEA_GSA,COM_PORT_UART1, 0x05, defaultMaxWait);
 
       //enable nmea-sentences
       if (!ublox.enableNMEAMessage(UBX_NMEA_GGA,COM_PORT_UART1)){
@@ -4551,7 +4554,7 @@ void taskStandard(void *pvParameters){
     fmac.setAddr(strtol(setting.myDevId.c_str(), NULL, 16));
   }
 
-  fanet.begin(PinLora_SCK, PinLora_MISO, PinLora_MOSI, PinLora_SS,PinLoraRst, PinLoraDI0,PinLoraGPIO,frequency,14,radioChip);
+  fanet.begin(PinLora_SCK, PinLora_MISO, PinLora_MOSI, PinLora_SS,PinLoraRst, PinLoraDI0,PinLoraGPIO,frequency,setting.FrqCor,14,radioChip);
   fanet.setGPS(status.gps.bHasGPS);
   #ifdef GSMODULE
   if (setting.Mode == eMode::GROUND_STATION){
@@ -5021,13 +5024,13 @@ void taskStandard(void *pvParameters){
           nmea.getGeoIdAltitude(geoidalt);
           //log_i("latlon=%d,%d",nmea.getLatitude(),nmea.getLongitude());
           status.gps.Lat = nmea.getLatitude() / 1000000.;
-          status.gps.Lon = nmea.getLongitude() / 1000000.;  
-          //only for testing NZ
-          //status.gps.Lat = -41.0605988;
-          //status.gps.Lon = 175.3534596;  
+          status.gps.Lon = nmea.getLongitude() / 1000000.;
           #ifdef FLARMTEST
-            status.gps.Lat = setting.gs.lat;
-            status.gps.Lon = setting.gs.lon;
+            //status.gps.Lat = setting.gs.lat;
+            //status.gps.Lon = setting.gs.lon;
+            //only for testing NZ
+            status.gps.Lat = -41.0605988;
+            status.gps.Lon = 175.3534596;  
           #endif
           status.gps.alt = alt/1000.;
           status.gps.geoidAlt = geoidalt/1000.;
