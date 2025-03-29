@@ -253,7 +253,10 @@ SCL 3
 WINDDIR_PIN 6
 WINDSPEED_PIN 7  (use external Pull 4,7k)
 
-
+******** SIM800l Modem ********
+RST = 4
+TX = 20
+RX = 19
 
 
 
