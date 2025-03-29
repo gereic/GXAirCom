@@ -512,13 +512,14 @@ void FanetMac::end()
 }
 
 
-bool FanetMac::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int8_t reset, int8_t dio0,int8_t gpio,Fapp &app,long frequency,uint8_t level,uint8_t radioChip)
+bool FanetMac::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int8_t reset, int8_t dio0,int8_t gpio,Fapp &app,long frequency,long frequCor,uint8_t level,uint8_t radioChip)
 {
 	myApp = &app;
 	setup_frequency=frequency;
 	_ss = ss;
 	_reset = reset;
 	_actMode = 0;
+	_frequencyCorrection = frequCor;
 
 	// address 
 	_myAddr = readAddr();
@@ -570,16 +571,16 @@ void FanetMac::switchMode(uint8_t mode,bool bStartReceive){
 	bool bChanged = false;
 	#endif
 	if (mode == MODE_LORA){
-		radio.switchLORA(loraFrequency,loraBandwidth);
+		radio.switchLORA(loraFrequency + (float(_frequencyCorrection) / 1000.0),loraBandwidth);
 		actflarmFreq = 0.0;
 	}else if (mode == MODE_FSK_8682){
 		actflarmFreq = 868.2;
 		flarmFrequency = 868.2;
-		radio.switchFSK(actflarmFreq);
+		radio.switchFSK(actflarmFreq + (float(_frequencyCorrection) / 1000.0));
 	}else if (mode == MODE_FSK_8684){
 		actflarmFreq = 868.4;
 		flarmFrequency = 868.4;
-		radio.switchFSK(actflarmFreq);
+		radio.switchFSK(actflarmFreq + (float(_frequencyCorrection) / 1000.0));
 	}else if (mode == MODE_FSK){		
 		time(&tUnix);
 		channel = flarm_calculate_freq_channel(tUnix,(uint32_t)flarmChannels);
@@ -590,9 +591,9 @@ void FanetMac::switchMode(uint8_t mode,bool bStartReceive){
 			#if RX_DEBUG > 1
 			bChanged = true;
 			#endif
-			actflarmFreq = frequ;
+			actflarmFreq = frequ;			
 			log_i("switch to frequency %.3f",frequ);
-			radio.switchFSK(actflarmFreq);
+			radio.switchFSK(actflarmFreq + (float(_frequencyCorrection) / 1000.0));
 		}
 	}
 	if (bStartReceive) radio.startReceive();	

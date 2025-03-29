@@ -284,6 +284,7 @@ void onWebSocketEvent(uint8_t client_num,
           doc["setView"] = setting.settingsView;                  
           doc["board"] = setting.boardType;
           doc["Frequ"] = setting.CPUFrequency;
+          doc["FrqCor"] = setting.FrqCor;
           doc["disp"] = setting.displayType;
           doc["dispRot"] = setting.displayRotation;
           doc["expwsw"] = setting.bHasExtPowerSw;
@@ -497,7 +498,8 @@ void onWebSocketEvent(uint8_t client_num,
         if (root.containsKey("ssid")) newSetting.wifi.ssid = doc["ssid"].as<String>();
         if (root.containsKey("password")) newSetting.wifi.password = doc["password"].as<String>();
         if (root.containsKey("board")) newSetting.boardType = eBoard(doc["board"].as<uint8_t>());          
-        if (root.containsKey("board")) newSetting.CPUFrequency = eBoard(doc["Frequ"].as<uint8_t>());          
+        if (root.containsKey("Frequ")) newSetting.CPUFrequency = eBoard(doc["Frequ"].as<uint8_t>());    
+        if (root.containsKey("FrqCor")) newSetting.FrqCor = eBoard(doc["FrqCor"].as<int32_t>());    
         if (root.containsKey("disp")) newSetting.displayType = eDisplay(doc["disp"].as<uint8_t>());          
         if (root.containsKey("dispRot")) newSetting.displayRotation = doc["dispRot"].as<uint8_t>();          
         if (root.containsKey("expwsw")) newSetting.bHasExtPowerSw = doc["expwsw"].as<uint8_t>();

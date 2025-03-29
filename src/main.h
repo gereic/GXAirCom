@@ -395,6 +395,7 @@ struct SettingsData{
   uint8_t settingsView; //view of settings (basic, advanced, expert)
   eBoard boardType;
   uint8_t CPUFrequency; //CPU-Frequency
+  int32_t FrqCor; //frequency-correction [kHz]
   eMode Mode; //Air-Module, GS-Station,
   eDisplay displayType;
   uint8_t displayRotation; //displayrotation 0-3;

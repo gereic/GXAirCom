@@ -40,7 +40,7 @@ String FanetLora::getMyDevId(void){
     return getDevId(_myData.devId);
 }
 
-bool FanetLora::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int8_t reset, int8_t dio0, int8_t gpio,long frequency,uint8_t outputPower,uint8_t radio){
+bool FanetLora::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int8_t reset, int8_t dio0, int8_t gpio,long frequency,long frequCor,uint8_t outputPower,uint8_t radio){
   valid_until = millis() - 1000; //set Data to not valid
   _myData.lat = 0.0;
   _myData.lon = 0.0;
@@ -56,7 +56,7 @@ bool FanetLora::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int8_t res
   }
 
   fmac.setRfMode(_RfMode);
-  bool bRet = fmac.begin(sck, miso, mosi, ss, reset, dio0,gpio,*fa,frequency,outputPower,radio);
+  bool bRet = fmac.begin(sck, miso, mosi, ss, reset, dio0,gpio,*fa,frequency,frequCor,outputPower,radio);
   _myData.devId = ((uint32_t)fmac.myAddr.manufacturer << 16) + (uint32_t)fmac.myAddr.id;
   
   // init Flarm-Data

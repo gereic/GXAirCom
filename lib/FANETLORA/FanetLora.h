@@ -242,7 +242,7 @@ public:
   } weatherData;
 
   FanetLora(); //constructor
-  bool begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int8_t reset, int8_t dio0, int8_t gpio,long frequency,uint8_t outputPower,uint8_t radio);
+  bool begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int8_t reset, int8_t dio0, int8_t gpio,long frequency,long frequCor,uint8_t outputPower,uint8_t radio);
   void end(void);
   String getMyDevId(void);
   String getDevId(uint32_t devId);
