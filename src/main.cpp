@@ -2314,7 +2314,15 @@ void setup() {
     adcVoltageMultiplier =  5.2636f;
     break;
   case eBoard::HELTEC_LORA_V3:
+#ifdef TINY_GSM_MODEM_SIM800
+    log_i("Board=HELTEC_LORA_V3_SIM800");
+    PinGsmPower = -1;
+    PinGsmRst = 4; //is PowerKey, but IO5 is covered by Lora SS
+    PinGsmTx = 20;
+    PinGsmRx = 19;
+#else
     log_i("Board=HELTEC_LORA_V3");
+#endif    
 
     PinLora_SS = 8;
     PinLora_SCK = 9;
