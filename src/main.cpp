@@ -2316,7 +2316,7 @@ void setup() {
   case eBoard::HELTEC_LORA_V3:
 #ifdef TINY_GSM_MODEM_SIM800
     log_i("Board=HELTEC_LORA_V3_SIM800");
-    PinGsmPower = -1;
+    PinGsmPower = 5;
     PinGsmRst = 4; //is PowerKey, but IO5 is covered by Lora SS
     PinGsmTx = 20;
     PinGsmRx = 19;
@@ -4887,6 +4887,7 @@ void taskStandard(void *pvParameters){
     if (fanet.getlastMsgData(&msgData)){
       status.lastFanetMsg = msgData.msg;
       status.FanetMsgCount++;
+      log_i("Dest Id: %08X My Dev Id: %08X", msgData.dstDevId, fanet._myData.devId);
       if (msgData.dstDevId == fanet._myData.devId){
         String sRet = "";
         int pos = getStringValue(msgData.msg,"P","#",0,&sRet);
