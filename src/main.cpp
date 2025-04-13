@@ -2182,6 +2182,10 @@ void setup() {
     PinLora_MISO = 19;
     PinLora_MOSI = 23;
     PinLora_SCK = 18;
+   #ifdef TINY_GSM_MODEM_SIM7600
+   PinGsmPower = 5; //is PowerKey, but IO5 is covered by Lora SS
+   #else
+   #endif 
     PinGsmRst = 4; //is PowerKey, but IO5 is covered by Lora SS
     PinGsmTx = 27;
     PinGsmRx = 26;
@@ -2314,7 +2318,15 @@ void setup() {
     adcVoltageMultiplier =  5.2636f;
     break;
   case eBoard::HELTEC_LORA_V3:
+#ifdef TINY_GSM_MODEM_SIM800
+    log_i("Board=HELTEC_LORA_V3_SIM800");
+    PinGsmPower = 5;
+    PinGsmRst = 4; //is PowerKey, but IO5 is covered by Lora SS
+    PinGsmTx = 20;
+    PinGsmRx = 19;
+#else
     log_i("Board=HELTEC_LORA_V3");
+#endif    
 
     PinLora_SS = 8;
     PinLora_SCK = 9;
@@ -2565,6 +2577,24 @@ bool factoryResetModem(){
   return true;
 }
 
+bool modem_restart(){
+#ifdef TINY_GSM_MODEM_SIM76001
+  if (!modem.testAT()) {
+    log_i("modem.testAT() = false");
+    return false; 
+  }
+  modem.sendAT(GF("+CRESET"));
+  if (modem.waitResponse(10000L) != 1) { 
+    log_i("modem.waitResponse() = false");
+    return false; 
+  }
+  delay(5000L);  // TODO(?):  Test this delay!
+  return true;
+#else
+  return modem.restart();
+#endif  
+}
+
 bool TestModemconnection(unsigned long baud){
   log_i("Modem switch baudrate to %d",baud);
   GsmSerial.begin(baud,SERIAL_8N1,PinGsmRx,PinGsmTx,false); //baud, config, rx, tx, invert
@@ -2609,7 +2639,7 @@ bool initModem(){
   bool bRet = false;
   for (int i = 0;i <3;i++){
     log_i("restarting modem...");
-    if (modem.restart()){
+    if (modem_restart()){
       bRet = true;
       break;
     }
@@ -2771,7 +2801,7 @@ void taskGsm(void *pvParameters){
   while(1){
     tAct = millis();
     
-    #if defined(TINY_GSM_MODEM_SIM7000) || defined(TINY_GSM_MODEM_SIM7080)
+    #if defined(TINY_GSM_MODEM_SIM7000) || defined(TINY_GSM_MODEM_SIM7080) 
     if (command.getGpsPos == 1){
       setupSim7000Gps();
     }else if (command.getGpsPos == 2){
@@ -4879,6 +4909,7 @@ void taskStandard(void *pvParameters){
     if (fanet.getlastMsgData(&msgData)){
       status.lastFanetMsg = msgData.msg;
       status.FanetMsgCount++;
+      log_i("Dest Id: %08X My Dev Id: %08X", msgData.dstDevId, fanet._myData.devId);
       if (msgData.dstDevId == fanet._myData.devId){
         String sRet = "";
         int pos = getStringValue(msgData.msg,"P","#",0,&sRet);
