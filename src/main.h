@@ -402,6 +402,7 @@ struct SettingsData{
   float BattVoltOffs; //offset for Battery-multiplier
   uint8_t minBattPercent;
   uint8_t restartBattPercent;
+  uint8_t minGSMBattPercent;
   uint8_t myDevIdType; // Address type 0=Stateless Random, 1=Official ICAO, 2=stableFlarm, FF=Not overridden
   String myDevId; //my device-ID
   GPSSettings gps;
@@ -523,6 +524,8 @@ struct statusRtc{
   eRTC module = RTC_NONE;
   float voltage = 0.0;
   float temp = 0;
+  bool NightMode = false;
+  uint8_t nightModeRatio = 15;
 };
 
 struct statusData{

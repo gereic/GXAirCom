@@ -420,3 +420,15 @@ void write_CPUFrequency(void){
   preferences.putUChar("CPUFREQU",setting.CPUFrequency); //
   preferences.end(); 
 }
+
+void write_FanetUploadInterval(void){
+  preferences.begin("settings", false);
+  preferences.putULong("FanetWDInt", setting.wd.FanetUploadInterval);
+  preferences.end();
+}
+
+void write_windDirOffset(void){
+  preferences.begin("settings", false);
+  preferences.putULong("windDirOffset", setting.wd.windDirOffset);
+  preferences.end();
+}

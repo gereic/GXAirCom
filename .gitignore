@@ -3,6 +3,7 @@
 .vscode/c_cpp_properties.json
 .vscode/launch.json
 .vscode/ipch
+bin/
 bin/ftpscript.txt
 bin/_version.txt
 bin/_copy2server.bat
@@ -11,3 +12,4 @@ bin/mqttupdate.py
 _04settings
 GXAirCom.code-workspace
 peet_bros_calculation.xlsx
+src/enums.h
