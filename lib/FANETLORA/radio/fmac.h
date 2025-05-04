@@ -261,6 +261,7 @@ private:
 	uint8_t flarmZone = 0;
 	uint16_t loraBandwidth = 0;
 	uint8_t flarmChannels = 0;
+	uint32_t ChanSepar = 200000;
 	float actflarmFreq = 0.0;
 
 public:

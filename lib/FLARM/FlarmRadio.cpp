@@ -169,7 +169,7 @@ uint8_t flarm_get_zone(float lat, float lon){
   return 0; //not defined
 }
 
-void flarm_getFrequencyChannels(uint8_t zone,float *frequency, uint8_t *channels){
+void flarm_getFrequencyChannels(uint8_t zone,float *frequency,uint32_t *ChanSepar, uint8_t *channels){
   if ((zone < 1) || (zone > 6)) return; //zone not defined
 /*
 - Zone 1: f0=868.2, f1=868.4
@@ -179,23 +179,36 @@ void flarm_getFrequencyChannels(uint8_t zone,float *frequency, uint8_t *channels
   if (zone == 1){
     //Zone 1: f0=868.2, f1=868.4
     *frequency = 868.2;
+    *ChanSepar = 200000;
     *channels = 0;
   }else if (zone == 3){
     //Zone 3: f0=869.25, nch=1
     *frequency = 869.25;
+    *ChanSepar = 200000;
     *channels = 1;
   }else if (zone == 4){
     //Zone 4: f0=917.0, nch=24
     *frequency = 917.0;
+    *ChanSepar = 400000;
     *channels = 24;
   }else{
     //Zone 2, 3, 5, 6: f0=902.2, nch=65
     *frequency = 902.2;
+    *ChanSepar = 400000;
     *channels = 65;
   }
 }
 
 uint32_t flarm_calculate_freq_channel(uint32_t timestamp, uint32_t nch) {
+  timestamp = timestamp - 1;
+  timestamp = (timestamp<<1);
+  timestamp  = (timestamp<<15) + (~timestamp);
+  timestamp ^= timestamp>>12;
+  timestamp += timestamp<<2;
+  timestamp ^= timestamp>>4;
+  timestamp *= 2057;
+  return (timestamp ^ (timestamp>>16))  % nch;
+
   if (nch <= 1) return 0;
   uint32_t nts = ~timestamp;
   uint32_t ts16 = timestamp * uint32_t(32768) + nts;

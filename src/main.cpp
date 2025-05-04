@@ -5029,9 +5029,18 @@ void taskStandard(void *pvParameters){
             //status.gps.Lat = setting.gs.lat;
             //status.gps.Lon = setting.gs.lon;
             //only for testing NZ
-            status.gps.Lat = -41.0605988;
-            status.gps.Lon = 175.3534596;  
-          #endif
+            //status.gps.Lat = -41.0605988;
+            //status.gps.Lon = 175.3534596;  
+            //only for testing EU
+            //status.gps.Lat = 48.387;
+            //status.gps.Lon = 14.4;  
+            //USA
+            //status.gps.Lat = 42.16;
+            //status.gps.Lon = -106.1;  
+            //australia
+            status.gps.Lat = -22;
+            status.gps.Lon = 134;  
+            #endif
           status.gps.alt = alt/1000.;
           status.gps.geoidAlt = geoidalt/1000.;
           //setTime(nmea.getHour(), nmea.getMinute(), nmea.getSecond(), nmea.getDay(), nmea.getMonth(), nmea.getYear());

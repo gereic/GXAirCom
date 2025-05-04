@@ -690,6 +690,7 @@ void LoRaClass::checkRet(int16_t value){
 
 int16_t LoRaClass::FSKRx(uint32_t frequency){
   int16_t ret = 0;
+  log_i("frequency=%d",frequency);
   pGxModule->SPIsetRegValue(SX127X_REG_OP_MODE, SX1276_OPMODE_FSK_SLEEP);
   //log_i("op-mode=%d",pGxModule->SPIreadRegister(SX127X_REG_OP_MODE));  
 
@@ -741,6 +742,7 @@ int16_t LoRaClass::FSKRx(uint32_t frequency){
   enableInterrupt = true;
   _fskMode = true;
   pGxModule->SPIwriteRegister(SX127X_REG_OP_MODE,SX1276_OPMODE_FSK_RX);
+  sx1276setOpMode(SX1276_MODE_RX_CONTINUOUS); //RegOpMode --> set Module to RXCONTINUOUS
 
   ret = 0;
   return ret;

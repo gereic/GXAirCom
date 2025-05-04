@@ -585,7 +585,7 @@ void FanetMac::switchMode(uint8_t mode,bool bStartReceive){
 		time(&tUnix);
 		channel = flarm_calculate_freq_channel(tUnix,(uint32_t)flarmChannels);
 		float frequ = 0.0;
-		frequ = flarmFrequency + (float(channel * 400) / 1000.0);
+		frequ = flarmFrequency + (float(channel * ChanSepar) / 1000000.0);
 		log_i("frequ=%.2f,channel=%d",frequ,channel);
 		if ((actflarmFreq != frequ) || (1 == 1)){
 			#if RX_DEBUG > 1
@@ -1043,8 +1043,8 @@ void FanetMac::setRegion(float lat, float lon){
 	}
 	if (flarmZone == 0){
 		flarmZone = flarm_get_zone(lat,lon);		
-		flarm_getFrequencyChannels(flarmZone,&flarmFrequency,&flarmChannels);
-		log_i("zone=%d,freq=%.1f,channels=%d",flarmZone,flarmFrequency,flarmChannels);		
+		flarm_getFrequencyChannels(flarmZone,&flarmFrequency,&ChanSepar,&flarmChannels);
+		log_i("zone=%d,freq=%.1f,seperation=%d,channels=%d",flarmZone,flarmFrequency,ChanSepar,flarmChannels);		
 		bstartRec = true;
 	}
 	if (bstartRec){

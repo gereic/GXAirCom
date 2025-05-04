@@ -202,7 +202,7 @@ typedef struct {
     uint8_t extrapolated_avg_vel_e[4];
 } AircraftState;
 uint8_t flarm_get_zone(float lat, float lon);
-void flarm_getFrequencyChannels(uint8_t zone,float *frequency, uint8_t *channels);
+void flarm_getFrequencyChannels(uint8_t zone,float *frequency,uint32_t *ChanSepar, uint8_t *channels);
 uint32_t flarm_calculate_freq_channel(uint32_t timestamp, uint32_t nch);
 void flarm_init_aircraft_state(AircraftState *aircraft);
 void flarm_update_aircraft_state(AircraftState *aircraft);
