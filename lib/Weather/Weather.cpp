@@ -111,7 +111,10 @@ bool Weather::begin(TwoWire *pi2c, SettingsData &setting, int8_t oneWirePin, int
   aneometerType = anSettings.AnemometerType;
   if (_bHasSHT20){
     sht = new SHT2x(pI2c);
-    if (!sht->begin()){
+    if (sht->begin()){
+      uint8_t stat = sht->getStatus();
+      log_i("found SHT20-Sensor stat=0X%02X",stat);
+    }else{
       log_e("sht20 not connected");
     }
   }
@@ -458,8 +461,8 @@ void Weather::run(void){
           //log_i("t=%.2f;hum=%.2f",_weather.temp,_weather.Humidity);  
           break;
         }
-        delay(500);
         log_e("error reading sht20 %d",i);        
+        delay(500);
       } 
     }
     if (aneometerType == eAnemometer::TX20){
