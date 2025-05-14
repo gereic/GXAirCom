@@ -280,6 +280,7 @@ const char* MicroNMEA::parseTime(const char* s)
 	_hundredths = parseUnsignedInt(s + 7, 2);
 	uint32_t newTime;
 	newTime = (uint32_t(_hour) * 60 *60) + (uint32_t(_minute) * 60) + uint32_t(_second);
+	//log_i("new=%d,act=%d",newTime,actTimestamp);
 	//Serial.println(newTime);
 	if (actTimestamp == newTime){
 		//Serial.println("new data ok");

@@ -3909,7 +3909,7 @@ void checkReceivedLine(const char *ch_str){
     //received a PFLAG-Message --> start pps
     //log_i("trigger pps");
     status.gps.bExtGps = true;
-    ppsTriggered = true;
+    //ppsTriggered = true;
     return;
   #endif
   }else if (!strncmp(ch_str,"$CL,",4)){
@@ -4975,6 +4975,7 @@ void taskStandard(void *pvParameters){
     if (setting.outputModeVario == eOutputVario::OVARIO_LXPW) sendLXPW(tAct); //not output 
     #ifdef AIRMODULE
     if ((setting.Mode == eMode::AIR_MODULE) || ((abs(setting.gs.lat) <= 0.1) && (abs(setting.gs.lon) <= 0.1))){ //in GS-Mode we use the GPS, if in settings disabled
+      /*
       if ((PinPPS < 0) && (!status.gps.bExtGps)){
         if ((tAct - tOldPPS) >= 1000){
           gtPPS = millis();
@@ -4982,17 +4983,19 @@ void taskStandard(void *pvParameters){
         }
       }
       if (ppsTriggered){
-        ppsTriggered = false;
-        nmea.clearNewMsgValid();
+        ppsTriggered = false;        
         tLastPPS = tAct;      
         //log_i("PPS-Triggered t=%d",status.gps.tCycle);
       }
+      */
       if (nmea.isNewMsgValid()){
+        nmea.clearNewMsgValid();
+        if ((PinPPS < 0) && (!status.gps.bExtGps)){
+          gtPPS = millis() - 110; //we set PPS to actual-time -100ms, measured on T-Beam V1.0
+        }
+        //log_i("diff=%d",millis()-gtPPS);
+        tLastPPS = tAct;
         //log_i("lat=%d;lon=%d",nmea.getLatitude(),nmea.getLongitude());
-        //long alt2 = 0;
-        //nmea.getAltitude(alt2);
-        //log_i("alt=%d,speed=%d,course=%d",alt2,nmea.getSpeed(),nmea.getCourse());
-        //log_i("GPS-FixTime=%s",nmea.getFixTime().c_str());
         status.gps.tCycle = tAct - tOldPPS;
         if (nmea.isValid()){
           //log_i("nmea is valid");
@@ -5117,6 +5120,7 @@ void taskStandard(void *pvParameters){
         status.gps.NumSat = 0;
         status.gps.hdop = 0;
       }
+    /*
     }else{
       if ((PinPPS < 0) && (!status.gps.bExtGps)){
         if ((tAct - tOldPPS) >= 1000){
@@ -5139,6 +5143,7 @@ void taskStandard(void *pvParameters){
         fanet.setMyTrackingData(&MyFanetData,status.gps.geoidAlt,gtPPS); //set Data on fanet
 
       }
+      */
     }
     #endif
 
