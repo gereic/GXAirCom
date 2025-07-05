@@ -1,5 +1,6 @@
 #include <Weather.h>
 
+
 volatile uint32_t rainCount = 0;
 volatile uint32_t rainDebounceTime; // Timer to avoid contact bounce in isr
 volatile uint32_t aneometerpulsecount = 0;
@@ -109,9 +110,14 @@ bool Weather::begin(TwoWire *pi2c, SettingsData &setting, int8_t oneWirePin, int
   _bHasSHT20 = setting.wd.mode.bits.SHT20;
   anSettings = setting.wd.anemometer;
   aneometerType = anSettings.AnemometerType;
+
+
   if (_bHasSHT20){
     sht = new SHT2x(pI2c);
-    if (!sht->begin()){
+    if (sht->begin()){
+      uint8_t stat = sht->getStatus();
+      log_i("found SHT20-Sensor stat=0X%02X",stat);
+    }else{
       log_e("sht20 not connected");
     }
   }
@@ -136,6 +142,7 @@ bool Weather::begin(TwoWire *pi2c, SettingsData &setting, int8_t oneWirePin, int
   _weather.bTemp = false;
   _weather.bHumidity = false;
   _weather.bPressure = false;
+
   if (_bHasBME){
     if (initBME280()){
     }else{
@@ -180,8 +187,17 @@ bool Weather::begin(TwoWire *pi2c, SettingsData &setting, int8_t oneWirePin, int
     timer = timerBegin(0, 80, true);
     timerAttachInterrupt(timer, &onTimer, true);
     timerAlarmWrite(timer, 2000000, true); //every 2 seconds
-    timerAlarmEnable(timer);    
-  }else{
+    timerAlarmEnable(timer);
+  }
+    #ifdef WS85_in
+   else if (aneometerType == WS85) {
+      ws85_init(windDirPin);  // RX pin used for WS85
+      _weather.bWindSpeed = true;
+      _weather.bWindDir = true;
+      _weather.bTemp = true;
+    }
+    #endif
+   else{
     //init-code for aneometer DAVIS6410
     _windDirPin = windDirPin;
     if (windDirPin >= 0){
@@ -366,6 +382,8 @@ void Weather::checkAdsAneometer(void) {
 }
 
 void Weather::checkRainSensor(void){
+  // Skip tipping bucket logic if WS85 is the anemometer
+  if (aneometerType == eAnemometer::WS85) return;
   time_t now;
   std::time(&now);
   //log_i("%04d-%02d-%02d %02d:%02d:%02d",year(now),month(now),day(now),hour(now),minute(now),second(now));
@@ -458,8 +476,8 @@ void Weather::run(void){
           //log_i("t=%.2f;hum=%.2f",_weather.temp,_weather.Humidity);  
           break;
         }
-        delay(500);
         log_e("error reading sht20 %d",i);        
+        delay(500);
       } 
     }
     if (aneometerType == eAnemometer::TX20){
@@ -483,7 +501,27 @@ void Weather::run(void){
       //log_i("dir=%.1f,speed=%0.1f,ret=%d",_weather.WindDir,_weather.WindSpeed,ret);
     } else if (aneometerType == eAnemometer::MISOL){
       checkAneometer();
-    }else{
+    } else if (aneometerType == eAnemometer::WS85) {
+      #ifdef WS85_in
+      //ws85_run(); // Now called in main loop more frequently
+      float dir, speed, gust, temp, rain1h, batVolt, capVolt;
+      if (ws85_getData(&dir, &speed, &gust, &temp, &rain1h, &batVolt, &capVolt)) {
+        _weather.WindDir = dir;
+        _weather.WindSpeed = speed * 3.6;
+        if (gust * 3.6 > _weather.WindGust) _weather.WindGust = gust * 3.6;
+        if(temp > -30.0 && temp < 60.0) { // Check for valid tempreature
+          _weather.temp = temp + _tempOffset; // in °C
+          _weather.bTemp = true;
+        }
+        _weather.rain1h = rain1h;
+        _weather.bRain = true;
+
+        log_i("WS85: WindDir=%.1f deg, WindSpeed=%.2f km/h, WindGust=%.2f km/h", dir, speed * 3.6, gust * 3.6);
+        log_i("WS85: Temp=%.2f C, Rain1h=%.2f mm", temp, rain1h);
+        log_i("WS85: BatVoltage=%.2f V, CapVoltage=%.2f V", batVolt, capVolt);
+      }
+      #endif
+    } else {
       checkAneometer();
     }
     while (_weather.WindDir < 0) { _weather.WindDir += 360.0; }
