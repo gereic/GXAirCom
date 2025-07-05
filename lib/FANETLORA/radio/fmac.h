@@ -264,7 +264,8 @@ private:
 	float actflarmFreq = 0.0;
 
 public:
-
+float getAirtime();           // MikeC
+int getTxQueueLength();       // MikeC
   bool doForward = true;
   float lat = 0;
   float lon = 0;

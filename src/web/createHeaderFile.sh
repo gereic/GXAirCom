@@ -11,7 +11,8 @@ trap 'rm -f "${TMP}"' EXIT
 rm -f stripped/*.gz stripped/*.{css,js,html}
 for i in orig/*.{css,js,html}; do
     si=${i/orig/stripped/}
-    ./minify \
+    #./minify \
+    /opt/homebrew/bin/minify \
         --js-keep-var-names \
         --html-keep-default-attrvals \
         --js-precision 0 \
@@ -19,7 +20,8 @@ for i in orig/*.{css,js,html}; do
     gzip -k "${si}"
 done
 
-rm ../../data/*.*
+#rm ../../data/*.*
+[ -d ../../data ] && rm -f ../../data/*.*
 
 pushd stripped >/dev/null
 for i in *.gz; do

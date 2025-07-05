@@ -39,7 +39,16 @@ All commands must be sent in this format:
 | `CMD:P1234#SYC WINDOFFSET=<degrees>`              | Set wind direction offset                                    | `#SYC OK`, restarts required                               |
 | `CMD:P1234#SYC GETTIME?`                          | Get current time from RTC                                    | `#SYC TIME=YYYY-MM-DD_HH:MM:SS`                            |
 | `CMD:P1234#SYC SETTIME=YYYY-MM-DD_HH:MM:SS`       | Set RTC time manually                                        | `#SYC OK` or `#SYC ERROR: Invalid time format`             |
+| `CMD:P1234#SYC ANEMO?	                            | Query anemometer type	                                       | `#SYC ANEMO=<0–5>                                          |
+| `CMD:P1234#SYC ANEMO=<x>                          | Set anemometer type:                                         | `#SYC OK, restarts required
 
+ANEMO Type Details
+0=DAVIS
+1=TX20
+2=ADS_A1015
+3=PEETBROS
+4=MISOL
+5=WS85
 
 RFMODE Details
 RFMode = 3  FntTx, FntRx

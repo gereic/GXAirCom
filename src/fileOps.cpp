@@ -432,3 +432,9 @@ void write_windDirOffset(void){
   preferences.putULong("windDirOffset", setting.wd.windDirOffset);
   preferences.end();
 }
+
+void write_AnemometerType() {
+  preferences.begin("settings", false);
+  preferences.putUChar("AnemoType", setting.wd.anemometer.AnemometerType);
+  preferences.end();
+}

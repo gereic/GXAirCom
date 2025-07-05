@@ -1223,6 +1223,8 @@ void FanetLora::writeMsgType3(uint32_t devId,String msg){
         frm->type = FRM_TYPE_MESSAGE;
         frm->dest = getMacFromDevId(devId);
         frm->payload_length = serialize_msg(msg,frm->payload);
+        frm->ack_requested = false; //MikeC - don't need an ack for this device due to telemetry messages. 
+        frm->forward = true;
         //log_i("sending fanet-msg:%s length=%d",msg.c_str(),frm->payload_length);
         frm2txBuffer(frm);
     }

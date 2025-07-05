@@ -1447,3 +1447,11 @@ bool FanetMac::setAddr(uint32_t addr)
 }
 
 FanetMac fmac = FanetMac();
+
+float FanetMac::getAirtime() {
+	return radio.get_airlimit();
+}
+
+int FanetMac::getTxQueueLength() {
+	return tx_fifo.size();
+}

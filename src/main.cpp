@@ -45,6 +45,7 @@
 XPowersLibInterface *PMU = NULL;
 
 
+
 //#define GXTEST
 //#define FLARMTEST
 
@@ -53,6 +54,10 @@ XPowersLibInterface *PMU = NULL;
 #define WDT_TIMEOUT 15
 
 //#define SSLCONNECTION
+
+#ifdef WS85_out
+HardwareSerial WS85Serial(2);
+#endif
 
 #ifdef GSM_MODULE
 
@@ -264,6 +269,10 @@ int8_t PinGsmPower = -1;
 int8_t PinGsmRst = -1;
 int8_t PinGsmTx = -1;
 int8_t PinGsmRx = -1;
+
+//WS85
+int8_t PinWS85Tx = -1;
+int8_t PinWS85Rx = -1;
 
 //GPS
 int8_t PinGPSRX = -1;
@@ -1457,6 +1466,7 @@ void printSettings(){
   //weather-data
   //general
   log_i("WD mode=%d",setting.wd.mode.mode);
+  log_i("WD Anemometer=%d",setting.wd.anemometer.AnemometerType);
   log_i("WD tempoffset=%.1f [°]",setting.wd.tempOffset);
   log_i("WD windDirOffset=%d [°]",setting.wd.windDirOffset);
   // FANET
@@ -1713,7 +1723,6 @@ void readPGXCFSentence(const char* data)
 }
 
 void setup() {
-
   Serial.begin(115200);
   status.restart.doRestart = false;
   status.bPowerOff = false;
@@ -2299,10 +2308,19 @@ void setup() {
 
     PinOneWire = 4; //pin for one-Wire
 
-    #ifdef TINY_GSM_MODEM_SIM7080
+    #if defined(TINY_GSM_MODEM_SIM7080)
       PinGsmRst = 7; //is PowerKey
       PinGsmTx = 5;
       PinGsmRx = 6;
+    #endif
+
+    #if defined(WS85_out)
+      PinWS85Tx = 5;
+      PinWS85Rx = 6;
+    #endif
+    #if defined(RAIN_SENSOR_MOD)
+    //PinOneWire = 4; //pin for one-Wire
+    PinRainGauge = 4; //pin for rain-gauge
     #endif
 
     pinMode(35,OUTPUT);
@@ -2406,6 +2424,13 @@ void setup() {
   if (PinADCVoltage >= 0){
     pinMode(PinADCVoltage, INPUT); //set pin ADC-Voltage as input
   }
+
+  #ifdef WS85_out
+  WS85Serial.begin(115200,SERIAL_8N1,PinWS85Rx,PinWS85Tx,false); //baud, config, rx, tx, invert
+  #endif
+
+
+
 
   #ifdef GSMODULE
   if (setting.Mode == eMode::GROUND_STATION){
@@ -2979,6 +3004,7 @@ void taskWeather(void *pvParameters){
   static uint32_t tUploadData; //first sending is in Sending-intervall to have steady-values
   static uint32_t tSendData; //first sending is in FANET-Sending-intervall to have steady-values
   static uint32_t tLastWindSpeed; //
+  static uint32_t lastTempUpdate = 0;
   static uint32_t tWindOk;
   static uint32_t tGetRTCTime;
   bool bDataOk = false;
@@ -2993,9 +3019,10 @@ void taskWeather(void *pvParameters){
   Weather weather;
   weather.setTempOffset(setting.wd.tempOffset);
   weather.setWindDirOffset(setting.wd.windDirOffset);
+
   if (!weather.begin(pI2cZero,setting,PinOneWire,PinWindDir,PinWindSpeed,PinRainGauge)){
-  
   }
+
   if ((!setting.wd.mode.bits.enable) && (!status.bWUBroadCast)){
     log_i("stopping task");
     vTaskDelete(xHandleWeather);
@@ -3013,6 +3040,11 @@ void taskWeather(void *pvParameters){
   getRTC();
   tGetRTCTime = millis();
   while (1){
+
+    #ifdef WS85_in
+    ws85_run();
+    #endif
+
     uint32_t tAct = millis();
     if (timeOver(tAct,tGetRTCTime,10000)){
       tGetRTCTime = tAct;
@@ -3079,6 +3111,9 @@ void taskWeather(void *pvParameters){
           if (wData.bHumidity) avg[i].Humidity = calcExpAvgf(avg[i].Humidity,wData.Humidity,fAvg);
           if (wData.bPressure) avg[i].Pressure = calcExpAvgf(avg[i].Pressure,wData.Pressure,fAvg);
           if (wData.bTemp) avg[i].temp = calcExpAvgf(avg[i].temp,wData.temp,fAvg);
+          if (wData.bTemp) {
+            lastTempUpdate = tAct;
+        }
         }
         //log_i("wDir=%f,wDir0=%f,wDir1=%f",wData.WindDir,avg[0].Winddir,avg[1].Winddir);
         status.weather.bRain = setting.wd.mode.bits.rainSensor;
@@ -3089,8 +3124,12 @@ void taskWeather(void *pvParameters){
           status.weather.rain1h = 0;
           status.weather.rain1d = 0;
         }
-        status.weather.bTemp = wData.bTemp;
-        status.weather.temp = avg[0].temp;
+        if (tAct - lastTempUpdate < 300000) { // 5 minutes
+          status.weather.bTemp = true;
+          status.weather.temp = avg[0].temp;
+      } else {
+          status.weather.bTemp = false;
+      }
         status.weather.bHumidity = wData.bHumidity;
         status.weather.Humidity = avg[0].Humidity;
         status.weather.bPressure = wData.bPressure;
@@ -3156,7 +3195,65 @@ void taskWeather(void *pvParameters){
         //weather.resetWindGust();
         avg[1].WindGust = 0;
       }
-      
+      #ifdef WS85_out
+      static uint32_t tSendWS85 = 0;
+      if (millis() - tSendWS85 > 2000) {
+        tSendWS85 = millis();
+
+        log_i("Sending WS85 data");
+
+        float windDir = round(avg[0].Winddir);
+        float windSpeed = round2(avg[0].WindSpeed);
+        float windGust = round2(avg[0].WindGust);
+        float windSpeedMS = windSpeed / 3.6f; // Convert km/h to m/s
+        float windGustMS = windGust / 3.6f;   // Convert km/h to m/s
+        float temp = round2(avg[0].temp);
+        float rain1h = round2(status.weather.rain1h);
+        float rain1d = round2(status.weather.rain1d);
+        float batteryVoltage = round2(status.battery.voltage / 1000.0); // volts
+
+        WS85Serial.printf("WindDir      = %d\n", (int)windDir);
+        WS85Serial.print("WindSpeed    = "); WS85Serial.println(windSpeedMS, 2);
+        WS85Serial.print("WindGust     = "); WS85Serial.println(windGustMS, 2);
+
+        if (status.weather.bTemp) {
+          WS85Serial.printf("GXTS04Temp   = %.2f\n", temp);
+        }
+        if (setting.wd.mode.bits.rainSensor) {
+          WS85Serial.printf("RainIntSum   = %.2f\n", rain1h);
+          WS85Serial.printf("Rain         = %.2f\n", rain1d);
+        }
+        WS85Serial.printf("CapVoltage     = %.2f\n", batteryVoltage);
+        WS85Serial.printf("BatVoltage      = %.2f\n", batteryVoltage);
+    }
+    #endif
+    #ifdef SEND_RAIN_DATA_FANET
+
+    if (setting.wd.mode.bits.rainSensor) {
+    static uint8_t lastRainSendHour = 255;
+    time_t now;
+    std::time(&now);
+    uint8_t currentHour = hour(now);
+
+    if (currentHour != lastRainSendHour) {
+      lastRainSendHour = currentHour;
+      float rain1h = round2(status.weather.rain1h);
+      float rain1d = round2(status.weather.rain1d);
+      float batteryVoltage = status.battery.voltage;  // Optional, include if available
+      // Build JSON message
+      String msg = "{";
+      msg += "\"rain1h\":" + String(rain1h, 2) + ",";
+      msg += "\"rain1d\":" + String(rain1d, 2) + ",";
+      msg += "\"bat\":" + String(batteryVoltage, 2);
+      msg += "}";
+      // Send to specific FANET nodes
+      fanet.writeMsgType3(0x08EA2C, msg);
+      fanet.writeMsgType3(0x08B840, msg);
+    }
+  }
+  #endif
+
+
       if (timeOver(tAct,tSendData,setting.wd.FanetUploadInterval)){
         //print weather-data to serial
         //log_i("send Fanet-weatherData");
@@ -3964,6 +4061,27 @@ void checkSystemCmd(const char *ch_str){
     }
     return;
   }
+
+// Query anemometer type
+if (line.indexOf("#SYC ANEMO?") >= 0){
+  add2OutputString("#SYC ANEMO=" + String((uint8_t)setting.wd.anemometer.AnemometerType) + "\r\n");
+  return;
+}
+
+// Set anemometer type
+iPos = getStringValue(line, "#SYC ANEMO=", "\r", 0, &sRet);
+if (iPos >= 0){
+  uint8_t u8 = atoi(sRet.c_str());
+  u8 = constrain(u8, 0, 5); // valid enum range
+  add2OutputString("#SYC OK\r\n");
+  if (u8 != (uint8_t)setting.wd.anemometer.AnemometerType){
+    setting.wd.anemometer.AnemometerType = eAnemometer(u8);
+    write_AnemometerType();
+    Serial.println("ANEMO changed --> need restart");
+    status.restart.doRestart = true;
+  }
+  return;
+}
   return;
 }
 
@@ -4900,8 +5018,16 @@ void taskStandard(void *pvParameters){
       sendFanetData = 0;
     }
     if (sendWeatherData){ //we have to send weatherdata
-      //log_i("sending weatherdata %d,%d,%d,%d,%d",fanetWeatherData.bTemp,fanetWeatherData.bHumidity,fanetWeatherData.bStateOfCharge,fanetWeatherData.bWind,fanetWeatherData.bBaro);
+      log_i("sending weatherdata %d,%d,%d,%d,%d",fanetWeatherData.bTemp,fanetWeatherData.bHumidity,fanetWeatherData.bStateOfCharge,fanetWeatherData.bWind,fanetWeatherData.bBaro);
       fanet.writeMsgType4(&fanetWeatherData);
+      log_i("sending weatherdata baro=%.2f,hum=%.2f,temp=%.2f,wdir=%.1f,wgust=%.1f,wspeed=%.1f",
+        fanetWeatherData.Baro,
+        fanetWeatherData.Humidity,
+        fanetWeatherData.temp,
+        fanetWeatherData.wHeading,
+        fanetWeatherData.wGust,
+        fanetWeatherData.wSpeed);
+
       if (setting.OGNLiveTracking.bits.sendWeather) {
         Ogn::weatherData wData;
         wData.devId = fanet.getMyDevId();
@@ -4956,19 +5082,34 @@ void taskStandard(void *pvParameters){
       if (setting.OGNLiveTracking.bits.fwdName){
         ogn.sendNameData(fanet.getDevId(nameData.devId),nameData.name,(float)nameData.snr / 10.0);
       }
-    }
-    FanetLora::msgData msgData;
+    }FanetLora::msgData msgData;
     if (fanet.getlastMsgData(&msgData)){
       status.lastFanetMsg = msgData.msg;
       status.FanetMsgCount++;
+
+      // ✅ Send to MQTT (RxMsg)
+      if ((pMqtt) && (setting.mqtt.mode.bits.sendWeather)) {
+        StaticJsonDocument<300> doc;
+        char msg_buf[300];
+        char timestamp[30];
+        snprintf(timestamp, sizeof(timestamp), "%04d-%02d-%02dT%02d:%02d:%02d+00:00",
+                 year(), month(), day(), hour(), minute(), second());
+        doc["DT"] = timestamp;
+        doc["ID"] = fanet.getDevId(msgData.srcDevId);
+        doc["msg"] = msgData.msg;
+        doc["rssi"] = msgData.rssi;
+        serializeJson(doc, msg_buf);
+        pMqtt->sendTopic("RxMsg", msg_buf, false);
+      }
+
+      // ✅ Existing logic: process command messages to this device
       if (msgData.dstDevId == fanet._myData.devId){
         String sRet = "";
         int pos = getStringValue(msgData.msg,"P","#",0,&sRet);
         if (pos >= 0){
           if ((atoi(sRet.c_str()) == setting.fanetpin) && (setting.fanetpin != 0)){
             fanetDstId = msgData.srcDevId; //we have to store the sender, to send back the value !!
-            log_i("got fanet-cmd from %s:%s",fanet.getDevId(fanetDstId),msgData.msg.c_str()); 
-            //log_i("msg=%s",msgData.msg.substring(pos).c_str());
+            log_i("got fanet-cmd from %s:%s", fanet.getDevId(fanetDstId), msgData.msg.c_str());
             String s = msgData.msg.substring(pos) + "\r\n";
             checkReceivedLine(s.c_str());
           }
