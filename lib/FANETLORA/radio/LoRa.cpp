@@ -24,16 +24,16 @@ void IRAM_ATTR setFlag(void)
 
 int16_t LoRaClass::sx1262CalibrateImage(){
   uint8_t data[2];
-  if(_freq > 900.0) {
+  if(_freq > 900000000) {
     data[0] = SX126X_CAL_IMG_902_MHZ_1;
     data[1] = SX126X_CAL_IMG_902_MHZ_2;
-  } else if(_freq > 850.0) {
+  } else if(_freq > 850000000) {
     data[0] = SX126X_CAL_IMG_863_MHZ_1;
     data[1] = SX126X_CAL_IMG_863_MHZ_2;
-  } else if(_freq > 770.0) {
+  } else if(_freq > 770000000) {
     data[0] = SX126X_CAL_IMG_779_MHZ_1;
     data[1] = SX126X_CAL_IMG_779_MHZ_2;
-  } else if(_freq > 460.0) {
+  } else if(_freq > 460000000) {
     data[0] = SX126X_CAL_IMG_470_MHZ_1;
     data[1] = SX126X_CAL_IMG_470_MHZ_2;
   } else {
@@ -44,6 +44,7 @@ int16_t LoRaClass::sx1262CalibrateImage(){
 }
 
 void LoRaClass::run(){
+  //log_i("run");
   static uint32_t tLast = millis();
   uint32_t tAct = millis();
   if ((radioType == RADIO_SX1276) && (_fskMode)){
@@ -97,7 +98,7 @@ LoRaClass::LoRaClass(){
 
 //LoRaClass::LoRaClass(SPIClass *_spi,uint8_t cs, uint8_t irq, uint8_t rst, uint8_t gpio){
 void LoRaClass::setPins(SPIClass *spi,uint8_t cs, uint8_t irq, uint8_t rst, uint8_t gpio){
-  //log_i("cs=%d,irq=%d,rst=%d,gpio=%d",cs, irq, rst, gpio);
+  //log_i("setPins cs=%d,irq=%d,rst=%d,gpio=%d",cs, irq, rst, gpio);
   //SPISettings _spiSettings(8E6, MSBFIRST, SPI_MODE0);
   SPISettings _spiSettings = SPISettings(8000000, MSBFIRST, SPI_MODE0);
   _spi = spi;
@@ -317,13 +318,13 @@ void LoRaClass::sx1262CheckAndClearErrors(){
 
 }
 
-int16_t LoRaClass::begin(float freq, float bw, uint8_t sf, uint8_t cr, uint8_t syncWord, int8_t power,uint8_t radioChip){
-	receivedFlag = false;
+int16_t LoRaClass::begin(float bw, uint8_t sf, uint8_t cr, uint8_t syncWord, int8_t power,uint8_t radioChip){
+	//log_i("begin");
+  receivedFlag = false;
 	//enableInterrupt = false;
   bCalibrated = false;
   radioType = radioChip;
   int state = 0;
-  _freq = freq;
   _bw = bw;
   _sf = sf;
   _cr = cr;
@@ -510,6 +511,7 @@ int16_t LoRaClass::sx1262ReadData(uint8_t* buffer, size_t len){
 }
 
 int16_t LoRaClass::readData(uint8_t* data, size_t len){
+  //log_i("readData");
   int16_t ret = 0;
   switch (radioType){
     case RADIO_SX1262:
@@ -583,6 +585,7 @@ int16_t LoRaClass::sx1262GetStats(){
 
 
 float LoRaClass::getRSSI(){
+  //log_i("getRssi");
   switch (radioType){
     case RADIO_SX1262:
       {
@@ -598,7 +601,7 @@ float LoRaClass::getRSSI(){
       }else{
         float lastPacketRSSI;
         // RSSI calculation uses different constant for low-frequency and high-frequency ports
-        if(_freq < 868.0) {
+        if(_freq < 868000000) {
           lastPacketRSSI = -164 + pGxModule->SPIgetRegValue(0x1A); //REG_PKT_RSSI_VALUE
         } else {
           lastPacketRSSI = -157 + pGxModule->SPIgetRegValue(0x1A); //REG_PKT_RSSI_VALUE
@@ -671,9 +674,9 @@ int16_t LoRaClass::sx1276setRxBandwidth(float rxBw){
   return 0;
 }
 
-int16_t LoRaClass::sx1262SetFrequency(float freq){
-  //log_i("frequ=%.2f",_freq);
-  uint32_t frf = (_freq * (uint32_t(1) << 25)) / 32.0;
+int16_t LoRaClass::sx1262SetFrequency(uint32_t freq){
+  //log_i("frequ=%dHz",_freq);
+  uint64_t frf = ((uint64_t)_freq << 25) / 32000000;
   uint8_t data[4];
   data[0] = (uint8_t)((frf >> 24) & 0xFF);
   data[1] = (uint8_t)((frf >> 16) & 0xFF);
@@ -690,8 +693,72 @@ void LoRaClass::checkRet(int16_t value){
 
 int16_t LoRaClass::FSKRx(uint32_t frequency){
   int16_t ret = 0;
-  log_i("frequency=%d",frequency);
-  pGxModule->SPIsetRegValue(SX127X_REG_OP_MODE, SX1276_OPMODE_FSK_SLEEP);
+  log_i("start FSK RX frequency=%d",frequency);
+  //pGxModule->SPIsetRegValue(SX127X_REG_OP_MODE, SX1276_OPMODE_FSK_SLEEP);
+  pGxModule->SPIwriteRegister(SX127X_REG_OP_MODE, 0);
+  log_i("op-mode=%d",pGxModule->SPIreadRegister(SX127X_REG_OP_MODE));  
+
+  // enter standby mode (warm up)
+  pGxModule->SPIwriteRegister(SX127X_REG_OP_MODE, (pGxModule->SPIreadRegister(SX127X_REG_OP_MODE) & ~0x07) | 0x01);
+  delay(1);
+  log_i("op-mode2=%d",pGxModule->SPIreadRegister(SX127X_REG_OP_MODE));  
+
+  configChannel(frequency);
+
+  pGxModule->SPIwriteRegister(SX127X_REG_LNA, 0x20 | 0x03); // max gain, boost enable
+
+  pGxModule->SPIwriteRegister(SX127X_REG_FIFO_ADDR_PTR, 0x0E); // AFC off, AGC on, trigger on preamble?!?
+
+  pGxModule->SPIwriteRegister(SX127X_REG_IRQ_FLAGS, 0x02); // 125kHz SSb; BW >= (DR + 2 X FDEV)
+
+  pGxModule->SPIwriteRegister(SX127X_REG_RX_NB_BYTES, 0x11); // 166.6kHz SSB
+
+  pGxModule->SPIwriteRegister(SX127X_REG_SYMB_TIMEOUT_LSB, 0x85); // enable, 1 bytes, 5 chip errors
+
+  pGxModule->SPIwriteRegister(SX127X_REG_FSKSyncConfig, (0x30 | 2)); //syncword-size
+
+  pGxModule->SPIwriteRegister(SX127X_REG_FSKPacketConfig1, 0x20); //Manchester
+  pGxModule->SPIwriteRegister(SX127X_REG_FSKPacketConfig2, 0x40); // packet mode
+
+  pGxModule->SPIwriteRegister(SX127X_REG_FSKPayloadLength,FSK_PACKET_LENGTH);
+
+  pGxModule->SPIwriteRegister(0x28,0x66); //RegSyncValue1
+  pGxModule->SPIwriteRegister(0x29,0x65); //RegSyncValue2
+  pGxModule->SPIwriteRegister(0x2A,0x96); //RegSyncValue3
+
+  /*
+  pGxModule->SPIwriteRegister(0x28,0x99); //RegSyncValue1
+  pGxModule->SPIwriteRegister(0x29,0xA5); //RegSyncValue2
+  pGxModule->SPIwriteRegister(0x2A,0xA9); //RegSyncValue3
+  pGxModule->SPIwriteRegister(0x2B,0x55); //RegSyncValue4
+  pGxModule->SPIwriteRegister(0x2C,0x66); //RegSyncValue5
+  pGxModule->SPIwriteRegister(0x2D,0x65); //RegSyncValue6
+  pGxModule->SPIwriteRegister(0x2E,0x96); //RegSyncValue7
+  pGxModule->SPIwriteRegister(0x2F,0X00); //RegSyncValue8  
+  */
+
+  pGxModule->SPIwriteRegister(SX127X_REG_FSKBitrateMsb, 0x01); // 100 kbps
+  pGxModule->SPIwriteRegister(SX127X_REG_FSKBitrateLsb, 0x40);
+
+  pGxModule->SPIwriteRegister(SX127X_REG_FSKFdevMsb, 0x03); // +/- 50kHz
+  pGxModule->SPIwriteRegister(SX127X_REG_FSKFdevLsb, 0x33);  
+
+  pGxModule->SPIsetRegValue(SX127X_REG_DIO_MAPPING_1, 0x00, 7, 6); //REG_DIO_MAPPING_1 --> DIO0_PACK_PAYLOAD_READY
+  pGxModule->SPIwriteRegister(0x3E, 0b11111111); //REG_IRQ_FLAGS_1
+  pGxModule->SPIwriteRegister(0x3F, 0b11111111); //REG_IRQ_FLAGS_2
+
+  // set RF switch (if present)
+  pGxModule->setRfSwitchState(HIGH, LOW);
+  //iRet = sx1276setOpMode(SX1276_MODE_FS_MODE_RX); //RegOpMode --> set Module to RXCONTINUOUS
+  receivedFlag = false;
+  enableInterrupt = true;
+  _fskMode = true;
+  //pGxModule->SPIwriteRegister(SX127X_REG_OP_MODE,SX1276_OPMODE_FSK_RX);
+  pGxModule->SPIwriteRegister(SX127X_REG_OP_MODE, (pGxModule->SPIreadRegister(SX127X_REG_OP_MODE) & ~0x07) | 0x05);
+  delay(1);
+  log_i("op-mode3=%d",pGxModule->SPIreadRegister(SX127X_REG_OP_MODE)); 
+  /*
+  pGxModule->SPIwriteRegister(SX127X_REG_OP_MODE, SX1276_OPMODE_FSK_SLEEP);
   //log_i("op-mode=%d",pGxModule->SPIreadRegister(SX127X_REG_OP_MODE));  
 
   // enter standby mode (warm up)
@@ -743,12 +810,13 @@ int16_t LoRaClass::FSKRx(uint32_t frequency){
   _fskMode = true;
   pGxModule->SPIwriteRegister(SX127X_REG_OP_MODE,SX1276_OPMODE_FSK_RX);
   sx1276setOpMode(SX1276_MODE_RX_CONTINUOUS); //RegOpMode --> set Module to RXCONTINUOUS
-
+  */
   ret = 0;
   return ret;
 }
 
-int16_t LoRaClass::switchFSK(float frequency){
+int16_t LoRaClass::switchFSK(uint32_t frequency){
+  log_i("switchFSK frequ=%dHz",frequency);
   //Bitrate=100kHz
   //BT0.5
   //BW=117khz
@@ -854,11 +922,7 @@ int16_t LoRaClass::switchFSK(float frequency){
       pGxModule->SPIwriteRegister(0x04,0x03); //RegFdevMsb Frequency deviation +/- 50kHz
       pGxModule->SPIwriteRegister(0x05,0x33); //RegFdevLsb Fdev = 50000Hz / 61Hz = 819 (0x333)
       //calculate register values
-      uint32_t FRF = (frequency * (uint32_t(1) << 19)) / 32.0;
-      // write registers
-      pGxModule->SPIsetRegValue(0x06, (FRF & 0xFF0000) >> 16); //RegFrMsb
-      pGxModule->SPIsetRegValue(0x07, (FRF & 0x00FF00) >> 8);  //RegFrMid
-      pGxModule->SPIsetRegValue(0x08, FRF & 0x0000FF); //RegFrLsb
+      configChannel(_freq);
 
       //pGxModule->SPIwriteRegister(0x09,0xFC); //RegPaConfig
       pGxModule->SPIwriteRegister(0x09,0xFF); //RegPaConfig PA_Boost on, max_power=15, Output Power 17dBm
@@ -952,6 +1016,7 @@ bool LoRaClass::isFskMode(void){
 }
 
 bool LoRaClass::isReceiving(){
+  //log_i("is receiving");
   switch (radioType){
     case RADIO_SX1262:
       return false;
@@ -985,7 +1050,8 @@ int16_t LoRaClass::sx1262SetDioIrqParams(uint16_t irqMask, uint16_t dio1Mask, ui
   return(SPIwriteCommand(0x08, data, 8));
 }
 
-int16_t LoRaClass::switchLORA(float frequency,uint16_t loraBandwidth){
+int16_t LoRaClass::switchLORA(uint32_t frequency,uint16_t loraBandwidth){
+  //log_i("switchLora");
   _freq = frequency;
   _bw = float(loraBandwidth);
   //log_i("frequ=%.1f,bw=%d",frequency,loraBandwidth);
@@ -1056,15 +1122,7 @@ int16_t LoRaClass::switchLORA(float frequency,uint16_t loraBandwidth){
       if (ret) log_e("sx1276 error set OP-Mode 2 %d",ret);
       ret = pGxModule->SPIsetRegValue(SX127X_REG_OP_MODE, 0b10000000, 7, 7, 5); //RegOpMode --> set modem to LORA
       if (ret) log_e("sx1276 error set OP-Mode 3 %d",ret);
-      //calculate register values
-      uint32_t FRF = (_freq * (uint32_t(1) << 19)) / 32.0;
-      // write registers
-      pGxModule->SPIwriteRegister(0x06, (FRF & 0xFF0000) >> 16); //RegFrMsb
-      pGxModule->SPIwriteRegister(0x07, (FRF & 0x00FF00) >> 8);  //RegFrMid
-      pGxModule->SPIwriteRegister(0x08, FRF & 0x0000FF); //RegFrLsb
-      //pGxModule->SPIwriteRegister(0x06,0xD9); //RegFrMsb
-      //pGxModule->SPIwriteRegister(0x07,0x0C); //RegFrMid
-      //pGxModule->SPIwriteRegister(0x08,0xCD); //RegFrLsb
+      configChannel(_freq);
       //pGxModule->SPIwriteRegister(0x09,0xFC); //RegPaConfig PA_Boost on, max_power=15, Output Power 14dBm
       pGxModule->SPIwriteRegister(0x09,0xFF); //RegPaConfig PA_Boost on, max_power=15, Output Power 17dBm
       pGxModule->SPIwriteRegister(0x0A,0x09); //RegPaRamp 40us
@@ -1163,6 +1221,7 @@ float LoRaClass::expectedAirTime_ms(int pktLen)
 
 float LoRaClass::get_airlimit(void)
 {
+  //log_i("getAirLimit");
   static uint32_t last = 0;
 	uint32_t current = millis();
 	uint32_t dt = current - last;
@@ -1183,6 +1242,7 @@ int16_t LoRaClass::sx1262SetBufferBaseAddress(uint8_t txBaseAddress, uint8_t rxB
 }
 
 int16_t LoRaClass::startReceive(){
+  //log_i("start receive");
   #if LORA_RX_DEBUG > 0
   uint32_t tBegin = micros();
   char Buffer[500];
@@ -1190,7 +1250,7 @@ int16_t LoRaClass::startReceive(){
   int16_t iRet = 0;
   //delay(5);
   prevIrqFlags = 0;
-  //log_i("start receive");
+  
   switch (radioType){
     case RADIO_SX1262:
       {
@@ -1269,6 +1329,7 @@ int16_t LoRaClass::startReceive(){
 }
 
 size_t LoRaClass::getPacketLength(){
+  //log_i("getPacketLength");
   size_t tRet = 0;
   //log_i("getPacketLength %d",radioType);
   if (_fskMode) return FSK_PACKET_LENGTH;
@@ -1295,6 +1356,7 @@ size_t LoRaClass::getPacketLength(){
 }
 
 int16_t LoRaClass::setCodingRate(uint8_t cr){
+  //log_i("setCodingRate %d",cr);
   int16_t iRet = 0;
   if (_cr != cr){
     _cr = cr;

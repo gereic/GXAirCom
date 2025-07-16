@@ -145,6 +145,8 @@ uint8_t flarm_get_zone(float lat, float lon){
 - Zone 5: Israel (34E to 54E and 29.25N to 33.5N)
 - Zone 6: South America (west of 30W, south of 10N)
 */
+    log_i("Zone 3: New Zealand (east of 160E)");
+    return 3; //Zone 3: New Zealand (east of 160E)
 
   if (34.0f <= lon && lon <= 54.0f && 29.25f <= lat && lat <= 33.5f){
     log_i("Zone 5: Israel (34E to 54E and 29.25N to 33.5N)");
@@ -169,31 +171,31 @@ uint8_t flarm_get_zone(float lat, float lon){
   return 0; //not defined
 }
 
-void flarm_getFrequencyChannels(uint8_t zone,float *frequency,uint32_t *ChanSepar, uint8_t *channels){
+void flarm_getFrequencyChannels(uint8_t zone,uint32_t *frequency,uint32_t *ChanSepar, uint8_t *channels){
   if ((zone < 1) || (zone > 6)) return; //zone not defined
 /*
-- Zone 1: f0=868.2, f1=868.4
-- Zone 2, 3, 5, 6: f0=902.2, nch=65
-- Zone 4: f0=917.0, nch=24
+- Zone 1: f0=868200000, f1=868400000
+- Zone 2, 3, 5, 6: f0=902200000, nch=65
+- Zone 4: f0=917000000, nch=24
 */
   if (zone == 1){
-    //Zone 1: f0=868.2, f1=868.4
-    *frequency = 868.2;
+    //Zone 1: f0=868200000, f1=868400000
+    *frequency = 868200000;
     *ChanSepar = 200000;
     *channels = 0;
   }else if (zone == 3){
-    //Zone 3: f0=869.25, nch=1
-    *frequency = 869.25;
+    //Zone 3: f0=869250000, nch=1 //tried with softrf 1.7.1 --> correct Frequency is 869200000
+    *frequency = 869200000;
     *ChanSepar = 200000;
     *channels = 1;
   }else if (zone == 4){
-    //Zone 4: f0=917.0, nch=24
-    *frequency = 917.0;
+    //Zone 4: f0=917000000, nch=24
+    *frequency = 917000000;
     *ChanSepar = 400000;
     *channels = 24;
   }else{
-    //Zone 2, 3, 5, 6: f0=902.2, nch=65
-    *frequency = 902.2;
+    //Zone 2, 3, 5, 6: f0=902200000, nch=65
+    *frequency = 902200000;
     *ChanSepar = 400000;
     *channels = 65;
   }
@@ -648,7 +650,9 @@ bool flarm_decode(void *flarm_pkt, ufo_t *this_aircraft, ufo_t *fop){
   uint32_t key_v7[4];
   flarm_v7_packet_t *pkt = (flarm_v7_packet_t *) flarm_pkt;
   if (pkt->type == 0){
-    //log_i("V6 protocol");
+    #ifdef DEBUG_FLARM_ERRORS
+    log_i("V6 protocol");
+    #endif
     return flarm_v6_decode(flarm_pkt,this_aircraft,fop);
   }else if (pkt->type != 2){
     #ifdef DEBUG_FLARM_ERRORS
@@ -937,12 +941,18 @@ bool flarm_v6_decode(void *flarm_pkt, ufo_t *this_aircraft, ufo_t *fop) {
   int ndx;
   uint8_t origParity = pkt->parity;
   //check parity of frame !! --> don't include parity-bit
+  uint32_t key[4];
   uint8_t pkt_parity=0;
-  pkt->parity = 0; //reset parity
+  flarm_make_key(key, timestamp, (pkt->addr << 8) & 0xffffff);
+  flarm_btea((uint32_t *) pkt + 1, -5, key);
+
   for (ndx = 0; ndx < sizeof (flarm_packet_t); ndx++) {
     pkt_parity += flarm_parity(*(((unsigned char *) pkt) + ndx));
   }
-  pkt_parity = pkt_parity % 2;
+  if (pkt_parity % 2) {
+    log_e("bad parity of decoded packet: %02X",pkt_parity);  
+    return false;
+  } 
 
   if (pkt->addr == 0){
     #ifdef DEBUG_FLARM_ERRORS
@@ -969,10 +979,13 @@ bool flarm_v6_decode(void *flarm_pkt, ufo_t *this_aircraft, ufo_t *fop) {
     return false;
   }
   if (pkt->zero2 != 0){
-    //log_e("unknown message zero2=%02X",pkt->zero2);
+    #ifdef DEBUG_FLARM_ERRORS
+    log_e("unknown message zero2=%02X",pkt->zero2);
+    #endif
     return false;
   }
 
+  /*
   bool bParityErr = false;
   //if (origParity) log_i("adr:%06X parity orig:%02X,calc:%02X",pkt->addr,origParity,pkt_parity);
   //V7 sends always 0
@@ -985,6 +998,7 @@ bool flarm_v6_decode(void *flarm_pkt, ufo_t *this_aircraft, ufo_t *fop) {
     bParityErr = true;
     //return -1;
   }
+  */
   
 
   //log_i("%d unk0=%02X,unk1=%02X,unk2=%02X,unk3=%02X,onground=%02X,AirBorne=%d",millis(),pkt->zero0,pkt->zero1,pkt->_unk2,pkt->zero2,pkt->onGround,pkt->airborne);
@@ -1046,14 +1060,7 @@ bool flarm_v6_decode(void *flarm_pkt, ufo_t *this_aircraft, ufo_t *fop) {
   fop->ew[0] = pkt->ew[0]; fop->ew[1] = pkt->ew[1];
   fop->ew[2] = pkt->ew[2]; fop->ew[3] = pkt->ew[3];
 
- if (bParityErr){
-    char Buffer[500];	
-    sprintf(Buffer,"adr=%06X;adrType=%d,lat=%.06f,lon=%.06f,alt=%.01f,speed=%.01f,course=%.01f,climb=%.01f\n", fop->addr,fop->addr_type,fop->latitude,fop->longitude,fop->altitude,fop->speed,fop->course,fop->vs);
-    log_e("%s",&Buffer[0]);
-    return false;
- }
-
-  if ((pkt->turnrate != TURN_RATE_ON_GROUND) && (pkt->turnrate != TURN_RATE_RIGHT_TURN) && (pkt->turnrate != TURN_RATE_NO_TURN) && (pkt->turnrate != TURN_RATE_LEFT_TURN)){
+  if ((pkt->turnrate != TURN_RATE_0) && (pkt->turnrate != TURN_RATE_ON_GROUND) && (pkt->turnrate != TURN_RATE_RIGHT_TURN) && (pkt->turnrate != TURN_RATE_NO_TURN) && (pkt->turnrate != TURN_RATE_LEFT_TURN)){
     log_e("unknown message turnrate=%02X",pkt->turnrate);
     char Buffer[500];	
     sprintf(Buffer,"adr=%06X;adrType=%d,lat=%.06f,lon=%.06f,alt=%.01f,speed=%.01f,course=%.01f,climb=%.01f\n", fop->addr,fop->addr_type,fop->latitude,fop->longitude,fop->altitude,fop->speed,fop->course,fop->vs);

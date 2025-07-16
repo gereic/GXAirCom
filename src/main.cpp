@@ -451,6 +451,42 @@ uint8_t setCFG[3][8] PROGMEM = {
 	{0xF1, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, // Ublox - Time of Day and Clock Information
 };
 
+
+void radiotest(){
+  LoRaClass radio;
+  SPI.begin(5, 19, 27, 18);
+  radio.setPins(&SPI,18,26,23);
+  radio.begin();
+  radio.switchFSK(869200000uL);
+  radio.startReceive();	
+  //radio.FSKRx(869200000uL);
+  static uint8_t rxCount = 0;
+  while(1){
+    // put your main code here, to run repeatedly:
+    //radio.run();
+    if (radio.isRxMessage()){
+      int16_t packetSize = radio.getPacketLength();
+      rxCount ++;
+      log_i("new message arrived %d len=%d",rxCount,packetSize);
+      if (packetSize == 26){
+        uint8_t rx_frame[26];	
+        radio.readData(&rx_frame[0], packetSize);
+        char Buffer[500];	
+        int len = 0;
+        for (int i = 0; i < 26; i++){
+          len += sprintf(Buffer+len,"%02X", rx_frame[i]);
+        }
+        len += sprintf(Buffer+len,"\n");
+        Serial.print(Buffer);
+        //log_i("%d received:%s",rxCount,Buffer[0]);
+      }
+      //radio.FSKRx(869200000uL);
+      radio.startReceive();	
+    }
+    delay(10);
+  }
+}
+
 // rounds a number to 2 decimal places
 // example: round(3.14159) -> 3.14
 double round2(double value) {
@@ -3002,8 +3038,8 @@ void taskWeather(void *pvParameters){
     return;    
   }
   //const TickType_t xDelay = 1000 / portTICK_PERIOD_MS;   //only every 1sek.
-  const TickType_t xDelay = 10 / portTICK_PERIOD_MS;   //only every 10ms.
-  TickType_t xLastWakeTime = xTaskGetTickCount (); //get actual tick-count
+  //const TickType_t xDelay = 10 / portTICK_PERIOD_MS;   //only every 10ms.
+  //TickType_t xLastWakeTime = xTaskGetTickCount (); //get actual tick-count
   tUploadData = millis();
   tSendData = millis();
   tLastWindSpeed = millis();
@@ -4541,7 +4577,6 @@ void taskStandard(void *pvParameters){
   #endif
   #endif
   // create a binary semaphore for task synchronization
-  long frequency = FREQUENCY868;
   fanet.setRFMode(setting.RFMode);
   uint8_t radioChip = RADIO_SX1276;
   if ((setting.boardType == eBoard::T_BEAM_SX1262) || (setting.boardType == eBoard::T_BEAM_S3CORE) || (setting.boardType == eBoard::HELTEC_WIRELESS_STICK_LITE_V3) || (setting.boardType == eBoard::HELTEC_LORA_V3)) radioChip = RADIO_SX1262;
@@ -4554,7 +4589,7 @@ void taskStandard(void *pvParameters){
     fmac.setAddr(strtol(setting.myDevId.c_str(), NULL, 16));
   }
 
-  fanet.begin(PinLora_SCK, PinLora_MISO, PinLora_MOSI, PinLora_SS,PinLoraRst, PinLoraDI0,PinLoraGPIO,frequency,setting.FrqCor,14,radioChip);
+  fanet.begin(PinLora_SCK, PinLora_MISO, PinLora_MOSI, PinLora_SS,PinLoraRst, PinLoraDI0,PinLoraGPIO,setting.FrqCor * 1000,14,radioChip);
   fanet.setGPS(status.gps.bHasGPS);
   #ifdef GSMODULE
   if (setting.Mode == eMode::GROUND_STATION){

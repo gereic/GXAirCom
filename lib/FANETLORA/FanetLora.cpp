@@ -1364,7 +1364,7 @@ float FanetLora::getLoraFrequency(void){
   return fmac.loraFrequency;
 }
 float FanetLora::getFlarmFrequency(void){
-  return fmac.flarmFrequency;
+  return fmac.actflarmFreq;
 }
 
 void FanetLora::setMyTrackingData(trackingData *tData,float geoidAlt,uint32_t ppsMillis){

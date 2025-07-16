@@ -21,7 +21,7 @@ bool Baro::initBMP3XX(void){
   bool ret = false;
   for (sensorAdr = 0x76; sensorAdr <= 0x77; sensorAdr++)
   {
-    log_i("check device at address 0x%X !",sensorAdr);
+    //log_i("check device at address 0x%X !",sensorAdr);
     pI2c->beginTransmission(sensorAdr);
     error = pI2c->endTransmission();
     if (error == 0){
@@ -35,7 +35,7 @@ bool Baro::initBMP3XX(void){
     }
     else
     {
-      log_i("Checking device at address 0x%X returned error %X", sensorAdr, error);
+      //log_i("Checking device at address 0x%X returned error %X", sensorAdr, error);
     }
   }
 
