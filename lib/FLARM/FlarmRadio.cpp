@@ -145,8 +145,8 @@ uint8_t flarm_get_zone(float lat, float lon){
 - Zone 5: Israel (34E to 54E and 29.25N to 33.5N)
 - Zone 6: South America (west of 30W, south of 10N)
 */
-    log_i("Zone 3: New Zealand (east of 160E)");
-    return 3; //Zone 3: New Zealand (east of 160E)
+//    log_i("Zone 3: New Zealand (east of 160E)");
+//    return 3; //Zone 3: New Zealand (east of 160E)
 
   if (34.0f <= lon && lon <= 54.0f && 29.25f <= lat && lat <= 33.5f){
     log_i("Zone 5: Israel (34E to 54E and 29.25N to 33.5N)");
@@ -171,7 +171,7 @@ uint8_t flarm_get_zone(float lat, float lon){
   return 0; //not defined
 }
 
-void flarm_getFrequencyChannels(uint8_t zone,uint32_t *frequency,uint32_t *ChanSepar, uint8_t *channels){
+void flarm_getFrequencyChannels(uint8_t zone,uint32_t *frequency,uint32_t *ChanSepar, uint8_t *channels,int8_t *MaxTxPower){
   if ((zone < 1) || (zone > 6)) return; //zone not defined
 /*
 - Zone 1: f0=868200000, f1=868400000
@@ -182,22 +182,26 @@ void flarm_getFrequencyChannels(uint8_t zone,uint32_t *frequency,uint32_t *ChanS
     //Zone 1: f0=868200000, f1=868400000
     *frequency = 868200000;
     *ChanSepar = 200000;
-    *channels = 0;
+    *channels = 2;
+    *MaxTxPower = 14;
   }else if (zone == 3){
     //Zone 3: f0=869250000, nch=1 //tried with softrf 1.7.1 --> correct Frequency is 869200000
     *frequency = 869200000;
     *ChanSepar = 200000;
     *channels = 1;
+    *MaxTxPower = 10;
   }else if (zone == 4){
     //Zone 4: f0=917000000, nch=24
     *frequency = 917000000;
     *ChanSepar = 400000;
     *channels = 24;
+    *MaxTxPower = 30;
   }else{
     //Zone 2, 3, 5, 6: f0=902200000, nch=65
     *frequency = 902200000;
     *ChanSepar = 400000;
     *channels = 65;
+    *MaxTxPower = 30;
   }
 }
 
@@ -939,7 +943,6 @@ bool flarm_v6_decode(void *flarm_pkt, ufo_t *this_aircraft, ufo_t *fop) {
   float geo_separ = this_aircraft->geoid_separation;
   uint32_t timestamp = (uint32_t) this_aircraft->timestamp;
   int ndx;
-  uint8_t origParity = pkt->parity;
   //check parity of frame !! --> don't include parity-bit
   uint32_t key[4];
   uint8_t pkt_parity=0;

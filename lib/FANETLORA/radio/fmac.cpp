@@ -560,7 +560,7 @@ void FanetMac::switchMode(uint8_t mode,bool bStartReceive){
 	#endif
 	if (mode == MODE_LORA){
 		radio.switchLORA(loraFrequency + _frequencyCorrection,loraBandwidth);
-		actflarmFreq = 0;
+		//actflarmFreq = 0;
 	}else if (mode == MODE_FSK_8682){
 		flarmFrequency = 868200000;
 		actflarmFreq = flarmFrequency + _frequencyCorrection;
@@ -1039,8 +1039,8 @@ void FanetMac::setRegion(float lat, float lon){
 	}
 	if (flarmZone == 0){
 		flarmZone = flarm_get_zone(lat,lon);		
-		flarm_getFrequencyChannels(flarmZone,&flarmFrequency,&ChanSepar,&flarmChannels);
-		log_i("zone=%d,freq=%d,seperation=%d,channels=%d",flarmZone,flarmFrequency,ChanSepar,flarmChannels);		
+		flarm_getFrequencyChannels(flarmZone,&flarmFrequency,&ChanSepar,&flarmChannels,&radio.maxFskPower);
+		log_i("zone=%d,freq=%d,seperation=%d,channels=%d,maxTxPower=%d",flarmZone,flarmFrequency,ChanSepar,flarmChannels,radio.maxFskPower);		
 		bstartRec = true;
 	}
 	if (bstartRec){

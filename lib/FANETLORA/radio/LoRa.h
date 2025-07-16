@@ -225,8 +225,6 @@ public:
   bool isReceiving();
   int16_t setCodingRate(uint8_t cr);
   int16_t transmit(uint8_t* data, size_t len);
-  int16_t FSKTx(uint32_t frequency,uint8_t* data, size_t len);  
-  int16_t FSKRx(uint32_t frequency);
   bool isRxMessage();
   int16_t switchFSK(uint32_t frequency);
   int16_t switchLORA(uint32_t frequency,uint16_t loraBandwidth);
@@ -235,6 +233,8 @@ public:
   
   //int16_t setFrequency(float frequency);
   uint8_t gain = 0; //0 --> auto-gain, 1--> highest gain; 6 --> lowest gain
+  int8_t maxLoraPower = 14;
+  int8_t maxFskPower = 14;
   void run(); //has to be called cyclic
   void end();
 
@@ -302,6 +302,7 @@ private:
   void checkRet(int16_t value);
   int sx_channel_free4tx();
   void configChannel (uint32_t frequency);
+  void sx1276_setPower(int8_t power);
   bool calibrated = false;
 
 };
