@@ -420,3 +420,21 @@ void write_CPUFrequency(void){
   preferences.putUChar("CPUFREQU",setting.CPUFrequency); //
   preferences.end(); 
 }
+
+void write_FanetUploadInterval(void){
+  preferences.begin("settings", false);
+  preferences.putULong("FanetWDInt", setting.wd.FanetUploadInterval);
+  preferences.end();
+}
+
+void write_windDirOffset(void){
+  preferences.begin("settings", false);
+  preferences.putULong("windDirOffset", setting.wd.windDirOffset);
+  preferences.end();
+}
+
+void write_AnemometerType() {
+  preferences.begin("settings", false);
+  preferences.putUChar("AnemoType", setting.wd.anemometer.AnemometerType);
+  preferences.end();
+}

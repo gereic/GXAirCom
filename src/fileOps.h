@@ -25,4 +25,7 @@ void write_battMinPerc(void);
 void write_gpsBaud(void);
 void write_wifiModeBits(void);
 void write_CPUFrequency(void);
+void write_FanetUploadInterval(void);
+void write_windDirOffset(void);
+void write_AnemometerType(void);
 #endif

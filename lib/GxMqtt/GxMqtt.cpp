@@ -1,7 +1,9 @@
 #include <GxMqtt.h>
+#include <FanetLora.h>
 
 extern struct SettingsData setting;
 extern struct statusData status;
+extern FanetMac fmac;
 
 GxMqtt::GxMqtt(){
   xMutex = NULL;
@@ -172,6 +174,8 @@ void GxMqtt::sendInfo(){
     doc.clear();
     doc["battPerc"] = status.battery.percent;
     doc["battV"] = float(status.battery.voltage)/1000.0;
+    doc["airtime"] = fmac.getAirtime();
+    doc["txQueueLen"] = fmac.getTxQueueLength();    
     serializeJson(doc, msg_buf);
     sendTopic("info",msg_buf,false); //send topic info
     tOld = tAct;

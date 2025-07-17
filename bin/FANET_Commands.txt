@@ -1,0 +1,62 @@
+### GXAirCom `checkSystemCmd()` SYC Commands
+All commands can be sent by 
+   - serial
+   - FANET
+   - MQTT (topic: GXAirCom/08XXXX/cmd) //ACHTUNG !! für MQTT wird nur folgendes gesendet: #SYC <COMMAND>
+          receive-topic: GXAirCom/08XXXX/state 
+
+All commands must be sent in this format:  
+`CMD:P<your_pin>#SYC <COMMAND>`
+P is the fanet-pin and has to be set other then 0 otherwise it won't work.
+
+
+| **Full Command**                                  | **Description**                                              | **Response or Effect**                                     |
+|---------------------------------------------------|--------------------------------------------------------------|------------------------------------------------------------|
+| `CMD:P1234#SYC /?`                                | List available basic SYC commands                            | `VER`, `NAME`, `TYPE`, etc. (one per line)                 |
+| `CMD:P1234#SYC VER?`                              | Query firmware version                                       | `#SYC VER=<version>`                                       |
+| `CMD:P1234#SYC NAME?`                             | Query pilot name                                             | `#SYC NAME=<pilot name>`                                   |
+| `CMD:P1234#SYC NAME=<newname>`                    | Set new pilot name                                           | `#SYC OK`                                                  |
+| `CMD:P1234#SYC TYPE?`                             | Query aircraft type                                          | `#SYC TYPE=<0-7>`                                          |
+| `CMD:P1234#SYC TYPE=<x>`                          | Set aircraft type (0–7)                                      | `#SYC OK`                                                  |
+| `CMD:P1234#SYC AIRMODE?`                          | Query air mode                                               | `#SYC AIRMODE=<0 or 1>`                                    |
+| `CMD:P1234#SYC AIRMODE=<x>`                       | Set air mode                                                 | `#SYC OK`                                                  |
+| `CMD:P1234#SYC Wifi?`                             | Query full WiFi config (JSON)                                | JSON with `ssid`, `password`, mode, etc.                   |
+| `CMD:P1234#SYC WIFI=<0/1>`                        | Enable (1) or disable (0) WiFi                               | `#SYC OK`                                                  |
+| `CMD:P1234#SYC WIFI_MODE=<x>`                     | Set WiFi mode                                                | `#SYC OK`, restarts required                               |
+| `CMD:P1234#SYC FUEL_SENSOR?`                      | Query if fuel sensor is enabled                              | `#SYC FUEL_SENSOR=0/1`                                     |
+| `CMD:P1234#SYC FUEL_SENSOR=<0/1>`                 | Enable/disable fuel sensor                                   | `#SYC OK`, restarts required                               |
+| `CMD:P1234#SYC FCPU?`                             | Query CPU frequency                                          | `#SYC FCPU=<MHz>`                                          |
+| `CMD:P1234#SYC FCPU=<x>`                          | Set CPU frequency (20–240 MHz)                               | `#SYC OK`, restarts required                               |
+| `CMD:P1234#SYC MODE?`                             | Query operating mode                                         | `#SYC MODE=0/1`                                            |
+| `CMD:P1234#SYC MODE=<x>`                          | Set operating mode                                           | `#SYC OK`, restarts required                               |
+| `CMD:P1234#SYC OUTMODE?`                          | Query output mode                                            | `#SYC OUTMODE=0–3`                                         |
+| `CMD:P1234#SYC OUTMODE=<x>`                       | Set output mode                                              | `#SYC OK`, restarts required                               |
+| `CMD:P1234#SYC NETSTAT?`                          | Query network/modem/MQTT status                              | `#SYC INET=1,MODEM=1,MQTT=0`                               |
+| `CMD:P1234#SYC RFMODE?`                           | Query RF mode                                                | `#SYC RFMODE=<0-15>`                                       |
+| `CMD:P1234#SYC RFMODE=<x>`                        | Set RF mode (0–15)                                           | `#SYC OK`, restarts required                               |
+| `CMD:P1234#SYC RESTART`                           | Restart the device                                           | No reply; device restarts                                  |
+| `CMD:P1234#SYC DOUPDATE`                          | Trigger OTA update check                                     | `Check for update`                                         |
+| `CMD:P1234#SYC UPDATE=<version>`                  | Set target version and check for update                      | `#SYC UPDATE NEW VERSION`                                  |
+| `CMD:P1234#SYC RAIN?`                             | Query hourly and daily rain totals                           | `#SYC RAIN1H=...,RAIN1D=...`                               |
+| `CMD:P1234#SYC VBAT?`                             | Query battery voltage                                        | `#SYC VBAT=<voltage in V>`                                 |
+| `CMD:P1234#SYC FANETWDINT?`                       | Query FANET weather upload interval (in seconds)             | `#SYC FANETWDINT=<seconds>`                                |
+| `CMD:P1234#SYC FANETWDINT=<seconds>`              | Set FANET weather upload interval (10–600 sec)               | `#SYC OK`, restarts required                               |
+| `CMD:P1234#SYC WINDOFFSET?`                       | Query wind direction offset (°)                              | `#SYC WINDOFFSET=<-180 to 180>`                            |
+| `CMD:P1234#SYC WINDOFFSET=<degrees>`              | Set wind direction offset                                    | `#SYC OK`, restarts required                               |
+| `CMD:P1234#SYC GETTIME?`                          | Get current time from RTC                                    | `#SYC TIME=YYYY-MM-DD_HH:MM:SS`                            |
+| `CMD:P1234#SYC SETTIME=YYYY-MM-DD_HH:MM:SS`       | Set RTC time manually                                        | `#SYC OK` or `#SYC ERROR: Invalid time format`             |
+| `CMD:P1234#SYC ANEMO?	                            | Query anemometer type	                                       | `#SYC ANEMO=<0–5>                                          |
+| `CMD:P1234#SYC ANEMO=<x>                          | Set anemometer type:                                         | `#SYC OK, restarts required
+
+ANEMO Type Details
+0=DAVIS
+1=TX20
+2=ADS_A1015
+3=PEETBROS
+4=MISOL
+5=WS85
+
+RFMODE Details
+RFMode = 3  FntTx, FntRx
+RFMode = 11 FntTx, FntRx, FlarmRx
+RFMode = 15 FntTx, FntRx, FlarmTx, FlarmRx

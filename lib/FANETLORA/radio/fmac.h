@@ -286,7 +286,8 @@ public:
 	bool begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int8_t reset, int8_t dio0,int8_t gpio,Fapp &app,long frequCor,uint8_t level,uint8_t radioChip);
 	void end();
 	void handle() { radio.run(); myTimer.Update();  }
-
+	float getAirtime();
+	int getTxQueueLength();
 	bool txQueueDepleted(void) { return (tx_fifo.size() == 0); }
 	bool txQueueHasFreeSlots(void){ return (tx_fifo.size() < MAC_FIFO_SIZE); }
 	int transmit(Frame *frm) { return tx_fifo.add(frm); }
