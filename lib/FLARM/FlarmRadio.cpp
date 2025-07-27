@@ -145,8 +145,8 @@ uint8_t flarm_get_zone(float lat, float lon){
 - Zone 5: Israel (34E to 54E and 29.25N to 33.5N)
 - Zone 6: South America (west of 30W, south of 10N)
 */
-//    log_i("Zone 3: New Zealand (east of 160E)");
-//    return 3; //Zone 3: New Zealand (east of 160E)
+    log_i("Zone 3: New Zealand (east of 160E)");
+    return 3; //Zone 3: New Zealand (east of 160E)
 
   if (34.0f <= lon && lon <= 54.0f && 29.25f <= lat && lat <= 33.5f){
     log_i("Zone 5: Israel (34E to 54E and 29.25N to 33.5N)");

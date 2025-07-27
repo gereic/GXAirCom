@@ -766,7 +766,7 @@ void FanetMac::stateWrapper()
 					tSwitch = tAct;
 				}
 			}
-		}else if (fmac.flarmZone == 3){
+		}else if (fmac.flarmZone == 3){ //NZ only 1 Channel
 			if (fmac._RfMode.bits.FntRx && fmac._RfMode.bits.LegRx){
 				//no GPS-Sensor but Flarm and Fanet-RX --> 5.3sec. for Fanet, 2.3sec. Flarm
 				if (fmac._actMode == MODE_LORA){
@@ -781,15 +781,9 @@ void FanetMac::stateWrapper()
 					}
 				}
 			}else if (!fmac._RfMode.bits.FntRx && fmac._RfMode.bits.LegRx){			
-				//only Legacy-Receive --> 1sec. 868.2 1sec. 868.4
-				//only in zone 1
-				if ((tAct - tSwitch) >= 1000){ //switch every 1sec.
-					if (fmac._actMode != MODE_FSK_8682){
-						fmac.switchMode(MODE_FSK_8682);
-					}else{
-						fmac.switchMode(MODE_FSK_8684);
-					}
-					tSwitch = tAct;
+				//only Legacy-Receive
+				if (fmac._actMode != MODE_FSK){
+					fmac.switchMode(MODE_FSK);
 				}
 			}
 		}
