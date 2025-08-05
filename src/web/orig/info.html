@@ -9,6 +9,8 @@
 var pageNumber=2;
 var wsMode=0;
 var rtc=0;
+var wdAnemo = 0;
+const wdWS90 = 5;
 const wsModeEn = 1;
 const wsModeBme = 2;
 const wsModeRain = 4;
@@ -38,6 +40,10 @@ function setVis(){
     document.getElementById("visRTC").style.display='';
   }  
   if (document.getElementById("mode").value == 1){ /*mode ground-station*/
+    if (wdAnemo == wdWS90){
+      document.getElementById("VisWdTemp").style.display='';
+      document.getElementById("VisWdHum").style.display='';
+    }
     if (wsMode & wsModeBme){
       document.getElementById("VisWdTemp").style.display='';
       document.getElementById("VisWdHum").style.display='';
@@ -101,6 +107,9 @@ function onMessage(evt) {
           continue;
         }else if (key == "WsMode"){
           wsMode = myObj[key];
+          continue;
+        }else if (key == "wdAnemo"){
+          wdAnemo = myObj[key];
           continue;
         }else if (key == "bHasGSM"){
           if (myObj[key] == 0){

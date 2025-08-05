@@ -39,6 +39,8 @@
 #include "XPowersLib.h"
 #include "TimeDefs.h"
 
+//#include <ws90.h>
+
 
 //#define SEND_RAW_WIND_DATA
 
@@ -1751,6 +1753,12 @@ void readPGXCFSentence(const char* data)
 void setup() {
 
   Serial.begin(115200);
+  /*
+  pinMode(36, OUTPUT);
+  digitalWrite(36,LOW); 
+  delay(2000); 
+  ws90_init();
+  */
   status.restart.doRestart = false;
   status.bPowerOff = false;
   status.bWUBroadCast = false;
@@ -2443,9 +2451,11 @@ void setup() {
     pinMode(PinADCVoltage, INPUT); //set pin ADC-Voltage as input
   }
 
+
+  
   #ifdef GSMODULE
   if (setting.Mode == eMode::GROUND_STATION){
-      if ((setting.gs.PowerSave == eGsPower::GS_POWER_BATT_LIFE) || (setting.gs.PowerSave == eGsPower::GS_POWER_SAFE)){
+    if ((setting.gs.PowerSave == eGsPower::GS_POWER_BATT_LIFE) || (setting.gs.PowerSave == eGsPower::GS_POWER_SAFE)){
       printBattVoltage(millis()); //read Battery-level
       log_i("Batt %dV; %d%%",status.battery.voltage,status.battery.percent);
       if ((status.battery.voltage >= BATTPINOK) && (status.battery.percent < (setting.minBattPercent + setting.restartBattPercent)) && (status.battery.percent < 80)){
@@ -3029,7 +3039,7 @@ void taskWeather(void *pvParameters){
   Weather weather;
   weather.setTempOffset(setting.wd.tempOffset);
   weather.setWindDirOffset(setting.wd.windDirOffset);
-  if (!weather.begin(pI2cZero,setting,PinOneWire,PinWindDir,PinWindSpeed,PinRainGauge)){
+  if (!weather.begin(pI2cZero,setting,PinOneWire,PinWindDir,PinWindSpeed,PinRainGauge,setting.wd.frequency)){
   
   }
   if ((!setting.wd.mode.bits.enable) && (!status.bWUBroadCast)){
@@ -6036,6 +6046,7 @@ void taskBackGround(void *pvParameters){
           if (tDist > 1){
             log_e("%ds delay timediff to big --> try again in 5 seconds",tDist);
             tGetTime = tAct - GETNTPINTERVALL + 5000; //try again in 5 second
+            status.bTimeOk = false; //reset time ok.
           }else{
             log_i("get ntp-time OK");
             #ifdef GSMODULE

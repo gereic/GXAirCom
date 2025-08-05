@@ -95,7 +95,7 @@ bool Weather::initADS(AnemometerSettings &anSettings) {
   return true;
 }
 
-bool Weather::begin(TwoWire *pi2c, SettingsData &setting, int8_t oneWirePin, int8_t windDirPin, int8_t windSpeedPin,int8_t rainPin){
+bool Weather::begin(TwoWire *pi2c, SettingsData &setting, int8_t oneWirePin, int8_t windDirPin, int8_t windSpeedPin,int8_t rainPin,float frequency){
   bool bRet = true;
   pI2c = pi2c;
   _height = setting.gs.alt;
@@ -184,6 +184,10 @@ bool Weather::begin(TwoWire *pi2c, SettingsData &setting, int8_t oneWirePin, int
     timerAttachInterrupt(timer, &onTimer, true);
     timerAlarmWrite(timer, 2000000, true); //every 2 seconds
     timerAlarmEnable(timer);    
+  } else if (aneometerType == eAnemometer::WS90){
+    _weather.bWindSpeed = true;
+    _weather.bWindDir = true;    
+    ws90_init(frequency);
   }else{
     //init-code for aneometer DAVIS6410
     _windDirPin = windDirPin;
@@ -397,6 +401,8 @@ void Weather::run(void){
   bool bReadOk = false;
   if (aneometerType == eAnemometer::PEETBROS){
     peetBrosRun();
+  }else if (aneometerType == eAnemometer::WS90){
+    ws90Run();
   }
   if ((tAct - tOld) >= WEATHER_REFRESH){
     int i = 0;
@@ -486,6 +492,21 @@ void Weather::run(void){
       //log_i("dir=%.1f,speed=%0.1f,ret=%d",_weather.WindDir,_weather.WindSpeed,ret);
     } else if (aneometerType == eAnemometer::MISOL){
       checkAneometer();
+    } else if (aneometerType == eAnemometer::WS90) {
+      if (ws90ActData.bValid){
+        _weather.bRain = false;
+        _weather.bHumidity = ws90ActData.bHum;
+        _weather.bPressure = false;
+        _weather.bTemp = ws90ActData.bTemp;
+        _weather.bWindDir = ws90ActData.bWind;
+        _weather.bWindSpeed = ws90ActData.bWind;
+        _weather.Humidity = float(ws90ActData.humidity);
+        _weather.temp = ws90ActData.temp_c;
+        _weather.WindDir = float((ws90ActData.wind_dir + _winddirOffset) % 360);
+        _weather.WindSpeed = ws90ActData.wind_avg;
+        _weather.WindGust = ws90ActData.wind_max;
+        ws90ActData.bValid = false;
+      }
     }else{
       checkAneometer();
     }

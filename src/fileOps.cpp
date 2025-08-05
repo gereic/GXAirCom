@@ -77,6 +77,7 @@ void load_configFile(SettingsData* pSetting){
   pSetting->gs.PowerSave = eGsPower(preferences.getUChar("GSPS",eGsPower::GS_POWER_ALWAYS_ON));
   pSetting->gs.sunriseOffset = eGsPower(preferences.getInt("GsSrO",0));
   pSetting->gs.sunsetOffset = eGsPower(preferences.getInt("GsSsO",0));
+  pSetting->wd.frequency = preferences.getFloat("WDANEFREQU",868.350);
   pSetting->wd.anemometer.AnemometerType = eAnemometer(preferences.getUChar("GSANEO",eAnemometer::DAVIS));
   pSetting->wd.anemometer.AnemometerAdsGain = preferences.getUChar("WDANEOADSGAIN",2);;
   pSetting->wd.anemometer.AnemometerAdsWSpeedMinVoltage = preferences.getFloat("WDANEOADSWSMINV",0.0);
@@ -211,6 +212,7 @@ void write_configFile(SettingsData* pSetting){
   preferences.putUChar("GSPS",pSetting->gs.PowerSave);
   preferences.putInt("GsSrO",pSetting->gs.sunriseOffset);
   preferences.putInt("GsSsO",pSetting->gs.sunsetOffset);
+  preferences.putFloat("WDANEFREQU",pSetting->wd.frequency);
   preferences.putUChar("GSANEO",pSetting->wd.anemometer.AnemometerType);
   preferences.putUChar("WDANEOADSGAIN",pSetting->wd.anemometer.AnemometerAdsGain);
   preferences.putFloat("WDANEOADSVDIVR1",pSetting->wd.anemometer.AnemometerAdsVDivR1);

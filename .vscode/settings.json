@@ -1,6 +1,7 @@
 {
     "editor.tabSize": 2,
     "files.associations": {
+        "*.py": "python",
         "istream": "cpp",
         "ostream": "cpp",
         "*.tpp": "cpp",
@@ -46,7 +47,8 @@
         "utility": "cpp",
         "typeinfo": "cpp",
         "string": "cpp",
-        "string_view": "cpp"
+        "string_view": "cpp",
+        "random": "cpp"
     },
     "cmake.configureOnOpen": false
 }

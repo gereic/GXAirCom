@@ -337,6 +337,7 @@ struct WeatherSettings{
   
   uWeatherStationMode mode;
   AnemometerSettings anemometer;
+  float frequency; //frequency for CC1101-module
   float tempOffset;
   int16_t windDirOffset;
   uint8_t sendFanet;  

@@ -32,6 +32,7 @@ function setVis(){
     document.getElementById("accCalib3").style.display=''; /*set calibration of ACC to invisible*/
     document.getElementById("accCalib4").style.display=''; /*set calibration of ACC to invisible*/
   }
+  document.getElementById("visWdFrequ").style.display='none';
   document.getElementById("VisGsScreen").style.display='none'; //set screen option for ground-station to off
   document.getElementById("VisGsSrO").style.display='none';
   document.getElementById("VisGsSsO").style.display='none';
@@ -108,6 +109,9 @@ function setVis(){
       }
     }
     if (wsMode & wsModeEn){ //weather station enabled
+      if (document.getElementById("wdAnemo").value == 5){
+        document.getElementById("visWdFrequ").style.display=''; //set frequency visible
+      }
       document.getElementById("VisAvgFNT").style.display='';
       document.getElementById("VisAvgWD").style.display='';
       document.getElementById("VisWD").style.display=''; /*set weather-data invisible*/
@@ -590,6 +594,7 @@ getValue(obj,
     "z[0]",
     "sFWD",
     "wdTempOffset",
+    "wdFrequ",
     "wdWDirOffset",
     "WUUlEnable",
     "WUUlID",
@@ -816,6 +821,7 @@ function sendValues(){
     [
     "sFWD",
     "wdTempOffset",
+    "wdFrequ",
     "wdWDirOffset",
     "WUUlEnable",
     "WUUlID",
@@ -1338,7 +1344,12 @@ function onMessage(evt) {
               <option value="2">ADS1015</option>
               <option value="3">PEETBROS</option>
               <option value="4">MISOL</option>
+              <option value="5">WS90</option>
             </select></td>
+          </tr>
+          <tr id="visWdFrequ">
+            <th>Frequency of CC1101-Module (868.350/433.0)</th>
+            <td><input type="number" id="wdFrequ" step="0.001"></td>
           </tr>
           <tr>
             <th>offset wind direction [°]</th>

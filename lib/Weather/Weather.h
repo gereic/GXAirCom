@@ -22,6 +22,7 @@
 #include "main.h"
 #include <ADS1X15.h>
 #include <PeetBros.h>
+#include <ws90.h>
 #include <SHT2x.h>
 
 #define DEG2RAD M_PI / 180.0
@@ -33,6 +34,8 @@
 #define WEATHER_UPLOAD 300000uL //weather upload intervall 5min
 
 #define Bucket_Size 0.5           // rain bucket size 0.5mm
+
+extern ws90Data ws90ActData;
 
 class Weather {
 public:
@@ -57,7 +60,7 @@ public:
     Weather(); //constructor
     void setTempOffset(float tempOffset);
     void setWindDirOffset(int16_t winddirOffset);
-    bool begin(TwoWire *pi2c, SettingsData &setting, int8_t oneWirePin, int8_t windDirPin, int8_t windSpeedPin,int8_t rainPin);
+    bool begin(TwoWire *pi2c, SettingsData &setting, int8_t oneWirePin, int8_t windDirPin, int8_t windSpeedPin,int8_t rainPin,float frequency);
     void run(void);
     bool getValues(weatherData *weather);
     void resetWindGust(void);

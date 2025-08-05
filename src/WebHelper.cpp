@@ -246,6 +246,7 @@ void onWebSocketEvent(uint8_t client_num,
           #ifdef GSMODULE
           if (setting.Mode == eMode::GROUND_STATION){
             doc.clear();
+            doc["wdAnemo"] = setting.wd.anemometer.AnemometerType;
             doc["WsMode"] = setting.wd.mode.mode;
             doc["wsTemp"] = String(status.weather.temp,1);
             doc["wsHum"] = String(status.weather.Humidity,1);
@@ -335,6 +336,7 @@ void onWebSocketEvent(uint8_t client_num,
           doc["GsSrO"] = setting.gs.sunriseOffset;
           doc["GsSsO"] = setting.gs.sunsetOffset;
           doc["wdAnemo"] = setting.wd.anemometer.AnemometerType;
+          doc["wdFrequ"] = setting.wd.frequency;
           doc["wdAnemoAdsGain"] = setting.wd.anemometer.AnemometerAdsGain;
           doc["wdAnemoAdsWSpeedMinVoltage"] = setting.wd.anemometer.AnemometerAdsWSpeedMinVoltage;
           doc["wdAnemoAdsWSpeedMaxVoltage"] = setting.wd.anemometer.AnemometerAdsWSpeedMaxVoltage;
@@ -526,6 +528,7 @@ void onWebSocketEvent(uint8_t client_num,
         if (root.containsKey("GsSrO")) newSetting.gs.sunriseOffset = eGsPower(doc["GsSrO"].as<int32_t>());
         if (root.containsKey("GsSsO")) newSetting.gs.sunsetOffset = eGsPower(doc["GsSsO"].as<int32_t>());
         //aneometer settings
+        if (root.containsKey("wdFrequ")) newSetting.wd.frequency = doc["wdFrequ"].as<float>();
         if (root.containsKey("wdAnemo")) newSetting.wd.anemometer.AnemometerType = eAnemometer(doc["wdAnemo"].as<uint8_t>());
         if (root.containsKey("wdAnemoAdsGain")) newSetting.wd.anemometer.AnemometerAdsGain = eAnemometer(doc["wdAnemoAdsGain"].as<uint8_t>());
         if (root.containsKey("wdAnemoAdsWSpeedMinVoltage")) newSetting.wd.anemometer.AnemometerAdsWSpeedMinVoltage = doc["wdAnemoAdsWSpeedMinVoltage"].as<float>();
