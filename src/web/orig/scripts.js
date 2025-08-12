@@ -2,88 +2,74 @@ const SETTING_BASIC = 0;
 const SETTING_ADVANCED = 100;
 const SETTING_EXPERT = 200;
 
-var url = "ws://" + window.location.hostname + ":1337/";
+const url = `ws://${window.location.hostname}:1337/`; /* we have to split the url, otherwise minify detects it as comment */
+let websocket;
 
-// This is called when the page finishes loading
+/* Called when the page finishes loading */
 function init() {
- 
-  // Connect to WebSocket server
   wsConnect(url);
 }
 
-// Call this to connect to the WebSocket server
+/* Connect to the WebSocket server */
 function wsConnect(url) {
-  
-  // Connect to WebSocket server
-  //console.log("try to connect to " + url);    
-  //document.getElementById("TxtConn").innerHTML ="try to connect to " + url;
+  console.log(`Trying to connect to ${url}`);
   websocket = new WebSocket(url);
-  
-  // Assign callbacks
-  websocket.onopen = function(evt) { onOpen(evt) };
-  websocket.onclose = function(evt) { onClose(evt) };
-  websocket.onmessage = function(evt) { onMessage(evt) };
-  websocket.onerror = function(evt) { onError(evt) };
+
+  websocket.onopen = onOpen;
+  websocket.onclose = onClose;
+  websocket.onmessage = onMessage;
+  websocket.onerror = onError;
 }
 
-// Called when a WebSocket connection is established with the server
+/* WebSocket connected */
 function onOpen(evt) {
- 
-  // Log connection state
   console.log("Connected");
-  //document.getElementById("TxtConn").innerHTML ="connected";
-  // write page-number --> then we get all values for page
-  doSend(JSON.stringify({ page : pageNumber }));//send page-number
+  if (typeof pageNumber !== "undefined") {
+    doSend(JSON.stringify({ page: pageNumber }));
+  } else {
+    console.warn("pageNumber is not defined; skipping initial send.");
+  }
 }
 
-// Called when the WebSocket connection is closed
+/* WebSocket closed */
 function onClose(evt) {
-
-  // Log disconnection state
   console.log("Disconnected");
-  //document.getElementById("TxtConn").innerHTML ="disconnected";
-  // Try to reconnect after a few seconds
-  setTimeout(function() { wsConnect(url) }, 2000);
+  setTimeout(() => wsConnect(url), 2000);
 }
 
-function callMainPage(){
-  window.location="/index.html"
+function callMainPage() {
+  window.location = "/index.html";
 }
 
-function FntIdDec2Hex(value){
-  var retVal = "";
-  if (value != 0){
-    retVal = (value).toString(16).toUpperCase().padStart(2, '0')
-    console.log("value="+value+",l="+retVal.length+"retval=" + retVal);
-    while (retVal.length < 6){
+function FntIdDec2Hex(value) {
+  let retVal = "";
+  if (value !== 0) {
+    retVal = value.toString(16).toUpperCase().padStart(2, "0");
+    while (retVal.length < 6) {
       retVal = "0" + retVal;
-    };
+    }
   }
   return retVal;
 }
- 
-function FntIdHex2Dec(value){
-  var retVal = parseInt(value,16);
-  if (!retVal){
-    retVal = 0;
-  }
-  //console.log("value="+value+"retval=" + retVal);
-  return retVal;
+
+function FntIdHex2Dec(value) {
+  const retVal = parseInt(value, 16);
+  return isNaN(retVal) ? 0 : retVal;
 }
- 
-// Called when a WebSocket error occurs
+
 function onError(evt) {
-  console.log("ERROR: " + evt.data);
-  //document.getElementById("TxtConn").innerHTML ="error: " + evt.data;
+  console.log("ERROR:", evt);
 }
 
-// Sends a message to the server (and prints it to the console)
 function doSend(message) {
-  console.log("Sending: " + message);
-  websocket.send(message);
+  console.log("Sending:", message);
+  if (websocket && websocket.readyState === WebSocket.OPEN) {
+    websocket.send(message);
+  } else {
+    console.warn("WebSocket not open; message not sent.");
+  }
 }
 
-// Call the init function as soon as the page loads
 window.addEventListener("load", init, false);
 
 function getValue(obj,elements){

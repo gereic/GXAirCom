@@ -13,6 +13,7 @@
 #include <Logger.h>
 
 //#define useSpiffsWebsite
+#define UPDATE_SIZE_UNKNOWN 0xFFFFFFFF
 
 #ifndef useSpiffsWebsite
 #include "./web/website.h"

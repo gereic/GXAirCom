@@ -154,9 +154,9 @@ function onMessage(evt) {
     }
     var e=document.getElementById(key);
     if (e == null) continue;
-    if (e instanceof HTMLSelectElement) {     // <select>
+    if (e instanceof HTMLSelectElement) {
       document.getElementById(key).value = myObj[key];
-    }else if ((e instanceof HTMLInputElement ) && (e.getAttribute('type') == 'checkbox')){     // <input checkbox>
+    }else if ((e instanceof HTMLInputElement ) && (e.getAttribute('type') == 'checkbox')){
       if (myObj[key] == 1){
         document.getElementById(key).checked = true;
       }else{

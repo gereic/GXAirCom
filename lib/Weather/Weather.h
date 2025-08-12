@@ -23,6 +23,7 @@
 #include <ADS1X15.h>
 #include <PeetBros.h>
 #include <ws90.h>
+#include <ws85.h>
 #include <SHT2x.h>
 
 #define DEG2RAD M_PI / 180.0

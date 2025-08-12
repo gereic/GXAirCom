@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" href="style.css">
+<meta charset='utf-8'>
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>GXAirCom</title>
+<script language="javascript" type="text/javascript">
+var pageNumber=2;
+var wsMode=0;
+var rtc=0;
+var wdAnemo = 0;
+const wdWS90 = 5;
+const wsModeEn = 1;
+const wsModeBme = 2;
+const wsModeRain = 4;
+const wsModeDS18B20 = 8;
+const wsModeSHT20 = 16;
+function resetMaxLoopTime(){
+  var obj = {rLoopTime : 1};
+  doSend(JSON.stringify(obj));
+
+};
+
+/*this function sets visible depending on actual option*/
+function setVis(){
+  document.getElementById("VisWdTemp").style.display='none';
+  document.getElementById("VisWdHum").style.display='none';
+  document.getElementById("VisWdPress").style.display='none';
+  document.getElementById("VisWdR1h").style.display='none';
+  document.getElementById("VisWdR1d").style.display='none';
+  document.getElementById("VisAirCraftType").style.display='none';
+  document.getElementById("VisgpsFix").style.display='none';
+  document.getElementById("VisgpsNumSat").style.display='none';
+  document.getElementById("VisgpsTime").style.display='none';  
+  document.getElementById("VisgpsSpeed").style.display='none';
+  document.getElementById("VisgpsCourse").style.display='none';  
+  document.getElementById("visRTC").style.display='none';
+  if (rtc != 0){
+    document.getElementById("visRTC").style.display='';
+  }  
+  if (document.getElementById("mode").value == 1){ /*mode ground-station*/
+    if (wdAnemo == wdWS90){
+      document.getElementById("VisWdTemp").style.display='';
+      document.getElementById("VisWdHum").style.display='';
+    }
+    if (wsMode & wsModeBme){
+      document.getElementById("VisWdTemp").style.display='';
+      document.getElementById("VisWdHum").style.display='';
+      document.getElementById("VisWdPress").style.display='';
+    }else if (wsMode & wsModeDS18B20){
+      document.getElementById("VisWdTemp").style.display='';
+    }else if (wsMode & wsModeSHT20){
+      document.getElementById("VisWdTemp").style.display='';
+      document.getElementById("VisWdHum").style.display='';
+    }
+    if (wsMode & wsModeRain){
+      document.getElementById("VisWdR1h").style.display='';
+      document.getElementById("VisWdR1d").style.display='';
+    }
+  }else{
+    document.getElementById("VisAirCraftType").style.display='';
+    document.getElementById("VisgpsFix").style.display='';
+    document.getElementById("VisgpsNumSat").style.display='';
+    document.getElementById("VisgpsTime").style.display='';  
+    document.getElementById("VisgpsSpeed").style.display='';
+    document.getElementById("VisgpsCourse").style.display='';
+  }
+}
+
+function getWifiRssi(sValue){
+  value = parseInt(sValue);
+  if ((value <=  -90) || (value == 0)) {
+    return "no connection " + sValue + "dBm";
+  }else if (value <=  -80){
+    return "Unreliable signal strength " + sValue + "dBm";
+  }else if (value <=  -70){
+    return "Not a strong signal " + sValue + "dBm";
+  }else if (value <=  -76){
+    return "Reliable signal strength " + sValue + "dBm";
+  }else if (value <=  -60){
+    return "Good signal strength " + sValue + "dBm";
+  }else if (value <=  -50){
+    return "excellent signal strength " + sValue + "dBm";
+  }else if (value <=  -30){
+    return "excellent signal strength " + sValue + "dBm";
+  }else{
+    return "excellent signal strength " + sValue + "dBm";
+  }  
+}
+
+/* Called when a message is received from the server*/
+function onMessage(evt) {
+    /* Print out our received message*/
+    console.log("Received: " + evt.data);
+    /* Update circle graphic with LED state*/
+    var myObj = JSON.parse(evt.data);
+    for (var key of Object.keys(myObj)) {
+        console.log(key + " -> " + myObj[key]);
+        if (key == "bHasVario"){
+          if (myObj[key] == 0){
+            document.getElementById("VisVario").style.display='none';
+          }
+          continue;
+        }else if (key == "RTC"){
+          rtc = myObj[key];
+          continue;
+        }else if (key == "WsMode"){
+          wsMode = myObj[key];
+          continue;
+        }else if (key == "wdAnemo"){
+          wdAnemo = myObj[key];
+          continue;
+        }else if (key == "bHasGSM"){
+          if (myObj[key] == 0){
+            document.getElementById("VisGSM").style.display='none';
+          }
+          continue;          
+        }else if (key == "VisWeather"){
+          if (myObj[key] == 0){
+            document.getElementById("VisWeather").style.display='none';
+          }
+          continue;
+        }else if (key == "bHasMPU"){
+          if (myObj[key] == 0){
+            document.getElementById("VisMPU").style.display='none';
+          }
+          continue;
+        }else if (key == "fuelSensor"){
+          if (myObj[key] == 0){
+            document.getElementById("VisFuelSensor").style.display='none';
+          }
+          continue;
+        }else if (key == "GSMRssi"){
+          var text = "";
+          var value = parseInt(myObj[key]);
+          if ((value == 0) || (value == 99)){
+            text = "not known or not detectable";
+          }else if (value <=  9) {
+            text = "Marginal";
+          }else if (value <=  14){
+            text = "OK";
+          }else if (value <=  19){
+            text = "Good";
+          }else{
+            text = "Excellent";
+          }
+          text = text +  " (" + myObj[key] + ")";
+          document.getElementById(key).value = text;
+          continue;
+        }else if (key == "wifiSTARssi"){
+          myObj[key] = getWifiRssi(myObj[key]);          
+        }
+        var e = document.getElementById(key);
+        if (e == null) continue;
+        if (e instanceof HTMLSelectElement) {
+          document.getElementById(key).value = myObj[key];
+        }else if ((e instanceof HTMLInputElement ) && (e.getAttribute('type') == 'checkbox')){
+          if (myObj[key] == 1){
+            document.getElementById(key).checked = true;
+          }else{
+            document.getElementById(key).checked = false;
+          }
+        }else{
+          document.getElementById(key).textContent = myObj[key];
+          document.getElementById(key).value = myObj[key];
+        }
+    }
+    setVis();
+}
+</script>
+<script type="text/javascript" src="scripts.js"></script>
+</head>
+<body>
+  <div style="text-align:left;display:inline-block;color:#eaeaea;min-width:340px;">
+    <div style='text-align:center;color:#eaeaea;'>
+      <noscript>JavaScript aktivieren um GXAirCom benutzen zu können<br></noscript>
+      <h1 id="appname"></h1>
+      <h3 id="buildDate"></h3>
+      <h3 id="pilot"></h3>
+      <h3 id="myIP"></h3>
+    </div>
+    <fieldset>
+      <legend><b>General Info</b></legend>
+      <table style="width:100&#37;">
+        <tbody>
+          <tr>
+            <th>built</th>
+            <td><input type="text" id="compiledate" disabled></td>
+          </tr>
+          <tr>
+            <th>Device-ID</th>
+            <td><input type="text" id="myDevId" disabled></td>
+          </tr>
+          <tr>
+            <th>Time (UTC)</th>
+            <td><input type="text" id="time" disabled></td>
+          </tr>
+          <tr>
+            <th>Board Type</th>
+            <td><select name="board" id="board" disabled>
+              <option value="0">TTGO T-Beam T22_V1.0 / T22_V1.1</option>
+              <option value="2">TTGO T-Beam T22_V07</option>
+              <option value="3">TTGO LORA T3_V1.6 (V2 1.6)</option>
+              <option value="5">TTGO T-Beam SX1262</option>
+              <option value="1">HELTEC / TTGO LORA</option>
+              <option value="4">TTGO T-SIM7000G</option>
+              <option value="6">TTGO TCall SIM800L</option>
+              <option value="7">HELTEC Wireless Stick Lite</option>
+              <option value="8">HELTEC Wireless Stick</option>
+              <option value="10">HELTEC Wireless Stick Lite V3</option>
+              <option value="9">Lilygo T-Beam-S3CORE</option>
+              <option value="11">HELTEC Lora V3</option>
+              <option value="255">unknown</option>
+            </select></td>
+          </tr>
+          <tr>
+            <th>Display Type</th>
+            <td><select name="disp" id="disp" disabled>
+              <option value="0">no display</option>
+              <option value="1">0.96' OLED</option>
+              <option value="2">2.9' E-Ink</option>
+              <option value="3">2.9' E-Ink V2</option>
+            </select></td>
+          </tr>
+          <tr>
+            <th>operating-mode</th>
+            <td><select name="mode" id="mode" disabled>
+              <option value="0">AIR-Module</option>
+              <option value="1">Ground-Station</option>
+              <option value="100">Developer-mode</option>
+            </select></td>
+          </tr>
+          <tr id="VisAirCraftType">
+            <th>Aircraft Type</th>
+            <td><select name="type" id="type" disabled>
+              <option value="0">Unknown</option>
+              <option value="1">Paraglider</option>
+              <option value="2">Hangglider</option>
+              <option value="3">Balloon</option>
+              <option value="4">Glider</option>
+              <option value="5">Powered Aircraft</option>
+              <option value="6">Helicopter</option>
+              <option value="7">UAV</option>
+            </select></td>
+          </tr>	
+          <tr>
+            <th>Batt [V]</th>
+            <td><input type="text" id="vBatt" disabled></td>
+          </tr>
+          <tr>
+            <th>Batt [&#037;]</th>
+            <td><input type="text" id="Battperc" disabled></td>
+          </tr>
+          <tr>
+            <th>current loop-time [us]</th>
+            <td><input type="text" id="tLoop" disabled></td>
+          </tr>
+          <tr>
+            <th>max loop-time [us]</th>
+            <td><input type="text" id="tMaxLoop" disabled></td>
+          </tr>
+          <tr>
+            <th>actual free heap</th>
+            <td><input type="text" id="freeHeap" disabled></td>
+          </tr>
+          <tr>
+            <th>min ever free heap</th>
+            <td><input type="text" id="fHeapMin" disabled></td>
+          </tr>
+          <tr>
+            <th>Live-Counter</th>
+            <td><input type="text" id="counter" disabled></td>
+          </tr>
+        </tbody>      
+      </table>
+    </fieldset>
+    <p></p>
+    <p></p>
+    <fieldset>
+      <legend><b>Wifi-Station</b></legend>
+      <table style="width:100&#37;">
+        <tbody>
+          <tr>
+            <th>state</th>
+            <td><input type="text" id="wifiSTAState" disabled></td>
+          </tr>	
+          <tr>
+            <th>ip</th>
+            <td><input type="text" id="wifiSTAIp" disabled></td>
+          </tr>	
+          <tr>
+            <th>signal</th>
+            <td><input type="text" id="wifiSTARssi" disabled></td>
+          </tr>
+        </tbody>      
+      </table>
+    </fieldset>
+    <p></p>
+    <p></p>
+    <fieldset>
+      <legend><b>Wifi-Access-Point</b></legend>
+      <table style="width:100&#37;">
+        <tbody>
+          <tr>
+            <th>state</th>
+            <td><input type="text" id="wifiAPState" disabled></td>
+          </tr>	
+          <tr>
+            <th>ip</th>
+            <td><input type="text" id="wifiAPIp" disabled></td>
+          </tr>	
+        </tbody>      
+      </table>
+    </fieldset>
+    <p></p>
+    <p></p>
+    <fieldset id="VisFuelSensor">
+      <legend><b>Fuel-sensor</b></legend>
+      <table style="width:100&#37;">
+        <tbody>
+          <tr>
+            <th>Fuel-sensor [V]</th>
+            <td><input type="text" id="fuelValue" disabled></td>
+          </tr>	
+        </tbody>      
+      </table>
+    </fieldset>
+    <p></p>
+    <p></p>
+    <fieldset>
+      <legend><b>GPS</b></legend>
+      <table style="width:100&#37;">
+        <tbody>
+          <tr id="VisgpsFix">
+            <th>fix</th>
+            <td><input type="text" id="gpsFix" disabled></td>
+          </tr>
+          <tr id="VisgpsNumSat">
+            <th>sat count</th>
+            <td><input type="text" id="gpsNumSat" disabled></td>
+          </tr>
+          <tr id="VisgpsTime">
+            <th>GPS-DateTime DDMMYY-HHMMSS</th>
+            <td><input type="text" id="GPSTime" disabled></td>
+          </tr>
+          <tr>
+            <th>GPS-LAT [DD.dddddd]</th>
+            <td><input type="text" id="gpslat" disabled></td>
+          </tr>
+          <tr>
+            <th>GPS-Lon [DD.dddddd]</th>
+            <td><input type="text" id="gpslon" disabled></td>
+          </tr>
+          <tr>
+            <th>GPS-alt [m]</th>
+            <td><input type="text" id="gpsAlt" disabled></td>
+          </tr>
+          <tr>
+            <th>GPS-geoidaltitude [m]</th>
+            <td><input type="text" id="gpsGAlt" disabled></td>
+          </tr>
+          <tr id="VisgpsSpeed">
+            <th>GPS-speed [km/h]</th>
+            <td><input type="text" id="gpsSpeed" disabled></td>
+          </tr>
+          <tr id="VisgpsCourse">
+            <th>GPS-course [°]</th>
+            <td><input type="text" id="gpsCourse" disabled></td>
+          </tr>
+        </tbody>      
+      </table>
+    </fieldset>
+    <p></p>
+    <p></p>
+    <fieldset>
+      <legend><b>FANET</b></legend>
+      <table style="width:100&#37;">
+        <tbody>
+          <tr>
+            <th>frequency [MHz]</th>
+            <td><input type="text" id="fanetFrequ" disabled></td>
+          </tr>
+          <tr>
+            <th>rx-count</th>
+            <td><input type="text" id="fanetRx" disabled></td>
+          </tr>
+          <tr>
+            <th>tx-count</th>
+            <td><input type="text" id="fanetTx" disabled></td>
+          </tr>
+        </tbody>      
+      </table>
+    </fieldset>
+    <p></p>
+    <p></p>
+    <fieldset>
+      <legend><b>FLARM</b></legend>
+      <table style="width:100&#37;">
+        <tbody>
+          <tr>
+            <th>frequency [MHz]</th>
+            <td><input type="text" id="legFrequ" disabled></td>
+          </tr>
+          <tr>
+            <th>rx-count</th>
+            <td><input type="text" id="legRx" disabled></td>
+          </tr>
+          <tr>
+            <th>tx-count</th>
+            <td><input type="text" id="legTx" disabled></td>
+          </tr>
+        </tbody>      
+      </table>
+    </fieldset>
+    <p></p>
+    <p></p>
+    <fieldset id="VisVario">
+      <legend><b>Vario</b></legend>
+      <table style="width:100&#37;">
+        <tbody>
+          <tr>
+            <th>climbrate [m/s]</th>
+            <td><input type="text" id="climbrate" disabled></td>
+          </tr>
+          <tr>
+            <th>temperature [°C]</th>
+            <td><input type="text" id="vTemp" disabled></td>
+          </tr>
+        </tbody>      
+      </table>
+    </fieldset>
+    <p></p>
+    <p></p>
+    <fieldset id="VisMPU">
+      <legend><b>motion processor unit (MPU)</b></legend>
+      <table style="width:100&#37;">
+        <tbody>
+          <tr>
+            <th>accel</th>
+            <td><input type="text" id="accel_0" disabled></td>
+            <td><input type="text" id="accel_1" disabled></td>
+            <td><input type="text" id="accel_2" disabled></td>
+          </tr>
+          <tr>
+            <th>gyro x</th>
+            <td><input type="text" id="gyro_0" disabled></td>
+            <td><input type="text" id="gyro_1" disabled></td>
+            <td><input type="text" id="gyro_2" disabled></td>
+          </tr>
+          <tr>
+            <th>acc z [m/s²]</th>
+            <td><input type="text" id="acc_z" disabled></td>
+          </tr>
+        </tbody>      
+      </table>
+    </fieldset>
+    <p></p>
+    <p></p>
+    <fieldset id="VisWeather">
+      <legend><b>Weather-data</b></legend>
+      <table style="width:100&#37;">
+        <tbody>
+          <tr id="VisWdTemp">
+            <th>Temp [°C]</th>
+            <td><input type="text" id="wsTemp" disabled></td>
+          </tr>
+          <tr id="VisWdHum">
+            <th>Humidity [%rH]</th>
+            <td><input type="text" id="wsHum" disabled></td>
+          </tr>
+          <tr id="VisWdPress">
+            <th>Pressure [hPa]</th>
+            <td><input type="text" id="wsPress" disabled></td>
+          </tr>
+          <tr>
+            <th>Wind direction [°]</th>
+            <td><input type="text" id="wsWDir" disabled></td>
+          </tr>
+          <tr>
+            <th>Wind speed [km/h]</th>
+            <td><input type="text" id="wsWSpeed" disabled></td>
+          </tr>
+          <tr>
+            <th>Wind gust [km/h]</th>
+            <td><input type="text" id="wsWGust" disabled></td>
+          </tr>
+          <tr id="VisWdR1h">
+            <th>rain 1 hour [l]</th>
+            <td><input type="text" id="wsR1h" disabled></td>
+          </tr>
+          <tr id="VisWdR1d">
+            <th>rain 1 day [l]</th>
+            <td><input type="text" id="wsR1d" disabled></td>
+          </tr>
+        </tbody>      
+      </table>
+    </fieldset>
+    <p></p>
+    <p></p>
+    <fieldset id="VisGSM">
+      <legend><b>GSM settings</b></legend>
+      <table style="width:100&#37;">
+        <tbody>
+          <tr>
+            <th>status</th>
+            <td><input type="text" id="GSMStat"></td>
+          </tr>
+          <tr>
+            <th>operator</th>
+            <td><input type="text" id="GSMCOPS"></td>
+          </tr>
+          <tr>
+            <th>network mode</th>
+            <td><input type="text" id="GSMNWSTAT"></td>
+          </tr>
+          <tr>
+            <th>signal strength</th>
+            <td><input type="text" id="GSMRssi"></td>
+          </tr>
+        </tbody>      
+      </table>
+    </fieldset>
+    <p></p>
+    <p></p>
+    <fieldset id="visRTC">
+      <legend><b>RTC</b></legend>
+      <table style="width:100&#37;">
+        <tbody>
+          <tr><th>temp [°C]</th><td><input type="text" id="rtcTemp" disabled></td></tr>
+          <!--<tr><th>battery [V]</th><td><input type="text" id="rtcVolt" disabled></td></tr>-->
+        </tbody>      
+      </table>
+    </fieldset>
+    <p></p>
+    <table style="width:100&#37;">
+      <tr>
+        <td style="width:100&#37;">
+          <button onClick="location.href='/index.html'">main menu</button>
+        </td>
+      </tr>
+    </table>
+    <p></p>
+    <div style='text-align:right;font-size:11px;'><hr><a href='https://www.getronix.at' target='_blank' style='color:#aaa;'>GXAirCom by Gerald Eichler</a>
+    </div>
+  </div>
+</body>
+</html>

@@ -784,25 +784,38 @@ void onPageNotFound(AsyncWebServerRequest *request) {
 static int restartNow = false;
 
 static void handle_update_progress_cb(AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
-  uint32_t free_space = (ESP.getFreeSketchSpace() - 0x1000) & 0xFFFFF000;
+  //uint32_t free_space = (ESP.getFreeSketchSpace() - 0x1000) & 0xFFFFF000;
+  size_t uploaded = index + len;
+  size_t uploadSize = request->contentLength();
+  int progress = ((uploaded * 100) / uploadSize)/5;
+  static int last_perc = 0;  
+
   if (!index){
+    log_i("webupdate starting");
     WebUpdateRunning = true;
     delay(500); //wait 1 second until tasks are stopped
-    Serial.println("webupdate starting");      
+          
     //Update.runAsync(true);
     if (filename.startsWith("spiffs")){
       if (!Update.begin(0x30000,U_SPIFFS)) {
         Update.printError(Serial);
       }
     }else{
-      if (!Update.begin(free_space,U_FLASH)) {
+      //if (!Update.begin(free_space,U_FLASH)) {
+      if (!Update.begin(UPDATE_SIZE_UNKNOWN,U_FLASH)) {
         Update.printError(Serial);
       }
     }
   }
-  //log_i("l=%d",len);
-  if (Update.write(data, len) != len) {
-    Update.printError(Serial);
+  if (!Update.hasError()){
+
+    if(last_perc != progress){
+      last_perc = progress;
+      log_i("update progress=%d%",progress*5);
+    }
+    if (Update.write(data, len) != len){
+        Update.printError(Serial);
+    }
   }
 
   if (final) {
@@ -810,7 +823,7 @@ static void handle_update_progress_cb(AsyncWebServerRequest *request, String fil
       Update.printError(Serial);
     } else {
       restartNow = true;//Set flag so main loop can issue restart call
-      Serial.println("Update complete");      
+      log_i("Update complete");      
     }
   }
 }

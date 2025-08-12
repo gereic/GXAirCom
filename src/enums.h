@@ -32,7 +32,8 @@ enum eAnemometer {
     ADS_A1015 = 2, // don't use ADS1015 or things will break.
     PEETBROS = 3,
     MISOL = 4,
-    WS90 = 5
+    WS90 = 5,
+    WS85_serial = 6
 };
 
 /* Mode of operation */
