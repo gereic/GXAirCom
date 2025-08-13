@@ -37,20 +37,7 @@ function onMessage(evt) {
       setView = myObj[key];
       continue;
     }
-    var e=document.getElementById(key);
-    if (e == null) continue;
-    if (e instanceof HTMLSelectElement) {     /* <select> */
-      document.getElementById(key).value = myObj[key];
-    }else if ((e instanceof HTMLInputElement ) && (e.getAttribute('type') == 'checkbox')){     /* <input checkbox> */
-      if (myObj[key] == 1){
-        document.getElementById(key).checked = true;
-      }else{
-        document.getElementById(key).checked = false;
-      }
-    }else{
-      document.getElementById(key).textContent = myObj[key];
-      document.getElementById(key).value = myObj[key];
-    }
+    setElement(key,myObj[key]);
   }
   setVis(); /* now set visibility */
 };

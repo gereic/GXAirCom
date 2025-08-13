@@ -131,15 +131,7 @@ void ws90DebugData(){
   log_i("id=0x%06X;rssi=%.1f;fw=%d;flags=0x%02X;bat=%d;hum=%d;temp=%.1f;wDir=%d;wSpeed=%.1f,wGust=%.1f",ws90ActData.id,ws90ActData.rssi,ws90ActData.firmware,ws90ActData.flags,ws90ActData.battery_lvl,ws90ActData.humidity,ws90ActData.temp_c,ws90ActData.wind_dir,ws90ActData.wind_avg,ws90ActData.wind_max);
 }
 
-void ws90GetData(uint8_t *pData){
-  log_i("get data");
-    // Verify checksum and CRC
-  uint8_t crc = crc8(pData, 31, 0x31, 0x00);
-  uint8_t chk = add_bytes(pData, 31);
-  if (crc != 0 || chk != pData[31]) {
-      log_e("Checksum error: %02x %02x (%02x)", crc, chk, pData[31]);
-      return;
-  }
+void ws90GetCommondata(uint8_t *pData){
   ws90ActData.rssi = radio.getRSSI(); //get rssi of last package
   ws90ActData.id          = (pData[1] << 16) | (pData[2] << 8) | (pData[3]);
   ws90ActData.light_raw   = (pData[4] << 8) | (pData[5]);
@@ -155,10 +147,6 @@ void ws90GetData(uint8_t *pData){
   ws90ActData.wind_dir    = ((pData[7] & 0x20) << 3) | (pData[11]);
   ws90ActData.wind_max    = float(((pData[7] & 0x40) << 2) | (pData[12])) * 0.1 * 3.6; //m/s --> km/h
   ws90ActData.uv_index    = (pData[13]);
-  ws90ActData.rain_raw    = (pData[19] << 8 ) | (pData[20]);
-  ws90ActData.supercap_V  = (pData[21] & 0x3f);
-  ws90ActData.firmware    = pData[29];
-
   ws90ActData.bTemp = (ws90ActData.temp_raw != 0x3ff) ? true : false;
   ws90ActData.bHum = (ws90ActData.humidity != 0xff) ? true : false;
   if ((ws90ActData.wind_dir != 0x1FF) && (ws90ActData.wind_avg != 0x1FF) && (ws90ActData.wind_max != 0x1FF)){
@@ -170,10 +158,62 @@ void ws90GetData(uint8_t *pData){
   if (ws90ActData.battery_lvl > 100) // More then 100%?
       ws90ActData.battery_lvl = 100;  
   ws90ActData.bValid = true;
+
+}
+
+void ws85GetData(uint8_t *pData){
+  log_i("get data");
+    // Verify checksum and CRC
+  uint8_t crc = crc8(pData, 27, 0x31, 0x00);
+  uint8_t chk = add_bytes(pData, 27);
+  if (crc != 0 || chk != pData[27]) {
+      log_e("Checksum error: %02x %02x (%02x)", crc, chk, pData[27]);
+      return;
+  }
+  ws90ActData.rssi = radio.getRSSI(); //get rssi of last package
+  ws90ActData.id          = (pData[1] << 16) | (pData[2] << 8) | (pData[3]);
+  ws90ActData.battery_mv  = (pData[4] * 20);            // mV
+  ws90ActData.battery_lvl = ws90ActData.battery_mv < 1400 ? 0 : (ws90ActData.battery_mv - 1400) / 16; // 1.4V-3.0V is 0-100
+  ws90ActData.flags       = pData[5]; // to find the wind msb
+  ws90ActData.wind_avg    = float(((pData[5] & 0x10) << 4) | (pData[7]))* 0.1 * 3.6; //m/s --> km/h
+  ws90ActData.wind_dir    = ((pData[5] & 0x20) << 3) | (pData[8]);
+  ws90ActData.wind_max    = float(((pData[5] & 0x40) << 2) | (pData[9])) * 0.1 * 3.6; //m/s --> km/h
+  ws90ActData.supercap_V  = pData[6];
+  ws90ActData.firmware    = pData[25];
+  if ((ws90ActData.wind_dir != 0x1FF) && (ws90ActData.wind_avg != 0x1FF) && (ws90ActData.wind_max != 0x1FF)){
+    ws90ActData.bWind = true;
+  }else{
+    ws90ActData.bWind = false;
+  }
+  ws90ActData.bTemp = false;
+  ws90ActData.bHum = false;
+  if (ws90ActData.battery_lvl > 100) // More then 100%?
+      ws90ActData.battery_lvl = 100;  
+  ws90ActData.bValid = true;
+  ws90DebugData();
+}
+
+
+void ws90GetData(uint8_t *pData){
+  log_i("get data");
+    // Verify checksum and CRC
+  uint8_t crc = crc8(pData, 31, 0x31, 0x00);
+  uint8_t chk = add_bytes(pData, 31);
+  if (crc != 0 || chk != pData[31]) {
+      log_e("Checksum error: %02x %02x (%02x)", crc, chk, pData[31]);
+      return;
+  }
+  ws90GetCommondata(pData);
+  ws90ActData.rain_raw    = (pData[19] << 8 ) | (pData[20]);
+  ws90ActData.supercap_V  = (pData[21] & 0x3f);
+  ws90ActData.firmware    = pData[29];
   ws90DebugData();
 }
 
 void ws90_init(float frequency){   
+  //uint8_t data[] = {0x85,0x00,0x35,0xC7,0x9D,0x8A,0x44,0x00,0x6F,0x05,0x07,0xFF,0x00,0x00,0x00,0x00,0x00,0x01,0x00,0x00,0xFF,0xDF,0xFD,0x00,0x00,0x71,0xED,0xA0,0x00,0x00,0x00,0x00};
+  uint8_t data[] = {0x85,0x00,0x35,0xC7,0x9D,0x8A,0x44,0x00,0x6F,0x05,0x07,0xFF,0x00,0x00,0x00,0x00,0x00,0x01,0x00,0x00,0xFF,0xDF,0xFD,0x00,0x00,0x71,0xED,0xA0,0x00,0x00,0x00,0x00};
+  ws85GetData(&data[0]);
   delay(3000);//wait until power is stable
   log_i("****** init ws90 ******");
   newSPI.begin(RF_MODULE_SCK, RF_MODULE_MISO, RF_MODULE_MOSI, RF_MODULE_CS);
@@ -219,6 +259,14 @@ void ws90_init(float frequency){
 
 }
 
+void getData(uint8_t *pData){
+  if (pData[0] == 0x90){ //WS90
+    ws90GetData(pData);
+  }else if (pData[0] == 0x85){ //WS85
+    ws85GetData(pData);
+  }
+}
+
 void ws90Run(){
   if (!ws90ReceivedFlag) return;
   byte byteArr[WS90_PACKET_LEN];
@@ -229,7 +277,8 @@ void ws90Run(){
     radio.startReceive();
     return;
   }  
-  ws90GetData(&byteArr[0]);
+  getData(&byteArr[0]);
+  //ws90GetData(&byteArr[0]);
   char msg[1024];
   int next = 0;
   for (int i = 0;i < WS90_PACKET_LEN;i++){

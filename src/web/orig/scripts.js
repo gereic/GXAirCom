@@ -41,6 +41,23 @@ function callMainPage() {
   window.location = "/index.html";
 }
 
+function setElement(name,value){
+    var e = document.getElementById(name);
+    if (e == null) return;
+    if (e instanceof HTMLSelectElement) {     /* <select>*/
+      e.value = value;
+    }else if ((e instanceof HTMLInputElement ) && (e.getAttribute('type') == 'checkbox')){     /* <input checkbox>*/
+      if (value == 1){
+        e.checked = true;
+      }else{
+        e.checked = false;
+      }
+    }else{
+      e.textContent = value;
+      e.value = value;
+    }
+}
+
 function FntIdDec2Hex(value) {
   let retVal = "";
   if (value !== 0) {
