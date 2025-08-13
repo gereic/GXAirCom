@@ -72,22 +72,32 @@ def minify_html(html_code: str) -> str:
         print("html-minifier-terser error:", e.stderr.decode('utf-8'))
         return html_code
 
-def minify_file(path, file):
-    with open(os.path.join(path,file), 'r', encoding='utf-8') as f:
+def getFileContent(file):
+    with open(file, 'r', encoding='utf-8') as f:
         content = f.read()
+    return content
+
+def minify_file(path, file):
 
     ext = os.path.splitext(file)[1].lower()
-
-    if ext == '.css':
+    if (ext == '.css') or  (ext == '.js') or (ext == '.html'):
+        content = getFileContent(os.path.join(path,file))
+    if ext == '.css':        
         minified = minify_css(content)
     elif ext == '.js':
+        content = getFileContent(os.path.join(path,file))
         minified = minify_js(content)
     elif ext == '.html' or ext == '.htm':
+        content = getFileContent(os.path.join(path,file))
         minified = minify_html(content)
+    if (ext == '.css') or  (ext == '.js') or (ext == '.html'):
+        minified_gzip = gzip.compress(minified.encode("utf-8"))
     else:
-        print(f"Überspringe nicht unterstützte Datei: {file}")
-        return
-    minified_gzip = gzip.compress(minified.encode("utf-8"))
+        print(f"fileextension not supported --> only zip it: {file}")
+        with open(os.path.join(path,file), 'rb') as f:
+            content = f.read()
+        minified = content
+        minified_gzip = gzip.compress(content)      
     print(f"file: {file} | original: {len(content)} | minimized: {len(minified)} | gzip: {len(minified_gzip)}")
     add_2_website_file(file, minified_gzip)
 

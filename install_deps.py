@@ -11,6 +11,5 @@ def install_npm_packages():
         print("Installing Node.js packages in /bundle...")
         subprocess.call(['npm', 'install'], cwd=bundle_path, shell=True)    
 
-#subprocess.Popen(['npm', '-v'], shell=True)
 #install_pip_packages()
-install_npm_packages()
+install_npm_packages() #nodejs has to installed on windows system
