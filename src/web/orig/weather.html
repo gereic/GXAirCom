@@ -95,7 +95,11 @@ function changeRow(key,myObj){
   if (myObj["NAME"] != ""){
     link += myObj["NAME"] + " ";
   }
-  link += "[" + myObj["ID"] + "]</a>";
+  link += "[" + myObj["ID"] + "]";
+  if (myObj["IGW"] > 0 ){
+    link += " (IGW)";
+  }  
+  link += "</a>";
   document.getElementById("table1").rows[actIndex].cells[0].innerHTML = link;
   document.getElementById("table1").rows[actIndex].cells[1].innerHTML = myObj["LAT"];
   document.getElementById("table1").rows[actIndex].cells[2].innerHTML = myObj["LON"];

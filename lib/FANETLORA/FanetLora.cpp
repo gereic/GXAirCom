@@ -553,6 +553,11 @@ int8_t FanetLora::getWeatherinfo(uint8_t *buffer,uint16_t length){
   if (header & 0x10) expectedpacketLength += 1; //Humidity (+1byte:
   if (header & 0x20) expectedpacketLength += 3; //Wind (+3byte 
   if (header & 0x40) expectedpacketLength += 1; //Temperature (+1byte
+  if (header & 0x80){
+    lastWeatherData.bInternetGateway = true;
+  }else{
+    lastWeatherData.bInternetGateway = false;
+  }
 
   if (expectedpacketLength != length){
     //log_e("length of Frame wrong %d!=%d",expectedpacketLength,length);
@@ -617,7 +622,7 @@ int8_t FanetLora::getWeatherinfo(uint8_t *buffer,uint16_t length){
     lastWeatherData.Charge = float(charge) * 100 / 15; //State of Charge  (+1byte lower 4 bits: 0x00 = 0%, 0x01 = 6.666%, .. 0x0F = 100%)
   }else{
     lastWeatherData.bStateOfCharge = false;
-    lastWeatherData.Charge = NAN;
+    lastWeatherData.Charge = NAN;    
   }
   newWData = true;
   return 0;
@@ -1293,7 +1298,7 @@ int FanetLora::serialize_service(weatherData *wData,uint8_t*& buffer){
   pkt->bHumidity = wData->bHumidity;
   pkt->bWind = wData->bWind;
   pkt->bTemp = wData->bTemp;
-  pkt->bInternetGateway = false;
+  pkt->bInternetGateway = bInternetGateway;
   index++;
   coord2payload_absolut(wData->lat,wData->lon, &buffer[index]);
   index+= 6;

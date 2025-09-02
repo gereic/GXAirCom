@@ -1388,6 +1388,7 @@ void sendPage(uint8_t pageNr,uint8_t clientNr){
           if (fanet.weatherDatas[i].devId){
             doc.clear();
             doc["INDEX"] = iIndex;
+            doc["IGW"] = uint8_t(fanet.weatherDatas[i].bInternetGateway);
             doc["ID"] = fanet.getDevId(fanet.weatherDatas[i].devId);
             doc["LAT"] = String(fanet.weatherDatas[i].lat,6);
             doc["LON"] = String(fanet.weatherDatas[i].lon,6);

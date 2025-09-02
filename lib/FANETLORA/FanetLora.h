@@ -225,6 +225,7 @@ public:
     String name; //name of neughbour
     int rssi; //rssi
     int snr; //signal to noise ratio
+    bool bInternetGateway;
     float lat; //latitude
     float lon; //longitude
     bool bTemp;
@@ -289,6 +290,7 @@ public:
   bool autoSendName = false; //send Fanet-name
   bool onGround = false;
   status_t state = hiking;
+  bool bInternetGateway = false;
 
 	/* device -> air */
 	bool is_broadcast_ready(int num_neighbors);
