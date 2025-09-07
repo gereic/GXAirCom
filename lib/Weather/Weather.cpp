@@ -7,7 +7,51 @@ volatile uint32_t actPulseCount = 0;
 volatile uint8_t timerIrq = 0;
 volatile unsigned long ContactBounceTime; // Timer to avoid contact bounce in isr
 
+
 hw_timer_t * timer = NULL;
+
+uint64_t wMinHighUs = 10000ul;
+uint64_t wMinLowUs  = 2000ul;
+int8_t wReedPins[] = {-1};
+const int wNumReeds = sizeof(wReedPins) / sizeof(wReedPins[0]);
+
+struct ReedState {
+  uint8_t stableLevel;
+  uint64_t lastStableChangeUs;
+  uint32_t pulseCount;
+  bool     pulseFlag;
+  uint64_t lastPulseUs;
+  uint64_t pulseIntervalUs;
+};
+
+ReedState wReeds[wNumReeds];
+
+void IRAM_ATTR wHandleReedInterrupt(int idx);
+void IRAM_ATTR wReedISR0() { wHandleReedInterrupt(0); }
+
+void IRAM_ATTR wHandleReedInterrupt(int idx) {
+  const uint64_t now   = esp_timer_get_time();
+  const int      level = digitalRead(wReedPins[idx]); // GPIO lesen
+
+  if (level == wReeds[idx].stableLevel) return;
+
+  const uint64_t dur = now - wReeds[idx].lastStableChangeUs;
+  const bool okHigh = (wReeds[idx].stableLevel == HIGH) && (dur >= wMinHighUs);
+  const bool okLow  = (wReeds[idx].stableLevel == LOW)  && (dur >= wMinLowUs);
+
+  if (okHigh || okLow) {
+    wReeds[idx].stableLevel = level;
+    wReeds[idx].lastStableChangeUs = now;
+
+    if (level == LOW){
+      aneometerpulsecount++;
+      wReeds[idx].pulseCount++;
+      wReeds[idx].pulseIntervalUs = now - wReeds[idx].lastPulseUs;
+      wReeds[idx].lastPulseUs = now;
+      wReeds[idx].pulseFlag = true;      
+    } 
+  }
+}
 
 void IRAM_ATTR windspeedhandler(void){
   if((millis() - ContactBounceTime) > 15 ) { // debounce the switch contact.
@@ -27,6 +71,8 @@ void IRAM_ATTR rainhandler(void){
 void IRAM_ATTR onTimer() {
   actPulseCount = aneometerpulsecount;
   aneometerpulsecount = 0;
+  //actPulseCount = wReeds[0].pulseCount;
+  wReeds[0].pulseCount = 0;
   timerIrq = 1;
 }
 
@@ -93,6 +139,19 @@ bool Weather::initADS(AnemometerSettings &anSettings) {
   _ADS1015.setDataRate(4);  // 7 is fastest, but more noise
   _ADS1015.readADC(0);
   return true;
+}
+
+void Weather::initWindSpeedInterrupt(int8_t pin){
+  _weather.bWindSpeed = true;
+  // init and interrupts
+  wReedPins[0] = pin;
+  for (int i = 0; i < wNumReeds; i++) {
+    pinMode(wReedPins[i], INPUT);
+    uint8_t level = digitalRead(wReedPins[i]);
+    wReeds[i] = {level, (uint64_t)esp_timer_get_time(), 0, false, (uint64_t)esp_timer_get_time(), 0};
+  }
+
+  attachInterrupt(digitalPinToInterrupt(wReedPins[0]), wReedISR0, CHANGE);  
 }
 
 bool Weather::begin(TwoWire *pi2c, SettingsData &setting, int8_t oneWirePin, int8_t windDirPin, int8_t windSpeedPin,int8_t rainPin,float frequency){
@@ -175,10 +234,12 @@ bool Weather::begin(TwoWire *pi2c, SettingsData &setting, int8_t oneWirePin, int
       _weather.bWindDir = true;
       pinMode(_windDirPin, INPUT);
     }
-    if (windSpeedPin >= 0){
-      _weather.bWindSpeed = true;
-      pinMode(windSpeedPin, INPUT);
-      attachInterrupt(digitalPinToInterrupt(windSpeedPin), windspeedhandler, FALLING);
+    if (windSpeedPin >= 0){      
+      wMinHighUs = 6000uL;
+      wMinLowUs = 6000uL;
+      initWindSpeedInterrupt(windSpeedPin);
+      //pinMode(windSpeedPin, INPUT);
+      //attachInterrupt(digitalPinToInterrupt(windSpeedPin), windspeedhandler, CHANGE);
     }
     timer = timerBegin(0, 80, true);
     timerAttachInterrupt(timer, &onTimer, true);
@@ -202,9 +263,10 @@ bool Weather::begin(TwoWire *pi2c, SettingsData &setting, int8_t oneWirePin, int
       pinMode(_windDirPin, INPUT);
     }
     if (windSpeedPin >= 0){
-      _weather.bWindSpeed = true;
-      pinMode(windSpeedPin, INPUT);
-      attachInterrupt(digitalPinToInterrupt(windSpeedPin), windspeedhandler, FALLING);
+      initWindSpeedInterrupt(windSpeedPin);
+      //_weather.bWindSpeed = true;
+      //pinMode(windSpeedPin, INPUT);
+      //attachInterrupt(digitalPinToInterrupt(windSpeedPin), windspeedhandler, FALLING);
     }
     timer = timerBegin(0, 80, true);
     timerAttachInterrupt(timer, &onTimer, true);
@@ -258,7 +320,9 @@ float Weather::calcWindspeed(void){
     // --> 1.2km/h = 1 impuls in 2 seconds
     return (float)_actPulseCount * 1.2;
   }else{
-    return (float)_actPulseCount * 1.609;
+    //Davis 6410
+    //V = P(2.25/T) (V = speed in mph, P = no. of pulses per sample period, T = sample period in seconds)    
+    return (float)_actPulseCount * 1.609; //calc mph --> kmh
   }
 }
 
@@ -309,7 +373,8 @@ void Weather::checkAneometer(void){
       float wSpeed = calcWindspeed();
       _weather.WindSpeed = wSpeed;
       if (wSpeed > windgust) windgust =  wSpeed;
-      _weather.WindGust = windgust;      
+      _weather.WindGust = windgust;   
+      //log_i("wSpeed=%.1f,cnt=%d,t=%d",_weather.WindSpeed,_actPulseCount,(int32_t)(wReeds[0].pulseIntervalUs/1000uL));   
     }
   }
 }

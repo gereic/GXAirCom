@@ -75,6 +75,7 @@ private:
     void checkAneometer(void);
     void checkRainSensor(void);
     float calcWindspeed(void);
+    void initWindSpeedInterrupt(int8_t pin);
     Adafruit_BME280 bme;
     SHT2x *sht;
     //uint16_t avgFactor; //factor for avg-factor
