@@ -2,7 +2,7 @@
 
 Preferences preferences;  
 
-void load_configFile(SettingsData* pSetting){
+void load_configFile(SettingsData* pSetting,statusData* pStatus){
   log_i("LOAD CONFIG FILE");
   preferences.begin("settings", false);                         //Ordner settings anlegen/verwenden
   pSetting->settingsView = preferences.getUChar("setView",0); //
@@ -42,6 +42,28 @@ void load_configFile(SettingsData* pSetting){
   pSetting->gs.lon = preferences.getFloat("GSLON",0.0);
   pSetting->gs.alt = preferences.getFloat("GSALT",0.0);
   pSetting->gs.geoidAlt = preferences.getFloat("GSGEOALT",0.0);
+
+  String jsonString = preferences.getString("Fw2Fnt", "[]");
+  DynamicJsonDocument doc(1024);
+  deserializeJson(doc, jsonString);
+  JsonArray arr = doc.as<JsonArray>();
+  pSetting->gs.lstFw2Fanet.clear(); // vorher leeren
+  for (JsonObject obj : arr) {
+    wdataFw2Fanet d;
+    d.en = obj["en"];
+    d.id = obj["id"].as<String>();
+    d.pw = obj["pw"].as<String>();
+    d.service = obj["sv"];
+    d.tSend = obj["tSend"];
+    pSetting->gs.lstFw2Fanet.push_back(d);
+
+    //populate statusdata
+    wdataFw2FanetState sData;
+    sData.name = "";
+    sData.tName = millis();
+    sData.tweather = millis();
+    pStatus->lstFw2Fanet.push_back(sData);
+  }
 
   pSetting->FntWuUpload[0].FanetId = preferences.getULong("F2WuF0",0);
   pSetting->FntWuUpload[1].FanetId = preferences.getULong("F2WuF1",0);
@@ -170,6 +192,7 @@ void load_configFile(SettingsData* pSetting){
 }
 
 void write_configFile(SettingsData* pSetting){
+
   log_i("WRITE CONFIG FILE");
   preferences.begin("settings", false);                         //Ordner settings anlegen/verwenden
   preferences.putUChar("setView",pSetting->settingsView); //
@@ -227,6 +250,21 @@ void write_configFile(SettingsData* pSetting){
   preferences.putFloat("WDANEOADSWDMAXD", pSetting->wd.anemometer.AnemometerAdsWDirMaxDir);
   preferences.putUChar("BattMinPerc",pSetting->minBattPercent);
   preferences.putUChar("restartBattPerc",pSetting->restartBattPercent);
+
+  DynamicJsonDocument doc(1024);
+  JsonArray arr = doc.to<JsonArray>();
+  for (auto &d : pSetting->gs.lstFw2Fanet) {
+    JsonObject obj = arr.createNestedObject();
+    obj["en"] = d.en;
+    obj["sv"] = d.service;
+    obj["id"] = d.id;
+    obj["pw"] = d.pw;
+    obj["tSend"] = d.tSend;
+  }
+  String jsonString;
+  serializeJson(doc, jsonString);
+  log_i("Fw2Fnt=%s",jsonString.c_str());
+  preferences.putString("Fw2Fnt", jsonString);
   
   preferences.putULong("F2WuF0",pSetting->FntWuUpload[0].FanetId);
   preferences.putULong("F2WuF1",pSetting->FntWuUpload[1].FanetId);

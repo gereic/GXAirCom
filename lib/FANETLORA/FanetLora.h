@@ -222,23 +222,23 @@ public:
   typedef struct {
     uint32_t tLastMsg; //timestamp of neighbour (if 0 --> empty slot)
     uint32_t devId; //devId
-    String name; //name of neughbour
+    String name; //name of neighbour
     int rssi; //rssi
     int snr; //signal to noise ratio
-    bool bInternetGateway;
+    bool bInternetGateway = false;
     float lat; //latitude
     float lon; //longitude
-    bool bTemp;
+    bool bTemp = false;
     float temp; //temp [°C]
     float wHeading; //wind heading [°]
-    bool bWind;
+    bool bWind = false;
     float wSpeed; //km/h
     float wGust; //km/h
-    bool bHumidity;
+    bool bHumidity = false;
     float Humidity;
-    bool bBaro;
+    bool bBaro = false;
     float Baro;
-    bool bStateOfCharge;
+    bool bStateOfCharge = false;
     float Charge; //+1byte lower 4 bits: 0x00 = 0%, 0x01 = 6.666%, .. 0x0F = 100%
   } weatherData;
 
@@ -259,9 +259,9 @@ public:
   void setMyTrackingData(trackingData *tData,float geoidAlt,uint32_t ppsMillis);
   void setGPS(bool bHasGps);
   void writeMsgType1(trackingData *tData);
-  void writeMsgType2(String name);
+  void writeMsgType2(String name,uint8_t addrOffset = 0);
   void writeMsgType3(uint32_t devId,String msg);
-  void writeMsgType4(weatherData *wData);
+  void writeMsgType4(weatherData *wData,uint8_t addrOffset = 0);
   String getAircraftType(aircraft_t type);
   aircraft_t getAircraftType(void);
   void run(void); //has to be called cyclic
@@ -274,7 +274,7 @@ public:
   bool getWeatherData(weatherData *weather);
   void printFanetData(trackingData tData);
   void sendTracking(trackingData *tData);
-  void sendName(String name);
+  void sendName(String name,uint8_t addrOffset = 0);
   void sendMSG(String msg);
   void coord2payload_absolut(float lat, float lon, uint8_t *buf);
   uint8_t getFlarmAircraftType(trackingData *tData);

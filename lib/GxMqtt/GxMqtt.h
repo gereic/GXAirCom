@@ -51,6 +51,7 @@ private:
     char updStateTopic[50];
     char cmdTopic[50];
     char updTopic[50];
+    char wdServiceRxTopic[50];
     char infoTopic[50];
     uint8_t updCmd[5];
     char updstate[100];

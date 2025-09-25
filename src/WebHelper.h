@@ -4,6 +4,7 @@
 #include <WebSocketsServer.h>
 #include <ArduinoJson.h>
 #include "main.h"
+#include "enums.h"
 #include "FanetLora.h"
 #include "fileOps.h"
 #include <string>

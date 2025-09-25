@@ -148,5 +148,12 @@ enum eRTC{
   RTC_3231 = 2
 };
 
+enum wdService {
+  weatherUnderground = 0,  
+  holfuy = 1
+};
+
+
+
 
 #endif

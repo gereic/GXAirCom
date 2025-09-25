@@ -28,6 +28,26 @@ void sendPage(uint8_t pageNr,uint8_t clientNr);
 void sendPageHeader(uint8_t client_num);
 void sendReceivers(uint8_t client_num);
 
+// Helper function: assigns the value if the key exists
+template<typename T>
+bool assignIfExists(JsonObject& root, const char* key, T& target) {
+  if (root.containsKey(key)) {
+    target = root[key].as<T>();
+    return true;
+  }
+  return false;
+}
+
+// Special version for enums or casts
+template<typename T, typename U>
+bool assignIfExistsCast(JsonObject& root, const char* key, T& target) {
+  if (root.containsKey(key)) {
+    target = static_cast<T>(root[key].as<U>());
+    return true;
+  }
+  return false;
+}
+
 void sendReceivers(uint8_t client_num){
   StaticJsonDocument<400> doc;
   doc.clear();
@@ -128,12 +148,49 @@ String getNetWorkStat(int16_t state){
 }
 #endif
 
+void readTableFw2Fnt(StaticJsonDocument<1024>* doc,SettingsData* pSetting){
+  if (!doc->containsKey("Fw2Fnt")) return;
+  pSetting->gs.lstFw2Fanet.clear(); //clear list
+  JsonArray dataArray = (*doc)["Fw2Fnt"].as<JsonArray>();
+  if (dataArray.isNull()) {
+    log_e("error: 'Fw2Fnt' is no array!");
+    return;
+  }  
+  log_i("found Fw2Fnt");
+  for (JsonObject item : dataArray) {
+    wdataFw2Fanet element;
+    element.en = item["en"].as<bool>();
+    element.service = wdService(item["sv"].as<uint8_t>());
+    element.id = item["id"].as<String>();
+    element.pw = item["pw"].as<String>();
+    element.tSend = item["tsend"].as<uint32_t>();
+    pSetting->gs.lstFw2Fanet.push_back(element);
+
+    /*
+    bool en = item["en"];
+    uint8_t sv = item["sv"];
+    const char* id = item["id"];
+    const char* pw = item["pw"];
+
+    Serial.print("enable: "); Serial.println(en);
+    Serial.print("Service: "); Serial.println(sv);
+    Serial.print("ID: "); Serial.println(id);
+    Serial.print("PW: "); Serial.println(pw);
+    Serial.println("------");
+    */
+  } 
+  log_i("element=%d",pSetting->gs.lstFw2Fanet.size());
+  for (auto it = pSetting->gs.lstFw2Fanet.begin(); it != pSetting->gs.lstFw2Fanet.end(); ++it) {
+    log_i("en=%d,sv=%d,key=%s,pw=%s,tsend=%d",it->en,it->service,it->id.c_str(),it->pw.c_str(),it->tSend);
+  }
+}
+
 // Callback: receiving any WebSocket message
 void onWebSocketEvent(uint8_t client_num,
                       WStype_t type,
                       uint8_t * payload,
                       size_t length) {
-  StaticJsonDocument<650> doc;                      //Memory pool
+  StaticJsonDocument<1024> doc;                      //Memory pool
   JsonObject root = doc.to<JsonObject>();
   DeserializationError error;
   uint8_t value = 0;
@@ -396,6 +453,18 @@ void onWebSocketEvent(uint8_t client_num,
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
 
+          doc.clear();
+          JsonArray arr = doc.createNestedArray("Fw2Fnt");
+          for (auto &d : setting.gs.lstFw2Fanet) {
+            JsonObject obj = arr.createNestedObject();
+            obj["en"] = d.en;
+            obj["sv"] = d.service;
+            obj["id"] = d.id;
+            obj["pw"] = d.pw;
+            obj["tsend"] = d.tSend;
+          }
+          serializeJson(doc, msg_buf);
+          webSocket.sendTXT(client_num, msg_buf);          
 
 
           doc.clear();
@@ -502,140 +571,134 @@ void onWebSocketEvent(uint8_t client_num,
       }else if (root.containsKey("save")){
         //save settings-page
         value = doc["save"];
-        //general settings-page          
-        SettingsData newSetting = setting;
-        if (root.containsKey("setView")) newSetting.settingsView = doc["setView"].as<uint8_t>();                  
-        if (root.containsKey("appw")) newSetting.wifi.appw = doc["appw"].as<String>();          
-        if (root.containsKey("wificonnect")) newSetting.wifi.connect = eWifiMode(doc["wificonnect"].as<uint8_t>());
-        if (root.containsKey("WIFI_MODE")) newSetting.wifi.uMode.mode = doc["WIFI_MODE"].as<uint8_t>();
-        if (root.containsKey("ssid")) newSetting.wifi.ssid = doc["ssid"].as<String>();
-        if (root.containsKey("password")) newSetting.wifi.password = doc["password"].as<String>();
-        if (root.containsKey("board")) newSetting.boardType = eBoard(doc["board"].as<uint8_t>());          
-        if (root.containsKey("Frequ")) newSetting.CPUFrequency = eBoard(doc["Frequ"].as<uint8_t>());    
-        if (root.containsKey("FrqCor")) newSetting.FrqCor = eBoard(doc["FrqCor"].as<int32_t>());    
-        if (root.containsKey("disp")) newSetting.displayType = eDisplay(doc["disp"].as<uint8_t>());          
-        if (root.containsKey("dispRot")) newSetting.displayRotation = doc["dispRot"].as<uint8_t>();          
-        if (root.containsKey("expwsw")) newSetting.bHasExtPowerSw = doc["expwsw"].as<uint8_t>();
-        if (root.containsKey("type")) newSetting.AircraftType = (FanetLora::aircraft_t)doc["type"].as<uint8_t>();
-        if (root.containsKey("PilotName")) newSetting.PilotName = doc["PilotName"].as<String>();
-        if (root.containsKey("output")) newSetting.outputMode = eOutput(doc["output"].as<uint8_t>());
-        if (root.containsKey("oSERIAL")) newSetting.bOutputSerial = doc["oSERIAL"].as<uint8_t>();
-        if (root.containsKey("oGPS")) newSetting.outputGPS = doc["oGPS"].as<uint8_t>();
-        if (root.containsKey("oFlarm")) newSetting.outputFLARM = doc["oFlarm"].as<uint8_t>();
-        if (root.containsKey("oFanet")) newSetting.outputFANET = doc["oFanet"].as<uint8_t>();
-        if (root.containsKey("oVario")) newSetting.outputModeVario = eOutputVario(doc["oVario"].as<uint8_t>());
-        if (root.containsKey("awlive")) newSetting.awLiveTracking = doc["awlive"].as<uint8_t>();
-        if (root.containsKey("wifioff")) newSetting.wifi.tWifiStop = doc["wifioff"].as<uint32_t>();
-        if (root.containsKey("UDPServerIP")) newSetting.UDPServerIP = doc["UDPServerIP"].as<String>();
-        if (root.containsKey("UDPSendPort")) newSetting.UDPSendPort = doc["UDPSendPort"].as<uint16_t>();
-        if (root.containsKey("AUTOUPDATE")) newSetting.bAutoupdate = doc["AUTOUPDATE"].as<uint8_t>();
+        readTableFw2Fnt(&doc,&setting);  
+        assignIfExists(root, "setView", setting.settingsView);
+        assignIfExists(root, "appw", setting.wifi.appw);
+        assignIfExistsCast<eWifiMode,uint8_t>(root,"wificonnect",setting.wifi.connect);
+        assignIfExists(root, "WIFI_MODE", setting.wifi.uMode.mode);
+        assignIfExists(root, "ssid", setting.wifi.ssid);
+        assignIfExists(root, "password", setting.wifi.password);
+        assignIfExistsCast<eBoard,uint8_t>(root,"board",setting.boardType);
+        assignIfExists(root, "Frequ", setting.CPUFrequency);
+        assignIfExists(root, "FrqCor", setting.FrqCor);
+        assignIfExistsCast<eDisplay,uint8_t>(root,"disp",setting.displayType);
+        assignIfExists(root, "dispRot", setting.displayRotation);
+        assignIfExists(root, "expwsw", setting.bHasExtPowerSw);
+        assignIfExists(root, "type", setting.AircraftType);
+        assignIfExists(root, "PilotName", setting.PilotName);
+        assignIfExistsCast<eOutput,uint8_t>(root,"output",setting.outputMode);
+        assignIfExists(root, "oSERIAL", setting.bOutputSerial);
+        assignIfExists(root, "oGPS", setting.outputGPS);
+        assignIfExists(root, "oFlarm", setting.outputFLARM);
+        assignIfExists(root, "oFanet", setting.outputFANET);
+        assignIfExistsCast<eOutputVario,uint8_t>(root,"oVario",setting.outputModeVario);
+        assignIfExists(root, "awlive", setting.awLiveTracking);
+        assignIfExists(root, "wifioff", setting.wifi.tWifiStop);
+        assignIfExists(root, "UDPServerIP", setting.UDPServerIP);
+        assignIfExists(root, "UDPSendPort", setting.UDPSendPort);
+        assignIfExists(root, "AUTOUPDATE", setting.bAutoupdate);
         //gs settings
-        if (root.containsKey("gslat")) newSetting.gs.lat = doc["gslat"].as<float>();
-        if (root.containsKey("gslon")) newSetting.gs.lon = doc["gslon"].as<float>();
-        if (root.containsKey("gsalt")) newSetting.gs.alt = doc["gsalt"].as<float>();
-        if (root.containsKey("gsGeoAlt")) newSetting.gs.geoidAlt = doc["gsGeoAlt"].as<float>();
-        if (root.containsKey("gsScr")) newSetting.gs.SreenOption = eScreenOption(doc["gsScr"].as<uint8_t>());
-        if (root.containsKey("gsPs")) newSetting.gs.PowerSave = eGsPower(doc["gsPs"].as<uint8_t>());
-        if (root.containsKey("GsSrO")) newSetting.gs.sunriseOffset = eGsPower(doc["GsSrO"].as<int32_t>());
-        if (root.containsKey("GsSsO")) newSetting.gs.sunsetOffset = eGsPower(doc["GsSsO"].as<int32_t>());
+        assignIfExists(root, "gslat", setting.gs.lat);
+        assignIfExists(root, "gslon", setting.gs.lon);
+        assignIfExists(root, "gsalt", setting.gs.alt);
+        assignIfExists(root, "gsGeoAlt", setting.gs.geoidAlt);
+        assignIfExistsCast<eScreenOption,uint8_t>(root,"gsScr",setting.gs.SreenOption);
+        assignIfExistsCast<eGsPower,uint8_t>(root,"gsPs",setting.gs.PowerSave);
+        assignIfExists(root, "GsSrO", setting.gs.sunriseOffset);
+        assignIfExists(root, "GsSsO", setting.gs.sunsetOffset);
         //aneometer settings
-        if (root.containsKey("wdFrequ")) newSetting.wd.frequency = doc["wdFrequ"].as<float>();
-        if (root.containsKey("wdAnemo")) newSetting.wd.anemometer.AnemometerType = eAnemometer(doc["wdAnemo"].as<uint8_t>());
-        if (root.containsKey("wdAnemoAdsGain")) newSetting.wd.anemometer.AnemometerAdsGain = eAnemometer(doc["wdAnemoAdsGain"].as<uint8_t>());
-        if (root.containsKey("wdAnemoAdsWSpeedMinVoltage")) newSetting.wd.anemometer.AnemometerAdsWSpeedMinVoltage = doc["wdAnemoAdsWSpeedMinVoltage"].as<float>();
-        if (root.containsKey("wdAnemoAdsWSpeedMaxVoltage")) newSetting.wd.anemometer.AnemometerAdsWSpeedMaxVoltage = doc["wdAnemoAdsWSpeedMaxVoltage"].as<float>();
-        if (root.containsKey("wdAnemoAdsWDirMinVoltage")) newSetting.wd.anemometer.AnemometerAdsWDirMinVoltage = doc["wdAnemoAdsWDirMinVoltage"].as<float>();
-        if (root.containsKey("wdAnemoAdsWDirMaxVoltage")) newSetting.wd.anemometer.AnemometerAdsWDirMaxVoltage = doc["wdAnemoAdsWDirMaxVoltage"].as<float>();
-        if (root.containsKey("wdAnemoAdsWSpeedMinSpeed")) newSetting.wd.anemometer.AnemometerAdsWSpeedMinSpeed = doc["wdAnemoAdsWSpeedMinSpeed"].as<float>();
-        if (root.containsKey("wdAnemoAdsWSpeedMaxSpeed")) newSetting.wd.anemometer.AnemometerAdsWSpeedMaxSpeed = doc["wdAnemoAdsWSpeedMaxSpeed"].as<float>();
-        if (root.containsKey("wdAnemoAdsWDirMinDir")) newSetting.wd.anemometer.AnemometerAdsWDirMinDir = doc["wdAnemoAdsWDirMinDir"].as<float>();
-        if (root.containsKey("wdAnemoAdsWDirMaxDir")) newSetting.wd.anemometer.AnemometerAdsWDirMaxDir = doc["wdAnemoAdsWDirMaxDir"].as<float>();
-        if (root.containsKey("wdAnemoAdsVDivR1")) newSetting.wd.anemometer.AnemometerAdsVDivR1 = doc["wdAnemoAdsVDivR1"].as<float>();
-        if (root.containsKey("wdAnemoAdsVDivR2")) newSetting.wd.anemometer.AnemometerAdsVDivR2 = doc["wdAnemoAdsVDivR2"].as<float>();
+        assignIfExists(root, "wdFrequ", setting.wd.frequency);
+        assignIfExistsCast<eAnemometer,uint8_t>(root, "wdAnemo", setting.wd.anemometer.AnemometerType);
+        assignIfExists(root, "wdAnemoAdsGain", setting.wd.anemometer.AnemometerAdsGain);
+        assignIfExists(root, "wdAnemoAdsWSpeedMinVoltage", setting.wd.anemometer.AnemometerAdsWSpeedMinVoltage);
+        assignIfExists(root, "wdAnemoAdsWSpeedMaxVoltage", setting.wd.anemometer.AnemometerAdsWSpeedMaxVoltage);
+        assignIfExists(root, "wdAnemoAdsWDirMinVoltage", setting.wd.anemometer.AnemometerAdsWDirMinVoltage);
+        assignIfExists(root, "wdAnemoAdsWDirMaxVoltage", setting.wd.anemometer.AnemometerAdsWDirMaxVoltage);
+        assignIfExists(root, "wdAnemoAdsWSpeedMinSpeed", setting.wd.anemometer.AnemometerAdsWSpeedMinSpeed);
+        assignIfExists(root, "wdAnemoAdsWSpeedMaxSpeed", setting.wd.anemometer.AnemometerAdsWSpeedMaxSpeed);
+        assignIfExists(root, "wdAnemoAdsWDirMinDir", setting.wd.anemometer.AnemometerAdsWDirMinDir);
+        assignIfExists(root, "wdAnemoAdsWDirMaxDir", setting.wd.anemometer.AnemometerAdsWDirMaxDir);
+        assignIfExists(root, "wdAnemoAdsVDivR1", setting.wd.anemometer.AnemometerAdsVDivR1);
+        assignIfExists(root, "wdAnemoAdsVDivR2", setting.wd.anemometer.AnemometerAdsVDivR2);        
 
-        if (root.containsKey("MinBatPerc")) newSetting.minBattPercent = doc["MinBatPerc"].as<uint8_t>();
-        if (root.containsKey("restartBattPerc")) newSetting.restartBattPercent = doc["restartBattPerc"].as<uint8_t>();
-        for(int i = 0; i < MAXFNTUPLOADSTATIONS;i++){ //Fanet-Upload to WU and Windy
-          if (doc["F2WuF"][i]) newSetting.FntWuUpload[i].FanetId = doc["F2WuF"][i].as<uint32_t>();
-          if (doc["F2WuI"][i]) newSetting.FntWuUpload[i].ID = doc["F2WuI"][i].as<String>();
-          if (doc["F2WuK"][i]) newSetting.FntWuUpload[i].KEY = doc["F2WuK"][i].as<String>();
-          if (doc["F2WiF"][i]) newSetting.FntWiUpload[i].FanetId = doc["F2WiF"][i].as<uint32_t>();
-          if (doc["F2WiI"][i]) newSetting.FntWiUpload[i].ID = doc["F2WiI"][i].as<String>();
-          if (doc["F2WiK"][i]) newSetting.FntWiUpload[i].KEY = doc["F2WiK"][i].as<String>();
+        assignIfExists(root, "MinBatPerc", setting.minBattPercent);
+        assignIfExists(root, "restartBattPerc", setting.restartBattPercent);
+        for (int i = 0; i < MAXFNTUPLOADSTATIONS; i++) {
+            if (root["F2WuF"][i]) setting.FntWuUpload[i].FanetId = root["F2WuF"][i].as<uint32_t>();
+            if (root["F2WuI"][i]) setting.FntWuUpload[i].ID      = root["F2WuI"][i].as<String>();
+            if (root["F2WuK"][i]) setting.FntWuUpload[i].KEY     = root["F2WuK"][i].as<String>();
+            if (root["F2WiF"][i]) setting.FntWiUpload[i].FanetId = root["F2WiF"][i].as<uint32_t>();
+            if (root["F2WiI"][i]) setting.FntWiUpload[i].ID      = root["F2WiI"][i].as<String>();
+            if (root["F2WiK"][i]) setting.FntWiUpload[i].KEY     = root["F2WiK"][i].as<String>();
         }
         
-        if (root.containsKey("mode")) newSetting.Mode = eMode(doc["mode"].as<uint8_t>());
+        assignIfExistsCast<eMode,uint8_t>(root, "mode", setting.Mode);
         
-        if (root.containsKey("ognlive")) newSetting.OGNLiveTracking.mode = doc["ognlive"].as<uint8_t>();
-        if (root.containsKey("traccar_live")) newSetting.traccarLiveTracking = doc["traccar_live"].as<uint8_t>();
-        if (root.containsKey("traccarsrv")) newSetting.TraccarSrv = doc["traccarsrv"].as<String>();
-        if (root.containsKey("RFM")) newSetting.RFMode = doc["RFM"].as<uint8_t>();
-        if (root.containsKey("fntMode")) newSetting.fanetMode = eFnMode(doc["fntMode"].as<uint8_t>());
-        if (root.containsKey("fntPin")) newSetting.fanetpin = doc["fntPin"].as<uint16_t>();
+        assignIfExists(root, "ognlive", setting.OGNLiveTracking.mode);
+        assignIfExists(root, "traccar_live", setting.traccarLiveTracking);
+        assignIfExists(root, "traccarsrv", setting.TraccarSrv);
+        assignIfExists(root, "RFM", setting.RFMode);
+        assignIfExistsCast<eFnMode,uint8_t>(root, "fntMode", setting.fanetMode);
+        assignIfExists(root, "fntPin", setting.fanetpin);;
         //weatherdata
-        if (root.containsKey("sFWD")) newSetting.wd.sendFanet = doc["sFWD"].as<uint8_t>();
-        if (root.containsKey("wdTempOffset")) newSetting.wd.tempOffset = doc["wdTempOffset"].as<float>();
-        if (root.containsKey("wdWDirOffset")) newSetting.wd.windDirOffset = doc["wdWDirOffset"].as<int16_t>();
-        if (root.containsKey("WFFNT")) newSetting.wd.avgFactorFanet = doc["WFFNT"].as<float>();
-        if (newSetting.wd.avgFactorFanet <= 0) newSetting.wd.avgFactorFanet = 64; //prevent division 0
-        if (root.containsKey("WIFNT")) newSetting.wd.FanetUploadInterval = doc["WIFNT"].as<uint32_t>() * 1000;        
-        if (newSetting.wd.WUUploadIntervall <= 10000) newSetting.wd.WUUploadIntervall = 10000;
-        if (root.containsKey("WFWU")) newSetting.wd.avgFactorWU = doc["WFWU"].as<float>();
-        if (newSetting.wd.avgFactorWU <= 0) newSetting.wd.avgFactorWU = 128; //prevent division 0
-        if (root.containsKey("WIWU")) newSetting.wd.WUUploadIntervall = doc["WIWU"].as<uint32_t>() * 1000;        
-        if (newSetting.wd.WUUploadIntervall <= 10000) newSetting.wd.WUUploadIntervall = 10000;
-        if (root.containsKey("WsMode")) newSetting.wd.mode.mode = doc["WsMode"].as<uint8_t>();        
+        assignIfExists(root, "sFWD", setting.wd.sendFanet);
+        assignIfExists(root, "wdTempOffset", setting.wd.tempOffset);
+        assignIfExists(root, "wdWDirOffset", setting.wd.windDirOffset);
+        assignIfExists(root, "WFFNT", setting.wd.avgFactorFanet);
+        if (setting.wd.avgFactorFanet <= 0) setting.wd.avgFactorFanet = 64;
+        if (assignIfExists(root, "WIFNT", setting.wd.FanetUploadInterval)) setting.wd.FanetUploadInterval *= 1000;
+        if (setting.wd.FanetUploadInterval <= 10000) setting.wd.FanetUploadInterval = 10000;
+        assignIfExists(root, "WFWU", setting.wd.avgFactorWU);
+        if (setting.wd.avgFactorWU <= 0) setting.wd.avgFactorWU = 128;
+        if (assignIfExists(root, "WIWU", setting.wd.WUUploadIntervall)) setting.wd.WUUploadIntervall *= 1000;
+        if (setting.wd.WUUploadIntervall <= 10000) setting.wd.WUUploadIntervall = 10000;
+        assignIfExists(root, "WsMode", setting.wd.mode.mode);    
         //vario
-        if (root.containsKey("vSinkTh")) newSetting.vario.sinkingThreshold = doc["vSinkTh"].as<float>();
-        if (root.containsKey("vClimbTh")) newSetting.vario.climbingThreshold = doc["vClimbTh"].as<float>();
-        if (root.containsKey("vNClimbSens")) newSetting.vario.nearClimbingSensitivity = doc["vNClimbSens"].as<float>();
-        if (root.containsKey("vVol")) newSetting.vario.volume = doc["vVol"].as<uint8_t>();
-        if (root.containsKey("vBeepFly")) newSetting.vario.BeepOnlyWhenFlying = doc["vBeepFly"].as<uint8_t>();
-        if (root.containsKey("useMPU")) newSetting.vario.useMPU = doc["useMPU"].as<uint8_t>();        
-        if (root.containsKey("vTOffs")) newSetting.vario.tempOffset = doc["vTOffs"].as<float>();        
-        if (root.containsKey("axOffset")) newSetting.vario.accel[0] = doc["axOffset"].as<int16_t>();
-        if (root.containsKey("ayOffset")) newSetting.vario.accel[1] = doc["ayOffset"].as<int16_t>();
-        if (root.containsKey("azOffset")) newSetting.vario.accel[2] = doc["azOffset"].as<int16_t>();
-        if (root.containsKey("gxOffset")) newSetting.vario.gyro[0] = doc["gxOffset"].as<int16_t>();
-        if (root.containsKey("gyOffset")) newSetting.vario.gyro[1] = doc["gyOffset"].as<int16_t>();
-        if (root.containsKey("gzOffset")) newSetting.vario.gyro[2] = doc["gzOffset"].as<int16_t>();
-        if (root.containsKey("t[0]")) newSetting.vario.tValues[0] = doc["t[0]"].as<float>();
-        //if (root.containsKey("t[1]")) newSetting.vario.tValues[1] = doc["t[1]"].as<float>();
-        if (root.containsKey("z[0]")) newSetting.vario.zValues[0] = doc["z[0]"].as<float>();
-        //if (root.containsKey("z[1]")) newSetting.vario.zValues[1] = doc["z[1]"].as<float>();
-        if (root.containsKey("sigmaA")) newSetting.vario.sigmaA = doc["sigmaA"].as<float>();
-        if (root.containsKey("sigmaP")) newSetting.vario.sigmaP = doc["sigmaP"].as<float>();
+        assignIfExists(root, "vSinkTh", setting.vario.sinkingThreshold);
+        assignIfExists(root, "vClimbTh", setting.vario.climbingThreshold);
+        assignIfExists(root, "vNClimbSens", setting.vario.nearClimbingSensitivity);
+        assignIfExists(root, "vVol", setting.vario.volume);
+        assignIfExists(root, "vBeepFly", setting.vario.BeepOnlyWhenFlying);
+        assignIfExists(root, "useMPU", setting.vario.useMPU);
+        assignIfExists(root, "vTOffs", setting.vario.tempOffset);
+        assignIfExists(root, "axOffset", setting.vario.accel[0]);
+        assignIfExists(root, "ayOffset", setting.vario.accel[1]);
+        assignIfExists(root, "azOffset", setting.vario.accel[2]);
+        assignIfExists(root, "gxOffset", setting.vario.gyro[0]);
+        assignIfExists(root, "gyOffset", setting.vario.gyro[1]);
+        assignIfExists(root, "gzOffset", setting.vario.gyro[2]);
+        assignIfExists(root, "t[0]", setting.vario.tValues[0]);
+        assignIfExists(root, "z[0]", setting.vario.zValues[0]);
+        assignIfExists(root, "sigmaA", setting.vario.sigmaA);
+        assignIfExists(root, "sigmaP", setting.vario.sigmaP);
 
         //weather-underground upload
-        if (root.containsKey("WUUlEnable")) newSetting.WUUpload.enable = doc["WUUlEnable"].as<bool>();
-        if (root.containsKey("WUUlID")) newSetting.WUUpload.ID = doc["WUUlID"].as<String>();
-        if (root.containsKey("WUUlKEY")) newSetting.WUUpload.KEY = doc["WUUlKEY"].as<String>();
+        assignIfExists(root, "WUUlEnable", setting.WUUpload.enable);
+        assignIfExists(root, "WUUlID", setting.WUUpload.ID);
+        assignIfExists(root, "WUUlKEY", setting.WUUpload.KEY);
         //Windy upload
-        if (root.containsKey("WIUlEnable")) newSetting.WindyUpload.enable = doc["WIUlEnable"].as<bool>();
-        if (root.containsKey("WIUlID")) newSetting.WindyUpload.ID = doc["WIUlID"].as<String>();
-        if (root.containsKey("WIUlKEY")) newSetting.WindyUpload.KEY = doc["WIUlKEY"].as<String>();
+        assignIfExists(root, "WIUlEnable", setting.WindyUpload.enable);
+        assignIfExists(root, "WIUlID", setting.WindyUpload.ID);
+        assignIfExists(root, "WIUlKEY", setting.WindyUpload.KEY);
         //GSM
-        if (root.containsKey("GSMAPN")) newSetting.gsm.apn = doc["GSMAPN"].as<String>();
-        if (root.containsKey("GSMUSER")) newSetting.gsm.user = doc["GSMUSER"].as<String>();
-        if (root.containsKey("GSMPWD")) newSetting.gsm.pwd = doc["GSMPWD"].as<String>();
-        if (root.containsKey("GSMMODE")) newSetting.gsm.NetworkMode = eGsmNetworkMode(doc["GSMMODE"].as<uint8_t>());
-        if (root.containsKey("GSMPREF")) newSetting.gsm.PreferredMode = eGsmPreferedMode(doc["GSMPREF"].as<uint8_t>());
-        if (root.containsKey("NBIOT")) newSetting.gsm.NB_IOT_Band = doc["NBIOT"].as<String>();
-        if (root.containsKey("CATM")) newSetting.gsm.CAT_M_Band = doc["CATM"].as<String>();
+        assignIfExists(root, "GSMAPN", setting.gsm.apn);
+        assignIfExists(root, "GSMUSER", setting.gsm.user);
+        assignIfExists(root, "GSMPWD", setting.gsm.pwd);
+        assignIfExistsCast<eGsmNetworkMode,uint8_t>(root, "GSMMODE", setting.gsm.NetworkMode);
+        assignIfExistsCast<eGsmPreferedMode,uint8_t>(root, "GSMPREF", setting.gsm.PreferredMode);
+        assignIfExists(root, "NBIOT", setting.gsm.NB_IOT_Band);
+        assignIfExists(root, "CATM", setting.gsm.CAT_M_Band);
         //fuel-sensor
-        if (root.containsKey("fuelSensor")) newSetting.bHasFuelSensor = doc["fuelSensor"].as<uint8_t>();
+        assignIfExists(root, "fuelSensor", setting.bHasFuelSensor);
 
-        if (root.containsKey("MqttMode")) newSetting.mqtt.mode.mode = doc["MqttMode"].as<uint8_t>();
-        if (root.containsKey("MqttServer")) newSetting.mqtt.server = doc["MqttServer"].as<String>();
-        if (root.containsKey("MqttPort")) newSetting.mqtt.port = doc["MqttPort"].as<uint16_t>();
-        if (root.containsKey("MqttPw")) newSetting.mqtt.pw = doc["MqttPw"].as<String>();
+        assignIfExists(root, "MqttMode", setting.mqtt.mode.mode);
+        assignIfExists(root, "MqttServer", setting.mqtt.server);
+        assignIfExists(root, "MqttPort", setting.mqtt.port);
+        assignIfExists(root, "MqttPw", setting.mqtt.pw);
 
-        setting = newSetting;
-        //log_i("write config-to file");
-        //write_configFile(&newSetting);
         if (value == 2){
           log_i("write config-to file");
-          write_configFile(&newSetting);
+          write_configFile(&setting);
           log_i("reboot");
           ESP.restart();
         }

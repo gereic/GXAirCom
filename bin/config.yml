@@ -1,5 +1,6 @@
-DevId: 08B668
-Firmware: GsSim7000
-ServerIp: 192.168.0.10
+CpuSpeed: '80'
+DevId: 08A0A0
+Firmware: wireless-StickV3_Sim7080
+ServerIp: 192.168.0.1
 ServerPort: 1883
-Version: v5.5.2
+Version: v8.2.1

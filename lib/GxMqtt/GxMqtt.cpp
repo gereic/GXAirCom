@@ -4,6 +4,7 @@
 extern struct SettingsData setting;
 extern struct statusData status;
 extern FanetMac fmac;
+extern SemaphoreHandle_t wdServiceResponse;
 
 GxMqtt::GxMqtt(){
   xMutex = NULL;
@@ -21,6 +22,22 @@ void GxMqtt::callback(char* topic, byte* payload, unsigned int length) {
       memcpy(&lastCmd[0],payload,length); //copy payload
       lastCmd[length] = 0; //set zero-termination
     } 
+  }else if (!strcmp(&wdServiceRxTopic[0],topic)){
+    //log_i("received %s",wdServiceRxTopic);
+    if (wdServiceResponse){
+		  wdServiceQueueData queue;
+      queue.size = length;
+      if (sizeof(queue.data) > length){
+        memcpy(&queue.data[0],payload,length);
+        queue.data[length] = 0; //zero-termination
+        BaseType_t status = xQueueSendToBack(wdServiceResponse,&queue,0);
+        if (status != pdTRUE){
+          log_e("wdServiceRequest Queue full");
+        }       
+      }else{
+        log_e("wdServiceRxTopic payload to big");
+      }
+    }
   }else if (!strcmp(&updTopic[0],topic)){
     memcpy(updCmd,payload,sizeof(updCmd));
     uint8_t cmd= payload[0] & 0x0F;
@@ -210,6 +227,7 @@ void GxMqtt::subscribe(){
     pPubSubClient->subscribe(cmdTopic);
     //subscribe to update topic    
     pPubSubClient->subscribe(updTopic);
+    pPubSubClient->subscribe(wdServiceRxTopic);
     log_i("subscription finished");
     connState = 100;
 }
@@ -227,6 +245,8 @@ void GxMqtt::subscribe(){
   snprintf(updTopic,sizeof(updTopic),"GXAirCom/%s/upd/cmd",setting.myDevId.c_str());
   snprintf(updStateTopic,sizeof(updStateTopic),"GXAirCom/%s/upd/state",setting.myDevId.c_str());
   snprintf(infoTopic,sizeof(infoTopic),"GXAirCom/%s/info",setting.myDevId.c_str());
+  snprintf(wdServiceRxTopic,sizeof(wdServiceRxTopic),"GXAirCom/%s/wdService/rx/response",setting.myDevId.c_str());
+  
   
   bool bRet;
   if (setting.mqtt.pw.length() == 0){
@@ -289,7 +309,7 @@ void GxMqtt::run(bool bNetworkOk){
     //tRestartModem = tAct;
     status.MqttStat = 0;
   }
-  if ((tAct - tRestartModem) >= 600000){ //10min. no MQTT-connection, maybe no network-connection
+  if (timeOver(tAct,tRestartModem,600000)){ //10min. no MQTT-connection, maybe no network-connection
     log_e("no MQTT-connection after 10min --> restart");
     restartNow = true; //we have not MQTT-connection --> restart ESP, because we need to reconnect wifi or modem
     tRestartModem = tAct;

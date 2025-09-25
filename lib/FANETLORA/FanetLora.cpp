@@ -307,7 +307,7 @@ int16_t FanetLora::getWeatherIndex(uint32_t devId,bool getEmptyEntry){
     memset(&weatherDatas[iRet],0,sizeof(weatherDatas[iRet])); //clear slot
     return iRet; //we give back an empty slot
   }else{
-    return iOldestEntry; //we tell the oldest entry to override !! (only if we to much traffic)
+    return iOldestEntry; //we tell the oldest entry to override !! (only if we hav to much traffic)
   }
 }
 
@@ -759,7 +759,6 @@ void FanetLora::handle_frame(Frame *frm){
     }
     
   }else if (frm->type == 2){      
-    //log_i("name=%s",msg2.c_str());
     if (frm->payload_length <= 66){
       String msg2 = ""; 
       for(int i=0; i<frm->payload_length; i++)
@@ -771,8 +770,9 @@ void FanetLora::handle_frame(Frame *frm){
       lastNameData.snr = frm->snr;
       lastNameData.name = msg2;
       newName = true;
-      insertNameToWeather(lastNameData.devId,msg2); //insert name in weather-list
-      insertNameToNeighbour(lastNameData.devId,msg2); //insert name in neighbour-list
+      //log_i("got name from dev=devId=%06X,name=%s",lastNameData.devId,lastNameData.name.c_str());
+      insertNameToWeather(lastNameData.devId,lastNameData.name); //insert name in weather-list
+      insertNameToNeighbour(lastNameData.devId,lastNameData.name); //insert name in neighbour-list
     }else{
       //log_e("length of Frame type:%d to long %d",frm->type,frm->payload_length);
       bFrameOk = false;
@@ -798,9 +798,11 @@ void FanetLora::handle_frame(Frame *frm){
       lastWeatherData.devId = getDevIdFromMac(&frm->src);
       lastWeatherData.rssi = frm->rssi;
       lastWeatherData.snr = frm->snr;
+      //log_i("weather-info from dev=devId=%06X",lastWeatherData.devId);
       if (getWeatherinfo(frm->payload,frm->payload_length) == 0){
         insertDataToWeatherStation(lastWeatherData.devId,&lastWeatherData);
       }else{
+        log_e("can't get weather-data from message");
         bFrameOk = false;
       }
       
@@ -979,10 +981,11 @@ void FanetLora::sendMSG(String msg){
     }
 }
 
-void FanetLora::sendName(String name){
+void FanetLora::sendName(String name,uint8_t addrOffset){
     if (name.length() > 0){
-        //log_i("sending fanet-name:%s",name.c_str());
+        //log_i("sending fanet-name:%s,offset=%d",name.c_str(),addrOffset);
         Frame *frm = new Frame(fmac.myAddr);
+        frm->src.id += addrOffset;
         frm->type = FRM_TYPE_NAME;
         frm->payload_length = serialize_name(name,frm->payload);
         frm2txBuffer(frm);
@@ -1216,8 +1219,8 @@ void FanetLora::writeMsgType1(trackingData *tData){
   sendTracking(tData);
 }
 
-void FanetLora::writeMsgType2(String name){
-    sendName(name);
+void FanetLora::writeMsgType2(String name,uint8_t addrOffset){
+    sendName(name,addrOffset);
 }
 
 
@@ -1298,7 +1301,7 @@ int FanetLora::serialize_service(weatherData *wData,uint8_t*& buffer){
   pkt->bHumidity = wData->bHumidity;
   pkt->bWind = wData->bWind;
   pkt->bTemp = wData->bTemp;
-  pkt->bInternetGateway = bInternetGateway;
+  pkt->bInternetGateway = wData->bInternetGateway;
   index++;
   coord2payload_absolut(wData->lat,wData->lon, &buffer[index]);
   index+= 6;
@@ -1357,8 +1360,9 @@ int FanetLora::serialize_service(weatherData *wData,uint8_t*& buffer){
   return index;
 }
 
-void FanetLora::writeMsgType4(weatherData *wData){
+void FanetLora::writeMsgType4(weatherData *wData,uint8_t addrOffset){
   Frame *frm = new Frame(fmac.myAddr);
+  frm->src.id += addrOffset;
   frm->type = FRM_TYPE_SERVICE;
   frm->forward = true;
   frm->payload_length = serialize_service(wData,frm->payload);

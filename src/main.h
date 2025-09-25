@@ -1,5 +1,6 @@
 #include <string.h>
 #include "enums.h"
+#include <vector>
 //#include "../lib/FANETLORA/FanetLora.h"
 
 #ifndef __MAIN_H__
@@ -226,6 +227,25 @@ SCL 14
 
 #define GETNTPINTERVALL 1800000 //refresh timer from NTP every 30min.
 
+struct wdServiceQueueData {
+  char data[512];
+  uint16_t size;
+};
+
+struct wdataFw2Fanet{ 
+  bool en;
+  wdService service; 
+  String id; 
+  String pw;
+  uint32_t tSend;
+};
+
+struct wdataFw2FanetState{
+  time_t tName;
+  String name;
+  time_t tweather;
+};
+
 struct weatherupload{
   bool enable;
   String ID;
@@ -322,6 +342,7 @@ struct statusVario{
   float ClimbRate;
 };
 
+
 struct GSSettings{
   float lat; //Ground-Station Latitude
   float lon; //Ground-Station Longitude
@@ -331,6 +352,7 @@ struct GSSettings{
   eGsPower PowerSave; //powersave-option
   int sunriseOffset; //sunrise offset [min]
   int sunsetOffset; //sunrise offset [min]
+  std::vector<wdataFw2Fanet> lstFw2Fanet;
 };
 
 struct WeatherSettings{
@@ -435,7 +457,7 @@ struct SettingsData{
   bool bHasFuelSensor; //has fuel-Sensor
   MqttSettings mqtt;
   Fanetweatherupload FntWuUpload[MAXFNTUPLOADSTATIONS]; //Fanet WU Upload
-  Fanetweatherupload FntWiUpload[MAXFNTUPLOADSTATIONS]; //Fanet Wi Upload
+  Fanetweatherupload FntWiUpload[MAXFNTUPLOADSTATIONS]; //Fanet Wi Upload  
   bool bAutoupdate; //auto-update to new Version
 };
 
@@ -548,6 +570,7 @@ struct statusData{
   bool bMuting; //muting beeper
   bool bPowerOff;
   weatherStatus weather;
+  std::vector<wdataFw2FanetState> lstFw2Fanet;
   eConnectionState modemstatus; //status of mobile-device (sim800)
   bool bInternetConnected;
   bool bTimeOk;
