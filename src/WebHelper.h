@@ -12,6 +12,7 @@
 #include <Update.h>
 #include <CalcTools.h>
 #include <Logger.h>
+#include <tools.h>
 
 //#define useSpiffsWebsite
 #define UPDATE_SIZE_UNKNOWN 0xFFFFFFFF

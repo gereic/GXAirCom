@@ -241,9 +241,21 @@ struct wdataFw2Fanet{
 };
 
 struct wdataFw2FanetState{
-  time_t tName;
-  String name;
-  time_t tweather;
+  time_t tSendName;
+  String name = "";
+  time_t tSendWeather;
+  time_t ts = 0; //timestamp of received weahter-data
+  float lat = 0.0;
+  float lon = 0.0;
+  bool bTemp = false;
+  float temp = 0.0;
+  bool bHumidity = false;
+  float Humidity = 0.0;
+  bool bWind = false;
+  float wDir = 0.0;
+  float wSpeed = 0.0;
+  float wGust = 0.0;
+  uint8_t rxCnt = 0;
 };
 
 struct weatherupload{

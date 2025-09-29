@@ -60,8 +60,8 @@ void load_configFile(SettingsData* pSetting,statusData* pStatus){
     //populate statusdata
     wdataFw2FanetState sData;
     sData.name = "";
-    sData.tName = millis();
-    sData.tweather = millis();
+    sData.tSendName = millis();
+    sData.tSendWeather = millis();
     pStatus->lstFw2Fanet.push_back(sData);
   }
 

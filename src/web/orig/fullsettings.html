@@ -219,16 +219,9 @@ function addEmptyLineToTable() {
 }
 
 
-function deleteAllRowsFromTable(){
-  const table = document.getElementById("TableFw2Fnt");
-  while (table.rows.length > 1) {
-    table.deleteRow(1);
-  }  
-}
-
 // Function to populate the table from JSON
 function populateTableFromJson(data) {
-  deleteAllRowsFromTable();
+  deleteAllRowsFromTable("TableFw2Fnt");
   data.Fw2Fnt.forEach(item => {
     addRowToTable(item);
   });

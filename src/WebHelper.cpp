@@ -5,8 +5,14 @@ AsyncWebServer server(80);
 WebSocketsServer webSocket = WebSocketsServer(1337);
 int led_state = 0;
 char msg_buf[500];
+
+struct clients{
+  uint8_t actPage = 0;
+  bool bRefresh = false;
+};
+
 #define MAXCLIENTS 10
-uint8_t clientPages[MAXCLIENTS];
+clients clients[MAXCLIENTS];
 
 #define HTML 0
 #define CSS 1
@@ -27,26 +33,6 @@ Logger logger;
 void sendPage(uint8_t pageNr,uint8_t clientNr);
 void sendPageHeader(uint8_t client_num);
 void sendReceivers(uint8_t client_num);
-
-// Helper function: assigns the value if the key exists
-template<typename T>
-bool assignIfExists(JsonObject& root, const char* key, T& target) {
-  if (root.containsKey(key)) {
-    target = root[key].as<T>();
-    return true;
-  }
-  return false;
-}
-
-// Special version for enums or casts
-template<typename T, typename U>
-bool assignIfExistsCast(JsonObject& root, const char* key, T& target) {
-  if (root.containsKey(key)) {
-    target = static_cast<T>(root[key].as<U>());
-    return true;
-  }
-  return false;
-}
 
 void sendReceivers(uint8_t client_num){
   StaticJsonDocument<400> doc;
@@ -165,19 +151,6 @@ void readTableFw2Fnt(StaticJsonDocument<1024>* doc,SettingsData* pSetting){
     element.pw = item["pw"].as<String>();
     element.tSend = item["tsend"].as<uint32_t>();
     pSetting->gs.lstFw2Fanet.push_back(element);
-
-    /*
-    bool en = item["en"];
-    uint8_t sv = item["sv"];
-    const char* id = item["id"];
-    const char* pw = item["pw"];
-
-    Serial.print("enable: "); Serial.println(en);
-    Serial.print("Service: "); Serial.println(sv);
-    Serial.print("ID: "); Serial.println(id);
-    Serial.print("PW: "); Serial.println(pw);
-    Serial.println("------");
-    */
   } 
   log_i("element=%d",pSetting->gs.lstFw2Fanet.size());
   for (auto it = pSetting->gs.lstFw2Fanet.begin(); it != pSetting->gs.lstFw2Fanet.end(); ++it) {
@@ -199,7 +172,10 @@ void onWebSocketEvent(uint8_t client_num,
 
     // Client has disconnected
     case WStype_DISCONNECTED:
-      if (client_num < MAXCLIENTS) clientPages[client_num] = 0;
+      if (client_num < MAXCLIENTS){
+        clients[client_num].actPage = 0;
+        clients[client_num].bRefresh = false;
+      } 
       log_i("[%u] Disconnected!", client_num);
       break;
 
@@ -226,11 +202,11 @@ void onWebSocketEvent(uint8_t client_num,
       }
       if (root.containsKey("page")){
         value = doc["page"];                    //Get value of sensor measurement
-        if (client_num < MAXCLIENTS) clientPages[client_num] = value;
+        if (client_num < MAXCLIENTS) clients[client_num].actPage = value;
         log_i("page=%d",value);
         sendPageHeader(client_num);
         doc.clear();
-        if (clientPages[client_num] == 1){ //index.html
+        if (clients[client_num].actPage == 1){ //index.html
           #ifdef LOGGER
           doc["igcMenue"] = 1;
           #endif
@@ -239,7 +215,8 @@ void onWebSocketEvent(uint8_t client_num,
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
 
-        }else if (clientPages[client_num] == 2){ //info
+        }else if (clients[client_num].actPage == 2){ //info
+          clients[client_num].bRefresh = true;
           doc["myDevId"] = setting.myDevId;
           doc["compiledate"] = compile_date;
           doc["bHasVario"] = (uint8_t)status.vario.bHasVario;       
@@ -336,7 +313,7 @@ void onWebSocketEvent(uint8_t client_num,
 
 
 
-        }else if (clientPages[client_num] == 3){ //sendmessage
+        }else if (clients[client_num].actPage == 3){ //sendmessage
           doc.clear();
           doc["setView"] = setting.settingsView;
           doc["FNTMSGIN"] = status.lastFanetMsg;
@@ -344,12 +321,12 @@ void onWebSocketEvent(uint8_t client_num,
           webSocket.sendTXT(client_num, msg_buf);
           sendReceivers(client_num); //send clients
 
-        }else if (clientPages[client_num] == 5){ //FW-Update
+        }else if (clients[client_num].actPage == 5){ //FW-Update
           doc["updateState"] = status.updateState;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
 
-        }else if (clientPages[client_num] == 10){ //full settings
+        }else if (clients[client_num].actPage == 10){ //full settings
           doc["setView"] = setting.settingsView;                  
           doc["board"] = setting.boardType;
           doc["Frequ"] = setting.CPUFrequency;
@@ -524,7 +501,7 @@ void onWebSocketEvent(uint8_t client_num,
           doc["MqttPw"] = setting.mqtt.pw;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
-        }else if (clientPages[client_num] == 101){ //msg-type 1 test
+        }else if (clients[client_num].actPage == 101){ //msg-type 1 test
           doc["lat"] = String(fanetTrackingData.lat,6);
           doc["lon"] = String(fanetTrackingData.lon,6);
           doc["alt"] = String(fanetTrackingData.altitude,1);
@@ -533,15 +510,15 @@ void onWebSocketEvent(uint8_t client_num,
           doc["heading"] = String(fanetTrackingData.heading,1);
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
-        }else if (clientPages[client_num] == 102){ //msg-type 2 test
+        }else if (clients[client_num].actPage == 102){ //msg-type 2 test
           doc["name"] = fanetString;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
-        }else if (clientPages[client_num] == 103){ //msg-type 3 test
+        }else if (clients[client_num].actPage == 103){ //msg-type 3 test
           doc["msg"] = fanetString;
           serializeJson(doc, msg_buf);
           webSocket.sendTXT(client_num, msg_buf);
-        }else if (clientPages[client_num] == 104){ //msg-type 4 test
+        }else if (clients[client_num].actPage == 104){ //msg-type 4 test
           doc["lat"] = String(fanetWeatherData.lat,6);
           doc["lon"] = String(fanetWeatherData.lon,6);
           doc["temp"] = String(fanetWeatherData.temp,1);
@@ -941,7 +918,7 @@ void Web_setup(void){
     {"/style.css",style_css_gz,style_css_gz_len,CSS},
     {"/scripts.js",scripts_js_gz,scripts_js_gz_len,JS}
   };
-  for (int i = 0;i < MAXCLIENTS;i++) clientPages[i] = 0;
+  for (int i = 0;i < MAXCLIENTS;i++) clients[i].actPage = 0;
   // On HTTP request for root, provide index.html file
   for (const auto &site : sites) {
     server.on(site.name, HTTP_GET, [site](AsyncWebServerRequest *request){
@@ -1009,9 +986,51 @@ void sendPage(uint8_t pageNr,uint8_t clientNr){
   static uint32_t tCount20 = millis();
   static uint32_t tCount30 = millis();
   static float flarmFrequ = 0;
+  static uint32_t lstFw2FanetCnt = 0;
   switch (pageNr) {
     case 2:
       //page info.html
+      //lst fw2Fanet actual data
+      if (status.lstFw2Fanet.size() > 0){
+        uint32_t actCnt = 0;
+        bool bSend = false;
+        for (auto &d : status.lstFw2Fanet) {
+          actCnt += d.rxCnt;
+        }
+        if (lstFw2FanetCnt != actCnt){
+          lstFw2FanetCnt = actCnt;
+          bSend = true;
+        }
+        if ((clients[clientNr].bRefresh) || (bSend)){
+          doc.clear();
+          JsonArray arr = doc.createNestedArray("Fw2Fnt");
+          bool bSendData = false;
+          for (auto &d : status.lstFw2Fanet) {
+            if (d.ts == 0){
+              continue;
+            }
+            JsonObject obj = arr.createNestedObject();
+            obj["ts"] = d.ts;
+            obj["name"] = d.name;
+            obj["lat"] = d.lat;
+            obj["lon"] = d.lon;
+            obj["bTemp"] = d.bTemp;
+            obj["temp"] = d.temp;
+            obj["bHum"] = d.bHumidity;
+            obj["Hum"] = d.Humidity;
+            obj["bWind"] = d.bWind;
+            obj["wDir"] = d.wDir;
+            obj["wSpeed"] = d.wSpeed;
+            obj["wGust"] = d.wGust;
+            obj["rxCnt"] = d.rxCnt;
+            bSendData = true;
+          }
+          if (bSendData){
+            serializeJson(doc, msg_buf);
+            webSocket.sendTXT(clientNr, msg_buf);        
+          }
+        }
+      }
       //vario
       if (status.vario.bHasVario){
         doc.clear();
@@ -1501,6 +1520,7 @@ void sendPage(uint8_t pageNr,uint8_t clientNr){
       break;
   }
   
+  clients[clientNr].bRefresh = false;
 }
 
 void Web_loop(void){  
@@ -1514,8 +1534,8 @@ void Web_loop(void){
     tLife = tAct;
     //site update
     for (int i = 0;i <MAXCLIENTS;i++){
-      if (clientPages[i] > 0){
-        sendPage(clientPages[i],i);
+      if (clients[i].actPage > 0){
+        sendPage(clients[i].actPage,i);
       }
     }
   }

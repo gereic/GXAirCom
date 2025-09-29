@@ -1,16 +1,5 @@
 #include <tools.h>
 
-
-// Helper function: assigns the value if the key exists
-template<typename T>
-bool assignIfExists(JsonObject& obj, const char* key, T& target) {
-    if (obj.containsKey(key)) {
-        target = obj[key].as<T>();
-        return true;
-    }
-    return false;
-}
-
 bool timeOver(uint32_t tAct,uint32_t timestamp,uint32_t tTime){
     uint32_t tDiff = tAct - timestamp;
     if (tDiff >= tTime){
