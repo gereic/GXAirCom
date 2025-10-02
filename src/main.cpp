@@ -3035,7 +3035,9 @@ void sendRawWeatherData(Weather::weatherData *weather){
 void fw2Fanet(void){
   static uint32_t tCheck = millis();
   uint32_t tAct = millis();
-  if (!status.bInternetConnected) return;
+  if (!status.bInternetConnected) return; //no internet-connection
+  if (!setting.mqtt.mode.bits.enable) return; //mqtt not enabled
+  if (status.MqttStat != 100) return; //mqtt not connected
   if (!timeOver(tAct,tCheck,1000)){ //we check only every second
     return;
   }
@@ -4706,6 +4708,7 @@ void getWdServiceDataFromResponse(char* pData){
     }
   }
   assignIfExistsCast<time_t,uint32_t>(root,"ts",status.lstFw2Fanet[index].ts);
+  //log_i("ts=%d,tNow=%d,tDiff=%d",status.lstFw2Fanet[index].ts,now(),tDiff);
   assignIfExists(root,"lat",status.lstFw2Fanet[index].lat);
   assignIfExists(root,"lon",status.lstFw2Fanet[index].lon);
   if (assignIfExists(root,"temp",status.lstFw2Fanet[index].temp)) status.lstFw2Fanet[index].bTemp = true;
@@ -4716,6 +4719,15 @@ void getWdServiceDataFromResponse(char* pData){
     assignIfExists(root,"wGust",status.lstFw2Fanet[index].wGust);
 
   } 
+  status.lstFw2Fanet[index].rxCnt ++;  
+  time_t tNow = now();
+  time_t tDiff = tNow - status.lstFw2Fanet[index].ts;
+  if (tDiff > 300){
+    status.lstFw2Fanet[index].error = 1;
+    log_e("timediff more than 5min. --> don't send WD (ts=%d,tNow=%d,tDiff=%d)",status.lstFw2Fanet[index].ts,tNow,tDiff);
+    return;
+  }
+  status.lstFw2Fanet[index].error = 0;
   wData.lat = status.lstFw2Fanet[index].lat;
   wData.lon = status.lstFw2Fanet[index].lon;
   wData.bTemp = status.lstFw2Fanet[index].bTemp;
@@ -4728,7 +4740,6 @@ void getWdServiceDataFromResponse(char* pData){
   wData.bInternetGateway = true;
   wData.bStateOfCharge = true;
   wData.Charge = status.battery.percent;
-  status.lstFw2Fanet[index].rxCnt ++;
   //log_i("wdData index=%d,name=%s,lat=%.6f,lon=%.6f,temp=%.1f,hum=%.1f,wDir=%.0f,wSpeed=%.1f,wGust=%.1f",index,status.lstFw2Fanet[index].name.c_str(),wData.lat,wData.lon,wData.temp,wData.Humidity,wData.wHeading,wData.wSpeed,wData.wGust);
   fanet.writeMsgType4(&wData,index + 1);
 }

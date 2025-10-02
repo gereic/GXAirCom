@@ -9,7 +9,7 @@
 var pageNumber=2;
 var wsMode=0;
 var rtc=0;
-var wdAnemo = 0;
+var anmeoType = 0;
 const wdWS90 = 5;
 const wsModeEn = 1;
 const wsModeBme = 2;
@@ -86,6 +86,9 @@ function addRowToTable(item){
   const iso = date.toISOString();
   const formattedDate = iso.replace('T', ' ').split('.')[0];
   cell.innerHTML = formattedDate
+  if (item.err){
+    cell.style.backgroundColor = '#ff0000' //set background-color to red to indicate, ts is to old
+  }
 
   cell = row.insertCell(-1);
   cell.innerHTML = "<a href=\"https://www.google.com/maps/search/?api=1&query=" +item.lat + "," + item.lon + "\"  target=\"_blank\">" +  item.name + "</a>"
@@ -131,7 +134,7 @@ function onMessage(evt) {
           wsMode = myObj[key];
           continue;
         }else if (key == "wdAnemo"){
-          wdAnemo = myObj[key];
+          anmeoType = myObj[key];
           continue;
         }else if (key == "bHasGSM"){
           if (myObj[key] == 0){

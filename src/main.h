@@ -256,6 +256,7 @@ struct wdataFw2FanetState{
   float wSpeed = 0.0;
   float wGust = 0.0;
   uint8_t rxCnt = 0;
+  uint8_t error = 0;
 };
 
 struct weatherupload{

@@ -1002,8 +1002,9 @@ void sendPage(uint8_t pageNr,uint8_t clientNr){
           bSend = true;
         }
         if ((clients[clientNr].bRefresh) || (bSend)){
-          doc.clear();
-          JsonArray arr = doc.createNestedArray("Fw2Fnt");
+          StaticJsonDocument<3000> jDoc; //Memory pool  
+          jDoc.clear();
+          JsonArray arr = jDoc.createNestedArray("Fw2Fnt");
           bool bSendData = false;
           for (auto &d : status.lstFw2Fanet) {
             if (d.ts == 0){
@@ -1023,10 +1024,11 @@ void sendPage(uint8_t pageNr,uint8_t clientNr){
             obj["wSpeed"] = d.wSpeed;
             obj["wGust"] = d.wGust;
             obj["rxCnt"] = d.rxCnt;
+            obj["err"] = d.error;
             bSendData = true;
           }
           if (bSendData){
-            serializeJson(doc, msg_buf);
+            serializeJson(jDoc, msg_buf);
             webSocket.sendTXT(clientNr, msg_buf);        
           }
         }
