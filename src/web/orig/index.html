@@ -6,17 +6,11 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
 <title>GXAirCom</title>
 <script language="javascript" type="text/javascript">
-var visDeveloper=0;
 var visIgc=0;
 var pageNumber=1;
 var setView=0;
 /*this function sets visible depending on actual option*/
 function setVis(){
-  if (visDeveloper == 1){
-    document.getElementById("developer").style.display='';
-  }else{
-    document.getElementById("developer").style.display='none';
-  }
   if (visIgc == 1){
     document.getElementById("igcMenue").style.display='';
   }else{
@@ -36,32 +30,14 @@ function onMessage(evt) {
   var myObj = JSON.parse(evt.data);
   for (var key of Object.keys(myObj)) {
     console.log(key + " -> " + myObj[key]);
-    if (key == "developer"){
-      if (myObj[key] == 1){
-        visDeveloper=1;
-      }
-      continue;
-    }else if (key == "igcMenue"){
+    if (key == "igcMenue"){
       visIgc=1;
       continue;
     }else if (key == "setView"){
       setView = myObj[key];
       continue;
     }
-    var e=document.getElementById(key);
-    if (e == null) continue;
-    if (e instanceof HTMLSelectElement) {     // <select>
-      document.getElementById(key).value = myObj[key];
-    }else if ((e instanceof HTMLInputElement ) && (e.getAttribute('type') == 'checkbox')){     // <input checkbox>
-      if (myObj[key] == 1){
-        document.getElementById(key).checked = true;
-      }else{
-        document.getElementById(key).checked = false;
-      }
-    }else{
-      document.getElementById(key).textContent = myObj[key];
-      document.getElementById(key).value = myObj[key];
-    }
+    setElement(key,myObj[key]);
   }
   setVis(); /* now set visibility */
 };
@@ -83,7 +59,6 @@ function onMessage(evt) {
     <table style="width:100&#37;"><tr><td style="width:100&#37;"><button onClick="location.href='/info.html'">info</button></td></tr></table><p></p><p></p>
     <table id="igcMenue" style="width:100&#37;"><tr><td style="width:100&#37;"><button onClick="location.href='/igclogs.html'">Track Logs IGC</button></td></tr></table><p></p><p></p>    
     <table style="width:100&#37;"><tr><td style="width:100&#37;"><button onClick="location.href='/fullsettings.html'">settings</button></td></tr></table><p></p><p></p>
-    <table id="developer" style="width:100&#37;"><tr><td style="width:100&#37;"><button onClick="location.href='/developmenue.html'">developer menue</button></td></tr></table><p></p><p></p>
     <table style="width:100&#37;"><tr><td style="width:100&#37;"><button onClick="location.href='/fwupdate'">firmware update</button></td></tr></table><p></p>
     <div style='text-align:right;font-size:11px;'><hr><a href='https://www.getronix.at' target='_blank' style='color:#aaa;'>GXAirCom by Gerald Eichler</a>
     </div>

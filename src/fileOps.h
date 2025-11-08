@@ -3,12 +3,13 @@
 
 
 #include <Preferences.h>
+#include <ArduinoJson.h>
 #include "main.h"
 #include "enums.h"
 
 extern SettingsData setting;
 
-void load_configFile(SettingsData* pSetting);
+void load_configFile(SettingsData* pSetting,statusData* pStatus);
 void write_configFile(SettingsData* pSetting);
 void write_screenNumber(void);
 void write_Volume(void);
@@ -25,4 +26,7 @@ void write_battMinPerc(void);
 void write_gpsBaud(void);
 void write_wifiModeBits(void);
 void write_CPUFrequency(void);
+void write_FanetUploadInterval(void);
+void write_windDirOffset(void);
+void write_AnemometerType(void);
 #endif

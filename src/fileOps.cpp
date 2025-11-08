@@ -2,13 +2,14 @@
 
 Preferences preferences;  
 
-void load_configFile(SettingsData* pSetting){
+void load_configFile(SettingsData* pSetting,statusData* pStatus){
   log_i("LOAD CONFIG FILE");
   preferences.begin("settings", false);                         //Ordner settings anlegen/verwenden
   pSetting->settingsView = preferences.getUChar("setView",0); //
   pSetting->wifi.appw = preferences.getString("APPW","12345678");
   pSetting->boardType = eBoard(preferences.getUChar("BOARDTYPE",eBoard::UNKNOWN)); //
   pSetting->CPUFrequency = preferences.getUChar("CPUFREQU",240); //
+  pSetting->FrqCor = preferences.getLong("FrqCor",0); //
   pSetting->bHasExtPowerSw = preferences.getUChar("EXTPWSW",0); //external power-switch
   pSetting->RFMode = preferences.getUChar("RFM",11); //default FntRx + FntTx + LegTx
   pSetting->awLiveTracking = preferences.getUChar("AWLIVE",0); //
@@ -26,7 +27,7 @@ void load_configFile(SettingsData* pSetting){
   pSetting->wifi.connect = eWifiMode(preferences.getUChar("WIFI_CONNECT",eWifiMode::CONNECT_NONE)); //
   pSetting->wifi.ssid = preferences.getString("WIFI_SSID","");
   pSetting->wifi.password = preferences.getString("WIFI_PW","");
-  pSetting->wifi.tWifiStop = preferences.getUInt("Time_WIFI_Stop",180); //stop wifi after 3min.
+  pSetting->wifi.tWifiStop = preferences.getUInt("Time_WIFI_Stop",600); //stop wifi after 10min.
   pSetting->AircraftType = preferences.getUChar("AIRCRAFTTYPE",1);
   pSetting->UDPServerIP = preferences.getString("UDP_SERVER","192.168.4.2"); //UDP-IP-Adress to match connected device
   pSetting->UDPSendPort = preferences.getUInt("UDP_PORT",10110); //Port of udp-server
@@ -41,6 +42,28 @@ void load_configFile(SettingsData* pSetting){
   pSetting->gs.lon = preferences.getFloat("GSLON",0.0);
   pSetting->gs.alt = preferences.getFloat("GSALT",0.0);
   pSetting->gs.geoidAlt = preferences.getFloat("GSGEOALT",0.0);
+
+  String jsonString = preferences.getString("Fw2Fnt", "[]");
+  DynamicJsonDocument doc(1024);
+  deserializeJson(doc, jsonString);
+  JsonArray arr = doc.as<JsonArray>();
+  pSetting->gs.lstFw2Fanet.clear(); // vorher leeren
+  for (JsonObject obj : arr) {
+    wdataFw2Fanet d;
+    d.en = obj["en"];
+    d.id = obj["id"].as<String>();
+    d.pw = obj["pw"].as<String>();
+    d.service = obj["sv"];
+    d.tSend = obj["tSend"];
+    pSetting->gs.lstFw2Fanet.push_back(d);
+
+    //populate statusdata
+    wdataFw2FanetState sData;
+    sData.name = "";
+    sData.tSendName = millis();
+    sData.tSendWeather = millis();
+    pStatus->lstFw2Fanet.push_back(sData);
+  }
 
   pSetting->FntWuUpload[0].FanetId = preferences.getULong("F2WuF0",0);
   pSetting->FntWuUpload[1].FanetId = preferences.getULong("F2WuF1",0);
@@ -76,6 +99,7 @@ void load_configFile(SettingsData* pSetting){
   pSetting->gs.PowerSave = eGsPower(preferences.getUChar("GSPS",eGsPower::GS_POWER_ALWAYS_ON));
   pSetting->gs.sunriseOffset = eGsPower(preferences.getInt("GsSrO",0));
   pSetting->gs.sunsetOffset = eGsPower(preferences.getInt("GsSsO",0));
+  pSetting->wd.frequency = preferences.getFloat("WDANEFREQU",868.350);
   pSetting->wd.anemometer.AnemometerType = eAnemometer(preferences.getUChar("GSANEO",eAnemometer::DAVIS));
   pSetting->wd.anemometer.AnemometerAdsGain = preferences.getUChar("WDANEOADSGAIN",2);;
   pSetting->wd.anemometer.AnemometerAdsWSpeedMinVoltage = preferences.getFloat("WDANEOADSWSMINV",0.0);
@@ -168,12 +192,14 @@ void load_configFile(SettingsData* pSetting){
 }
 
 void write_configFile(SettingsData* pSetting){
+
   log_i("WRITE CONFIG FILE");
   preferences.begin("settings", false);                         //Ordner settings anlegen/verwenden
   preferences.putUChar("setView",pSetting->settingsView); //
   preferences.putString("APPW",pSetting->wifi.appw);
   preferences.putUChar("BOARDTYPE",pSetting->boardType); //
   preferences.putUChar("CPUFREQU",pSetting->CPUFrequency); //
+  preferences.putLong("FrqCor",pSetting->FrqCor);
   preferences.putUChar("EXTPWSW",pSetting->bHasExtPowerSw); //
   preferences.putUChar("RFM",pSetting->RFMode);
   preferences.putUChar("AWLIVE",pSetting->awLiveTracking); //
@@ -209,6 +235,7 @@ void write_configFile(SettingsData* pSetting){
   preferences.putUChar("GSPS",pSetting->gs.PowerSave);
   preferences.putInt("GsSrO",pSetting->gs.sunriseOffset);
   preferences.putInt("GsSsO",pSetting->gs.sunsetOffset);
+  preferences.putFloat("WDANEFREQU",pSetting->wd.frequency);
   preferences.putUChar("GSANEO",pSetting->wd.anemometer.AnemometerType);
   preferences.putUChar("WDANEOADSGAIN",pSetting->wd.anemometer.AnemometerAdsGain);
   preferences.putFloat("WDANEOADSVDIVR1",pSetting->wd.anemometer.AnemometerAdsVDivR1);
@@ -223,6 +250,21 @@ void write_configFile(SettingsData* pSetting){
   preferences.putFloat("WDANEOADSWDMAXD", pSetting->wd.anemometer.AnemometerAdsWDirMaxDir);
   preferences.putUChar("BattMinPerc",pSetting->minBattPercent);
   preferences.putUChar("restartBattPerc",pSetting->restartBattPercent);
+
+  DynamicJsonDocument doc(1024);
+  JsonArray arr = doc.to<JsonArray>();
+  for (auto &d : pSetting->gs.lstFw2Fanet) {
+    JsonObject obj = arr.createNestedObject();
+    obj["en"] = d.en;
+    obj["sv"] = d.service;
+    obj["id"] = d.id;
+    obj["pw"] = d.pw;
+    obj["tSend"] = d.tSend;
+  }
+  String jsonString;
+  serializeJson(doc, jsonString);
+  log_i("Fw2Fnt=%s",jsonString.c_str());
+  preferences.putString("Fw2Fnt", jsonString);
   
   preferences.putULong("F2WuF0",pSetting->FntWuUpload[0].FanetId);
   preferences.putULong("F2WuF1",pSetting->FntWuUpload[1].FanetId);
@@ -417,4 +459,22 @@ void write_CPUFrequency(void){
   preferences.begin("settings", false);
   preferences.putUChar("CPUFREQU",setting.CPUFrequency); //
   preferences.end(); 
+}
+
+void write_FanetUploadInterval(void){
+  preferences.begin("settings", false);
+  preferences.putULong("FanetWDInt", setting.wd.FanetUploadInterval);
+  preferences.end();
+}
+
+void write_windDirOffset(void){
+  preferences.begin("settings", false);
+  preferences.putULong("windDirOffset", setting.wd.windDirOffset);
+  preferences.end();
+}
+
+void write_AnemometerType() {
+  preferences.begin("settings", false);
+  preferences.putUChar("AnemoType", setting.wd.anemometer.AnemometerType);
+  preferences.end();
 }

@@ -207,7 +207,7 @@ int serialize_legacyTracking(ufo_t *Data,uint8_t*& buffer){
 	else
 		((uint16_t*)buffer)[3] = alt;
 	/* online tracking */
-	((uint16_t*)buffer)[3] |= !Data->stealth<<15;
+	((uint16_t*)buffer)[3] |= !(Data->stealth || Data->no_track)<<15;
 	/* aircraft type */
 	//((uint16_t*)buffer)[3] |= (LP_Flarm2FanetAircraft((eFlarmAircraftType)Data->aircraft_type)&0x7)<<12;
 	((uint16_t*)buffer)[3] |= (Flarm2FanetAircraft((eFlarmAircraftType)Data->aircraft_type)&0x7)<<12;
@@ -232,21 +232,20 @@ int serialize_legacyTracking(ufo_t *Data,uint8_t*& buffer){
 	return 11; //FANET_LORA_TYPE1_SIZE - 2;
 }
 
-
-uint8_t FanetMac::getAddressType(uint8_t manuId){
-	//  GxAircom            Skytraxx          XCTracer
-	if (manuId == 0x08 || manuId == 0x11 || manuId == 0x20 || manuId == 0xDD || manuId == 0xDE || manuId == 0xDF){
-			return 2; //address type FLARM
-			//log_i("address=%s Flarm",devId.c_str());
-	/*
-	}else if (manuId == 0x08){
-			return 3; //address type OGN        
-			//log_i("address=%s OGN",devId.c_str());
-	*/
-	}else{
-			return 0; //address type unknown
-	}
-}
+// uint8_t FanetMac::getAddressType(uint8_t manuId){
+// 	//  GxAircom            Skytraxx          XCTracer
+// 	if (manuId == 0x08 || manuId == 0x11 || manuId == 0x20 || manuId == 0xDD || manuId == 0xDE || manuId == 0xDF){
+// 			return 2; //address type FLARM
+// 			//log_i("address=%s Flarm",devId.c_str());
+// 	/*
+// 	}else if (manuId == 0x08){
+// 			return 3; //address type OGN        
+// 			//log_i("address=%s OGN",devId.c_str());
+// 	*/
+// 	}else{
+// 			return 0; //address type unknown
+// 	}
+// }
 
 void FanetMac::sendUdpData(const uint8_t *buffer,int len){
 	if ((WiFi.status() == WL_CONNECTED) || (WiFi.softAPgetStationNum() > 0)){ //connected to wifi or a client is connected to me
@@ -347,7 +346,7 @@ void FanetMac::frameReceived(int length)
       strftime(strftime_buf, sizeof(strftime_buf), "%F %T", &timeinfo);   
 			len += sprintf(Buffer+len,"%s;",strftime_buf);
 			//log_i("l=%d,%s",len,Buffer);
-			len += sprintf(Buffer+len,"F=%.1f;",fmac.actflarmFreq);
+			len += sprintf(Buffer+len,"F=%d;",fmac.actflarmFreq);
 			len += sprintf(Buffer+len,"Rx=%d;rssi=%d;", num_received, rssi);
 
 			for(int i=0; i<num_received; i++)
@@ -408,7 +407,7 @@ void FanetMac::frameReceived(int length)
 					bOk = false;
 				}else{
 					break;
-				}				
+				}
 			}
 			if (i == 0){
 				tOffset = 1;
@@ -435,11 +434,10 @@ void FanetMac::frameReceived(int length)
 		#endif
 		if (bOk){
 			#ifdef FLARMLOGGER
-			int iFrequ = int(fmac.actflarmFreq * 10);
-			if (iFrequ == 8684){
+			if (fmac.actflarmFreq == 868400000){
 				flarm_debugLog(_ppsMillis,&rx_frame[0],&myAircraft);
 			}
-			//log_i("%.2f",fmac.actflarmFreq);
+			//log_i("%d",fmac.actflarmFreq);
 			#endif
 			/*
 			if (air.addr == 0x111ECD){
@@ -480,7 +478,8 @@ void FanetMac::frameReceived(int length)
 		//frm->timeStamp = now;
 		frm->timeStamp = uint32_t(now());
 		//log_i("%d",frm->timeStamp);
-		frm->AddressType = getAddressType(frm->src.manufacturer) + 0x80; //set highest Bit, so we know, that it was a Fanet-MSG
+		//frm->AddressType = getAddressType(frm->src.manufacturer) + 0x80; //set highest Bit, so we know, that it was a Fanet-MSG
+		frm->AddressType = 2 + 0x80; //Fanet is always type 2, set highest Bit, so we know, that it was a Fanet-MSG
 		rxFntCount++;
   }  
 	frm->rssi = rssi;
@@ -512,13 +511,13 @@ void FanetMac::end()
 }
 
 
-bool FanetMac::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int8_t reset, int8_t dio0,int8_t gpio,Fapp &app,long frequency,uint8_t level,uint8_t radioChip)
+bool FanetMac::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int8_t reset, int8_t dio0,int8_t gpio,Fapp &app,long frequCor,uint8_t level,uint8_t radioChip)
 {
 	myApp = &app;
-	setup_frequency=frequency;
 	_ss = ss;
 	_reset = reset;
 	_actMode = 0;
+	_frequencyCorrection = frequCor;
 
 	// address 
 	_myAddr = readAddr();
@@ -533,24 +532,14 @@ bool FanetMac::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int8_t rese
 	}else{
 		radio.setPins(&SPI,ss,dio0,reset);
 	}
-	//radio.setPins(&SPI,ss,dio0,reset,32);
-	//radio.setPins(&SPI,ss,dio0,reset);
 	radio.gain = 1; //highest gain setting for FSK
-  int state = radio.begin(float(frequency) / 1000000.,250.0,7,8,0xF1,int8_t(level),radioChip);
+  int state = radio.begin(250.0,7,8,0xF1,int8_t(level),radioChip);
   if (state == ERR_NONE) {
     //log_i("success!");
   } else {
     log_e("failed, code %d",state);
 		return 0;
   }
-	// start listening for LoRa packets
-	/*	
-	if (_RfMode.bits.FntRx){
-		switchMode(MODE_LORA);
-	}else{
-		switchMode(MODE_FSK_8682);
-	}
-	*/
 	log_i("LoRa Initialization OK!");
 
 
@@ -562,7 +551,7 @@ bool FanetMac::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int8_t rese
 }
 
 void FanetMac::switchMode(uint8_t mode,bool bStartReceive){
-  time_t tUnix = 0;
+	time_t tUnix = 0;
 	uint32_t channel = 0;
 	//log_i("switch to mode %d",mode);
 	#if RX_DEBUG > 1
@@ -570,32 +559,36 @@ void FanetMac::switchMode(uint8_t mode,bool bStartReceive){
 	bool bChanged = false;
 	#endif
 	if (mode == MODE_LORA){
-		radio.switchLORA(loraFrequency,loraBandwidth);
-		actflarmFreq = 0.0;
+		radio.switchLORA(loraFrequency + _frequencyCorrection,loraBandwidth);
+		//actflarmFreq = 0;
 	}else if (mode == MODE_FSK_8682){
-		actflarmFreq = 868.2;
-		flarmFrequency = 868.2;
+		flarmFrequency = 868200000;
+		actflarmFreq = flarmFrequency + _frequencyCorrection;
 		radio.switchFSK(actflarmFreq);
 	}else if (mode == MODE_FSK_8684){
-		actflarmFreq = 868.4;
-		flarmFrequency = 868.4;
+		flarmFrequency = 868400000;
+		actflarmFreq = flarmFrequency + _frequencyCorrection;
 		radio.switchFSK(actflarmFreq);
 	}else if (mode == MODE_FSK){		
 		time(&tUnix);
 		channel = flarm_calculate_freq_channel(tUnix,(uint32_t)flarmChannels);
-		float frequ = 0.0;
-		frequ = flarmFrequency + (float(channel * 400) / 1000.0);
-		log_i("frequ=%.2f,channel=%d",frequ,channel);
-		if ((actflarmFreq != frequ) || (1 == 1)){
+		uint32_t frequ = 0;
+		frequ = flarmFrequency + (channel * ChanSepar) + _frequencyCorrection;
+		//log_i("frequ=%d,channel=%d",frequ,channel);
+		if ((actflarmFreq != frequ) || (!radio.isFskMode())) {
 			#if RX_DEBUG > 1
 			bChanged = true;
 			#endif
-			actflarmFreq = frequ;
-			log_i("switch to frequency %.3f",frequ);
+			actflarmFreq = frequ;			
+			//log_i("switch to frequency %d",frequ);
 			radio.switchFSK(actflarmFreq);
 		}
 	}
-	if (bStartReceive) radio.startReceive();	
+	
+	if (bStartReceive){
+		//log_i("startReceive");
+		radio.startReceive();	
+	} 
 	#if RX_DEBUG > 1
 	if (_actMode != mode){
 		bChanged = true;
@@ -608,13 +601,13 @@ void FanetMac::switchMode(uint8_t mode,bool bStartReceive){
 		int len = 0;
 		len += sprintf(Buffer+len,"%d switch to mode ",millis());
 		if (mode == MODE_LORA){
-			len += sprintf(Buffer+len,"LORA %0.1fMhz BW=%d",loraFrequency,loraBandwidth);
+			len += sprintf(Buffer+len,"LORA %dHz BW=%d",loraFrequency,loraBandwidth);
 		}else if (mode == MODE_FSK_8682){
-			len += sprintf(Buffer+len,"FSK %0.1fMhz ",actflarmFreq);
+			len += sprintf(Buffer+len,"FSK %dHz ",actflarmFreq);
 		}else if (mode == MODE_FSK_8684){
-			len += sprintf(Buffer+len,"FSK %0.1fMhz ",actflarmFreq);
+			len += sprintf(Buffer+len,"FSK %dHz ",actflarmFreq);
 		}else if (mode == MODE_FSK){
-			len += sprintf(Buffer+len,"FSK c=%d,f=%0.2f,t=%d",channel,actflarmFreq,tUnix);
+			len += sprintf(Buffer+len,"FSK c=%d,f=%d,t=%d",channel,actflarmFreq,tUnix);
 			//log_i("channel=%d,frequ=%.2f,time=%d",channel,frequ,tUnix);
 		}
 		len += sprintf(Buffer+len,"in %dus pps=%d\n",int(micros()-tBegin),int(millis() - _ppsMillis));
@@ -773,6 +766,26 @@ void FanetMac::stateWrapper()
 					tSwitch = tAct;
 				}
 			}
+		}else if (fmac.flarmZone == 3){ //NZ only 1 Channel
+			if (fmac._RfMode.bits.FntRx && fmac._RfMode.bits.LegRx){
+				//no GPS-Sensor but Flarm and Fanet-RX --> 5.3sec. for Fanet, 2.3sec. Flarm
+				if (fmac._actMode == MODE_LORA){
+					if ((tAct - tSwitch) >= 5300){
+						fmac.switchMode(MODE_FSK);
+						tSwitch = millis();
+					}
+				}else{
+					if ((tAct - tSwitch) >= 2300){					
+						fmac.switchMode(MODE_LORA);
+						tSwitch = millis();
+					}
+				}
+			}else if (!fmac._RfMode.bits.FntRx && fmac._RfMode.bits.LegRx){			
+				//only Legacy-Receive
+				if (fmac._actMode != MODE_FSK){
+					fmac.switchMode(MODE_FSK);
+				}
+			}
 		}
 	}
   fmac.handleRx();
@@ -836,10 +849,13 @@ void FanetMac::ack(Frame* frm)
  * Processes irq
  */
 void FanetMac::handleIRQ(){
+	static uint8_t rxCount = 0;
 	// check if the flag is set
+	//log_i("handleIRQ");
 	if (radio.isRxMessage()) {	
-		
 		int16_t packetSize = radio.getPacketLength();
+		//log_i("new message arrived %d len=%d",rxCount,packetSize);
+		rxCount++;
 		#if RX_DEBUG > 1
 		  //log_i("new package arrived %d",packetSize);
 		#endif
@@ -848,6 +864,7 @@ void FanetMac::handleIRQ(){
 			fmac.frameReceived(packetSize);
 			
 		}
+		//log_i("startReceive");
   	radio.startReceive();
 	}
 	return;
@@ -1004,46 +1021,46 @@ void FanetMac::setRegion(float lat, float lon){
 	if (eLoraRegion == NONE){
 		if (-169.0f < lon && lon < -30.0f){
 			eLoraRegion = US920;
-			loraFrequency = 920.8;
+			loraFrequency = 920800000;
 			loraBandwidth = 500;
 			log_i("set Lora-Region to US920");
 		}	else if (110.0f < lon && lon < 179.0f && -48.0f < lat && lat < 10.0f){
 			eLoraRegion = AU920;
-			loraFrequency = 920.8;
+			loraFrequency = 920800000;
 			loraBandwidth = 500;
 			log_i("set Lora-Region to AU920");
 		} else if (69.0f < lon && lon < 89.0f && 5.0f < lat && lat < 40.0f){
 			eLoraRegion = IN866;
-			loraFrequency = 866.2;
+			loraFrequency = 866200000;
 			loraBandwidth = 250;
 			log_i("set Lora-Region to IN866");
 		} else if (124.0f < lon && lon < 130.0f && 34.0f < lat && lat < 39.0f){
 			eLoraRegion = KR923;
-			loraFrequency = 923.2;
+			loraFrequency = 923200000;
 			loraBandwidth = 125;
 			log_i("set Lora-Region to KR923");
 		} else if (89.0f < lon && lon < 146.0f && 21.0f < lat && lat < 47.0f){
 			eLoraRegion = AS920;
-			loraFrequency = 923.2;
+			loraFrequency = 923200000;
 			loraBandwidth = 125;
 			log_i("set Lora-Region to AS920");
 		} else if (34.0f < lon && lon < 36.0f && 29.0f < lat && lat < 34.0f){
 			eLoraRegion = IL918;
-			loraFrequency = 918.5;
+			loraFrequency = 918500000;
 			loraBandwidth = 125;
 			log_i("set Lora-Region to IL918");
 		} else{
 			eLoraRegion = EU868;
 			log_i("set Lora-Region to EU868");
-			loraFrequency = 868.2;
+			loraFrequency = 868200000;
 			loraBandwidth = 250;
 		} 
 		bstartRec = true;
 	}
 	if (flarmZone == 0){
 		flarmZone = flarm_get_zone(lat,lon);		
-		flarm_getFrequencyChannels(flarmZone,&flarmFrequency,&flarmChannels);
-		log_i("zone=%d,freq=%.1f,channels=%d",flarmZone,flarmFrequency,flarmChannels);		
+		flarm_getFrequencyChannels(flarmZone,&flarmFrequency,&ChanSepar,&flarmChannels,&radio.maxFskPower);
+		log_i("zone=%d,freq=%d,seperation=%d,channels=%d,maxTxPower=%d",flarmZone,flarmFrequency,ChanSepar,flarmChannels,radio.maxFskPower);		
 		bstartRec = true;
 	}
 	if (bstartRec){
@@ -1167,6 +1184,7 @@ void FanetMac::handleTxLegacy()
 		if (_actMode != oldMode){
 			fmac.switchMode(oldMode,false); //switch back to old mode and receive
 		}
+		//log_i("startReceive");
 		radio.startReceive();		
 		#if TX_DEBUG > 0
 		Serial.printf("ppsCount=%d,leg_Tx=%d\n",ppsCount,micros()-tStart);
@@ -1313,6 +1331,7 @@ void FanetMac::handleTx()
 		//log_i("TX OK");
 		txFntCount++;
 	}
+	//log_i("startReceive");
 	state = radio.startReceive();
 	if (state != ERR_NONE) {
 			log_e("startReceive failed, code %d",state);
@@ -1446,3 +1465,11 @@ bool FanetMac::setAddr(uint32_t addr)
 }
 
 FanetMac fmac = FanetMac();
+
+float FanetMac::getAirtime() {
+	return radio.get_airlimit();
+}
+
+int FanetMac::getTxQueueLength() {
+	return tx_fifo.size();
+}

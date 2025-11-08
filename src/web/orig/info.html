@@ -9,11 +9,16 @@
 var pageNumber=2;
 var wsMode=0;
 var rtc=0;
+var anmeoType = 0;
+const wdWS90 = 5;
 const wsModeEn = 1;
 const wsModeBme = 2;
 const wsModeRain = 4;
 const wsModeDS18B20 = 8;
 const wsModeSHT20 = 16;
+
+var Fw2FanetEntrys = 0;
+
 function resetMaxLoopTime(){
   var obj = {rLoopTime : 1};
   doSend(JSON.stringify(obj));
@@ -22,44 +27,21 @@ function resetMaxLoopTime(){
 
 /*this function sets visible depending on actual option*/
 function setVis(){
-  document.getElementById("VisWdTemp").style.display='none';
-  document.getElementById("VisWdHum").style.display='none';
-  document.getElementById("VisWdPress").style.display='none';
-  document.getElementById("VisWdR1h").style.display='none';
-  document.getElementById("VisWdR1d").style.display='none';
-  document.getElementById("VisAirCraftType").style.display='none';
-  document.getElementById("VisgpsFix").style.display='none';
-  document.getElementById("VisgpsNumSat").style.display='none';
-  document.getElementById("VisgpsTime").style.display='none';  
-  document.getElementById("VisgpsSpeed").style.display='none';
-  document.getElementById("VisgpsCourse").style.display='none';  
-  document.getElementById("visRTC").style.display='none';
-  if (rtc != 0){
-    document.getElementById("visRTC").style.display='';
-  }  
-  if (document.getElementById("mode").value == 1){ /*mode ground-station*/
-    if (wsMode & wsModeBme){
-      document.getElementById("VisWdTemp").style.display='';
-      document.getElementById("VisWdHum").style.display='';
-      document.getElementById("VisWdPress").style.display='';
-    }else if (wsMode & wsModeDS18B20){
-      document.getElementById("VisWdTemp").style.display='';
-    }else if (wsMode & wsModeSHT20){
-      document.getElementById("VisWdTemp").style.display='';
-      document.getElementById("VisWdHum").style.display='';
-    }
-    if (wsMode & wsModeRain){
-      document.getElementById("VisWdR1h").style.display='';
-      document.getElementById("VisWdR1d").style.display='';
-    }
-  }else{
-    document.getElementById("VisAirCraftType").style.display='';
-    document.getElementById("VisgpsFix").style.display='';
-    document.getElementById("VisgpsNumSat").style.display='';
-    document.getElementById("VisgpsTime").style.display='';  
-    document.getElementById("VisgpsSpeed").style.display='';
-    document.getElementById("VisgpsCourse").style.display='';
-  }
+  var mode = document.getElementById("mode").value;
+
+  setvisible("VisWdTemp",((mode == GROUND_STATION) && (wsMode & wsModeEn) && ((anmeoType == WS90) || (wsMode & wsModeBme) || (wsMode & wsModeDS18B20) || (wsMode & wsModeSHT20)))?true:false);
+  setvisible("VisWdHum",((mode == GROUND_STATION) && (wsMode & wsModeEn) && ((anmeoType == WS90) || (wsMode & wsModeBme) || (wsMode & wsModeSHT20)))?true:false);
+  setvisible("VisWdPress",((mode == GROUND_STATION) && (wsMode & wsModeEn) && (wsMode & wsModeBme))?true:false);
+  setvisible("VisWdR1h",((mode == GROUND_STATION) && (wsMode & wsModeEn) && (wsMode & wsModeRain))?true:false);
+  setvisible("VisWdR1d",((mode == GROUND_STATION) && (wsMode & wsModeEn) && (wsMode & wsModeRain))?true:false);
+  setvisible("VisAirCraftType",((mode == AIR_MODULE))?true:false);
+  setvisible("VisgpsFix",((mode == AIR_MODULE))?true:false);
+  setvisible("VisgpsNumSat",((mode == AIR_MODULE))?true:false);
+  setvisible("VisgpsTime",((mode == AIR_MODULE))?true:false);
+  setvisible("VisgpsSpeed",((mode == AIR_MODULE))?true:false);
+  setvisible("VisgpsCourse",((mode == AIR_MODULE))?true:false);
+  setvisible("visRTC",((rtc != 0))?true:false);
+  setvisible("VisGSFw2Fanet",((Fw2FanetEntrys > 0))?true:false);
 }
 
 function getWifiRssi(sValue){
@@ -83,6 +65,50 @@ function getWifiRssi(sValue){
   }  
 }
 
+// Function to populate the table from JSON
+function populateTableFromJson(data) {
+  deleteAllRowsFromTable("TableFw2Fnt");
+  data.Fw2Fnt.forEach(item => {
+    addRowToTable(item);
+  });
+  Fw2FanetEntrys = 1;
+  setVis();
+}
+
+// Function to add a row based on an item
+function addRowToTable(item){
+  console.log("addRowToTable");
+  const table = document.getElementById("TableFw2Fnt");
+  const row = table.insertRow(-1);
+
+  var cell = row.insertCell(-1);
+  const date = new Date(item.ts * 1000);
+  const iso = date.toISOString();
+  const formattedDate = iso.replace('T', ' ').split('.')[0];
+  cell.innerHTML = formattedDate
+  if (item.err){
+    cell.style.backgroundColor = '#ff0000' //set background-color to red to indicate, ts is to old
+  }
+
+  cell = row.insertCell(-1);
+  cell.innerHTML = "<a href=\"https://www.google.com/maps/search/?api=1&query=" +item.lat + "," + item.lon + "\"  target=\"_blank\">" +  item.name + "</a>"
+
+  cell = row.insertCell(-1);
+  if (item.bWind){
+    cell.innerHTML = item.wSpeed + "/" + item.wGust + " " + getWDir(item.wDir)
+  } 
+  cell = row.insertCell(-1);
+  if (item.bTemp) cell.innerHTML = item.temp
+
+  cell = row.insertCell(-1);
+  if (item.bHumidity) cell.innerHTML = item.Hum
+
+  cell = row.insertCell(-1);
+  cell.innerHTML = item.rxCnt
+}
+
+
+
 /* Called when a message is received from the server*/
 function onMessage(evt) {
     /* Print out our received message*/
@@ -91,6 +117,11 @@ function onMessage(evt) {
     var myObj = JSON.parse(evt.data);
     for (var key of Object.keys(myObj)) {
         console.log(key + " -> " + myObj[key]);
+        if (key == "Fw2Fnt"){
+          console.log("Fw2Fnt found");
+          populateTableFromJson(myObj);
+          continue;    
+        }
         if (key == "bHasVario"){
           if (myObj[key] == 0){
             document.getElementById("VisVario").style.display='none';
@@ -101,6 +132,9 @@ function onMessage(evt) {
           continue;
         }else if (key == "WsMode"){
           wsMode = myObj[key];
+          continue;
+        }else if (key == "wdAnemo"){
+          anmeoType = myObj[key];
           continue;
         }else if (key == "bHasGSM"){
           if (myObj[key] == 0){
@@ -142,20 +176,7 @@ function onMessage(evt) {
         }else if (key == "wifiSTARssi"){
           myObj[key] = getWifiRssi(myObj[key]);          
         }
-        var e = document.getElementById(key);
-        if (e == null) continue;
-        if (e instanceof HTMLSelectElement) {
-          document.getElementById(key).value = myObj[key];
-        }else if ((e instanceof HTMLInputElement ) && (e.getAttribute('type') == 'checkbox')){
-          if (myObj[key] == 1){
-            document.getElementById(key).checked = true;
-          }else{
-            document.getElementById(key).checked = false;
-          }
-        }else{
-          document.getElementById(key).textContent = myObj[key];
-          document.getElementById(key).value = myObj[key];
-        }
+        setElement(key,myObj[key]);
     }
     setVis();
 }
@@ -364,12 +385,22 @@ function onMessage(evt) {
     </fieldset>
     <p></p>
     <p></p>
+    <fieldset id="VisGSFw2Fanet">
+      <legend><b>Forward weather-data from Weather-station to FANET</b></legend>
+      <table  id="TableFw2Fnt" class="list" style="width:100&#37;">
+        <tbody>
+          <tr><th>time</th><th>name</th><th>wind</th><th>temp [°C]</th><th>humidity [%rH]</th><th>rx counter</th></tr>
+        </tbody>      
+      </table>
+    </fieldset>
+    <p></p>
+    <p></p>
     <fieldset>
       <legend><b>FANET</b></legend>
       <table style="width:100&#37;">
         <tbody>
           <tr>
-            <th>frequency [MHz]</th>
+            <th>frequency [Hz]</th>
             <td><input type="text" id="fanetFrequ" disabled></td>
           </tr>
           <tr>
@@ -390,7 +421,7 @@ function onMessage(evt) {
       <table style="width:100&#37;">
         <tbody>
           <tr>
-            <th>frequency [MHz]</th>
+            <th>frequency [Hz]</th>
             <td><input type="text" id="legFrequ" disabled></td>
           </tr>
           <tr>

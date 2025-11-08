@@ -5,7 +5,6 @@
 <meta charset='utf-8'>
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
 <title>GXAirCom</title>
-<script src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>
 <script language="javascript" type="text/javascript">
 var pageNumber=5;
 var UpdState = 0;
@@ -15,8 +14,6 @@ function onMessage(evt) {
  
  /* Print out our received message*/
  console.log("Received: " + evt.data);
- 
- /* Update circle graphic with LED state*/
  var myObj = JSON.parse(evt.data);
  for (var key of Object.keys(myObj)) {
     console.log(key + " -> " + myObj[key]);
@@ -27,20 +24,7 @@ function onMessage(evt) {
       newVersion = myObj[key];
       continue;
     }
-    var e = document.getElementById(key);
-    if (e == null) continue;
-    if (e instanceof HTMLSelectElement) {     /* <select>*/
-      document.getElementById(key).value = myObj[key];
-    }else if ((e instanceof HTMLInputElement ) && (e.getAttribute('type') == 'checkbox')){     /* <input checkbox>*/
-      if (myObj[key] == 1){
-        document.getElementById(key).checked = true;
-      }else{
-        document.getElementById(key).checked = false;
-      }
-    }else{
-      document.getElementById(key).textContent = myObj[key];
-      document.getElementById(key).value = myObj[key];
-    }
+    setElement(key,myObj[key]);
   }
   setUpdateState();
 }
@@ -78,7 +62,7 @@ function setUpdateState(){
     default:
       break;
   }
-}
+}  
 
 function btnUpdClick(){
   if (UpdState == 10){
@@ -94,6 +78,42 @@ function btnUpdClick(){
   doSend(JSON.stringify(obj));
   setUpdateState();
 
+}
+
+function updateProgress(evt) 
+{
+   if (evt.lengthComputable){
+        let percent = (evt.loaded / evt.total) * 100;
+        console.log(`Upload: ${percent.toFixed(2)}%`);
+        // Optionally update a progress bar here
+        document.getElementById("prg").innerText = `Upload: ${percent.toFixed(0)}%`;
+   } 
+}  
+
+function uploadFirmware() {
+    const fileInput = document.getElementById("fwfile");
+    const file = fileInput.files[0];
+    if (!file) return alert("Select a file");
+    const update_url =  "/fwupdate";
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const xhr = new XMLHttpRequest();
+    xhr.upload.onprogress = updateProgress;
+    xhr.open("POST", update_url, true);
+    xhr.onload = () => {
+        console.log(xhr.responseText);
+    };
+    xhr.onreadystatechange = function (aEvt) {  
+        if (xhr.readyState == 4) 
+        {  
+          document.getElementById("btnUpdate").innerText  = "rebooting ...";
+          var delay = 5000; /*wait 5 seconds until reconnect*/
+          setTimeout( callMainPage, delay );
+          console.log('success!');
+        }  
+    };     
+    xhr.send(formData);
 }
 
 </script>
@@ -115,14 +135,13 @@ function btnUpdClick(){
 	  3. start upgrade <br>
 	  3. Search and select "spiffs_xxx.bin"	 <br>
 	  5. start upgrade <br>
-      <form method="post" action="/fwupdate" enctype='multipart/form-data' id='upload_form'>
-        <br>
-        <input type='file' name='update' required>
-        <br>
-        <br>
-        <button type="submit" id="btnUpdate">start upgrade</button>
-      </form>
-      <div id='prg'>progress: 0&#37;</div>
+    <br>
+    <br>
+    <input type="file" id="fwfile">
+    <br>
+    <br>
+    <button type="button"  id="btnUpdate" onClick="uploadFirmware()">start upload</button>
+    <div id='prg'>progress: 0&#37;</div>
     </fieldset>
     <p></p>
     <p></p>
@@ -152,43 +171,5 @@ function btnUpdClick(){
     <div style='text-align:right;font-size:11px;'><hr><a href='https://www.getronix.at' target='_blank' style='color:#aaa;'>GXAirCom by Gerald Eichler</a>
     </div>
   </div>
-  <script>
-    function callMainPage(){
-      window.location="/index.html";
-    }    
-
-    $('form').submit(function(e){
-      document.getElementById("btnUpdate").innerText  = "update is running ....";
-      e.preventDefault();
-      var form = $('#upload_form')[0];
-      var data = new FormData(form);
-      $.ajax({
-        url: '/fwupdate',
-        type: 'POST',
-        data: data,
-        contentType: false,
-        processData:false,
-        xhr: function() {
-          var xhr = new window.XMLHttpRequest();
-          xhr.upload.addEventListener('progress', function(evt) {
-          if (evt.lengthComputable) {
-          var per = evt.loaded / evt.total;
-          $('#prg').html('progress: ' + Math.round(per*100) + '&#37;');
-        }
-      }, false);
-      return xhr;
-    },
-    success:function(d, s) {
-      document.getElementById("btnUpdate").innerText  = "rebooting ...";
-      var delay = 5000; /*wait 5 seconds until reconnect*/
-      setTimeout( callMainPage, delay );
-      console.log('success!');
-   },
-   error: function (a, b, c) {
-   }
-   });
-   });
-   </script>
-  
 </body>
 </html>

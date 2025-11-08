@@ -40,7 +40,7 @@ String FanetLora::getMyDevId(void){
     return getDevId(_myData.devId);
 }
 
-bool FanetLora::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int8_t reset, int8_t dio0, int8_t gpio,long frequency,uint8_t outputPower,uint8_t radio){
+bool FanetLora::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int8_t reset, int8_t dio0, int8_t gpio,long frequCor,uint8_t outputPower,uint8_t radio){
   valid_until = millis() - 1000; //set Data to not valid
   _myData.lat = 0.0;
   _myData.lon = 0.0;
@@ -56,7 +56,7 @@ bool FanetLora::begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int8_t res
   }
 
   fmac.setRfMode(_RfMode);
-  bool bRet = fmac.begin(sck, miso, mosi, ss, reset, dio0,gpio,*fa,frequency,outputPower,radio);
+  bool bRet = fmac.begin(sck, miso, mosi, ss, reset, dio0,gpio,*fa,frequCor,outputPower,radio);
   _myData.devId = ((uint32_t)fmac.myAddr.manufacturer << 16) + (uint32_t)fmac.myAddr.id;
   
   // init Flarm-Data
@@ -307,7 +307,7 @@ int16_t FanetLora::getWeatherIndex(uint32_t devId,bool getEmptyEntry){
     memset(&weatherDatas[iRet],0,sizeof(weatherDatas[iRet])); //clear slot
     return iRet; //we give back an empty slot
   }else{
-    return iOldestEntry; //we tell the oldest entry to override !! (only if we to much traffic)
+    return iOldestEntry; //we tell the oldest entry to override !! (only if we hav to much traffic)
   }
 }
 
@@ -393,6 +393,7 @@ void FanetLora::insertDataToNeighbour(uint32_t devId, trackingData *Data){
   neighbours[index].rssi = Data->rssi;
   neighbours[index].type = Data->type;
   neighbours[index].addressType = Data->addressType;
+  neighbours[index].OnlineTracking = Data->OnlineTracking;
 }
 
 void FanetLora::clearNeighboursWeather(uint32_t tAct){
@@ -552,6 +553,11 @@ int8_t FanetLora::getWeatherinfo(uint8_t *buffer,uint16_t length){
   if (header & 0x10) expectedpacketLength += 1; //Humidity (+1byte:
   if (header & 0x20) expectedpacketLength += 3; //Wind (+3byte 
   if (header & 0x40) expectedpacketLength += 1; //Temperature (+1byte
+  if (header & 0x80){
+    lastWeatherData.bInternetGateway = true;
+  }else{
+    lastWeatherData.bInternetGateway = false;
+  }
 
   if (expectedpacketLength != length){
     //log_e("length of Frame wrong %d!=%d",expectedpacketLength,length);
@@ -616,7 +622,7 @@ int8_t FanetLora::getWeatherinfo(uint8_t *buffer,uint16_t length){
     lastWeatherData.Charge = float(charge) * 100 / 15; //State of Charge  (+1byte lower 4 bits: 0x00 = 0%, 0x01 = 6.666%, .. 0x0F = 100%)
   }else{
     lastWeatherData.bStateOfCharge = false;
-    lastWeatherData.Charge = NAN;
+    lastWeatherData.Charge = NAN;    
   }
   newWData = true;
   return 0;
@@ -753,7 +759,6 @@ void FanetLora::handle_frame(Frame *frm){
     }
     
   }else if (frm->type == 2){      
-    //log_i("name=%s",msg2.c_str());
     if (frm->payload_length <= 66){
       String msg2 = ""; 
       for(int i=0; i<frm->payload_length; i++)
@@ -765,8 +770,9 @@ void FanetLora::handle_frame(Frame *frm){
       lastNameData.snr = frm->snr;
       lastNameData.name = msg2;
       newName = true;
-      insertNameToWeather(lastNameData.devId,msg2); //insert name in weather-list
-      insertNameToNeighbour(lastNameData.devId,msg2); //insert name in neighbour-list
+      //log_i("got name from dev=devId=%06X,name=%s",lastNameData.devId,lastNameData.name.c_str());
+      insertNameToWeather(lastNameData.devId,lastNameData.name); //insert name in weather-list
+      insertNameToNeighbour(lastNameData.devId,lastNameData.name); //insert name in neighbour-list
     }else{
       //log_e("length of Frame type:%d to long %d",frm->type,frm->payload_length);
       bFrameOk = false;
@@ -792,9 +798,11 @@ void FanetLora::handle_frame(Frame *frm){
       lastWeatherData.devId = getDevIdFromMac(&frm->src);
       lastWeatherData.rssi = frm->rssi;
       lastWeatherData.snr = frm->snr;
+      //log_i("weather-info from dev=devId=%06X",lastWeatherData.devId);
       if (getWeatherinfo(frm->payload,frm->payload_length) == 0){
         insertDataToWeatherStation(lastWeatherData.devId,&lastWeatherData);
       }else{
+        log_e("can't get weather-data from message");
         bFrameOk = false;
       }
       
@@ -973,10 +981,11 @@ void FanetLora::sendMSG(String msg){
     }
 }
 
-void FanetLora::sendName(String name){
+void FanetLora::sendName(String name,uint8_t addrOffset){
     if (name.length() > 0){
-        //log_i("sending fanet-name:%s",name.c_str());
+        //log_i("sending fanet-name:%s,offset=%d",name.c_str(),addrOffset);
         Frame *frm = new Frame(fmac.myAddr);
+        frm->src.id += addrOffset;
         frm->type = FRM_TYPE_NAME;
         frm->payload_length = serialize_name(name,frm->payload);
         frm2txBuffer(frm);
@@ -1210,8 +1219,8 @@ void FanetLora::writeMsgType1(trackingData *tData){
   sendTracking(tData);
 }
 
-void FanetLora::writeMsgType2(String name){
-    sendName(name);
+void FanetLora::writeMsgType2(String name,uint8_t addrOffset){
+    sendName(name,addrOffset);
 }
 
 
@@ -1239,7 +1248,7 @@ int FanetLora::serialize_GroundTracking(trackingData *Data,uint8_t*& buffer){
 	Frame::coord2payload_absolut(Data->lat, Data->lon, buffer);
 
 	/* state */
-	buffer[6] = (state&0x0F)<<4 | (!!doOnlineTracking);
+	buffer[6] = (state&0x0F)<<4 | (Data->OnlineTracking);
 
 	return FANET_LORA_TYPE7_SIZE;
 }
@@ -1256,7 +1265,7 @@ int FanetLora::serialize_tracking(trackingData *Data,uint8_t*& buffer){
 	else
 		((uint16_t*)buffer)[3] = alt;
 	/* online tracking */
-	((uint16_t*)buffer)[3] |= !!doOnlineTracking<<15;
+	((uint16_t*)buffer)[3] |= Data->OnlineTracking<<15;
 	/* aircraft type */
 	((uint16_t*)buffer)[3] |= (Data->aircraftType&0x7)<<12;
 
@@ -1292,7 +1301,7 @@ int FanetLora::serialize_service(weatherData *wData,uint8_t*& buffer){
   pkt->bHumidity = wData->bHumidity;
   pkt->bWind = wData->bWind;
   pkt->bTemp = wData->bTemp;
-  pkt->bInternetGateway = false;
+  pkt->bInternetGateway = wData->bInternetGateway;
   index++;
   coord2payload_absolut(wData->lat,wData->lon, &buffer[index]);
   index+= 6;
@@ -1351,8 +1360,9 @@ int FanetLora::serialize_service(weatherData *wData,uint8_t*& buffer){
   return index;
 }
 
-void FanetLora::writeMsgType4(weatherData *wData){
+void FanetLora::writeMsgType4(weatherData *wData,uint8_t addrOffset){
   Frame *frm = new Frame(fmac.myAddr);
+  frm->src.id += addrOffset;
   frm->type = FRM_TYPE_SERVICE;
   frm->forward = true;
   frm->payload_length = serialize_service(wData,frm->payload);
@@ -1363,7 +1373,7 @@ float FanetLora::getLoraFrequency(void){
   return fmac.loraFrequency;
 }
 float FanetLora::getFlarmFrequency(void){
-  return fmac.flarmFrequency;
+  return fmac.actflarmFreq;
 }
 
 void FanetLora::setMyTrackingData(trackingData *tData,float geoidAlt,uint32_t ppsMillis){
@@ -1374,6 +1384,7 @@ void FanetLora::setMyTrackingData(trackingData *tData,float geoidAlt,uint32_t pp
     _myData.lat = tData->lat;
     _myData.lon = tData->lon;
     _myData.speed = tData->speed;
+    _myData.OnlineTracking = tData->OnlineTracking;
     fmac.lat = _myData.lat;
     fmac.lon = _myData.lon;
     fmac.geoidAlt = geoidAlt;

@@ -227,7 +227,6 @@ private:
 
 	unsigned long csma_next_tx = 0;
 	int csma_backoff_exp = MAC_TX_BACKOFF_EXP_MIN;
-	long setup_frequency;
 	
 	/* used for interrupt handler */
 
@@ -243,7 +242,7 @@ private:
 	void handleTxLegacy();
 	void handleRx();
 	void switchMode(uint8_t mode,bool bStartReceive = true);
-	uint8_t getAddressType(uint8_t manuId);
+	//uint8_t getAddressType(uint8_t manuId);
   //void coord2payload_absolut(float lat, float lon, uint8_t *buf);
 
 	bool isNeighbor(MacAddr addr);
@@ -261,7 +260,7 @@ private:
 	uint8_t flarmZone = 0;
 	uint16_t loraBandwidth = 0;
 	uint8_t flarmChannels = 0;
-	float actflarmFreq = 0.0;
+	uint32_t ChanSepar = 200000;
 
 public:
 
@@ -276,16 +275,19 @@ public:
 	uint16_t rxFntCount = 0;
 	uint16_t txLegCount = 0;
 	uint16_t rxLegCount = 0;
-	float loraFrequency = 0.0;
-	float flarmFrequency = 0.0;
+	uint32_t loraFrequency = 0;
+	uint32_t flarmFrequency = 0;
+	uint32_t actflarmFreq = 0;
+	long _frequencyCorrection = 0;
 
 	FanetMac() : myTimer(MAC_SLOT_MS, stateWrapper), myAddr(_myAddr) { }
 	~FanetMac() { }
 
-	bool begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int8_t reset, int8_t dio0,int8_t gpio,Fapp &app,long frequency,uint8_t level,uint8_t radioChip);
+	bool begin(int8_t sck, int8_t miso, int8_t mosi, int8_t ss,int8_t reset, int8_t dio0,int8_t gpio,Fapp &app,long frequCor,uint8_t level,uint8_t radioChip);
 	void end();
 	void handle() { radio.run(); myTimer.Update();  }
-
+	float getAirtime();
+	int getTxQueueLength();
 	bool txQueueDepleted(void) { return (tx_fifo.size() == 0); }
 	bool txQueueHasFreeSlots(void){ return (tx_fifo.size() < MAC_FIFO_SIZE); }
 	int transmit(Frame *frm) { return tx_fifo.add(frm); }

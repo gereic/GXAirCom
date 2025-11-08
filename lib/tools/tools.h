@@ -9,6 +9,7 @@
 
 #include <inttypes.h>
 #include <Arduino.h>
+#include <ArduinoJson.h>
 
 bool timeOver(uint32_t tAct,uint32_t timestamp,uint32_t tTime);
 uint32_t gettimeElapsed(uint32_t tAct,uint32_t timestamp);
@@ -22,4 +23,22 @@ float kmh2mph(float f);
 float deg2f(float f);
 double dewPointFast(double celsius, double humidity);
 bool checkValueDiff(float f1, float f2, uint8_t decimals);
+// Helper function: assigns the value if the key exists
+template<typename T>
+bool assignIfExists(JsonObject& obj, const char* key, T& target) {
+    if (obj.containsKey(key)) {
+        target = obj[key].as<T>();
+        return true;
+    }
+    return false;
+}
+// Special version for enums or casts
+template<typename T, typename U>
+bool assignIfExistsCast(JsonObject& root, const char* key, T& target) {
+  if (root.containsKey(key)) {
+    target = static_cast<T>(root[key].as<U>());
+    return true;
+  }
+  return false;
+}
 #endif

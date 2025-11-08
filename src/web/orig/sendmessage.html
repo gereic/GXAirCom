@@ -25,7 +25,7 @@
 
 
  function sendSystemCmd(){
-  document.getElementById("FNTMSGIN").value = ""; //clear msg
+  document.getElementById("FNTMSGIN").value = ""; /*clear msg  */
 
   var sMsg =  "P" + document.getElementById("fanetId").value + document.getElementById("syscmd").value;
   var sManuId = document.getElementById("manuId").value;
@@ -44,7 +44,7 @@
 function sendValues(){  
   
   
-  document.getElementById("FNTMSGIN").value = ""; //clear msg
+  document.getElementById("FNTMSGIN").value = ""; /*clear msg  */
   var sMsg = document.getElementById("msg").value;
   var sManuId = document.getElementById("manuId").value;
   var sReceiver = "";
@@ -76,13 +76,13 @@ function changeRow(key,myObj){
   
 
  
-// Called when a message is received from the server
+/* Called when a message is received from the server  */
 function onMessage(evt) {
  
-    // Print out our received message
+    /* Print out our received message  */
     console.log("Received: " + evt.data);
     
-    // Update circle graphic with LED state
+    /* Update circle graphic with LED state  */
     var myObj = JSON.parse(evt.data);
     for (var key of Object.keys(myObj)) {
         console.log(key + " -> " + myObj[key]);
@@ -99,42 +99,28 @@ function onMessage(evt) {
           bChangeRow = 1;
           break; /*jump out of the loop*/
         }
-        var e = document.getElementById(key);
-        if (e == null) continue;
-        if (e instanceof HTMLSelectElement) {     /* <select>*/
-          document.getElementById(key).value = myObj[key];
-        }else if ((e instanceof HTMLInputElement ) && (e.getAttribute('type') == 'checkbox')){     /* <input checkbox>*/
-          if (myObj[key] == 1){
-            document.getElementById(key).checked = true;
-          }else{
-            document.getElementById(key).checked = false;
-          }
-          
-        }else{
-          document.getElementById(key).textContent = myObj[key];
-          document.getElementById(key).value = myObj[key];
-        }
+        setElement(key,myObj[key]);
     }
     if (bChangeRow == 1){
       changeRow(key,myObj);
     }else{
-      setVis(); //now set visibility
+      setVis(); /*now set visibility  */
     }
     
 }
  
-//this function sets visible depending on actual option
+/*this function sets visible depending on actual option  */
 function setVis(){
-  //console.log("visible=" + document.getElementById("mode").style.display)
-  document.getElementById("visSendSystemCmd").style.display='none'; //set advanced weahter upload settings invisible    
+  /*console.log("visible=" + document.getElementById("mode").style.display)  */
+  document.getElementById("visSendSystemCmd").style.display='none'; /*set advanced weahter upload settings invisible      */
   if (settingsView == SETTING_EXPERT){
-    document.getElementById("visSendSystemCmd").style.display='';  //we are expert
+    document.getElementById("visSendSystemCmd").style.display='';  /*we are expert  */
   }
   
 }
 
  
-// Sends a message to the server (and prints it to the console)
+/* Sends a message to the server (and prints it to the console)  */
 function doSend(message) {
     console.log("Sending: " + message);
     websocket.send(message);
@@ -218,6 +204,7 @@ function doSend(message) {
               <option value="#SYC NETSTAT?">check network state</option>
               <option value="#SYC WIFI=1">set Wifi on</option>
               <option value="#SYC WIFI=0">set Wifi off</option>
+              <option value="#SYC FCPU?">check CPU-frequency</option>
             </select></td>
           </tr>
         </tbody>      

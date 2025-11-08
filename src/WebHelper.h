@@ -4,6 +4,7 @@
 #include <WebSocketsServer.h>
 #include <ArduinoJson.h>
 #include "main.h"
+#include "enums.h"
 #include "FanetLora.h"
 #include "fileOps.h"
 #include <string>
@@ -11,8 +12,10 @@
 #include <Update.h>
 #include <CalcTools.h>
 #include <Logger.h>
+#include <tools.h>
 
 //#define useSpiffsWebsite
+#define UPDATE_SIZE_UNKNOWN 0xFFFFFFFF
 
 #ifndef useSpiffsWebsite
 #include "./web/website.h"

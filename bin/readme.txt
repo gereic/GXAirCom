@@ -43,6 +43,10 @@ PinExtPowerOnOff 36
 WINDDIR_PIN 36
 WINDSPEED_PIN 39  (use external Pull 4,7k)
 
+******** Anemometer (MISOL) *********
+WINDDIR_PIN 36 (use external Pull 10k)
+WINDSPEED_PIN 39  (use external Pull 10k)
+
 ******** Anemometer (TX20) *********
 DATA_PIN 39
 
@@ -131,6 +135,12 @@ GND (red)
 WINDDIR_PIN 36 (green)
 WINDSPEED_PIN 37  (use external Pull 4,7k) (black)
 
+******** Anemometer (MISOL) *********
+WINDDIR_PIN 36 (use external Pull 10k)
+WINDSPEED_PIN 37  (use external Pull 10k)
+
+
+
 ******** Anemometer (TX20) *********
 DATA_PIN 37
 
@@ -218,6 +228,10 @@ TEMP_PIN 25  (if e-ink is selected, no ds18b20 is supported) external 4,7k Pull-
 WINDDIR_PIN 33
 WINDSPEED_PIN 34  (use external Pull 4,7k)
 
+******** Anemometer (MISOL) *********
+WINDDIR_PIN 33 (use external Pull 10k)
+WINDSPEED_PIN 34  (use external Pull 10k)
+
 ******** Anemometer (TX20) *********
 DATA_PIN 34
 
@@ -243,6 +257,10 @@ SCL 34
 WINDDIR_PIN 2
 WINDSPEED_PIN 3  (use external Pull 4,7k)
 
+******** Anemometer (MISOL) *********
+WINDDIR_PIN 2 (use external Pull 10k)
+WINDSPEED_PIN 3  (use external Pull 10k)
+
 ************* Pins for HELTEC_LORA_V3 ***************
 
 ******** BARO *********
@@ -252,6 +270,12 @@ SCL 3
 ******** Anemometer (Davis 6410) *********
 WINDDIR_PIN 6
 WINDSPEED_PIN 7  (use external Pull 4,7k)
+
+******** Anemometer (MISOL) *********
+WINDDIR_PIN 6 (use external Pull 10k)
+WINDSPEED_PIN 7  (use external Pull 10k)
+
+
 
 
 

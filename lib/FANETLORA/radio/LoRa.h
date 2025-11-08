@@ -217,7 +217,7 @@ public:
   //LoRaClass(SPIClass *_spi,uint8_t cs, uint8_t irq, uint8_t rst, uint8_t gpio);
   LoRaClass();
   void setPins(SPIClass *spi,uint8_t cs, uint8_t irq, uint8_t rst, uint8_t gpio = GXMODULE_NC);
-  int16_t begin(float freq = 434.0, float bw = 125.0, uint8_t sf = 9, uint8_t cr = 7, uint8_t syncWord = 0x12, int8_t power = 10,uint8_t radioChip = RADIO_SX1276);
+  int16_t begin(float bw = 125.0, uint8_t sf = 9, uint8_t cr = 7, uint8_t syncWord = 0x12, int8_t power = 10,uint8_t radioChip = RADIO_SX1276);
   int16_t readData(uint8_t* data, size_t len);
   float getRSSI();
   int16_t startReceive();
@@ -225,16 +225,16 @@ public:
   bool isReceiving();
   int16_t setCodingRate(uint8_t cr);
   int16_t transmit(uint8_t* data, size_t len);
-  int16_t FSKTx(uint32_t frequency,uint8_t* data, size_t len);  
-  int16_t FSKRx(uint32_t frequency);
   bool isRxMessage();
-  int16_t switchFSK(float frequency);
-  int16_t switchLORA(float frequency,uint16_t loraBandwidth);
+  int16_t switchFSK(uint32_t frequency);
+  int16_t switchLORA(uint32_t frequency,uint16_t loraBandwidth);
   float get_airlimit(void);
   bool isFskMode(void);
   
   //int16_t setFrequency(float frequency);
   uint8_t gain = 0; //0 --> auto-gain, 1--> highest gain; 6 --> lowest gain
+  int8_t maxLoraPower = 14;
+  int8_t maxFskPower = 14;
   void run(); //has to be called cyclic
   void end();
 
@@ -255,7 +255,7 @@ private:
   SPIClass *_spi = NULL;
   uint8_t radioType = RADIO_NULL;
   uint8_t _power = 10;
-  float _freq = 868.2;
+  uint32_t _freq = 868200000;
   float _bw;
   uint8_t _cs;
   uint8_t _irq;
@@ -282,7 +282,7 @@ private:
   int16_t sx1262ClearIrqFlags();
   int16_t sx1262Transmit(uint8_t* data, size_t len, uint8_t addr = 0);
   uint32_t sx1262GetTimeOnAir(size_t len);
-  int16_t sx1262SetFrequency(float freq);
+  int16_t sx1262SetFrequency(uint32_t freq);
   uint8_t sx1262GetStatus();
   int16_t sx1262GetStats();
   float getSNR();
@@ -302,6 +302,7 @@ private:
   void checkRet(int16_t value);
   int sx_channel_free4tx();
   void configChannel (uint32_t frequency);
+  void sx1276_setPower(int8_t power);
   bool calibrated = false;
 
 };

@@ -38,6 +38,9 @@
 
 #include "XPowersLib.h"
 #include "TimeDefs.h"
+#include "tools.h"
+
+//#include <ws90.h>
 
 
 //#define SEND_RAW_WIND_DATA
@@ -72,7 +75,8 @@ XPowersLibInterface *PMU = NULL;
   TinyGsm modem(GsmSerial);
 #endif
   TinyGsmClient GsmUpdaterClient(modem,0); //client number 2 for updater
-  #ifdef SSLCONNECTION
+  //#ifdef SSLCONNECTION
+  #ifdef TINY_GSM_MODEM_SIM7000SSL
   TinyGsmClientSecure  GsmWUClient(modem,1); //client number 1 for weather-underground
   #else
   TinyGsmClient  GsmWUClient(modem,1); //client number 1 for weather-underground
@@ -192,9 +196,11 @@ FanetLora::trackingData MyFanetData;
 
 FanetLora::trackingData fanetTrackingData;
 FanetLora::weatherData fanetWeatherData;
+uint8_t fanetAddrOffset = 0;
 bool sendWeatherData = false;
 String fanetString;
 uint32_t fanetReceiver;
+uint8_t fanetAddrOffsetName = 0;
 uint8_t sendFanetData = 0;
 
 IPAddress local_IP(192,168,4,1);
@@ -220,6 +226,8 @@ SemaphoreHandle_t ble_queue = nullptr;
 SemaphoreHandle_t RxBleQueue = nullptr;
 #endif
 
+SemaphoreHandle_t wdServiceRequest = nullptr;
+SemaphoreHandle_t wdServiceResponse = nullptr;
 
 
 uint32_t psRamSize = 0;
@@ -366,7 +374,7 @@ void PowerOffModem();
 //void readSMS();
 //void sendStatus();
 #endif
-#if defined(TINY_GSM_MODEM_SIM7000) || defined(TINY_GSM_MODEM_SIM7080)
+#if defined(TINY_GSM_MODEM_SIM7000) || defined(TINY_GSM_MODEM_SIM7000SSL) || defined(TINY_GSM_MODEM_SIM7080)
 void setupSim7000Gps();
 #endif
 void add2OutputString(String s);
@@ -450,6 +458,42 @@ uint8_t setCFG[3][8] PROGMEM = {
 	{0xF1, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, // Ublox - Satellite Status
 	{0xF1, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, // Ublox - Time of Day and Clock Information
 };
+
+
+void radiotest(){
+  LoRaClass radio;
+  SPI.begin(5, 19, 27, 18);
+  radio.setPins(&SPI,18,26,23);
+  radio.begin();
+  radio.switchFSK(869200000uL);
+  radio.startReceive();	
+  //radio.FSKRx(869200000uL);
+  static uint8_t rxCount = 0;
+  while(1){
+    // put your main code here, to run repeatedly:
+    //radio.run();
+    if (radio.isRxMessage()){
+      int16_t packetSize = radio.getPacketLength();
+      rxCount ++;
+      log_i("new message arrived %d len=%d",rxCount,packetSize);
+      if (packetSize == 26){
+        uint8_t rx_frame[26];	
+        radio.readData(&rx_frame[0], packetSize);
+        char Buffer[500];	
+        int len = 0;
+        for (int i = 0; i < 26; i++){
+          len += sprintf(Buffer+len,"%02X", rx_frame[i]);
+        }
+        len += sprintf(Buffer+len,"\n");
+        Serial.print(Buffer);
+        //log_i("%d received:%s",rxCount,Buffer[0]);
+      }
+      //radio.FSKRx(869200000uL);
+      radio.startReceive();	
+    }
+    delay(10);
+  }
+}
 
 // rounds a number to 2 decimal places
 // example: round(3.14159) -> 3.14
@@ -667,7 +711,7 @@ void checkBoardType(){
   setting.outputFANET = false;
   setting.outputModeVario = eOutputVario::OVARIO_NONE;
   #endif
-  #ifdef TINY_GSM_MODEM_SIM7000
+  #if defined(TINY_GSM_MODEM_SIM7000) || defined(TINY_GSM_MODEM_SIM7000SSL)
     setting.displayType = NO_DISPLAY;
     setting.boardType = eBoard::TTGO_TSIM_7000;
     log_i("TTGO-T-Sim7000 found");
@@ -842,6 +886,7 @@ void sendFlarmData(uint32_t tAct){
           tFanetData.lat = fanet.neighbours[i].lat;
           tFanetData.lon = fanet.neighbours[i].lon;
           tFanetData.speed = fanet.neighbours[i].speed;
+          tFanetData.OnlineTracking = fanet.neighbours[i].OnlineTracking;
           Fanet2FlarmData(&tFanetData,&PilotFlarmData);
           char sOut[MAXSTRING];
           int pos = flarmDataPort.writeFlarmData(sOut,MAXSTRING,&myFlarmData,&PilotFlarmData);
@@ -1432,6 +1477,11 @@ void printSettings(){
   log_i("GS ALT=%0.2f",setting.gs.alt);
   log_i("GS SCREEN OPTION=%d",setting.gs.SreenOption);
   log_i("GS POWERSAFE=%d",setting.gs.PowerSave);
+  for (size_t i = 0; i < setting.gs.lstFw2Fanet.size(); i++) {
+    auto &d = setting.gs.lstFw2Fanet[i];
+    log_i("GS FwWd2Fnt: en=%d,sv=%d,Id=%s,PW=%s,",d.en, d.service, d.id.c_str(), d.pw.c_str());
+  }
+
 
   log_i("BattVoltOffs=%.2f",setting.BattVoltOffs);
   log_i("minBattPercent=%d",setting.minBattPercent);
@@ -1714,6 +1764,12 @@ void readPGXCFSentence(const char* data)
 void setup() {
 
   Serial.begin(115200);
+  /*
+  pinMode(36, OUTPUT);
+  digitalWrite(36,LOW); 
+  delay(2000); 
+  ws90_init();
+  */
   status.restart.doRestart = false;
   status.bPowerOff = false;
   status.bWUBroadCast = false;
@@ -1771,7 +1827,7 @@ void setup() {
     log_e("SPIFFS empty");
   }
   //listSpiffsFiles();
-  load_configFile(&setting); //load configuration
+  load_configFile(&setting,&status); //load configuration
   //setting.RFMode = setting.RFMode & 0x03; //only FANET allowed !!
   //setting.wifi.connect = eWifiMode::CONNECT_NONE;
   #ifdef GSM_MODULE
@@ -2406,9 +2462,11 @@ void setup() {
     pinMode(PinADCVoltage, INPUT); //set pin ADC-Voltage as input
   }
 
+
+  
   #ifdef GSMODULE
   if (setting.Mode == eMode::GROUND_STATION){
-      if ((setting.gs.PowerSave == eGsPower::GS_POWER_BATT_LIFE) || (setting.gs.PowerSave == eGsPower::GS_POWER_SAFE)){
+    if ((setting.gs.PowerSave == eGsPower::GS_POWER_BATT_LIFE) || (setting.gs.PowerSave == eGsPower::GS_POWER_SAFE)){
       printBattVoltage(millis()); //read Battery-level
       log_i("Batt %dV; %d%%",status.battery.voltage,status.battery.percent);
       if ((status.battery.voltage >= BATTPINOK) && (status.battery.percent < (setting.minBattPercent + setting.restartBattPercent)) && (status.battery.percent < 80)){
@@ -2470,7 +2528,7 @@ xTaskCreatePinnedToCore(taskOled, "taskOled", 6500, NULL, 8, &xHandleOled, ARDUI
       status.bWUBroadCast = true;
       log_i("wu broadcast enabled");
     }
-    if ((status.bWUBroadCast) || (setting.wd.mode.bits.enable)){
+    if ((status.bWUBroadCast) || (setting.wd.mode.bits.enable) || (setting.gs.lstFw2Fanet.size() > 0)){
       //start weather-task
       xTaskCreatePinnedToCore(taskWeather, "taskWeather", 13000, NULL, 8, &xHandleWeather, ARDUINO_RUNNING_CORE1);
     }
@@ -2522,7 +2580,7 @@ bool connectModem(){
   //log_i("signal quality %d",status.gsm.SignalQuality);
   status.gsm.sOperator = modem.getOperator();
   //log_i("operator=%s",status.gsm.sOperator.c_str());
-  #if defined(TINY_GSM_MODEM_SIM7000) || defined(TINY_GSM_MODEM_SIM7080)
+  #if defined(TINY_GSM_MODEM_SIM7000) || defined(TINY_GSM_MODEM_SIM7000SSL) || defined(TINY_GSM_MODEM_SIM7080)
   bool bAutoreport;
   if (modem.getNetworkSystemMode(bAutoreport,status.gsm.networkstat)){        
     //log_i("network system mode %d",status.gsm.networkstat);
@@ -2589,7 +2647,7 @@ bool initModem(){
     digitalWrite(PinGsmRst,HIGH);
     delay(3000); //wait until modem is ok now
   }
-  #if defined(TINY_GSM_MODEM_SIM7000) || defined(TINY_GSM_MODEM_SIM7080)
+  #if defined(TINY_GSM_MODEM_SIM7000) || defined(TINY_GSM_MODEM_SIM7000SSL) || defined(TINY_GSM_MODEM_SIM7080)
     //on SIM7000 we use other baudrate !!    
     if (!TestModemconnection(GSM_MAX_BAUD)){
       if (!TestModemconnection(115200)){      
@@ -2618,7 +2676,7 @@ bool initModem(){
     return false; 
   }
   
-  #if defined(TINY_GSM_MODEM_SIM7000) || defined(TINY_GSM_MODEM_SIM7080)
+  #if defined(TINY_GSM_MODEM_SIM7000) || defined(TINY_GSM_MODEM_SIM7000SSL) || defined(TINY_GSM_MODEM_SIM7080)
 
   if (status.gsm.baud != GSM_MAX_BAUD){
     log_i("GSM-Modem switch baudrate to %d",GSM_MAX_BAUD);
@@ -2668,8 +2726,8 @@ void PowerOffModem(){
       modem.gprsDisconnect();
       log_i("switch radio off");
       modem.radioOff();  
-      #if defined(TINY_GSM_MODEM_SIM7000) || defined(TINY_GSM_MODEM_SIM7080)
-        #ifdef TINY_GSM_MODEM_SIM7000
+      #if defined(TINY_GSM_MODEM_SIM7000) || defined(TINY_GSM_MODEM_SIM7000SSL) || defined(TINY_GSM_MODEM_SIM7080)
+        #if defined(TINY_GSM_MODEM_SIM7000) || defined(TINY_GSM_MODEM_SIM7000SSL)
           digitalWrite(5,HIGH);
         #endif
         //Power-off SIM7000-module
@@ -2708,7 +2766,7 @@ void PowerOffModem(){
   }
 }
 
-#if defined(TINY_GSM_MODEM_SIM7000) || defined(TINY_GSM_MODEM_SIM7080)
+#if defined(TINY_GSM_MODEM_SIM7000) || defined(TINY_GSM_MODEM_SIM7000SSL) || defined(TINY_GSM_MODEM_SIM7080)
 void setupSim7000Gps(){
   xSemaphoreTake( xGsmMutex, portMAX_DELAY );
   modem.sendAT("+SGPIO=0,4,1,1");
@@ -2770,7 +2828,7 @@ void taskGsm(void *pvParameters){
   while(1){
     tAct = millis();
     
-    #if defined(TINY_GSM_MODEM_SIM7000) || defined(TINY_GSM_MODEM_SIM7080)
+    #if defined(TINY_GSM_MODEM_SIM7000) || defined(TINY_GSM_MODEM_SIM7000SSL) || defined(TINY_GSM_MODEM_SIM7080)
     if (command.getGpsPos == 1){
       setupSim7000Gps();
     }else if (command.getGpsPos == 2){
@@ -2808,7 +2866,7 @@ void taskGsm(void *pvParameters){
           if (status.gsm.sOperator.length() == 0){
             status.gsm.sOperator = modem.getOperator();
           }
-          #if defined(TINY_GSM_MODEM_SIM7000) || defined(TINY_GSM_MODEM_SIM7080)
+          #if defined(TINY_GSM_MODEM_SIM7000) || defined(TINY_GSM_MODEM_SIM7000SSL) || defined(TINY_GSM_MODEM_SIM7080)
           bool bAutoreport;
           if (modem.getNetworkSystemMode(bAutoreport,status.gsm.networkstat)){        
             //log_i("network system mode %d",status.gsm.networkstat);
@@ -2974,6 +3032,61 @@ void sendRawWeatherData(Weather::weatherData *weather){
 }
 #endif
 
+void fw2Fanet(void){
+  static uint32_t tCheck = millis();
+  uint32_t tAct = millis();
+  if (!status.bInternetConnected) return; //no internet-connection
+  if (!setting.mqtt.mode.bits.enable) return; //mqtt not enabled
+  if (status.MqttStat != 100) return; //mqtt not connected
+  if (!timeOver(tAct,tCheck,1000)){ //we check only every second
+    return;
+  }
+  tCheck = tAct;
+  if (setting.gs.lstFw2Fanet.size() == 0){
+    return;
+  }
+  for (int index = 0; index < status.lstFw2Fanet.size(); ++index){
+    if ((timeOver(tAct,status.lstFw2Fanet[index].tSendWeather,setting.gs.lstFw2Fanet[index].tSend * 1000)) && (setting.gs.lstFw2Fanet[index].en)){
+      status.lstFw2Fanet[index].tSendWeather = tAct;
+      wdServiceQueueData queue;
+      StaticJsonDocument<500> doc; //Memory pool  
+      doc.clear();
+      doc["MsgId"] = index;
+      switch (setting.gs.lstFw2Fanet[index].service)
+      {
+      case wdService::weatherUnderground:
+        doc["Service"] = "WU"; //at WU we don't get the name        
+        if (status.lstFw2Fanet[index].name.length() == 0){
+          status.lstFw2Fanet[index].name = setting.gs.lstFw2Fanet[index].id;
+          status.lstFw2Fanet[index].tSendName = millis() - SENDNAMEINTERVAL; //send name immediately
+        }
+        break;
+      case wdService::holfuy:
+        doc["Service"] = "Holfuy";
+        break;
+      default:
+        break;
+      }            
+      doc["Id"] = setting.gs.lstFw2Fanet[index].id;
+      doc["Key"] = setting.gs.lstFw2Fanet[index].pw;
+      queue.size = serializeJson(doc, queue.data);
+		  BaseType_t status = xQueueSendToBack(wdServiceRequest,&queue,0);
+			if (status != pdTRUE){
+			  log_e("wdServiceRequest Queue full");
+			}       
+      break;
+    }
+    if ((sendFanetData == 0) && (timeOver(tAct,status.lstFw2Fanet[index].tSendName,SENDNAMEINTERVAL)) && (status.lstFw2Fanet[index].name.length() > 0)){
+      status.lstFw2Fanet[index].tSendName = tAct;
+      fanetAddrOffsetName = index+1;
+      fanetString = status.lstFw2Fanet[index].name;
+      sendFanetData = 2; //send name
+      break;
+    }
+  }
+  tCheck = millis();
+}
+
 void taskWeather(void *pvParameters){
   static uint32_t tUploadData; //first sending is in Sending-intervall to have steady-values
   static uint32_t tSendData; //first sending is in FANET-Sending-intervall to have steady-values
@@ -2992,17 +3105,14 @@ void taskWeather(void *pvParameters){
   Weather weather;
   weather.setTempOffset(setting.wd.tempOffset);
   weather.setWindDirOffset(setting.wd.windDirOffset);
-  if (!weather.begin(pI2cZero,setting,PinOneWire,PinWindDir,PinWindSpeed,PinRainGauge)){
+  if (!weather.begin(pI2cZero,setting,PinOneWire,PinWindDir,PinWindSpeed,PinRainGauge,setting.wd.frequency)){
   
   }
-  if ((!setting.wd.mode.bits.enable) && (!status.bWUBroadCast)){
-    log_i("stopping task");
+  if ((!setting.wd.mode.bits.enable) && (!status.bWUBroadCast) && (setting.gs.lstFw2Fanet.size() == 0)){
+    log_i("weather-task not used --> stopping task");
     vTaskDelete(xHandleWeather);
     return;    
   }
-  //const TickType_t xDelay = 1000 / portTICK_PERIOD_MS;   //only every 1sek.
-  const TickType_t xDelay = 10 / portTICK_PERIOD_MS;   //only every 10ms.
-  TickType_t xLastWakeTime = xTaskGetTickCount (); //get actual tick-count
   tUploadData = millis();
   tSendData = millis();
   tLastWindSpeed = millis();
@@ -3011,6 +3121,11 @@ void taskWeather(void *pvParameters){
   status.weather.error.bits.notStarted = true;
   getRTC();
   tGetRTCTime = millis();
+
+  if (setting.gs.lstFw2Fanet.size() > 0){
+    wdServiceRequest = xQueueCreate(3, sizeof(wdServiceQueueData));
+    wdServiceResponse = xQueueCreate(3, sizeof(wdServiceQueueData));
+  }
   while (1){
     uint32_t tAct = millis();
     if (timeOver(tAct,tGetRTCTime,10000)){
@@ -3256,6 +3371,7 @@ void taskWeather(void *pvParameters){
       }
 
     }
+    fw2Fanet();
     if ((WebUpdateRunning) || (bPowerOff)) break;
     //vTaskDelayUntil( &xLastWakeTime, xDelay); //wait until next cycle
     delay(100);
@@ -3289,7 +3405,7 @@ void taskBaro(void *pvParameters){
   #ifdef S3CORE
   uint8_t baroSensor = baro.begin(pI2cOne,&xI2C1Mutex);
   #else
-  pI2cZero->begin(PinBaroSDA,PinBaroSCL,400000); //init i2c
+  pI2cZero->begin(PinBaroSDA,PinBaroSCL,400000u); //init i2c
   uint8_t baroSensor = baro.begin(pI2cZero,&xI2C0Mutex);
   #endif
   baro.setKalmanSettings(setting.vario.sigmaP,setting.vario.sigmaA);
@@ -3880,8 +3996,114 @@ void checkSystemCmd(const char *ch_str){
     status.sNewVersion = sRet;
     status.updateState = 60; //check for Update automatic
     add2OutputString("#SYC UPDATE NEW VERSION\r\n");
+    return;
   }
-  return;
+  //Query BattVoltage
+  if (line.indexOf("#SYC VBAT?") >= 0){
+    float vbat = status.battery.voltage / 1000.0;
+    add2OutputString("#SYC VBAT=" + String(vbat, 2) + "\r\n");
+    return;
+  }
+
+  #ifdef GSMODULE  
+  //Query Rain values
+  if (line.indexOf("#SYC RAIN?") >= 0){
+    add2OutputString("#SYC RAIN1H=" + String(status.weather.rain1h, 2) + ",RAIN1D=" + String(status.weather.rain1d, 2) + "\r\n");
+    return;
+  }
+  //Query and set FanetUploadInterval
+  if (line.indexOf("#SYC FANETWDINT?") >= 0){
+    // Return the interval in seconds, not milliseconds
+    add2OutputString("#SYC FANETWDINT=" + String(setting.wd.FanetUploadInterval / 1000) + "\r\n");
+    return;
+  }
+  iPos = getStringValue(line,"#SYC FANETWDINT=","\r",0,&sRet);
+  if (iPos >= 0){
+    uint32_t intervalSec = atol(sRet.c_str());
+    intervalSec = constrain(intervalSec, 10, 600); // Accept 10–600 seconds
+    uint32_t intervalMs = intervalSec * 1000;
+    add2OutputString("#SYC OK\r\n");
+    if (intervalMs != setting.wd.FanetUploadInterval){
+      setting.wd.FanetUploadInterval = intervalMs;
+      write_FanetUploadInterval();
+      Serial.println("FANETWDINT changed --> need to restart");
+      status.restart.doRestart = true;
+    }
+    return;
+  }
+  //Query and set windDirOffset
+  if (line.indexOf("#SYC WINDOFFSET?") >= 0){
+    add2OutputString("#SYC WINDOFFSET=" + String(setting.wd.windDirOffset) + "\r\n");
+    return;
+  }
+  iPos = getStringValue(line, "#SYC WINDOFFSET=", "\r", 0, &sRet);
+  if (iPos >= 0){
+    int16_t offset = atoi(sRet.c_str());
+    offset = constrain(offset, -180, 180); // wind dir offset should be in -180° to +180°
+    add2OutputString("#SYC OK\r\n");
+    if (offset != setting.wd.windDirOffset){
+      setting.wd.windDirOffset = offset;
+      write_windDirOffset();
+      Serial.println("WINDOFFSET changed --> need to restart");
+      status.restart.doRestart = true;
+    }
+    return;
+  }
+  //Query and set RTC time
+  if (line.indexOf("#SYC GETTIME?") >= 0){
+    getRTCTime(); // sets system time using RTC
+    struct tm timeinfo;
+    if (!getLocalTime(&timeinfo)) {
+      add2OutputString("#SYC ERROR: Failed to get local time\r\n");
+      return;
+    }
+    char buf[32];
+    snprintf(buf, sizeof(buf), "#SYC TIME=%04d-%02d-%02d_%02d:%02d:%02d\r\n",
+             timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday,
+             timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+    add2OutputString(String(buf));
+    return;
+  }
+  iPos = getStringValue(line, "#SYC SETTIME=", "\r", 0, &sRet);
+  if (iPos >= 0){
+    struct tm timeinfo;
+    memset(&timeinfo, 0, sizeof(struct tm));
+    // Expect format: YYYY-MM-DD_HH:MM:SS
+    if (sscanf(sRet.c_str(), "%4d-%2d-%2d_%2d:%2d:%2d",
+               &timeinfo.tm_year, &timeinfo.tm_mon, &timeinfo.tm_mday,
+               &timeinfo.tm_hour, &timeinfo.tm_min, &timeinfo.tm_sec) == 6) {
+      timeinfo.tm_year -= 1900; // tm struct expects years since 1900
+      timeinfo.tm_mon -= 1;     // tm_mon is 0-based (0=Jan)
+
+      setRTCTime(timeinfo);
+      add2OutputString("#SYC OK\r\n");
+    } else {
+      add2OutputString("#SYC ERROR: Invalid time format\r\n");
+    }
+    return;
+  }
+  // Query anemometer type
+  if (line.indexOf("#SYC ANEMO?") >= 0){
+    add2OutputString("#SYC ANEMO=" + String((uint8_t)setting.wd.anemometer.AnemometerType) + "\r\n");
+    return;
+  }
+
+  // Set anemometer type
+  iPos = getStringValue(line, "#SYC ANEMO=", "\r", 0, &sRet);
+  if (iPos >= 0){
+    uint8_t u8 = atoi(sRet.c_str());
+    u8 = constrain(u8, 0, 5); // valid enum range
+    add2OutputString("#SYC OK\r\n");
+    if (u8 != (uint8_t)setting.wd.anemometer.AnemometerType){
+      setting.wd.anemometer.AnemometerType = eAnemometer(u8);
+      write_AnemometerType();
+      Serial.println("ANEMO changed --> need restart");
+      status.restart.doRestart = true;
+    }
+    return;
+  }
+  #endif  
+  return;  
 }
 
 
@@ -3908,7 +4130,7 @@ void checkReceivedLine(const char *ch_str){
     //received a PFLAG-Message --> start pps
     //log_i("trigger pps");
     status.gps.bExtGps = true;
-    ppsTriggered = true;
+    //ppsTriggered = true;
     return;
   #endif
   }else if (!strncmp(ch_str,"$CL,",4)){
@@ -3920,6 +4142,13 @@ void checkReceivedLine(const char *ch_str){
   }else if (!strncmp(ch_str,"$PGXCF,?",8)){
     // Handle request for configuration request
     writePGXCFSentence();
+    return;
+  }else if (!strncmp(ch_str,"$PFLAC,R,RADIOID",16)){
+    // Handle request ID
+    char buffer[MAXSTRING];
+    snprintf(buffer,MAXSTRING,"$PFLAC,A,RADIOID,%d,%s", MyFanetData.addressType, fanet.getMyDevId().c_str());
+    int pos = flarmDataPort.addChecksum(buffer,MAXSTRING);
+    sendData2Client(buffer, pos);
     return;
   }else if (!strncmp(ch_str,"$PGXCF,",7)){
     // Handle configuration setting
@@ -4060,6 +4289,7 @@ void Fanet2FlarmData(FanetLora::trackingData *FanetData,FlarmtrackingData *Flarm
   FlarmDataData->lon = FanetData->lon;
   FlarmDataData->speed = FanetData->speed;
   FlarmDataData->addressType = (FanetData->addressType) & 0x7F; //clear highest bit (is set for FANET-Msg)
+  FlarmDataData->noTrack = !FanetData->OnlineTracking;
 }
 
 void sendLXPW(uint32_t tAct){
@@ -4308,10 +4538,13 @@ bool setupUbloxConfig(){
         continue;
       }
       //xcguide uses GSA für GPS-Fix
+      /*
       if (!ublox.disableNMEAMessage(UBX_NMEA_GSA,COM_PORT_UART1)){
         log_e("ublox: error setting parameter %d",UBX_NMEA_GSA);
         continue;
       }
+      */
+      ublox.enableNMEAMessage(UBX_NMEA_GSA,COM_PORT_UART1, 0x05, defaultMaxWait);
 
       //enable nmea-sentences
       if (!ublox.enableNMEAMessage(UBX_NMEA_GGA,COM_PORT_UART1)){
@@ -4457,6 +4690,60 @@ bool setupUbloxConfig(){
 }
 #endif
 
+void getWdServiceDataFromResponse(char* pData){
+  FanetLora::weatherData wData;
+  //log_i("check new data from Queue wdServiceResponse %s",pData);
+    DynamicJsonDocument doc(2048);
+  deserializeJson(doc, pData);
+  JsonObject root = doc.as<JsonObject>();
+  uint8_t index = 0;
+  if (!assignIfExists(root,"MsgId",index)){
+    log_e("index not found");
+  }  
+  String name;
+  if (assignIfExists(root,"name",name)){
+    if ((status.lstFw2Fanet[index].name.length() == 0) && (name.length() > 0)){
+      status.lstFw2Fanet[index].name = name;
+      status.lstFw2Fanet[index].tSendName = millis() - SENDNAMEINTERVAL; //send name immediately
+    }
+  }
+  assignIfExistsCast<time_t,uint32_t>(root,"ts",status.lstFw2Fanet[index].ts);
+  //log_i("ts=%d,tNow=%d,tDiff=%d",status.lstFw2Fanet[index].ts,now(),tDiff);
+  assignIfExists(root,"lat",status.lstFw2Fanet[index].lat);
+  assignIfExists(root,"lon",status.lstFw2Fanet[index].lon);
+  if (assignIfExists(root,"temp",status.lstFw2Fanet[index].temp)) status.lstFw2Fanet[index].bTemp = true;
+  if (assignIfExists(root,"hum",status.lstFw2Fanet[index].Humidity)) status.lstFw2Fanet[index].bHumidity = true;
+  if (assignIfExists(root,"wDir",status.lstFw2Fanet[index].wDir)){
+    status.lstFw2Fanet[index].bWind = true;
+    assignIfExists(root,"wSpeed",status.lstFw2Fanet[index].wSpeed);
+    assignIfExists(root,"wGust",status.lstFw2Fanet[index].wGust);
+
+  } 
+  status.lstFw2Fanet[index].rxCnt ++;  
+  time_t tNow = now();
+  time_t tDiff = tNow - status.lstFw2Fanet[index].ts;
+  if (tDiff > 300){
+    status.lstFw2Fanet[index].error = 1;
+    log_e("timediff more than 5min. --> don't send WD (ts=%d,tNow=%d,tDiff=%d)",status.lstFw2Fanet[index].ts,tNow,tDiff);
+    return;
+  }
+  status.lstFw2Fanet[index].error = 0;
+  wData.lat = status.lstFw2Fanet[index].lat;
+  wData.lon = status.lstFw2Fanet[index].lon;
+  wData.bTemp = status.lstFw2Fanet[index].bTemp;
+  wData.temp = status.lstFw2Fanet[index].temp;
+  wData.bHumidity = status.lstFw2Fanet[index].bHumidity;
+  wData.Humidity = status.lstFw2Fanet[index].Humidity;
+  wData.wHeading = status.lstFw2Fanet[index].wDir;
+  wData.wSpeed = status.lstFw2Fanet[index].wSpeed;
+  wData.wGust = status.lstFw2Fanet[index].wGust;
+  wData.bInternetGateway = true;
+  wData.bStateOfCharge = true;
+  wData.Charge = status.battery.percent;
+  //log_i("wdData index=%d,name=%s,lat=%.6f,lon=%.6f,temp=%.1f,hum=%.1f,wDir=%.0f,wSpeed=%.1f,wGust=%.1f",index,status.lstFw2Fanet[index].name.c_str(),wData.lat,wData.lon,wData.temp,wData.Humidity,wData.wHeading,wData.wSpeed,wData.wGust);
+  fanet.writeMsgType4(&wData,index + 1);
+}
+
 
 void taskStandard(void *pvParameters){
   static uint32_t tLoop = micros();
@@ -4477,6 +4764,7 @@ void taskStandard(void *pvParameters){
   
   tFanetData.rssi = 0;
   MyFanetData.rssi = 0;
+  MyFanetData.OnlineTracking = true; //this could be a setting
 
   GxMqtt *pMqtt = NULL;
   static uint8_t myWdCount = 0;
@@ -4528,7 +4816,6 @@ void taskStandard(void *pvParameters){
   #endif
   #endif
   // create a binary semaphore for task synchronization
-  long frequency = FREQUENCY868;
   fanet.setRFMode(setting.RFMode);
   uint8_t radioChip = RADIO_SX1276;
   if ((setting.boardType == eBoard::T_BEAM_SX1262) || (setting.boardType == eBoard::T_BEAM_S3CORE) || (setting.boardType == eBoard::HELTEC_WIRELESS_STICK_LITE_V3) || (setting.boardType == eBoard::HELTEC_LORA_V3)) radioChip = RADIO_SX1262;
@@ -4541,7 +4828,7 @@ void taskStandard(void *pvParameters){
     fmac.setAddr(strtol(setting.myDevId.c_str(), NULL, 16));
   }
 
-  fanet.begin(PinLora_SCK, PinLora_MISO, PinLora_MOSI, PinLora_SS,PinLoraRst, PinLoraDI0,PinLoraGPIO,frequency,14,radioChip);
+  fanet.begin(PinLora_SCK, PinLora_MISO, PinLora_MOSI, PinLora_SS,PinLoraRst, PinLoraDI0,PinLoraGPIO,setting.FrqCor * 1000,14,radioChip);
   fanet.setGPS(status.gps.bHasGPS);
   #ifdef GSMODULE
   if (setting.Mode == eMode::GROUND_STATION){
@@ -4731,6 +5018,22 @@ void taskStandard(void *pvParameters){
         pMqtt->sendTopic("WD",pWd,false);
         myWdCount = wdCount;
       }
+      if (wdServiceRequest){
+        wdServiceQueueData queue;
+        BaseType_t status = xQueueReceive(wdServiceRequest, &queue, 0);
+        if (status == pdTRUE) {
+          //log_i("mqtt send wdService %s",queue.data);
+          pMqtt->sendTopic("wdService/rx/request",queue.data,false);
+        }         
+      }
+      if (wdServiceResponse){
+        wdServiceQueueData queue;
+        BaseType_t status = xQueueReceive(wdServiceResponse, &queue, 0);
+        //get data frpm queue
+        if (status == pdTRUE) {          
+          getWdServiceDataFromResponse(&queue.data[0]);
+        }         
+      }
       #ifdef SEND_RAW_WIND_DATA
         if (myWdRawCount != wdRawCount){
           pMqtt->sendTopic("WD_Raw",pWdRaw,false);
@@ -4787,8 +5090,9 @@ void taskStandard(void *pvParameters){
       sendTraccarTrackingdata(&fanetTrackingData);
       sendFanetData = 0;
     }else if (sendFanetData == 2){
-      log_i("sending msgtype 2 %s",fanetString.c_str());
-      fanet.writeMsgType2(fanetString);
+      //log_i("sending msgtype 2 name=%s",fanetString.c_str());
+      fanet.writeMsgType2(fanetString,fanetAddrOffsetName);
+      fanetAddrOffsetName = 0;
       sendFanetData = 0;
     }else if (sendFanetData == 3){
       log_i("sending msgtype 3 to %s %s",fanet.getDevId(fanetReceiver).c_str(),fanetString.c_str());
@@ -4806,7 +5110,8 @@ void taskStandard(void *pvParameters){
     }
     if (sendWeatherData){ //we have to send weatherdata
       //log_i("sending weatherdata %d,%d,%d,%d,%d",fanetWeatherData.bTemp,fanetWeatherData.bHumidity,fanetWeatherData.bStateOfCharge,fanetWeatherData.bWind,fanetWeatherData.bBaro);
-      fanet.writeMsgType4(&fanetWeatherData);
+      fanet.writeMsgType4(&fanetWeatherData,fanetAddrOffset);
+      fanetAddrOffset = 0;
       if (setting.OGNLiveTracking.bits.sendWeather) {
         Ogn::weatherData wData;
         wData.devId = fanet.getMyDevId();
@@ -4828,6 +5133,7 @@ void taskStandard(void *pvParameters){
         wData.snr = 0.0;      
         ogn.sendWeatherData(&wData);
       }      
+      fanetAddrOffset = 0;
       sendWeatherData = false;
     }
     pSerialLine = readSerial();
@@ -4866,6 +5172,19 @@ void taskStandard(void *pvParameters){
     if (fanet.getlastMsgData(&msgData)){
       status.lastFanetMsg = msgData.msg;
       status.FanetMsgCount++;
+      if ((pMqtt) && (setting.mqtt.mode.bits.enable)) {
+        StaticJsonDocument<300> doc;
+        char msg_buf[300];
+        char timestamp[30];
+        snprintf(timestamp, sizeof(timestamp), "%04d-%02d-%02dT%02d:%02d:%02d+00:00",
+                 year(), month(), day(), hour(), minute(), second());
+        doc["DT"] = timestamp;
+        doc["ID"] = fanet.getDevId(msgData.srcDevId);
+        doc["msg"] = msgData.msg;
+        doc["rssi"] = msgData.rssi;
+        serializeJson(doc, msg_buf);
+        pMqtt->sendTopic("RxMsg", msg_buf, false);
+      }      
       if (msgData.dstDevId == fanet._myData.devId){
         String sRet = "";
         int pos = getStringValue(msgData.msg,"P","#",0,&sRet);
@@ -4962,6 +5281,7 @@ void taskStandard(void *pvParameters){
     if (setting.outputModeVario == eOutputVario::OVARIO_LXPW) sendLXPW(tAct); //not output 
     #ifdef AIRMODULE
     if ((setting.Mode == eMode::AIR_MODULE) || ((abs(setting.gs.lat) <= 0.1) && (abs(setting.gs.lon) <= 0.1))){ //in GS-Mode we use the GPS, if in settings disabled
+      /*
       if ((PinPPS < 0) && (!status.gps.bExtGps)){
         if ((tAct - tOldPPS) >= 1000){
           gtPPS = millis();
@@ -4969,17 +5289,19 @@ void taskStandard(void *pvParameters){
         }
       }
       if (ppsTriggered){
-        ppsTriggered = false;
-        nmea.clearNewMsgValid();
+        ppsTriggered = false;        
         tLastPPS = tAct;      
         //log_i("PPS-Triggered t=%d",status.gps.tCycle);
       }
+      */
       if (nmea.isNewMsgValid()){
+        nmea.clearNewMsgValid();
+        if ((PinPPS < 0) && (!status.gps.bExtGps)){
+          gtPPS = millis() - 110; //we set PPS to actual-time -100ms, measured on T-Beam V1.0
+        }
+        //log_i("diff=%d",millis()-gtPPS);
+        tLastPPS = tAct;
         //log_i("lat=%d;lon=%d",nmea.getLatitude(),nmea.getLongitude());
-        //long alt2 = 0;
-        //nmea.getAltitude(alt2);
-        //log_i("alt=%d,speed=%d,course=%d",alt2,nmea.getSpeed(),nmea.getCourse());
-        //log_i("GPS-FixTime=%s",nmea.getFixTime().c_str());
         status.gps.tCycle = tAct - tOldPPS;
         if (nmea.isValid()){
           //log_i("nmea is valid");
@@ -5011,14 +5333,23 @@ void taskStandard(void *pvParameters){
           nmea.getGeoIdAltitude(geoidalt);
           //log_i("latlon=%d,%d",nmea.getLatitude(),nmea.getLongitude());
           status.gps.Lat = nmea.getLatitude() / 1000000.;
-          status.gps.Lon = nmea.getLongitude() / 1000000.;  
-          //only for testing NZ
-          //status.gps.Lat = -41.0605988;
-          //status.gps.Lon = 175.3534596;  
+          status.gps.Lon = nmea.getLongitude() / 1000000.;
           #ifdef FLARMTEST
-            status.gps.Lat = setting.gs.lat;
-            status.gps.Lon = setting.gs.lon;
-          #endif
+            //status.gps.Lat = setting.gs.lat;
+            //status.gps.Lon = setting.gs.lon;
+            //only for testing NZ
+            //status.gps.Lat = -41.0605988;
+            //status.gps.Lon = 175.3534596;  
+            //only for testing EU
+            //status.gps.Lat = 48.387;
+            //status.gps.Lon = 14.4;  
+            //USA
+            //status.gps.Lat = 42.16;
+            //status.gps.Lon = -106.1;  
+            //australia
+            status.gps.Lat = -22;
+            status.gps.Lon = 134;  
+            #endif
           status.gps.alt = alt/1000.;
           status.gps.geoidAlt = geoidalt/1000.;
           //setTime(nmea.getHour(), nmea.getMinute(), nmea.getSecond(), nmea.getDay(), nmea.getMonth(), nmea.getYear());
@@ -5060,7 +5391,7 @@ void taskStandard(void *pvParameters){
               if (fanet.onGround){
                 ogn.sendGroundTrackingData(now(),status.gps.Lat,status.gps.Lon,status.gps.alt,fanet.getDevId(tFanetData.devId),fanet.state,MyFanetData.addressType,0.0);
               }else{
-                ogn.sendTrackingData(now(),status.gps.Lat,status.gps.Lon,status.gps.alt,status.gps.speed,MyFanetData.heading,status.vario.ClimbRate,fanet.getMyDevId() ,(Ogn::aircraft_t)fanet.getFlarmAircraftType(&MyFanetData),MyFanetData.addressType,fanet.doOnlineTracking,0.0);
+                ogn.sendTrackingData(now(),status.gps.Lat,status.gps.Lon,status.gps.alt,status.gps.speed,MyFanetData.heading,status.vario.ClimbRate,fanet.getMyDevId() ,(Ogn::aircraft_t)fanet.getFlarmAircraftType(&MyFanetData),MyFanetData.addressType,MyFanetData.OnlineTracking,0.0);
               }
               
             } 
@@ -5095,6 +5426,7 @@ void taskStandard(void *pvParameters){
         status.gps.NumSat = 0;
         status.gps.hdop = 0;
       }
+    /*
     }else{
       if ((PinPPS < 0) && (!status.gps.bExtGps)){
         if ((tAct - tOldPPS) >= 1000){
@@ -5117,6 +5449,7 @@ void taskStandard(void *pvParameters){
         fanet.setMyTrackingData(&MyFanetData,status.gps.geoidAlt,gtPPS); //set Data on fanet
 
       }
+      */
     }
     #endif
 
@@ -5855,6 +6188,7 @@ void taskBackGround(void *pvParameters){
           if (tDist > 1){
             log_e("%ds delay timediff to big --> try again in 5 seconds",tDist);
             tGetTime = tAct - GETNTPINTERVALL + 5000; //try again in 5 second
+            status.bTimeOk = false; //reset time ok.
           }else{
             log_i("get ntp-time OK");
             #ifdef GSMODULE

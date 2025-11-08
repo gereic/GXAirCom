@@ -2,88 +2,117 @@ const SETTING_BASIC = 0;
 const SETTING_ADVANCED = 100;
 const SETTING_EXPERT = 200;
 
-var url = "ws://" + window.location.hostname + ":1337/";
+const AIR_MODULE = 0;
+const GROUND_STATION = 1;
 
-// This is called when the page finishes loading
+const CONNECT_NONE = 0;
+const CONNECT_ONCE = 1;
+const CONNECT_ALWAYS = 2;
+
+const DAVIS = 0;
+const TX20 = 1;
+const ADS_A1015 = 2;
+const PEETBROS = 3;
+const MISOL = 4;
+const WS90 = 5;
+const WS85_serial = 6;
+
+const serial = 0;
+const udp = 1;
+const ble = 3;
+
+const GS_POWER_ALWAYS_ON = 0;
+const GS_POWER_SAFE = 1;
+const GS_POWER_BATT_LIFE = 2;
+
+const NO_DISPLAY = 0;
+
+
+const url = `ws://${window.location.hostname}:1337/`; /* we have to split the url, otherwise minify detects it as comment */
+let websocket;
+
+/* Called when the page finishes loading */
 function init() {
- 
-  // Connect to WebSocket server
   wsConnect(url);
 }
 
-// Call this to connect to the WebSocket server
+/* Connect to the WebSocket server */
 function wsConnect(url) {
-  
-  // Connect to WebSocket server
-  //console.log("try to connect to " + url);    
-  //document.getElementById("TxtConn").innerHTML ="try to connect to " + url;
+  console.log(`Trying to connect to ${url}`);
   websocket = new WebSocket(url);
-  
-  // Assign callbacks
-  websocket.onopen = function(evt) { onOpen(evt) };
-  websocket.onclose = function(evt) { onClose(evt) };
-  websocket.onmessage = function(evt) { onMessage(evt) };
-  websocket.onerror = function(evt) { onError(evt) };
+
+  websocket.onopen = onOpen;
+  websocket.onclose = onClose;
+  websocket.onmessage = onMessage;
+  websocket.onerror = onError;
 }
 
-// Called when a WebSocket connection is established with the server
+/* WebSocket connected */
 function onOpen(evt) {
- 
-  // Log connection state
   console.log("Connected");
-  //document.getElementById("TxtConn").innerHTML ="connected";
-  // write page-number --> then we get all values for page
-  doSend(JSON.stringify({ page : pageNumber }));//send page-number
+  if (typeof pageNumber !== "undefined") {
+    doSend(JSON.stringify({ page: pageNumber }));
+  } else {
+    console.warn("pageNumber is not defined; skipping initial send.");
+  }
 }
 
-// Called when the WebSocket connection is closed
+/* WebSocket closed */
 function onClose(evt) {
-
-  // Log disconnection state
   console.log("Disconnected");
-  //document.getElementById("TxtConn").innerHTML ="disconnected";
-  // Try to reconnect after a few seconds
-  setTimeout(function() { wsConnect(url) }, 2000);
+  setTimeout(() => wsConnect(url), 2000);
 }
 
-function callMainPage(){
-  window.location="/index.html"
+function callMainPage() {
+  window.location = "/index.html";
 }
 
-function FntIdDec2Hex(value){
-  var retVal = "";
-  if (value != 0){
-    retVal = (value).toString(16).toUpperCase().padStart(2, '0')
-    console.log("value="+value+",l="+retVal.length+"retval=" + retVal);
-    while (retVal.length < 6){
+function setElement(name,value){
+    var e = document.getElementById(name);
+    if (e == null) return;
+    if (e instanceof HTMLSelectElement) {     /* <select>*/
+      e.value = value;
+    }else if ((e instanceof HTMLInputElement ) && (e.getAttribute('type') == 'checkbox')){     /* <input checkbox>*/
+      if (value == 1){
+        e.checked = true;
+      }else{
+        e.checked = false;
+      }
+    }else{
+      e.textContent = value;
+      e.value = value;
+    }
+}
+
+function FntIdDec2Hex(value) {
+  let retVal = "";
+  if (value !== 0) {
+    retVal = value.toString(16).toUpperCase().padStart(2, "0");
+    while (retVal.length < 6) {
       retVal = "0" + retVal;
-    };
+    }
   }
   return retVal;
 }
- 
-function FntIdHex2Dec(value){
-  var retVal = parseInt(value,16);
-  if (!retVal){
-    retVal = 0;
-  }
-  //console.log("value="+value+"retval=" + retVal);
-  return retVal;
+
+function FntIdHex2Dec(value) {
+  const retVal = parseInt(value, 16);
+  return isNaN(retVal) ? 0 : retVal;
 }
- 
-// Called when a WebSocket error occurs
+
 function onError(evt) {
-  console.log("ERROR: " + evt.data);
-  //document.getElementById("TxtConn").innerHTML ="error: " + evt.data;
+  console.log("ERROR:", evt);
 }
 
-// Sends a message to the server (and prints it to the console)
 function doSend(message) {
-  console.log("Sending: " + message);
-  websocket.send(message);
+  console.log("Sending:", message);
+  if (websocket && websocket.readyState === WebSocket.OPEN) {
+    websocket.send(message);
+  } else {
+    console.warn("WebSocket not open; message not sent.");
+  }
 }
 
-// Call the init function as soon as the page loads
 window.addEventListener("load", init, false);
 
 function getValue(obj,elements){
@@ -92,7 +121,7 @@ function getValue(obj,elements){
     //console.log("type=" + e.tagName);
     if (e.tagName == 'select-one'){
       //console.log("select " + element);
-      obj[element] = NUMBER(e.checked);
+      obj[element] = Number(e.checked);
     }else if (e.getAttribute('type') == 'checkbox') {
       //console.log("checkbox " + element);  
       obj[element] = Number(e.checked);
@@ -124,4 +153,72 @@ function noType(element) {
 function _value(element_id) {
   return document.getElementById(element_id).value;
 }
+
+function setvisible(element_id,bValue){
+  document.getElementById(element_id).style.display= (bValue == true) ? '': 'none';
+}
+
+function deleteAllRowsFromTable(tableName){
+  const table = document.getElementById(tableName);
+  while (table.rows.length > 1) {
+    table.deleteRow(1);
+  }  
+}
+
+function getWDir(dir){
+  var uDir = Math.round(dir/22.5);
+  switch (uDir) {
+  case 1:
+    return "NNE";
+    break;
+  case 2:
+    return "NE";
+    break;
+  case 3:
+    return "ENE";
+    break;
+  case 4:
+    return "E";
+    break;
+  case 5:
+    return "ESE";
+    break;
+  case 6:
+    return "SE";
+    break;
+  case 7:
+    return "SSE";
+    break;
+  case 8:
+    return "S";
+    break;
+  case 9:
+    return "SSW";
+    break;
+  case 10:
+    return "SW";
+    break;
+  case 11:
+    return "WSW";
+    break;
+  case 12:
+    return "W";
+    break;
+  case 13:
+    return "WNW";
+    break;
+  case 14:
+    return "NW";
+    break;
+  case 15:
+    return "NNW";
+    break;
+  default:
+    return "N";
+    break;
+  }  
+  
+};
+
+
  

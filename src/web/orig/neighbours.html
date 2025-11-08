@@ -81,20 +81,7 @@ function onMessage(evt) {
       bChangeRow = 1;
       break; /*jump out of the loop*/
     }
-    var e=document.getElementById(key);
-    if (e == null) continue;
-    if (e instanceof HTMLSelectElement) {     // <select>
-      document.getElementById(key).value = myObj[key];
-    }else if ((e instanceof HTMLInputElement ) && (e.getAttribute('type') == 'checkbox')){     // <input checkbox>
-      if (myObj[key] == 1){
-        document.getElementById(key).checked = true;
-      }else{
-        document.getElementById(key).checked = false;
-      }
-    }else{
-      document.getElementById(key).textContent = myObj[key];
-      document.getElementById(key).value = myObj[key];
-    }    
+    setElement(key,myObj[key]);
   }
   if (bChangeRow == 1){
     changeRow(key,myObj);

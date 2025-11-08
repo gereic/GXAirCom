@@ -1,5 +1,6 @@
 #include <string.h>
 #include "enums.h"
+#include <vector>
 //#include "../lib/FANETLORA/FanetLora.h"
 
 #ifndef __MAIN_H__
@@ -226,6 +227,38 @@ SCL 14
 
 #define GETNTPINTERVALL 1800000 //refresh timer from NTP every 30min.
 
+struct wdServiceQueueData {
+  char data[512];
+  uint16_t size;
+};
+
+struct wdataFw2Fanet{ 
+  bool en;
+  wdService service; 
+  String id; 
+  String pw;
+  uint32_t tSend;
+};
+
+struct wdataFw2FanetState{
+  time_t tSendName;
+  String name = "";
+  time_t tSendWeather;
+  time_t ts = 0; //timestamp of received weahter-data
+  float lat = 0.0;
+  float lon = 0.0;
+  bool bTemp = false;
+  float temp = 0.0;
+  bool bHumidity = false;
+  float Humidity = 0.0;
+  bool bWind = false;
+  float wDir = 0.0;
+  float wSpeed = 0.0;
+  float wGust = 0.0;
+  uint8_t rxCnt = 0;
+  uint8_t error = 0;
+};
+
 struct weatherupload{
   bool enable;
   String ID;
@@ -322,6 +355,7 @@ struct statusVario{
   float ClimbRate;
 };
 
+
 struct GSSettings{
   float lat; //Ground-Station Latitude
   float lon; //Ground-Station Longitude
@@ -331,12 +365,14 @@ struct GSSettings{
   eGsPower PowerSave; //powersave-option
   int sunriseOffset; //sunrise offset [min]
   int sunsetOffset; //sunrise offset [min]
+  std::vector<wdataFw2Fanet> lstFw2Fanet;
 };
 
 struct WeatherSettings{
   
   uWeatherStationMode mode;
   AnemometerSettings anemometer;
+  float frequency; //frequency for CC1101-module
   float tempOffset;
   int16_t windDirOffset;
   uint8_t sendFanet;  
@@ -395,6 +431,7 @@ struct SettingsData{
   uint8_t settingsView; //view of settings (basic, advanced, expert)
   eBoard boardType;
   uint8_t CPUFrequency; //CPU-Frequency
+  int32_t FrqCor; //frequency-correction [kHz]
   eMode Mode; //Air-Module, GS-Station,
   eDisplay displayType;
   uint8_t displayRotation; //displayrotation 0-3;
@@ -433,7 +470,7 @@ struct SettingsData{
   bool bHasFuelSensor; //has fuel-Sensor
   MqttSettings mqtt;
   Fanetweatherupload FntWuUpload[MAXFNTUPLOADSTATIONS]; //Fanet WU Upload
-  Fanetweatherupload FntWiUpload[MAXFNTUPLOADSTATIONS]; //Fanet Wi Upload
+  Fanetweatherupload FntWiUpload[MAXFNTUPLOADSTATIONS]; //Fanet Wi Upload  
   bool bAutoupdate; //auto-update to new Version
 };
 
@@ -546,6 +583,7 @@ struct statusData{
   bool bMuting; //muting beeper
   bool bPowerOff;
   weatherStatus weather;
+  std::vector<wdataFw2FanetState> lstFw2Fanet;
   eConnectionState modemstatus; //status of mobile-device (sim800)
   bool bInternetConnected;
   bool bTimeOk;

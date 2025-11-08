@@ -9,43 +9,43 @@
  
  var url = "ws://" + window.location.hostname + ":1337/";
  
-// This is called when the page finishes loading
+/* This is called when the page finishes loading */
 function init() {
  
-    // Connect to WebSocket server
+    /* Connect to WebSocket server */
     wsConnect(url);
 }
  
-// Call this to connect to the WebSocket server
+/* Call this to connect to the WebSocket server */
 function wsConnect(url) {
     
-    // Connect to WebSocket server
+    /* Connect to WebSocket server */
     websocket = new WebSocket(url);
     
-    // Assign callbacks
+    /* Assign callbacks */
     websocket.onopen = function(evt) { onOpen(evt) };
     websocket.onclose = function(evt) { onClose(evt) };
     websocket.onmessage = function(evt) { onMessage(evt) };
     websocket.onerror = function(evt) { onError(evt) };
 }
  
-// Called when a WebSocket connection is established with the server
+/* Called when a WebSocket connection is established with the server */
 function onOpen(evt) {
  
-    // Log connection state
+    /* Log connection state */
     console.log("Connected");
     
-    // write page-number --> then we get all values for page
+    /* write page-number --> then we get all values for page */
     doSend(JSON.stringify({ page : 2 })); //send page
 }
  
-// Called when the WebSocket connection is closed
+/* Called when the WebSocket connection is closed */
 function onClose(evt) {
  
-    // Log disconnection state
+    /* Log disconnection state */
     console.log("Disconnected");
     
-    // Try to reconnect after a few seconds
+    /* Try to reconnect after a few seconds */
     setTimeout(function() { wsConnect(url) }, 2000);
 }
 
@@ -56,13 +56,13 @@ function sendValues(){
   doSend(JSON.stringify(obj));
 }
  
-// Called when a message is received from the server
+/* Called when a message is received from the server */
 function onMessage(evt) {
  
-    // Print out our received message
+    /* Print out our received message */
     console.log("Received: " + evt.data);
     
-    // Update circle graphic with LED state
+    /* Update circle graphic with LED state */
     var myObj = JSON.parse(evt.data);
     for (var key of Object.keys(myObj)) {
         console.log(key + " -> " + myObj[key])
@@ -71,18 +71,18 @@ function onMessage(evt) {
     }
 }
  
-// Called when a WebSocket error occurs
+/* Called when a WebSocket error occurs */
 function onError(evt) {
     console.log("ERROR: " + evt.data);
 }
  
-// Sends a message to the server (and prints it to the console)
+/* Sends a message to the server (and prints it to the console) */
 function doSend(message) {
     console.log("Sending: " + message);
     websocket.send(message);
 }
  
-// Call the init function as soon as the page loads
+/* Call the init function as soon as the page loads */
 window.addEventListener("load", init, false);
  
 </script>

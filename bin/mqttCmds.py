@@ -12,6 +12,8 @@ Img = config.get('Img','')
 qos=0
 data_block_size=10000
 #data_block_size=250
+#data_block_size=500 #for very slow connections (500 Bytes)
+#data_block_size=5000 #for very slow connections (500 Bytes)
 
 # The callback for when the client receives a CONNACK response from the server.
 def on_connect(client, userdata, flags, rc):
@@ -37,7 +39,7 @@ def on_message(client, userdata, msg):
       if (lowNibble == 2):
         print("{}% finished".format(msg.payload[1]))
 
-def wait_for(client,msgValue,period=0.25,wait_time=80,running_loop=False):
+def wait_for(client,msgValue,period=0.25,wait_time=480,running_loop=False):
   client.running_loop=running_loop #if using external loop
   wcount=0  
   while True:
@@ -136,6 +138,7 @@ print("4 ... get Wifi settings")
 print("5 ... get CPU-Speed settings")
 print("6 ... do internet update")
 print("7 ... get firmware version")
+print("8 ... set CPU-Speed")
 iCmd = int(input("Befehl eingeben (0):") or 0)
 Cmd = ""
 match iCmd:
@@ -153,6 +156,10 @@ match iCmd:
     Cmd = "#SYC DOUPDATE\r\n"    
   case 7:
     Cmd = "#SYC VER?\r\n"    
+  case 8:
+    CpuSpeed = input("CPU-Speed (" + str(config['CpuSpeed']) + "):") or config['CpuSpeed']
+    config['CpuSpeed'] = CpuSpeed
+    Cmd = "#SYC FCPU=" + str(CpuSpeed) + "\r\n"    
   case _:
     writeConfigFile(config)
     print("canceled")
@@ -163,6 +170,8 @@ config['DevId'] = DevId
 if iCmd == 3:
   Firmware = input("Firmware (" + str(config['Firmware']) + "):") or config['Firmware']
   config['Firmware'] = Firmware
+  Version = input("Version (" + str(config['Version']) + "):") or config['Version']
+  config['Version'] = Version
 topic = "GXAirCom/" + DevId + "/cmd"
 status = "GXAirCom/" + DevId + "/state"
 updState = "GXAirCom/" + DevId + "/upd/state"
@@ -176,11 +185,12 @@ client.puback_flag=False #use flag in publish ack
 client.mid_value=None
 client.connect(config['ServerIp'], config['ServerPort'], 60)
 client.loop_start() # start thread for mqqt
-if (iCmd == 1) or (iCmd == 2) or (iCmd == 4) or (iCmd == 5) or (iCmd == 6) or (iCmd == 7):
-  client.publish(topic,Cmd) #set wifi to on
-  time.sleep(2)
+if (iCmd == 1) or (iCmd == 2) or (iCmd == 4) or (iCmd == 5) or (iCmd == 6) or (iCmd == 7) or (iCmd == 8):
+  client.publish(topic,Cmd) #send CMD
+  time.sleep(5)
 if (iCmd == 3):
-  filename = "Firmware_" + str(config['Version']) + "_" + str(config['Firmware']) + ".bin"
+  #filename = "Firmware_" + str(config['Version']) + "_" + str(config['Firmware']) + ".bin"
+  filename = str(config['Firmware']) + "/" + str(config['Version']) + "/firmware.bin"
   print(filename)
   run_Update(filename)
 client.disconnect() #disconnect

@@ -13,17 +13,19 @@ from struct import *
 #filename="firmware_v5.4.0_GsSim7000.bin"
 #DevId="08C494" #GX-TEST
 #DevId="08A7E4" #GetroniX
-DevId="08F968" #FMG Abetzberg
+#DevId="08F968" #FMG Abetzberg
+DevId="08A0A0" #Goldeck
 #DevId="089144" #Prochenberg
-filename="firmware_v5.4.0_Gs.bin"
+filename="wireless-StickV3_Sim7080/v8.2.1/firmware.bin"
 
-SERVERIP="192.168.0.10"
+SERVERIP="192.168.0.1"
 PORT=1883
 #SERVERIP="remote.getronix.at"
 #PORT=21883
 
 qos=0
-data_block_size=10000
+#data_block_size=10000
+data_block_size=500 #for very slow connections (500 Bytes)
 
 # The callback for when the client receives a CONNACK response from the server.
 def on_connect(client, userdata, flags, rc):
@@ -57,7 +59,7 @@ def on_message(client, userdata, msg):
 #    #client.mid_value=mid
 #    #client.puback_flag=True  
 
-def wait_for(client,msgValue,period=0.25,wait_time=80,running_loop=False):
+def wait_for(client,msgValue,period=1,wait_time=120,running_loop=False):
   client.running_loop=running_loop #if using external loop
   wcount=0  
   while True:

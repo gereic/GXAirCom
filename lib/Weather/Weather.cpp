@@ -7,7 +7,51 @@ volatile uint32_t actPulseCount = 0;
 volatile uint8_t timerIrq = 0;
 volatile unsigned long ContactBounceTime; // Timer to avoid contact bounce in isr
 
+
 hw_timer_t * timer = NULL;
+
+uint64_t wMinHighUs = 10000ul;
+uint64_t wMinLowUs  = 2000ul;
+int8_t wReedPins[] = {-1};
+const int wNumReeds = sizeof(wReedPins) / sizeof(wReedPins[0]);
+
+struct ReedState {
+  uint8_t stableLevel;
+  uint64_t lastStableChangeUs;
+  uint32_t pulseCount;
+  bool     pulseFlag;
+  uint64_t lastPulseUs;
+  uint64_t pulseIntervalUs;
+};
+
+ReedState wReeds[wNumReeds];
+
+void IRAM_ATTR wHandleReedInterrupt(int idx);
+void IRAM_ATTR wReedISR0() { wHandleReedInterrupt(0); }
+
+void IRAM_ATTR wHandleReedInterrupt(int idx) {
+  const uint64_t now   = esp_timer_get_time();
+  const int      level = digitalRead(wReedPins[idx]); // GPIO lesen
+
+  if (level == wReeds[idx].stableLevel) return;
+
+  const uint64_t dur = now - wReeds[idx].lastStableChangeUs;
+  const bool okHigh = (wReeds[idx].stableLevel == HIGH) && (dur >= wMinHighUs);
+  const bool okLow  = (wReeds[idx].stableLevel == LOW)  && (dur >= wMinLowUs);
+
+  if (okHigh || okLow) {
+    wReeds[idx].stableLevel = level;
+    wReeds[idx].lastStableChangeUs = now;
+
+    if (level == LOW){
+      aneometerpulsecount++;
+      wReeds[idx].pulseCount++;
+      wReeds[idx].pulseIntervalUs = now - wReeds[idx].lastPulseUs;
+      wReeds[idx].lastPulseUs = now;
+      wReeds[idx].pulseFlag = true;      
+    } 
+  }
+}
 
 void IRAM_ATTR windspeedhandler(void){
   if((millis() - ContactBounceTime) > 15 ) { // debounce the switch contact.
@@ -27,6 +71,8 @@ void IRAM_ATTR rainhandler(void){
 void IRAM_ATTR onTimer() {
   actPulseCount = aneometerpulsecount;
   aneometerpulsecount = 0;
+  //actPulseCount = wReeds[0].pulseCount;
+  wReeds[0].pulseCount = 0;
   timerIrq = 1;
 }
 
@@ -95,7 +141,20 @@ bool Weather::initADS(AnemometerSettings &anSettings) {
   return true;
 }
 
-bool Weather::begin(TwoWire *pi2c, SettingsData &setting, int8_t oneWirePin, int8_t windDirPin, int8_t windSpeedPin,int8_t rainPin){
+void Weather::initWindSpeedInterrupt(int8_t pin){
+  _weather.bWindSpeed = true;
+  // init and interrupts
+  wReedPins[0] = pin;
+  for (int i = 0; i < wNumReeds; i++) {
+    pinMode(wReedPins[i], INPUT);
+    uint8_t level = digitalRead(wReedPins[i]);
+    wReeds[i] = {level, (uint64_t)esp_timer_get_time(), 0, false, (uint64_t)esp_timer_get_time(), 0};
+  }
+
+  attachInterrupt(digitalPinToInterrupt(wReedPins[0]), wReedISR0, CHANGE);  
+}
+
+bool Weather::begin(TwoWire *pi2c, SettingsData &setting, int8_t oneWirePin, int8_t windDirPin, int8_t windSpeedPin,int8_t rainPin,float frequency){
   bool bRet = true;
   pI2c = pi2c;
   _height = setting.gs.alt;
@@ -111,7 +170,10 @@ bool Weather::begin(TwoWire *pi2c, SettingsData &setting, int8_t oneWirePin, int
   aneometerType = anSettings.AnemometerType;
   if (_bHasSHT20){
     sht = new SHT2x(pI2c);
-    if (!sht->begin()){
+    if (sht->begin()){
+      uint8_t stat = sht->getStatus();
+      log_i("found SHT20-Sensor stat=0X%02X",stat);
+    }else{
       log_e("sht20 not connected");
     }
   }
@@ -172,15 +234,27 @@ bool Weather::begin(TwoWire *pi2c, SettingsData &setting, int8_t oneWirePin, int
       _weather.bWindDir = true;
       pinMode(_windDirPin, INPUT);
     }
-    if (windSpeedPin >= 0){
-      _weather.bWindSpeed = true;
-      pinMode(windSpeedPin, INPUT);
-      attachInterrupt(digitalPinToInterrupt(windSpeedPin), windspeedhandler, FALLING);
+    if (windSpeedPin >= 0){      
+      wMinHighUs = 6000uL;
+      wMinLowUs = 6000uL;
+      initWindSpeedInterrupt(windSpeedPin);
+      //pinMode(windSpeedPin, INPUT);
+      //attachInterrupt(digitalPinToInterrupt(windSpeedPin), windspeedhandler, CHANGE);
     }
     timer = timerBegin(0, 80, true);
     timerAttachInterrupt(timer, &onTimer, true);
     timerAlarmWrite(timer, 2000000, true); //every 2 seconds
     timerAlarmEnable(timer);    
+  } else if (aneometerType == eAnemometer::WS90){
+    _weather.bWindSpeed = true;
+    _weather.bWindDir = true;    
+    ws90_init(frequency);
+  }else if (aneometerType == WS85_serial) {
+      ws85_init(windDirPin);  // RX pin used for WS85
+      _weather.bWindSpeed = true;
+      _weather.bWindDir = true;
+      _weather.bTemp = true;
+      _weather.bRain = true;
   }else{
     //init-code for aneometer DAVIS6410
     _windDirPin = windDirPin;
@@ -189,9 +263,10 @@ bool Weather::begin(TwoWire *pi2c, SettingsData &setting, int8_t oneWirePin, int
       pinMode(_windDirPin, INPUT);
     }
     if (windSpeedPin >= 0){
-      _weather.bWindSpeed = true;
-      pinMode(windSpeedPin, INPUT);
-      attachInterrupt(digitalPinToInterrupt(windSpeedPin), windspeedhandler, FALLING);
+      initWindSpeedInterrupt(windSpeedPin);
+      //_weather.bWindSpeed = true;
+      //pinMode(windSpeedPin, INPUT);
+      //attachInterrupt(digitalPinToInterrupt(windSpeedPin), windspeedhandler, FALLING);
     }
     timer = timerBegin(0, 80, true);
     timerAttachInterrupt(timer, &onTimer, true);
@@ -245,7 +320,9 @@ float Weather::calcWindspeed(void){
     // --> 1.2km/h = 1 impuls in 2 seconds
     return (float)_actPulseCount * 1.2;
   }else{
-    return (float)_actPulseCount * 1.609;
+    //Davis 6410
+    //V = P(2.25/T) (V = speed in mph, P = no. of pulses per sample period, T = sample period in seconds)    
+    return (float)_actPulseCount * 1.609; //calc mph --> kmh
   }
 }
 
@@ -296,7 +373,8 @@ void Weather::checkAneometer(void){
       float wSpeed = calcWindspeed();
       _weather.WindSpeed = wSpeed;
       if (wSpeed > windgust) windgust =  wSpeed;
-      _weather.WindGust = windgust;      
+      _weather.WindGust = windgust;   
+      //log_i("wSpeed=%.1f,cnt=%d,t=%d",_weather.WindSpeed,_actPulseCount,(int32_t)(wReeds[0].pulseIntervalUs/1000uL));   
     }
   }
 }
@@ -366,6 +444,8 @@ void Weather::checkAdsAneometer(void) {
 }
 
 void Weather::checkRainSensor(void){
+  // Skip tipping bucket logic if WS85 is the anemometer
+  if (aneometerType == eAnemometer::WS85_serial) return;  
   time_t now;
   std::time(&now);
   //log_i("%04d-%02d-%02d %02d:%02d:%02d",year(now),month(now),day(now),hour(now),minute(now),second(now));
@@ -394,6 +474,10 @@ void Weather::run(void){
   bool bReadOk = false;
   if (aneometerType == eAnemometer::PEETBROS){
     peetBrosRun();
+  }else if (aneometerType == eAnemometer::WS90){
+    ws90Run();
+  }else if (aneometerType == eAnemometer::WS85_serial){
+    ws85_run();
   }
   if ((tAct - tOld) >= WEATHER_REFRESH){
     int i = 0;
@@ -458,8 +542,8 @@ void Weather::run(void){
           //log_i("t=%.2f;hum=%.2f",_weather.temp,_weather.Humidity);  
           break;
         }
-        delay(500);
         log_e("error reading sht20 %d",i);        
+        delay(500);
       } 
     }
     if (aneometerType == eAnemometer::TX20){
@@ -483,6 +567,39 @@ void Weather::run(void){
       //log_i("dir=%.1f,speed=%0.1f,ret=%d",_weather.WindDir,_weather.WindSpeed,ret);
     } else if (aneometerType == eAnemometer::MISOL){
       checkAneometer();
+    } else if (aneometerType == eAnemometer::WS90) {
+      if (ws90ActData.bValid){
+        _weather.bRain = false;
+        _weather.bHumidity = ws90ActData.bHum;
+        _weather.bPressure = false;
+        _weather.bTemp = ws90ActData.bTemp;
+        _weather.bWindDir = ws90ActData.bWind;
+        _weather.bWindSpeed = ws90ActData.bWind;
+        _weather.Humidity = float(ws90ActData.humidity);
+        _weather.temp = ws90ActData.temp_c;
+        _weather.WindDir = float((ws90ActData.wind_dir + _winddirOffset) % 360);
+        _weather.WindSpeed = ws90ActData.wind_avg;
+        _weather.WindGust = ws90ActData.wind_max;
+        ws90ActData.bValid = false;
+      }
+    } else if (aneometerType == eAnemometer::WS85_serial) {
+      float dir, speed, gust, temp, rain1h, batVolt, capVolt;
+      if (ws85_getData(&dir, &speed, &gust, &temp, &rain1h, &batVolt, &capVolt)) {
+        _weather.WindDir = dir;
+        _weather.WindSpeed = speed * 3.6;
+        if (gust * 3.6 > _weather.WindGust) _weather.WindGust = gust * 3.6;
+        if(temp > -30.0 && temp < 60.0) { // Check for valid tempreature
+          _weather.temp = temp + _tempOffset; // in °C
+          _weather.bTemp = true;
+        }else{
+          _weather.bTemp = false;
+        }
+        _weather.rain1h = rain1h;        
+
+        log_i("WS85: WindDir=%.1f deg, WindSpeed=%.2f km/h, WindGust=%.2f km/h", dir, speed * 3.6, gust * 3.6);
+        log_i("WS85: Temp=%.2f C, Rain1h=%.2f mm", temp, rain1h);
+        log_i("WS85: BatVoltage=%.2f V, CapVoltage=%.2f V", batVolt, capVolt);
+      }    
     }else{
       checkAneometer();
     }

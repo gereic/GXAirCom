@@ -14,11 +14,13 @@ WeatherUnderground::~WeatherUnderground(){
 }
 
 void WeatherUnderground::setClient(Client *_client){
-    client = _client;
+  log_i("set Client");    
+  client = _client;
 }
 
 void WeatherUnderground::setMutex(SemaphoreHandle_t *_xMutex){
-    xMutex = _xMutex;
+  log_i("set Mutex");    
+  xMutex = _xMutex;
 }
 
 
@@ -26,6 +28,7 @@ void WeatherUnderground::setMutex(SemaphoreHandle_t *_xMutex){
 bool WeatherUnderground::getData(String ID,String KEY,wData *data){ //get Data from WU with Station-ID and API-Key
   char msg[1024]; //make this big enough to hold the resulting string
   bool bRet = true;
+  bool bSetKeepAlive = false;
   if (xMutex == NULL){ //create new Mutex
       xMutex = new SemaphoreHandle_t();
       *xMutex = xSemaphoreCreateMutex();
@@ -45,9 +48,14 @@ bool WeatherUnderground::getData(String ID,String KEY,wData *data){ //get Data f
     MyClient = new WiFiClient();
     #endif
     client = MyClient;
+  }else{
+    serverPort = 443;
+    bSetKeepAlive = true;
   }
   xSemaphoreTake( *xMutex, portMAX_DELAY );
+  log_i("request data https://api.weather.com:%d%s",serverPort,msg);
   HttpClient http(*client, "api.weather.com",serverPort);  
+  if (bSetKeepAlive) http.connectionKeepAlive();  // Currently, this is needed for HTTPS
   int httpResponseCode = http.get(msg);
   if (httpResponseCode == 0){
     httpResponseCode = http.responseStatusCode();
@@ -55,12 +63,13 @@ bool WeatherUnderground::getData(String ID,String KEY,wData *data){ //get Data f
       int length = http.contentLength();
       if (length >= 0) {
         payload = http.responseBody();
+        //log_i("payload=%s",payload.c_str());
       }else{
         log_e("content length <= 0");
         bRet = false;
       }
     }else{
-      log_e("resp=%d",httpResponseCode);
+      log_e("httpResponseCode=%d",httpResponseCode);
       bRet = false;
     } 
   }else{
@@ -117,7 +126,7 @@ bool WeatherUnderground::getData(String ID,String KEY,wData *data){ //get Data f
     data->rain1h = doc["observations"][0]["metric"]["precipRate"].as<float>();
     data->raindaily = doc["observations"][0]["metric"]["precipTotal"].as<float>();
   }else{
-    log_i("no rain-data");
+    //log_i("no rain-data");
     data->bRain = false;
     data->rain1h = 0.0;
     data->raindaily = 0.0;

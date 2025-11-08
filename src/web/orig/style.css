@@ -8,6 +8,7 @@ select{width:100%;background:#dddddd;color:#000000;}
 textarea{resize:vertical;width:98%;height:318px;padding:5px;overflow:auto;background:#1f1f1f;color:#65c115;}
 body{text-align:center;font-family:verdana,sans-serif;background:#252525;}
 td{padding:0px;}
+.list td {padding: 10px;}
 button{border:0;border-radius:0.3rem;background:#1fa3ec;color:#faffff;line-height:2.4rem;font-size:1.2rem;width:100%;-webkit-transition-duration:0.4s;transition-duration:0.4s;cursor:pointer;}
 button:hover{background:#0e70a4;}
 .bred{background:#d43535;}
