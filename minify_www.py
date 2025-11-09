@@ -27,49 +27,85 @@ def add_2_website_file(name, src):
 
 def minify_css(css_code: str) -> str:
     try:
-        proc = subprocess.run(
-            ['cleancss.cmd', '--skip-rebase', '-o', '-', '-'],  # clean-css liest stdin, gibt minifiziert auf stdout
-            input=css_code.encode('utf-8'),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            check=True
-        )
-        return proc.stdout.decode('utf-8')
-    except subprocess.CalledProcessError as e:
-        print("clean-css error:", e.stderr.decode('utf-8'))
+        # Try different command names for different platforms
+        commands = ['cleancss', 'cleancss.cmd']
+        
+        for cmd in commands:
+            try:
+                proc = subprocess.run(
+                    [cmd, '--skip-rebase', '-o', '-', '-'],
+                    input=css_code.encode('utf-8'),
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    check=True
+                )
+                return proc.stdout.decode('utf-8')
+            except (subprocess.CalledProcessError, FileNotFoundError):
+                continue
+        
+        # If no command worked, return original CSS
+        print("Warning: cleancss not found, using original CSS")
+        return css_code
+        
+    except Exception as e:
+        print(f"CSS minification error: {e}")
         return css_code
 
 def minify_js(js_code: str) -> str:
     try:
-        proc = subprocess.run(
-            ['terser.cmd', '--compress', '--mangle'],
-            input=js_code.encode('utf-8'),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            check=True
-        )
-        return proc.stdout.decode('utf-8')
-    except subprocess.CalledProcessError as e:
-        print("terser error:", e.stderr.decode('utf-8'))
+        # Try different command names for different platforms
+        commands = ['terser', 'terser.cmd']
+        
+        for cmd in commands:
+            try:
+                proc = subprocess.run(
+                    [cmd, '--compress', '--mangle'],
+                    input=js_code.encode('utf-8'),
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    check=True
+                )
+                return proc.stdout.decode('utf-8')
+            except (subprocess.CalledProcessError, FileNotFoundError):
+                continue
+        
+        # If no command worked, return original JS
+        print("Warning: terser not found, using original JavaScript")
+        return js_code
+        
+    except Exception as e:
+        print(f"JavaScript minification error: {e}")
         return js_code
 
 def minify_html(html_code: str) -> str:
     try:
-        proc = subprocess.run(
-            ['html-minifier-terser.cmd',
-             '--collapse-whitespace',
-             '--remove-comments',
-             '--minify-css', 'true',
-             '--minify-js', 'true'
-             ],
-            input=html_code.encode('utf-8'),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            check=True
-        )
-        return proc.stdout.decode('utf-8')
-    except subprocess.CalledProcessError as e:
-        print("html-minifier-terser error:", e.stderr.decode('utf-8'))
+        # Try different command names for different platforms
+        commands = ['html-minifier-terser', 'html-minifier-terser.cmd']
+        
+        for cmd in commands:
+            try:
+                proc = subprocess.run(
+                    [cmd,
+                     '--collapse-whitespace',
+                     '--remove-comments',
+                     '--minify-css', 'true',
+                     '--minify-js', 'true'
+                     ],
+                    input=html_code.encode('utf-8'),
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    check=True
+                )
+                return proc.stdout.decode('utf-8')
+            except (subprocess.CalledProcessError, FileNotFoundError):
+                continue
+        
+        # If no command worked, return original HTML
+        print("Warning: html-minifier-terser not found, using original HTML")
+        return html_code
+        
+    except Exception as e:
+        print(f"HTML minification error: {e}")
         return html_code
 
 def getFileContent(file):

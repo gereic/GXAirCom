@@ -166,6 +166,99 @@ SDA 13
 SCL 14 
 
 
+************* Pins for HELTEC Wireless Tracker V1.1 (ESP32-S3) ***************
+******* BUTTON ********
+USER_BUTTON 0  // BOOT button for page navigation
+
+******* LED *********
+LED_PIN 18     // White LED (disabled in code to save power)
+
+******* LORA SX1262 ********
+SCK   9
+MISO  11
+MOSI  10
+SS    8
+RST   12
+BUSY  13       // SX1262 BUSY (DIO2)
+IRQ   14       // SX1262 DIO1 (interrupt)
+Note: Uses default SPI bus (SPI2_HOST/HSPI)
+
+******* TFT DISPLAY ST7735S (160x80) ********
+CS    38
+DC    40       // Data/Command (RS)
+RST   39
+SCK   41
+MOSI  42
+BL    21       // Backlight control
+Note: Uses separate HSPI bus to avoid conflict with LoRa
+
+******* GPS UC6580 ********
+RX    33       // GPS TX → ESP32 RX
+TX    34       // ESP32 TX → GPS RX
+RST   35       // GPS Reset (optional)
+PPS   36       // GPS Pulse Per Second (input, do NOT drive!)
+EN    37       // GPS Enable (V1.0 only, not used in V1.1)
+BAUD  115200   // UC6580 default baudrate
+
+******* I2C (Sensors/OLED) ********
+SDA   45       // Official I2C SDA per variant.h (recommended for external sensors)
+SCL   46       // Official I2C SCL per variant.h (recommended for external sensors)
+Note: Pins 5/6 can also be used for I2C but 45/46 are the official default
+Alternative: SDA=5, SCL=6 (if 45/46 are needed for other purposes)
+
+******* BARO (BMP280/BME280) ********
+SDA   45       // Connect sensor SDA to GPIO 45
+SCL   46       // Connect sensor SCL to GPIO 46
+VCC   3.3V     // From Vext rail (pin 3 must be HIGH for power)
+GND   GND
+Note: Use same I2C bus as other sensors. BMP280/BME280 I2C address: 0x76 or 0x77
+
+******* BUZZER ********
+BUZZER 37      // PWM output for piezo buzzer (GPS_EN on V1.0, unused on V1.1)
+Alternative pins available: 4, 7, 15, 16, 17, 19, 20
+Note: Use active buzzer or piezo with PWM. Connect buzzer between GPIO and GND.
+
+******* POWER CONTROL ********
+Vext         3 // CRITICAL: Active HIGH - powers GPS, GPS LNA, LoRa antenna LNA
+ADC_CTRL     2 // Active HIGH - enables battery voltage divider
+BATT_ADC     1 // Battery voltage measurement (ADC1_GPIO1_CHANNEL)
+ADC_MULT  4.9 * 1.045 // Voltage divider multiplier
+
+IMPORTANT POWER NOTES:
+- Pin 3 (Vext) powers THREE subsystems on V1.1:
+  * GPS module (UC6580 VDD_IO, DCDC_IN)
+  * GPS LNA (SW7125DE amplifier)
+  * LoRa antenna LNA (boost amplifier)
+- Pin 36 is GPS PPS OUTPUT - never configure as OUTPUT!
+- V1.0 boards used different power architecture (pin 36 for Vext active LOW)
+
+******* HARDWARE SPECS ********
+CPU: ESP32-S3FN8 (Xtensa dual-core @ 240MHz)
+Flash: 8MB
+RAM: 320KB (no PSRAM)
+LoRa: SX1262 (868/915MHz, TCXO 1.8V)
+GPS: UC6580 (multi-GNSS, hot start <1s)
+Display: ST7735S 1.14" TFT 160x80 pixels
+Antenna: LoRa antenna boost amplifier (powered by Vext pin 3)
+
+******* AVAILABLE GPIO PINS FOR EXPANSION ********
+Available GPIOs for external sensors/peripherals:
+- GPIO 4, 7, 15, 16, 17, 19, 20: General purpose I/O
+- GPIO 37: Best for buzzer (unused on V1.1, was GPS_EN on V1.0)
+- GPIO 45, 46: Official I2C bus (SDA/SCL) for sensors
+- GPIO 43, 44: UART TX/RX (USB serial, use with caution)
+
+Reserved/In Use:
+- GPIO 0: BOOT button
+- GPIO 1: Battery ADC
+- GPIO 2: ADC control
+- GPIO 3: Vext power control (CRITICAL - do not modify!)
+- GPIO 5, 6: Alternative I2C
+- GPIO 8-14: LoRa SX1262 (SPI + control)
+- GPIO 18: White LED
+- GPIO 21: TFT backlight
+- GPIO 33-36: GPS (RX, TX, RST, PPS)
+- GPIO 38-42: TFT display (SPI + control)
 
 
 */
