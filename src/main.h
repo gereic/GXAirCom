@@ -285,7 +285,7 @@ Reserved/In Use:
 #define BATTSLEEPTIME 3600 //check every 1h if Battery is full again
 #define BATTPERCSTART 10 //percent, where esp starts normal in addition to min. percentage
 
-#define MAXSCREENS 2
+#define MAXSCREENS 3  // TFT has 4 pages: 0=Splash, 1=GPS, 2=System, 3=GPS Detail
 
 #define MIN_FLIGHT_SPEED 15.0 //min speed for flying-detection 
 // > at least for 5sec --> takeoff

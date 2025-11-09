@@ -28,9 +28,10 @@ private:
   void PowerOff(void);
   
   // Page display functions
-  void printGPSData(uint32_t tAct, bool forceRedraw = false);      // Page 0: Main GPS data
-  void printSystemInfo(uint32_t tAct, bool forceRedraw = false);   // Page 1: System info
-  void printDetailedGPS(uint32_t tAct, bool forceRedraw = false);  // Page 2: Detailed GPS data
+  void printSplashScreen(uint32_t tAct, bool forceRedraw = false); // Page 0: Splash with logo
+  void printGPSData(uint32_t tAct, bool forceRedraw = false);      // Page 1: Main GPS data
+  void printSystemInfo(uint32_t tAct, bool forceRedraw = false);   // Page 2: System info
+  void printDetailedGPS(uint32_t tAct, bool forceRedraw = false);  // Page 3: Detailed GPS data
   
   // Helper drawing functions
   void drawSatCount(int16_t x, int16_t y, uint8_t value);
@@ -48,6 +49,9 @@ private:
   int8_t pinBL = -1;
   bool bDisplayOn = false;
   uint8_t oldScreenNumber = 0;
+  bool splashShown = false;  // Track if splash screen was shown
+  uint32_t splashStartTime = 0;  // Time when splash screen was first displayed
+  bool autoAdvanceDone = false;  // Track if auto-advance has already happened
 };
 
 #endif

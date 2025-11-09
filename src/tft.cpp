@@ -1,8 +1,12 @@
 #include "tft.h"
 #include "tools.h"
+#include "icons.h"
 
 Tft::Tft(){
   oldScreenNumber = 0;
+  splashShown = false;
+  splashStartTime = 0;
+  autoAdvanceDone = false;
 }
 
 bool Tft::begin(int8_t cs, int8_t dc, int8_t rst, int8_t mosi, int8_t sck, int8_t bl){
@@ -163,7 +167,68 @@ void Tft::drawFlying(int16_t x, int16_t y, bool isFlying){
   }
 }
 
-// PAGE 0: Main GPS Data (similar to OLED main screen)
+// PAGE 0: Splash Screen with GXAirCom Logo and Version
+void Tft::printSplashScreen(uint32_t tAct, bool forceRedraw){
+  if (!bDisplayOn) return;
+  
+  static bool logoDrawn = false;
+  
+  // Record when splash screen first displayed
+  if (!splashShown || forceRedraw) {
+    splashStartTime = millis();
+    splashShown = true;
+  }
+  
+  // Only draw once or on force redraw
+  if (!logoDrawn || forceRedraw) {
+    display->fillScreen(ST77XX_BLACK);
+    
+    // Draw GXAirCom logo (scaled down to fit 160x80 display)
+    // Original OLED uses: G at (1,2), X at (30,2), AirCom at (69,2)
+    // For TFT 160x80, we'll center it better
+    
+    // Draw "G" logo (35x45 pixels) - position at x=10
+    display->drawXBitmap(10, 10, G_Logo_bits, G_Logo_width, G_Logo_height, ST77XX_CYAN);
+    
+    // Draw "X" logo (49x60 pixels) - position at x=48 (10 + 35 + 3)
+    // Scale down by only drawing part of it or use smaller Y offset
+    display->drawXBitmap(48, 5, X_Logo_bits, X_Logo_width, X_Logo_height, ST77XX_CYAN);
+    
+    // Draw "AirCom" logo (59x42 pixels) - position at x=100 (48 + 49 + 3)
+    display->drawXBitmap(100, 15, AirCom_Logo_bits, AirCom_Logo_width, AirCom_Logo_height, ST77XX_CYAN);
+    
+    // Draw device ID at bottom area
+    display->setTextSize(1);
+    display->setTextColor(ST77XX_WHITE, ST77XX_BLACK);
+    display->setCursor(2, TFT_HEIGHT - 18);
+    display->print("ID: ");
+    display->setTextColor(ST77XX_CYAN, ST77XX_BLACK);
+    if (setting.myDevId.length() > 0) {
+      display->print(setting.myDevId.c_str());
+      display->print("      ");  // Clear any old text
+    } else {
+      display->print("------      ");  // Placeholder if not yet initialized
+    }
+    
+    // Draw version at bottom
+    display->setTextSize(1);
+    display->setTextColor(ST77XX_WHITE, ST77XX_BLACK);
+    display->setCursor(2, TFT_HEIGHT - 8);
+    display->print("Ver: ");
+    display->setTextColor(ST77XX_YELLOW, ST77XX_BLACK);
+    display->print(VERSION);
+    display->print("      ");  // Clear any old text
+    
+    logoDrawn = true;
+  }
+  
+  // Reset logoDrawn when leaving splash screen so it redraws next time
+  if (forceRedraw) {
+    logoDrawn = false;
+  }
+}
+
+// PAGE 1: Main GPS Data (was Page 0)
 void Tft::printGPSData(uint32_t tAct, bool forceRedraw){
   if (!bDisplayOn) return;
   
@@ -181,11 +246,11 @@ void Tft::printGPSData(uint32_t tAct, bool forceRedraw){
   bool pageJustChanged = forceRedraw || (lastBattPercent == 255 && lastClimbRate == 999.0);
   
   // Draw static elements if page just loaded
-  if (pageJustChanged || oldScreenNumber == 0) {
+  if (pageJustChanged || oldScreenNumber == 1) {
     display->setTextSize(1);
     display->setCursor(2, 2);
     display->setTextColor(ST77XX_CYAN, ST77XX_BLACK);
-    display->print("P0:MAIN        ");
+    display->print("P1:MAIN        ");
   }
   
   // Always update satellite count - show it always, keep last value
@@ -263,11 +328,11 @@ void Tft::printSystemInfo(uint32_t tAct, bool forceRedraw){
   bool pageJustChanged = forceRedraw || (lastBattPercent == 255 && lastBattVoltage == 0);
   
   // Draw static elements
-  if (pageJustChanged || oldScreenNumber == 1) {
+  if (pageJustChanged || oldScreenNumber == 2) {
     display->setTextSize(1);
     display->setCursor(2, 2);
     display->setTextColor(ST77XX_CYAN, ST77XX_BLACK);
-    display->print("P1:SYSTEM INFO  ");
+    display->print("P2:SYSTEM INFO  ");
   }
   
   // Always update WiFi status
@@ -368,11 +433,11 @@ void Tft::printDetailedGPS(uint32_t tAct, bool forceRedraw){
   bool pageJustChanged = forceRedraw || (lastFix == 255 && lastNumSat == 255);
   
   // Draw static elements
-  if (pageJustChanged || oldScreenNumber == 2) {
+  if (pageJustChanged || oldScreenNumber == 3) {
     display->setTextSize(1);
     display->setCursor(2, 2);
     display->setTextColor(ST77XX_CYAN, ST77XX_BLACK);
-    display->print("P2:GPS DETAIL   ");
+    display->print("P3:GPS DETAIL   ");
   }
   
   // Always update WiFi and satellite count
@@ -478,6 +543,19 @@ void Tft::run(void){
   static uint32_t tDisplay = millis();
   uint32_t tAct = millis();
   
+  // Auto-advance from splash screen (page 0) to GPS page (page 1) ONLY ONCE at boot when:
+  // 1. GPS is fixed AND
+  // 2. At least 3 seconds have passed since splash was first shown AND
+  // 3. Auto-advance hasn't already happened (so user can navigate back to page 0)
+  if (setting.screenNumber == 0 && status.gps.Fix >= 2 && splashShown && !autoAdvanceDone) {
+    uint32_t splashDuration = tAct - splashStartTime;
+    if (splashDuration >= 3000) {  // 3 seconds minimum
+      setting.screenNumber = 1;  // Move to GPS data page
+      autoAdvanceDone = true;  // Mark that we've done the auto-advance
+      log_i("GPS fixed and 3s elapsed - auto-switching from splash to GPS page");
+    }
+  }
+  
   // Check if screen number changed
   bool screenChanged = (oldScreenNumber != setting.screenNumber);
   
@@ -497,16 +575,20 @@ void Tft::run(void){
     // Pass screenChanged flag to force redraw of all fields
     switch (setting.screenNumber) {
       case 0:
-        printGPSData(tAct, screenChanged);
+        printSplashScreen(tAct, screenChanged);
         break;
       case 1:
-        printSystemInfo(tAct, screenChanged);
+        printGPSData(tAct, screenChanged);
         break;
       case 2:
+        printSystemInfo(tAct, screenChanged);
+        break;
+      case 3:
         printDetailedGPS(tAct, screenChanged);
         break;
       default:
-        printGPSData(tAct, screenChanged);
+        // Invalid page, reset to splash
+        printSplashScreen(tAct, true);
         setting.screenNumber = 0;
         oldScreenNumber = 0;
         break;
