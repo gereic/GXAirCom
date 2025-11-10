@@ -391,7 +391,7 @@ int16_t LoRaClass::begin(float bw, uint8_t sf, uint8_t cr, uint8_t syncWord, int
       // check SX126X_XOSC_START_ERR flag and clear it
       sx1262CheckAndClearErrors();
       //SetDIO3AsTcxoCtrl
-      data[0] = 0x00; //DIO3 outputs 1.6 V to supply the TCXO
+      data[0] = 0x02; //DIO3 outputs 1.8 V to supply the TCXO (Heltec Wireless Tracker requirement)
       // calculate delay
       uint32_t delayValue = (float)5000 / 15.625;
       data[1] = (uint8_t)((delayValue >> 16) & 0xFF);

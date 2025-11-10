@@ -15,6 +15,7 @@ enum eBoard {
     T_BEAM_S3CORE = 9,
     HELTEC_WIRELESS_STICK_LITE_V3 = 10,
     HELTEC_LORA_V3 = 11,
+    HELTEC_WIRELESS_TRACKER = 12,
     UNKNOWN = 255
 };
 
@@ -57,7 +58,8 @@ enum eDisplay{
   NO_DISPLAY = 0,
   OLED0_96 = 1,
   EINK2_9 = 2,
-  EINK2_9_V2 = 3
+  EINK2_9_V2 = 3,
+  TFT160x80 = 4
 };
 
 /* Wifi-Connect-Mode */

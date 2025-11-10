@@ -9,6 +9,21 @@
 //#include <LoRa.h>
 #include <FanetLora.h>
 #include <FlarmDataPort.h>
+
+// Undefine macros from FANETLORA that conflict with Adafruit ST77xx library
+#ifdef RST
+#undef RST
+#endif
+#ifdef MOSI
+#undef MOSI
+#endif
+#ifdef MISO
+#undef MISO
+#endif
+#ifdef SCK
+#undef SCK
+#endif
+
 #include <main.h>
 #include <config.h>
 #include "WebHelper.h"
@@ -90,6 +105,9 @@ XPowersLibInterface *PMU = NULL;
 #endif
 #if defined(SSD1306) || defined(SH1106G)
 #include <oled.h>
+#endif
+#ifdef Tft160x80
+#include "tft.h"
 #endif
 
 //#define FLARMLOGGER
@@ -283,6 +301,14 @@ int8_t PinOledRst = -1;
 int8_t PinOledSDA = -1;
 int8_t PinOledSCL = -1;
 
+//TFT-Display (for Wireless Tracker)
+int8_t PinTftCS = -1;
+int8_t PinTftDC = -1;
+int8_t PinTftRst = -1;
+int8_t PinTftMOSI = -1;
+int8_t PinTftSCK = -1;
+int8_t PinTftBL = -1; // Backlight control
+
 //BARO
 int8_t PinBaroSDA = -1;
 int8_t PinBaroSCL = -1;
@@ -334,6 +360,7 @@ TaskHandle_t xHandleBluetooth = NULL;
 TaskHandle_t xHandleMemory = NULL;
 TaskHandle_t xHandleEInk = NULL;
 TaskHandle_t xHandleOled = NULL;
+TaskHandle_t xHandleTft = NULL;
 TaskHandle_t xHandleLogger = NULL;
 TaskHandle_t xHandleWeather = NULL;
 
@@ -363,6 +390,9 @@ void taskEInk(void *pvParameters);
 #endif
 #if defined(SSD1306) || defined(SH1106G)
 void taskOled(void *pvParameters);
+#endif
+#ifdef Tft160x80
+void taskTft(void *pvParameters);
 #endif
 #ifdef FLARMLOGGER
 SemaphoreHandle_t FlarmLogQueue = nullptr;
@@ -1850,6 +1880,10 @@ void setup() {
   #ifdef Heltec_Lora_V3
     setting.boardType = HELTEC_LORA_V3;
   #endif
+  #ifdef WIRELESS_TRACKER
+    setting.boardType = HELTEC_WIRELESS_TRACKER;
+    setting.displayType = TFT160x80;  // Hardcode TFT display for Wireless Tracker
+  #endif
   if (setting.boardType == eBoard::UNKNOWN){
     checkBoardType();
   }  
@@ -2401,6 +2435,76 @@ void setup() {
     PinADCVoltage = 1;
     adcVoltageMultiplier =  5.2636f;
     break;
+  case eBoard::HELTEC_WIRELESS_TRACKER:
+    log_i("Board=HELTEC_WIRELESS_TRACKER");
+
+    // Set TFT display type
+    setting.displayType = TFT160x80;
+    
+    // Set GPS baudrate for UC6580 module
+    setting.gps.Baud = 115200; // UC6580 uses 115200 baud by default
+
+    // SX1262 LoRa pins (based on Meshtastic firmware)
+    PinLora_SS = 8;
+    PinLora_SCK = 9;
+    PinLora_MOSI = 10;
+    PinLora_MISO = 11;
+    PinLoraRst = 12;
+    PinLoraGPIO = 13; // SX1262 BUSY
+    PinLoraDI0 = 14;  // SX1262 IRQ
+
+    // ST7735S TFT LCD pins (SPI3)
+    // TFT shares different SPI bus than LoRa
+    PinTftCS = 38;
+    PinTftDC = 40;     // RS/DC pin
+    PinTftRst = 39;    // TFT Reset
+    PinTftMOSI = 42;   // TFT SDA
+    PinTftSCK = 41;    // TFT SCK
+    PinTftBL = 21;     // Backlight control
+
+    // GPS UC6580 pins
+    PinGPSRX = 33;
+    PinGPSTX = 34;
+    // GPS control pins
+    //PinGPSReset = 35; // GPS reset (if needed)
+    //PinGPSPPS = 36;   // GPS PPS (if needed)
+
+    // I2C pins (for sensors)
+    PinBaroSDA = 5;    // Default I2C SDA (SDA)
+    PinBaroSCL = 6;    // Default I2C SCL (SCL) - note: different from pins_arduino.h
+
+    // User button and LED
+    sButton[0].PinButton = 0; // USER button
+    PinUserLed = -1;          // Disable built-in LED (pin 18) - it's annoying on this board
+    
+    // Explicitly turn off the white LED on pin 18
+    pinMode(18, OUTPUT);
+    digitalWrite(18, LOW);
+
+    // Power and ADC
+    PinADCVoltage = 1;        // Battery voltage measurement
+    adcVoltageMultiplier = 4.9f * 1.045f; // From Meshtastic config
+    
+    // Enable ADC for battery measurement (pin 2 controls voltage divider power)
+    pinMode(2, OUTPUT);
+    digitalWrite(2, HIGH); // Enable ADC voltage divider
+
+    // CRITICAL: Enable Vext (pin 3) - active HIGH
+    // Powers: GPS, GPS LNA, LoRa antenna LNA, and peripherals
+    // V1.1 board uses pin 3 for all external power domains
+    pinMode(3, OUTPUT);
+    digitalWrite(3, HIGH);
+    delay(200); // Wait for power rails to stabilize (GPS, LoRa antenna LNA)
+    
+    // NOTE: Pin 36 is GPS PPS (Pulse Per Second) - do NOT initialize as output!
+    // It's an input signal from the GPS module
+    
+    // Enable TFT backlight
+    pinMode(PinTftBL, OUTPUT);
+    digitalWrite(PinTftBL, HIGH); // Turn on TFT backlight
+
+    pI2cOne->begin(PinBaroSDA, PinBaroSCL);
+    break;
   case eBoard::UNKNOWN:
     log_e("unknown Board --> please correct");
     break;
@@ -2517,7 +2621,10 @@ xOutputMutex = xSemaphoreCreateMutex();
 #if defined(SSD1306) || defined(SH1106G)
 xTaskCreatePinnedToCore(taskOled, "taskOled", 6500, NULL, 8, &xHandleOled, ARDUINO_RUNNING_CORE1); //background Oled
 #endif
-  xTaskCreatePinnedToCore(taskBackGround, "taskBackGround", 6500, NULL, 5, &xHandleBackground, ARDUINO_RUNNING_CORE1); //background task
+#ifdef Tft160x80
+xTaskCreatePinnedToCore(taskTft, "taskTft", 6500, NULL, 8, &xHandleTft, ARDUINO_RUNNING_CORE1); //background TFT - same stack and priority as OLED
+#endif
+  xTaskCreatePinnedToCore(taskBackGround, "taskBackGround", 8192, NULL, 5, &xHandleBackground, ARDUINO_RUNNING_CORE1); //background task - increased stack for WiFi
   #ifdef BLUETOOTH
   xTaskCreatePinnedToCore(taskBluetooth, "taskBluetooth", 4096, NULL, 7, &xHandleBluetooth, ARDUINO_RUNNING_CORE1);
   #endif
@@ -4818,7 +4925,7 @@ void taskStandard(void *pvParameters){
   // create a binary semaphore for task synchronization
   fanet.setRFMode(setting.RFMode);
   uint8_t radioChip = RADIO_SX1276;
-  if ((setting.boardType == eBoard::T_BEAM_SX1262) || (setting.boardType == eBoard::T_BEAM_S3CORE) || (setting.boardType == eBoard::HELTEC_WIRELESS_STICK_LITE_V3) || (setting.boardType == eBoard::HELTEC_LORA_V3)) radioChip = RADIO_SX1262;
+  if ((setting.boardType == eBoard::T_BEAM_SX1262) || (setting.boardType == eBoard::T_BEAM_S3CORE) || (setting.boardType == eBoard::HELTEC_WIRELESS_STICK_LITE_V3) || (setting.boardType == eBoard::HELTEC_LORA_V3) || (setting.boardType == eBoard::HELTEC_WIRELESS_TRACKER)) radioChip = RADIO_SX1262;
 
   // When the requested Address type is ICAO then the devId of the device must be set to your mode-s address
   // See Flarm Dataport Specification for details
@@ -5310,9 +5417,24 @@ void taskStandard(void *pvParameters){
           #ifdef AIRMODULE
           if (setting.Mode == eMode::AIR_MODULE){
             status.gps.NumSat = nmea.getNumSatellites();
+            // Log GPS status for debugging
+            static uint32_t tLastGpsLog = 0;
+            if (millis() - tLastGpsLog > 5000) {  // Log every 5 seconds
+              log_i("GPS: Sats=%d Valid=%d Lat=%.6f Lon=%.6f Alt=%.1f",
+                    status.gps.NumSat, nmea.isValid(), 
+                    nmea.getLatitude()/1000000., nmea.getLongitude()/1000000., alt/1000.);
+              tLastGpsLog = millis();
+            }
           }
           #endif
-          status.gps.Fix = 1;
+          // Set Fix based on satellite count and valid position
+          if (status.gps.NumSat >= 4 && abs(nmea.getLatitude()) > 1000 && abs(nmea.getLongitude()) > 1000) {
+            status.gps.Fix = 3;  // 3D fix with good satellite count
+          } else if (status.gps.NumSat >= 3 && abs(nmea.getLatitude()) > 1000 && abs(nmea.getLongitude()) > 1000) {
+            status.gps.Fix = 2;  // 2D fix
+          } else {
+            status.gps.Fix = 1;  // Valid data but no position fix yet
+          }
           if (status.gps.NumSat < 4){ //we need at least 4 satellites to get accurate position !!
             status.gps.speed = 0;
             status.gps.course = 0;
@@ -5918,6 +6040,33 @@ void taskOled(void *pvParameters){
   if (bPowerOff) display.end();
   log_i("stop task");
   vTaskDelete(xHandleOled);
+}
+#endif
+
+#ifdef Tft160x80
+void taskTft(void *pvParameters){
+  log_i("start TFT-task");
+  if (status.displayType != TFT160x80){
+    log_i("stop task");
+    vTaskDelete(xHandleTft);
+    return;
+  }
+  // Wait for LoRa SPI initialization to complete first
+  // This ensures the LoRa radio on HSPI is stable before we init TFT on FSPI
+  // Also wait for fanet.begin() to fully complete
+  delay(5000); // Increased to 5 seconds to ensure LoRa is fully initialized
+  log_i("TFT task: initializing display after LoRa startup");
+  
+  Tft display;
+  display.begin(PinTftCS, PinTftDC, PinTftRst, PinTftMOSI, PinTftSCK, PinTftBL);
+  while(1){
+    display.run();
+    vTaskDelay(pdMS_TO_TICKS(50)); // Increased from 10ms to 50ms to reduce SPI bus activity and give more CPU to LoRa
+    if ((WebUpdateRunning) || (bPowerOff)) break;
+  }
+  if (bPowerOff) display.end();
+  log_i("stop task");
+  vTaskDelete(xHandleTft);
 }
 #endif
 
