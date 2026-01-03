@@ -13,7 +13,7 @@
 #include <Arduino.h>
 #include "lib_crc.h"
 
-//#define DEBUG_FLARM_ERRORS
+#define DEBUG_FLARM_ERRORS
 
 
 /*
