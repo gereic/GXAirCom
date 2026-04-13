@@ -4725,10 +4725,14 @@ void taskStandard(void *pvParameters){
     //check Button 0
     if (sButton[0].state == ace_button::AceButton::kEventClicked){
       //log_v("Short Press IRQ");
-      setting.screenNumber ++;
       bShowBattPower = true; //show battery-state again
-      if (setting.screenNumber > MAXSCREENS) setting.screenNumber = 0;
-      write_screenNumber(); //save screennumber in File
+    if ((setting.displayType == EINK2_9) || (setting.displayType == EINK2_9_V2) || (setting.displayType == EINK2_9_E290) ){
+       setting.vario.BeepOnlyWhenFlying = ! setting.vario.BeepOnlyWhenFlying;}
+      else {
+       setting.screenNumber ++;
+       if (setting.screenNumber > MAXSCREENS) setting.screenNumber = 0;
+       write_screenNumber(); //save screennumber in File
+      }
     }else if (sButton[0].state == ace_button::AceButton::kEventLongPressed){
       //log_v("Long Press IRQ");
       status.bPowerOff = true;

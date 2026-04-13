@@ -559,7 +559,8 @@ void Screen::drawMainScreen(void){
   //actData.SatCount = 9;
   actData.flightTime = status.flightTime;
   actData.flying = status.flying;
-  actData.wifi = (status.wifiSTA.state) ? true : false;
+//  actData.wifi = (status.wifiSTA.state) ? true : false;
+  actData.wifi = (status.bWifiOn) ? true : false;
   actData.bluetooth = status.bluetoothStat;
   if (status.bMuting){
       actData.volume = 0;
@@ -671,7 +672,8 @@ void Screen::drawMainScreen(void){
           pEInk->fillScreen(GxEPD_WHITE);
           drawspeaker(49,0,16,16,data.volume);
           drawflying(67,0,16,16,data.flying);
-          if (data.wifi) pEInk->drawXBitmap(85, 4,WIFI_bits,  14, 8, GxEPD_BLACK);
+          if (data.wifi) {pEInk->drawXBitmap(85, 4,WIFI_bits,  14, 8, GxEPD_BLACK);}
+           else {pEInk->drawXBitmap(85, 4,WIFI_bits,  14, 8, GxEPD_WHITE);} 
           if (data.bluetooth == 1){
               pEInk->drawXBitmap(101, 3,BT_bits,  8, 10, GxEPD_BLACK);
           }else if (data.bluetooth == 2){
@@ -809,7 +811,8 @@ void Screen::drawMainScreen(void){
 
           drawspeaker(197,17,16,16,data.volume);
           drawflying(220,17,16,16,data.flying);
-          if (data.wifi) pEInk->drawXBitmap(255, 4,WIFI_bits,  14, 8, GxEPD_BLACK);
+          if (data.wifi) {pEInk->drawXBitmap(255, 4,WIFI_bits,  14, 8, GxEPD_BLACK);}
+          else {pEInk->drawXBitmap(255, 4,WIFI_bits,  14, 8, GxEPD_WHITE);}
           if (data.bluetooth == 1){
               pEInk->drawXBitmap(255, 17,BT_bits,  8, 10, GxEPD_BLACK);
           }else if (data.bluetooth == 2){
