@@ -715,14 +715,13 @@ int16_t LoRaClass::switchFSK(uint32_t frequency){
   //BT0.5
   //BW=117khz
   // preamble len 24 Bit
-  //Sync-Word-Len 7Byte --> 56 Bit
+  //Sync-Word-Len 6Byte --> 48 Bit
   //Msg-Len 52 bytes --> 416 Bit
   //total 496Bit --> airtime 0.00496s (~5ms)
   
   //uint32_t tBegin = micros();
   _freq = frequency;
   int16_t ret = 0;
-  uint8_t syncWord[] = {0x99, 0xA5, 0xA9, 0x55, 0x66, 0x65, 0x96};	
   //log_i("switchFSK %d frequ=%.2f",millis(),_freq);
   switch (radioType){
     case RADIO_SX1262:
@@ -764,37 +763,10 @@ int16_t LoRaClass::switchFSK(uint32_t frequency){
       data[6] = 0xCC;
       data[7] = 0xCC;
       SPIwriteCommand(0x8B, data, 8);
-
-      //packet-params
-      // preamble len 24, detector 0x05 16 bits
-      data[0] = 0x00;
-      data[1] = 24;
-      data[2] = 0x04;
-      //data[1] = 0x08;
-      //data[2] = 0x05;
-      // sync word len (56 bits), addr comp off, fixed len
-      data[3] = 56;
-      data[4] = 0x00;
-      data[5] = 0x00;
-      // payload len = 52 bytes (2 * (24+2)), includes CRC 
-      data[6] = 52; 
-      // no integrated CRC check (not possible due to manchester encoding)
-      data[7] = 0x01;
-      data[8] = 0x00; 
-      SPIwriteCommand(0x8C, data, 9);
-
+      sx1262SetPacketParam(true);
       sx1262SetBufferBaseAddress();
       //setFrequency
       sx1262SetFrequency(_freq);
-      //Sync Word GFSK
-      data[0] = 0x99;
-      data[1] = 0xA5;
-      data[2] = 0xA9;
-      data[3] = 0x55;
-      data[4] = 0x66;
-      data[5] = 0x65;
-      data[6] = 0x96;
-      writeRegister(0x06C0, syncWord, 7);
       ret = 0;
       break;
       }
@@ -844,17 +816,7 @@ int16_t LoRaClass::switchFSK(uint32_t frequency){
       pGxModule->SPIwriteRegister(0x22,0x00); //RegRxTimeout3
       pGxModule->SPIwriteRegister(0x23,0x00); //RegRxDelay
       pGxModule->SPIwriteRegister(0x24,0x05); //RegOsc FXOSC/32 FXOSC = 32Mhz --> 1Mhz
-      pGxModule->SPIwriteRegister(0x25,0x00); //RegPreambleMsb
-      pGxModule->SPIwriteRegister(0x26,0x02); //RegPreambleLsb //preamble-size 2
-      pGxModule->SPIwriteRegister(0x27,0x36); //RegSyncConfig Sync-Word-Size = 6 Preamble-Type = 55
-      pGxModule->SPIwriteRegister(0x28,0x99); //RegSyncValue1
-      pGxModule->SPIwriteRegister(0x29,0xA5); //RegSyncValue2
-      pGxModule->SPIwriteRegister(0x2A,0xA9); //RegSyncValue3
-      pGxModule->SPIwriteRegister(0x2B,0x55); //RegSyncValue4
-      pGxModule->SPIwriteRegister(0x2C,0x66); //RegSyncValue5
-      pGxModule->SPIwriteRegister(0x2D,0x65); //RegSyncValue6
-      pGxModule->SPIwriteRegister(0x2E,0x96); //RegSyncValue7
-      pGxModule->SPIwriteRegister(0x2F,0X00); //RegSyncValue8
+      sx1276SetPacketParam(true);
       pGxModule->SPIwriteRegister(0x30,0x00); //RegPacketConfig1 WHITENING_NONE
       pGxModule->SPIwriteRegister(0x31,0x40); //RegPacketConfig2 packet mode
       pGxModule->SPIwriteRegister(0x32,0x34); //RegPayloadLength
@@ -1128,6 +1090,88 @@ float LoRaClass::get_airlimit(void)
 	return sx_airtime / 1800.0f;
 }
 
+int16_t LoRaClass::sx1276SetPacketParam(bool bReceive){
+  int16_t ret = 0;
+  uint8_t syncWord[8];
+  uint8_t syncWordLen = 6;
+  pGxModule->SPIwriteRegister(0x25,0x00); //RegPreambleMsb
+  if (bReceive){
+    pGxModule->SPIwriteRegister(0x26,0x01); //RegPreambleLsb //preamble-size 1
+    //real syncword of Flarm is 6 Bytes
+    syncWord[0] = 0xA5;
+    syncWord[1] = 0xA9;
+    syncWord[2] = 0x55;
+    syncWord[3] = 0x66;
+    syncWord[4] = 0x65;
+    syncWord[5] = 0x96;	
+    syncWord[6] = 0x00;
+    syncWord[7] = 0x00;	     
+  }else{
+    //we send 8 syncword because of bad implementations
+    pGxModule->SPIwriteRegister(0x26,0x01); //RegPreambleLsb //preamble-size 1
+    syncWordLen = 8;
+    syncWord[0] = 0x55;
+    syncWord[1] = 0x99;
+    syncWord[2] = 0xA5;
+    syncWord[3] = 0xA9;
+    syncWord[4] = 0x55;
+    syncWord[5] = 0x66;
+    syncWord[6] = 0x65;
+    syncWord[7] = 0x96;	    
+  }
+  pGxModule->SPIwriteRegister(0x27,0x30 + (syncWordLen-1)); //RegSyncConfig Sync-Word-Size = 6/8 Preamble-Type = 55
+  for (int i = 0;i < 8;i++){
+    pGxModule->SPIwriteRegister(0x28+i,syncWord[i]); //RegSyncValue1..8
+  }
+  return ret;
+}
+
+int16_t LoRaClass::sx1262SetPacketParam(bool bReceive){
+  uint8_t data[10];
+  uint8_t syncWord[8];
+  uint8_t syncWordLen = 6;
+  int16_t ret = 0;
+  //log_i("setPecketParam bRecieve=%d",bReceive);
+  if (bReceive){
+    //real syncword of Flarm is 6 Bytes
+    syncWord[0] = 0xA5;
+    syncWord[1] = 0xA9;
+    syncWord[2] = 0x55;
+    syncWord[3] = 0x66;
+    syncWord[4] = 0x65;
+    syncWord[5] = 0x96;	
+  }else{
+    //we send 8 syncword because of bad implementations
+    syncWordLen = 8;
+    syncWord[0] = 0x55;
+    syncWord[1] = 0x99;
+    syncWord[2] = 0xA5;
+    syncWord[3] = 0xA9;
+    syncWord[4] = 0x55;
+    syncWord[5] = 0x66;
+    syncWord[6] = 0x65;
+    syncWord[7] = 0x96;	    
+  }
+  //packet-params  
+  data[0] = 0x00; // preamble len MSB
+  data[1] = 0x08; // preamble len 8Bit (0x55)
+  //data[2] = 0x05; //16Bits Preamble detector length
+  data[2] = 0x04; //8Bits Preamble detector length  
+  data[3] = syncWordLen * 8; // sync word len in Bits, 
+  data[4] = 0x00; //addr comp off
+  data[5] = 0x00; //fixed len  
+  data[6] = 52; // payload len in Bytes = 52 bytes (2 * (24+2)), includes CRC 
+  // no integrated CRC check (not possible due to manchester encoding)
+  data[7] = 0x01; //no CRC
+  data[8] = 0x00; //no Whitening
+  ret = SPIwriteCommand(0x8C, &data[0], 9);
+  if (ret) return ret;
+
+  //Sync Word GFSK
+  ret = writeRegister(0x06C0, &syncWord[0], syncWordLen);
+  return ret;
+}
+
 int16_t LoRaClass::sx1262SetBufferBaseAddress(uint8_t txBaseAddress, uint8_t rxBaseAddress) {
   uint8_t data[2] = {txBaseAddress, rxBaseAddress};
   return(SPIwriteCommand(0x8F, data, 2));
@@ -1146,6 +1190,15 @@ int16_t LoRaClass::startReceive(){
   switch (radioType){
     case RADIO_SX1262:
       {
+      if (_fskMode){
+        uint8_t data[10];
+        sx1262_standby(0x01); //switch to stand-by STDBY_XOSC
+        sx1262SetBufferBaseAddress();
+        data[0] = 0x00;
+        SPIwriteCommand(0x8A, data, 1); //set Modem to GFSK
+        sx1262SetPacketParam(true); //set packetParam for receiving
+      }
+      
       //set IRQ to RX-Done
       sx1262SetDioIrqParams(SX126X_IRQ_RX_DONE | SX126X_IRQ_TIMEOUT | SX126X_IRQ_CRC_ERR | SX126X_IRQ_HEADER_ERR | SX126X_IRQ_HEADER_VALID | SX126X_IRQ_SYNC_WORD_VALID | SX126X_IRQ_PREAMBLE_DETECTED, SX126X_IRQ_RX_DONE);
 
@@ -1179,6 +1232,7 @@ int16_t LoRaClass::startReceive(){
             }
             bCalibrated = true;
           }
+          sx1276SetPacketParam(true);
           pGxModule->SPIsetRegValue(0x40, 0x00, 7, 6); //REG_DIO_MAPPING_1 --> DIO0_PACK_PAYLOAD_READY
           pGxModule->SPIwriteRegister(0x3E, 0b11111111); //REG_IRQ_FLAGS_1
           pGxModule->SPIwriteRegister(0x3F, 0b11111111); //REG_IRQ_FLAGS_2
@@ -1357,6 +1411,7 @@ int16_t LoRaClass::sx1262Transmit(uint8_t* buffer, size_t len, uint8_t addr){
   // get currently active modem
   if(_fskMode) {
     // calculate timeout (500% of expected time-on-air)
+    sx1262SetPacketParam(false); //set packet-params and syncword for transmitting
     timeout = sx1262GetTimeOnAir(len) * 5;
   } else {
     // calculate timeout (150% of expected time-on-air)
@@ -1370,7 +1425,7 @@ int16_t LoRaClass::sx1262Transmit(uint8_t* buffer, size_t len, uint8_t addr){
   SPIwriteCommand(cmd, 2, buffer, len);  
 
   //packet-params
-  if(!_fskMode) {
+  if(!_fskMode) {    
     // Modulation Quality with 500 kHz LoRa® Bandwidth
     uint8_t value = 0;
     readRegister(0x0889, &value, 1);
@@ -1598,6 +1653,7 @@ int16_t LoRaClass::transmit(uint8_t* data, size_t len){
       if (_fskMode){
         if (len == 26){
           sx1276setOpMode(SX1276_MODE_STANDBY); //RegOpMode --> set Module to standby
+          sx1276SetPacketParam(false); //set packetparam and sync-word for transmitting
           // calculate timeout (5ms + 500 % of expected time-on-air)
           uint32_t timeout = 5000000 + (uint32_t)((((float)(FSK_PACKET_LENGTH*2 * 8)) / (_br * 1000.0)) * 5000000.0);
           // set DIO mapping

@@ -681,7 +681,8 @@ bool flarm_decode(void *flarm_pkt, ufo_t *this_aircraft, ufo_t *fop){
   wpkt[5] ^= key_v7[3];
 
   #ifdef DEBUG_FLARM_ERRORS
-  if ((pkt->_unk1 == 0) && (pkt->_unk2 == 0) && (pkt->_unk3 == 3) && (pkt->_unk4 == 0) && (pkt->_unk5 == 3) && (pkt->_unk6 == 0) && (pkt->_unk7 == 0) && (pkt->_unk8 == 0) && ((pkt->_unk9 == 0) || (pkt->_unk9 == 2)) && (pkt->_unk10 == 0)){
+  //if ((pkt->_unk1 == 0) && (pkt->_unk2 == 0) && (pkt->_unk3 == 3) && (pkt->_unk4 == 0) && (pkt->_unk5 == 3) && (pkt->_unk6 == 0) && (pkt->_unk7 == 0) && (pkt->_unk8 == 0) && ((pkt->_unk9 == 0) || (pkt->_unk9 == 2) || (pkt->_unk9 == 11)) && (pkt->_unk10 == 0)){
+  if ((pkt->_unk1 == 0) && (pkt->_unk2 == 0) && (pkt->_unk3 == 3) && (pkt->_unk4 == 0) && (pkt->_unk5 == 3) && (pkt->_unk6 == 0)){
     //ok
   }else{
     log_i("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",pkt->_unk1,pkt->_unk2,pkt->_unk3,pkt->_unk4,pkt->_unk5,pkt->_unk6,pkt->_unk7,pkt->_unk8,pkt->_unk9,pkt->_unk10);
@@ -726,6 +727,7 @@ bool flarm_decode(void *flarm_pkt, ufo_t *this_aircraft, ufo_t *fop){
     #endif
     return false;
   }  
+  /*
   if (pkt->_unk7 != 0){
     #ifdef DEBUG_FLARM_ERRORS
     log_e("_unk7");
@@ -737,19 +739,20 @@ bool flarm_decode(void *flarm_pkt, ufo_t *this_aircraft, ufo_t *fop){
     log_e("_unk8");
     #endif
     return false;
-  }  
-  if ((pkt->_unk9 != 0) && (pkt->_unk9 != 2)){
+  }
+  if ((pkt->_unk9 != 0) && (pkt->_unk9 != 2) && (pkt->_unk9 != 11)){
     #ifdef DEBUG_FLARM_ERRORS
     log_e("_unk9");
     #endif
     return false;
-  }  
+  }
   if (pkt->_unk10 != 0){
     #ifdef DEBUG_FLARM_ERRORS
     log_e("_unk10");
     #endif
     return false;
   }  
+  */     
 
   fop->addr          = pkt->addr;
   fop->addr_type     = pkt->addr_type;

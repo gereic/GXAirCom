@@ -1847,8 +1847,8 @@ void setup() {
   #ifdef WIRELESS_STICK_V3
     setting.boardType = HELTEC_WIRELESS_STICK_LITE_V3;
   #endif
-  #ifdef Heltec_Lora_V3
-    setting.boardType = HELTEC_LORA_V3;
+  #ifdef Heltec_Lora_V3_V4
+    setting.boardType = HELTEC_LORA_V3_V4;
   #endif
   if (setting.boardType == eBoard::UNKNOWN){
     checkBoardType();
@@ -2301,7 +2301,8 @@ void setup() {
     PinGPSTX = 8;
     //wakeup GPS
     pinMode(7,OUTPUT);
-    digitalWrite(7,LOW);
+    //digitalWrite(7,LOW);
+    digitalWrite(7,HIGH);
 
     PinPPS = 6;
 
@@ -2368,8 +2369,8 @@ void setup() {
     PinADCVoltage = 1;
     adcVoltageMultiplier =  5.2636f;
     break;
-  case eBoard::HELTEC_LORA_V3:
-    log_i("Board=HELTEC_LORA_V3");
+  case eBoard::HELTEC_LORA_V3_V4:
+    log_i("Board=HELTEC_LORA_V3/V4");
 
     PinLora_SS = 8;
     PinLora_SCK = 9;
@@ -2390,7 +2391,18 @@ void setup() {
     //pI2cOne->begin(PinBaroSDA, PinBaroSCL);
 
     PinWindDir = 6;
-    PinWindSpeed =7;    
+    PinWindSpeed =7;   
+    
+    //GPS
+    pinMode(34,OUTPUT);
+    digitalWrite(34,HIGH); //Switch GPS on
+    PinGPSRX = 38;
+    PinGPSTX = 39;
+    PinPPS = 41;   
+    pinMode(42,OUTPUT);
+    digitalWrite(42,LOW); //set Reset to low   
+    delay(100);
+    digitalWrite(42,HIGH); //release Reset
 
     pinMode(35,OUTPUT);
     digitalWrite(35,LOW); //switch user-LED off
@@ -4818,7 +4830,7 @@ void taskStandard(void *pvParameters){
   // create a binary semaphore for task synchronization
   fanet.setRFMode(setting.RFMode);
   uint8_t radioChip = RADIO_SX1276;
-  if ((setting.boardType == eBoard::T_BEAM_SX1262) || (setting.boardType == eBoard::T_BEAM_S3CORE) || (setting.boardType == eBoard::HELTEC_WIRELESS_STICK_LITE_V3) || (setting.boardType == eBoard::HELTEC_LORA_V3)) radioChip = RADIO_SX1262;
+  if ((setting.boardType == eBoard::T_BEAM_SX1262) || (setting.boardType == eBoard::T_BEAM_S3CORE) || (setting.boardType == eBoard::HELTEC_WIRELESS_STICK_LITE_V3) || (setting.boardType == eBoard::HELTEC_LORA_V3_V4)) radioChip = RADIO_SX1262;
 
   // When the requested Address type is ICAO then the devId of the device must be set to your mode-s address
   // See Flarm Dataport Specification for details
