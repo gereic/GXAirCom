@@ -1,6 +1,11 @@
 import os
 import subprocess
 import gzip
+import sys
+
+_is_windows = sys.platform.startswith('win')
+def _cmd(name): return name + '.cmd' if _is_windows else name
+
 
 source_dir = "src/web/orig"
 target_file = "src/web/website.h"
@@ -28,7 +33,7 @@ def add_2_website_file(name, src):
 def minify_css(css_code: str) -> str:
     try:
         proc = subprocess.run(
-            ['cleancss.cmd', '--skip-rebase', '-o', '-', '-'],  # clean-css liest stdin, gibt minifiziert auf stdout
+            [_cmd('cleancss'), '--skip-rebase', '-o', '-', '-'],  # clean-css liest stdin, gibt minifiziert auf stdout
             input=css_code.encode('utf-8'),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -42,7 +47,7 @@ def minify_css(css_code: str) -> str:
 def minify_js(js_code: str) -> str:
     try:
         proc = subprocess.run(
-            ['terser.cmd', '--compress', '--mangle'],
+            [_cmd('terser'), '--compress', '--mangle'],
             input=js_code.encode('utf-8'),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -56,7 +61,7 @@ def minify_js(js_code: str) -> str:
 def minify_html(html_code: str) -> str:
     try:
         proc = subprocess.run(
-            ['html-minifier-terser.cmd',
+            [_cmd('html-minifier-terser'),
              '--collapse-whitespace',
              '--remove-comments',
              '--minify-css', 'true',
