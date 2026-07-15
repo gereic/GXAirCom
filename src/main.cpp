@@ -6221,6 +6221,8 @@ void taskBackGround(void *pvParameters){
         log_i("get ntp-time");
         byte ret = -1;
         if (xSemaphoreTake( xGsmMutex, ( TickType_t ) 500) == pdTRUE ){
+          setTime(0);
+          status.bTimeOk = false;
           ret = modem.NTPServerSync("pool.ntp.org",0);
           //log_i("ret=%d",ret);
           if (ret >= 0){

@@ -648,11 +648,48 @@ void make_v7_key(uint32_t key[4]) {
     }
   } while (--q > 0);
 }
+static int8_t flarm_nibble_diff(uint8_t a, uint8_t b)
+{
+  int8_t d = (int8_t)((a - b) & 0x0F);
+  if (d > 7) d -= 16;
+  return d;   // range -8..+7
+}
+
+static bool flarm_tstamp_is_valid(uint8_t pkt_tstamp, uint32_t local_timestamp)
+{
+  uint8_t local_tstamp = local_timestamp & 0x0F;
+  int8_t diff = flarm_nibble_diff(pkt_tstamp, local_tstamp);
+
+  /*
+   * Safe zone around nibble rollover:
+   * local 0xF <-> 0x0 is the dangerous boundary.
+   * Here require exact equality.
+   */
+  if (local_tstamp == 0x0 || local_tstamp == 0xF ||
+      pkt_tstamp   == 0x0 || pkt_tstamp   == 0xF) {
+    return diff == 0;
+  }
+
+  /*
+   * Away from rollover, accept small skew only.
+   * Use <=1 if you want strict behavior.
+   * Use <=2 if NTP timing is a bit noisy.
+   */
+  return abs(diff) <= 1;
+}
 
 bool flarm_decode(void *flarm_pkt, ufo_t *this_aircraft, ufo_t *fop){
   const uint32_t xxtea_key[4] = FLARM_KEY5;
   uint32_t key_v7[4];
   flarm_v7_packet_t *pkt = (flarm_v7_packet_t *) flarm_pkt;
+  /* If the timestamp is less than 1700000000UL we consider the clock not set (GPS or NTP) and we stop to waste computing power to decode the pkt*/
+  if (this_aircraft->timestamp < 1700000000UL) {
+    #ifdef DEBUG_FLARM_ERRORS
+    log_e("FLARM decode blocked: time not synchronized ts=%lu",
+          (unsigned long)this_aircraft->timestamp);
+    #endif
+    return false;
+  }	
   if (pkt->type == 0){
     #ifdef DEBUG_FLARM_ERRORS
     log_i("V6 protocol");
@@ -752,8 +789,25 @@ bool flarm_decode(void *flarm_pkt, ufo_t *this_aircraft, ufo_t *fop){
     #endif
     return false;
   }  
-  */     
-
+  */
+	
+  /*
+  FLARM discards PKT if Pkt TSNibble != local TSNibble, we try to mitigate it putting a safe zone where pkt is correct
+  also if the TSNibble is not the same, near 0x0 and 0xF it must be exact, but after 0x2 and before 0xC it can have a 
+  2 second tollerance.
+  */
+  uint8_t local_tstamp = timestamp & 0x0F;
+  uint8_t pkt_tstamp = pkt -> tstamp & 0x0F;
+  if (local_tstamp != pkt_tstamp) {
+    if (!flarm_tstamp_is_valid(pkt_tstamp, timestamp)) {
+      #ifdef DEBUG_FLARM_ERRORS
+      log_i("bad tstamp pkt=%X local=%X ts=%lu",
+        pkt_tstamp, local_tstamp, (unsigned long) timestamp);
+      #endif
+      return false;
+    }
+  }
+	
   fop->addr          = pkt->addr;
   fop->addr_type     = pkt->addr_type;
   fop->timestamp     = timestamp;
