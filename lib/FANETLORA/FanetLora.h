@@ -1,7 +1,10 @@
 /*!
  * @file FanetLora.h
  *
- *
+ * ADS-L M-Band additions in feature/adsl-protocol:
+ * - createAdsl() override of Fapp::createAdsl()
+ * - setAdslEnabled() / isAdslEnabled()
+ * - adslTxCount status counter
  */
 
 #ifndef __FANETLORA_H__
@@ -18,21 +21,23 @@
 #include "CalcTools.h"
 #include "FlarmRadio.h"
 
+// ADS-L protocol library
+#include "../ADSL/AdslProtocol.h"
 
 //#define DEBUG_FLARM_TX_BUFFER
 
 #define FANET_DEBUG
 
-#define FANET_LORA_TYPE1_SIZE				13		//11+2
-#define FANET_LORA_TYPE4_SIZE				15
-#define FANET_LORA_TYPE7_SIZE				7
+#define FANET_LORA_TYPE1_SIZE                           13              //11+2
+#define FANET_LORA_TYPE4_SIZE                           15
+#define FANET_LORA_TYPE7_SIZE                           7
 
-#define FANET_LORA_TYPE1OR7_AIRTIME_MS			40		//actually 20-30ms
-#define	FANET_LORA_TYPE1OR7_MINTAU_MS			250
-#define	FANET_LORA_TYPE1OR7_TAU_MS			5000
-//#define	FANET_LORA_TYPE1OR7_TAU_MS			500
+#define FANET_LORA_TYPE1OR7_AIRTIME_MS                  40              //actually 20-30ms
+#define FANET_LORA_TYPE1OR7_MINTAU_MS                   250
+#define FANET_LORA_TYPE1OR7_TAU_MS                      5000
+//#define       FANET_LORA_TYPE1OR7_TAU_MS                      500
 
-#define SEPARATOR			','
+#define SEPARATOR                       ','
 
 #define FANET_LORA_VALID_STATE_MS 10000 //10 seconds positions valid
 
@@ -56,26 +61,26 @@
 //see fmac.h
 /*
 Manufacturer IDs:
-0x00		[reserved]
-0x01		Skytraxx
-0x03		BitBroker.eu
-0x04		AirWhere
-0x05		Windline
-0x06		Burnair.ch
-0x07		SoftRF
+0x00            [reserved]
+0x01            Skytraxx
+0x03            BitBroker.eu
+0x04            AirWhere
+0x05            Windline
+0x06            Burnair.ch
+0x07            SoftRF
 0x08    GxAircom
 ...
-0x11		FANET+ (incl FLARM. Currently Skytraxx, and Naviter)
+0x11            FANET+ (incl FLARM. Currently Skytraxx, and Naviter)
 ...
-0xE0		OGN Tracker
+0xE0            OGN Tracker
 ...
-0xFA		Various
-		0x0001-0x00FF		GetroniX
-0xFB		Espressif based base stations, address is last 2bytes of MAC 
-0xFC		Unregistered Devices
-0xFD		Unregistered Devices
-0xFE		[Multicast]
-0xFF		[reserved]
+0xFA            Various
+                0x0001-0x00FF           GetroniX
+0xFB            Espressif based base stations, address is last 2bytes of MAC
+0xFC            Unregistered Devices
+0xFD            Unregistered Devices
+0xFE            [Multicast]
+0xFF            [reserved]
 */
 
 
@@ -151,7 +156,7 @@ public:
       needTechnicalAssistance = 12,
       needMedicalHelp = 13,
       distressCall = 14,
-      distressCallAuto = 15,				//max number
+      distressCallAuto = 15,                            //max number
     };
   typedef struct {
     uint32_t timestamp = 0;
@@ -280,6 +285,7 @@ public:
   uint8_t getFlarmAircraftType(trackingData *tData);
   uint8_t getFlarmAircraftType(aircraft_t aircraftType);
   void getRxTxCount(uint16_t *pFntRx,uint16_t *pFntTx,uint16_t *pLegRx,uint16_t *pLegTx);
+  void getRxTxCountAdsl(uint16_t *pAdslTx);  ///< NEW: get ADS-L TX counter
   float getLoraFrequency(void);
   float getFlarmFrequency(void);
   neighbour neighbours[MAXNEIGHBOURS];
@@ -292,18 +298,37 @@ public:
   status_t state = hiking;
   bool bInternetGateway = false;
 
-	/* device -> air */
-	bool is_broadcast_ready(int num_neighbors);
-	void broadcast_successful(int type);
+        /* device -> air */
+        bool is_broadcast_ready(int num_neighbours);
+        void broadcast_successful(int type);
   bool createLegacy(uint8_t *buffer);
 
-	/* air -> device */
-	void handle_acked(bool ack, MacAddr &addr);
-	void handle_frame(Frame *frm);
+  /**
+   * @brief Fapp override: build a complete ADS-L M-Band packet.
+   *
+   * Called by fmac::handleTxAdsl() inside the ADS-L time slot.
+   * Returns false if GPS data is invalid or ADS-L is disabled.
+   *
+   * @param buffer      27-byte output buffer (ADSL_PACKET_SIZE).
+   * @param freqToggle  Frequency alternation flag (false=868.2, true=868.4 MHz).
+   */
+  bool createAdsl(uint8_t *buffer, bool freqToggle) override;
+
+  /**
+   * @brief Enable or disable ADS-L M-Band transmission.
+   * When disabled, createAdsl() always returns false.
+   */
+  void setAdslEnabled(bool enabled) { _adslEnabled = enabled; }
+
+  /** @return true if ADS-L TX is currently enabled. */
+  bool isAdslEnabled(void) const { return _adslEnabled; }
+
+        /* air -> device */
+        void handle_acked(bool ack, MacAddr &addr);
+        void handle_frame(Frame *frm);
   Frame *get_frame();
   void fanet_cmd_transmit(const char *ch_str);
   void fanet_cmd_setGroundTrackingType(const char *ch_str);
-  //void fanet_sendMsg(char *ch_str);
 
   /* Legacy Switch */
   void setRFMode(uint8_t mode);
@@ -311,20 +336,20 @@ public:
   MacAddr getMacFromDevId(uint32_t devId);
 
 protected:
-private:  
+private:
   AircraftState flarmAircraftState;
   AircraftConfig flarmAircraftConfig;
   GpsData flarmGpsData;
   uint8_t _RfMode;
-  String _PilotName;  
+  String _PilotName;
   uint32_t valid_until;
   bool newMsg;
   String actMsg;
   msgData lastMsgData;
   void sendPilotName(uint32_t tAct);
-  String uint64ToString(uint64_t input);  
+  String uint64ToString(uint64_t input);
   int getByteFromHex(char in[]);
-  String getHexFromByte(uint8_t val,bool leadingZero = false);    
+  String getHexFromByte(uint8_t val,bool leadingZero = false);
   String getHexFromWord(uint16_t val,bool leadingZero = false);
   trackingData actTrackingData;
   bool newData = false;
@@ -333,8 +358,9 @@ private:
   weatherData lastWeatherData;
   bool newWData = false;
   int8_t getTrackingInfo(Frame *frm);
-  int8_t getGroundTrackingInfo(uint8_t *buffer,uint16_t length);  
-  int8_t getWeatherinfo(uint8_t *buffer,uint16_t length);  
+  int8_t getADSLTrackingInfo(Frame *frm, adsl_iconspicuity_t *adslData);
+  int8_t getGroundTrackingInfo(uint8_t *buffer,uint16_t length);
+  int8_t getWeatherinfo(uint8_t *buffer,uint16_t length);
   float getSpeedFromByte(uint8_t speed);
   int32_t getLatLonFromBuffer(uint8_t *buffer);
   float getLatFromBuffer(uint8_t *buffer);
@@ -356,11 +382,14 @@ private:
   bool frm2txBuffer(Frame *frm);
   void add2ActMsg(String s);
   int actrssi;
-	/* determines the tx rate */
-	unsigned long last_tx = 0;
-	unsigned long next_tx = 0;
+        /* determines the tx rate */
+        unsigned long last_tx = 0;
+        unsigned long next_tx = 0;
   uint32_t _ppsMillis = 0;
   float _geoIdAltitude; //altitude [m]
+
+  // ── ADS-L private state ─────────────────────────────────────────────────
+  bool _adslEnabled = false;  ///< ADS-L TX enabled flag (set via setAdslEnabled)
 
   typedef struct fanet_header_t {
     unsigned int type           :6;
@@ -381,7 +410,7 @@ private:
 
   } __attribute__((packed)) fanet_header_t;
 
-    
+
   /*
   * Tracking frame type (#4),
   * Standard header,
@@ -389,14 +418,6 @@ private:
   * Broadcast
   */
   typedef struct {
-    /*
-    unsigned int type           :6;
-    unsigned int forward        :1;
-    unsigned int ext_header     :1;
-
-    unsigned int vendor         :8;
-    unsigned int address        :16;
-    */
     unsigned int bExt_header2     :1;
     unsigned int bStateOfCharge   :1;
     unsigned int bRemoteConfig    :1;
@@ -415,7 +436,7 @@ private:
 
     unsigned int speed          :7;
     unsigned int speed_scale    :1;
-    
+
     unsigned int gust          :7;
     unsigned int gust_scale    :1;
 
@@ -425,7 +446,7 @@ private:
 
     unsigned int charge        :8;
   } __attribute__((packed)) fanet_packet_t4;
-    
+
 };
 
 

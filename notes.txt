@@ -1,0 +1,5 @@
+notes:
+
+M-Band Frequency Hopping: CRITICAL MISSING LOGIC. The specification requires alternating between 868.2 MHz and 868.4 MHz for every transmission .
+
+Observation: Your AdslProtocol::loop() logic appears to use a fixed frequency. You must implement a toggle that switches the frequency index in your radio driver after every transmit() call.

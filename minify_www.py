@@ -1,11 +1,10 @@
 import os
 import subprocess
 import gzip
+import shutil
 
 source_dir = "src/web/orig"
 target_file = "src/web/website.h"
-
-
 web_site_file = ""
 
 def add_2_website_file(name, src):
@@ -25,89 +24,68 @@ def add_2_website_file(name, src):
             cnt = 0
     web_site_file += "};\n\n"
 
-def minify_css(css_code: str) -> str:
+def run_minifier(cmd_list, input_code):
+    """Helper to run minifiers with shell=True on Windows for .cmd files."""
     try:
+        # Check if the command exists in PATH
+        if not shutil.which(cmd_list[0]):
+            return input_code
+            
         proc = subprocess.run(
-            ['cleancss.cmd', '--skip-rebase', '-o', '-', '-'],  # clean-css liest stdin, gibt minifiziert auf stdout
-            input=css_code.encode('utf-8'),
+            cmd_list,
+            input=input_code.encode('utf-8'),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            shell=(os.name == 'nt'), # Essential for .cmd files on Windows
             check=True
         )
         return proc.stdout.decode('utf-8')
-    except subprocess.CalledProcessError as e:
-        print("clean-css error:", e.stderr.decode('utf-8'))
-        return css_code
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return input_code
 
-def minify_js(js_code: str) -> str:
-    try:
-        proc = subprocess.run(
-            ['terser.cmd', '--compress', '--mangle'],
-            input=js_code.encode('utf-8'),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            check=True
-        )
-        return proc.stdout.decode('utf-8')
-    except subprocess.CalledProcessError as e:
-        print("terser error:", e.stderr.decode('utf-8'))
-        return js_code
+def minify_css(css_code):
+    return run_minifier(['cleancss.cmd', '--skip-rebase'], css_code)
 
-def minify_html(html_code: str) -> str:
-    try:
-        proc = subprocess.run(
-            ['html-minifier-terser.cmd',
-             '--collapse-whitespace',
-             '--remove-comments',
-             '--minify-css', 'true',
-             '--minify-js', 'true'
-             ],
-            input=html_code.encode('utf-8'),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            check=True
-        )
-        return proc.stdout.decode('utf-8')
-    except subprocess.CalledProcessError as e:
-        print("html-minifier-terser error:", e.stderr.decode('utf-8'))
-        return html_code
+def minify_js(js_code):
+    return run_minifier(['terser.cmd', '--compress', '--mangle'], js_code)
 
-def getFileContent(file):
-    with open(file, 'r', encoding='utf-8') as f:
-        content = f.read()
-    return content
+def minify_html(html_code):
+    return run_minifier(['html-minifier-terser.cmd', '--collapse-whitespace', '--remove-comments', '--minify-css', 'true', '--minify-js', 'true'], html_code)
 
 def minify_file(path, file):
-
     ext = os.path.splitext(file)[1].lower()
-    if (ext == '.css') or  (ext == '.js') or (ext == '.html'):
-        content = getFileContent(os.path.join(path,file))
-    if ext == '.css':        
-        minified = minify_css(content)
-    elif ext == '.js':
-        content = getFileContent(os.path.join(path,file))
-        minified = minify_js(content)
-    elif ext == '.html' or ext == '.htm':
-        content = getFileContent(os.path.join(path,file))
-        minified = minify_html(content)
-    if (ext == '.css') or  (ext == '.js') or (ext == '.html'):
-        minified_gzip = gzip.compress(minified.encode("utf-8"))
-    else:
-        print(f"fileextension not supported --> only zip it: {file}")
-        with open(os.path.join(path,file), 'rb') as f:
+    full_path = os.path.join(path, file)
+    
+    if ext in ['.css', '.js', '.html', '.htm']:
+        with open(full_path, 'r', encoding='utf-8') as f:
             content = f.read()
-        minified = content
-        minified_gzip = gzip.compress(content)      
-    print(f"file: {file} | original: {len(content)} | minimized: {len(minified)} | gzip: {len(minified_gzip)}")
-    add_2_website_file(file, minified_gzip)
+        
+        if ext == '.css':
+            minified = minify_css(content)
+        elif ext == '.js':
+            minified = minify_js(content)
+        else:
+            minified = minify_html(content)
+            
+        final_data = gzip.compress(minified.encode("utf-8"))
+        print(f"file: {file} | original: {len(content)} | minimized: {len(minified)} | gzip: {len(final_data)}")
+    else:
+        # For non-text files like favicon.ico
+        with open(full_path, 'rb') as f:
+            content = f.read()
+        final_data = gzip.compress(content)
+        print(f"file: {file} | original: {len(content)} | gzip: {len(final_data)}")
+        
+    add_2_website_file(file, final_data)
 
+# Main execution
+if os.path.exists(source_dir):
+    for root, dirs, files in os.walk(source_dir):
+        for file in files:
+            minify_file(root, file)
 
-for root, dirs, files in os.walk(source_dir):
-    for file in files:
-        #minify_file(os.path.join(root, file))
-        minify_file(root, file)
-
-with open(target_file, "w", encoding="utf-8") as fout:
-    fout.write(web_site_file)        
-
-print("***** all files minimized *****")
+    with open(target_file, "w", encoding="utf-8") as fout:
+        fout.write(web_site_file)
+    print("***** website.h regenerated successfully *****")
+else:
+    print(f"Error: Source directory {source_dir} not found.")

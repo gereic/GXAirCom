@@ -1,0 +1,485 @@
+ADS-L 4 SRD-860 PROTOCOL IMPLEMENTATION REFERENCE
+EASA ED Decision 2022/024/R — Issue 1 (20 December 2022)
+================================================================================
+
+OVERVIEW
+--------
+- Lightweight, stateless, undirected broadcast protocol
+- OSI layers used: 1 (Physical), 2 (Data Link), 3 (Network), 6 (Presentation), 7 (Application)
+- Hardware: GNSS receiver + Host processor + RF frontend
+- Little Endian byte order; bytes transmitted MSB first
+- All transmissions must comply with local regulations (ETSI EN 300 220)
+
+BIT/BYTE ORDER
+--------------
+- Byte: 8 bits, LSB = 0x01, MSB = 0x80
+- Byte order: Little Endian (LSB first on RF)
+- Bit order: MSB first per byte
+- Example: 0x14471A → transmitted as 0x1A 0x47 0x14
+  Bit sequence: 00011010 01000111 00010100
+
+PACKET STRUCTURE (transmission order)
+--------------------------------------
+  [ Preamble | Sync Word | Payload | CRC | (Signature, optional) ]
+
+
+================================================================================
+SUBPART C — PHYSICAL LAYER
+================================================================================
+
+TWO BANDS SUPPORTED
+-------------------
+
+M-BAND
+  Frequency:          868.2 MHz and 868.4 MHz (alternate every transmission)
+  Channel Bandwidth:  200 kHz
+  Modulation:         2-GFSK
+  Max Power (ERP):    14 dBm / 25 mW
+  Chip rate:          100 kbps (effective 50 kbps due to Manchester encoding)
+  Freq Deviation:     0 → -50 kHz, 1 → +50 kHz
+  Gauss Filter BT:    0.5
+  Backoff Interval:   15 ms .. 250 ms
+
+O-BAND
+  Frequency:          869.525 MHz
+  Channel Bandwidth:  250 kHz
+  Modulation:         2-GFSK
+  Max Power (ERP):    27 dBm / 500 mW
+  Chip rate:          38.4 kbps (no Manchester encoding)
+  Freq Deviation:     0 → -10 kHz, 1 → +10 kHz
+  Backoff Interval:   10 ms .. 50 ms
+
+MANCHESTER ENCODING (M-Band only)
+----------------------------------
+  Applied to: Sync Word, Payload, CRC
+  NOT applied to: Preamble
+  NOT applied to: Secure Signature (switch to non-Manchester after CRC)
+  Encoding: '1' → '01',  '0' → '10'
+
+M-BAND PREAMBLE
+---------------
+  Part 1: Alternating 0/1 sequence, min 10 symbols, max 24 symbols, MUST end with 1
+  Part 2: Sequence 1001, transmitted twice
+  No Manchester encoding applied
+  Shortest valid preamble: 01 0101 0101 1001 1001
+
+M-BAND SYNC WORD (2 bytes, MSB first, Manchester encoded before send)
+----------------------------------------------------------------------
+  Hex:    0x72  0x4B
+  Binary: 01110010 01001011
+
+O-BAND PREAMBLE
+---------------
+  10 bytes of 0xAA
+
+O-BAND SYNC WORD (2 bytes, MSB first, NOT Manchester encoded)
+-------------------------------------------------------------
+  Hex:    0x2D  0xD4
+  Binary: 00101101 11010100
+
+
+================================================================================
+SUBPART D — DATA LINK LAYER
+================================================================================
+
+DATA LINK FRAME STRUCTURE
+--------------------------
+  Offset (bits)          Field             Width (bits)   Notes
+  ─────────────────────────────────────────────────────────────────────────
+  0                      Packet Length     8              Bytes of full msg
+                                                          (incl header+payload+CRC)
+                                                          excl length field itself
+                                                          excl signature
+  8                      Data              (PktLen-3)*8   See Network/Presentation layers
+  (PktLen+1)*8           CRC               24             Over Data only (excl PktLen, excl Sig)
+  (PktLen+3)*8           Secure Signature  512            Optional
+
+CRC-24
+------
+  Same polynomial as Mode-S / 1090 MHz ADS-B:
+  G(x) = x^24 + x^23 + x^22 + x^21 + x^20 + x^19 + x^18 + x^17 +
+          x^16 + x^15 + x^14 + x^13 + x^12 + x^10 + x^3 + 1
+
+  Computed over: entire ADS-L packet EXCLUDING Packet Length field and Secure Signature
+  Transmitted:   Big Endian (MSB byte first), only 3 lower bytes used
+
+  C implementation:
+  -----------------
+  static uint32_t _crc24_polypass(uint32_t crc, uint8_t input) {
+      const uint32_t poly = 0xFFFA0480;
+      crc |= input;
+      for (uint8_t bit = 0; bit < 8; bit++) {
+          if (crc & 0x80000000) crc ^= poly;
+          crc <<= 1;
+      }
+      return crc;
+  }
+
+  uint32_t crc24(const uint8_t *data, size_t len_data) {
+      uint32_t crc = 0;
+      for (size_t idx = 0; idx < len_data; idx++)
+          crc = _crc24_polypass(crc, data[idx]);
+      crc = _crc24_polypass(crc, 0);
+      crc = _crc24_polypass(crc, 0);
+      crc = _crc24_polypass(crc, 0);
+      return crc >> 8;
+  }
+
+SECURE SIGNATURE (optional)
+----------------------------
+  Algorithm:    EdDSA Ed25519 (IRTF/IETF RFC 8032)
+  Public key:   256 bits
+  Signature:    512 bits (compressed form)
+  Input:        ADS-L message (header + payload), EXCLUDING CRC
+                If encryption used: input is POST-encryption data
+  Frequency:    Append at most every 10 s, at least every 30 s
+  Private key:  Must be stored securely; never exposed
+  Simple receivers may ignore the signature
+
+TRANSMIT RATE & TIMING
+-----------------------
+  Standard rate:    once per second
+  Minimum rate:     once per 5 seconds
+  Max delay:        Discard packet if >1000 ms since GNSS fix (prevents stale data)
+
+MEDIA ACCESS (CSMA / LBT)
+--------------------------
+  Protocol:   1-persistent CSMA with Listen-Before-Talk (LBT)
+  Standard:   ETSI EN 300 220-1 (Polite Spectrum Access)
+  On carrier detect: backoff, retry after random delay in band's backoff interval
+  Force TX:   If unable to transmit for 3000 ms → may force transmit
+  After force TX: silent for at least 2000 ms
+
+
+================================================================================
+SUBPART E — NETWORK LAYER
+================================================================================
+
+NETWORK PACKET STRUCTURE
+-------------------------
+  Offset (bits)  Field                Width (bits)  Notes
+  ──────────────────────────────────────────────────────────────────────────────
+  0              Protocol Version     4             Set to 0 for this spec version
+  4              Secure Signature flag 1            1 = signature present after CRC
+  5              Key Index            2             0 = public key (all-zeros key)
+  7              Reserved             1             Set to 0
+  8              Data                 (PktLen-3)*8  See Presentation layer
+
+  Key Index values:
+    0 → key0 = 0x00000000 (data scrambling / default)
+    1..3 → Reserved
+
+ENCRYPTION / DATA SCRAMBLING (XXTEA)
+-------------------------------------
+  Algorithm:    XXTEA symmetric encryption
+  Rounds:       6
+  num_data_words: 6
+  Key (default): all-zeros (key0 = 0x00000000)
+  Input:        Must be multiple of 4 bytes (32-bit words)
+  Note:         All-zeros key = data scrambling mode (still provides error detection)
+
+  #define MX (( ((z>>5)^(y<<2)) + ((y>>3)^(z<<4)) ) ^ ( (sum^y) + (key[(p&3)^e]^z) ))
+
+  void xxtea_encrypt(uint32_t* data, uint32_t num_data_words,
+                     const uint32_t* key, uint32_t round) {
+      uint32_t z, y = data[0], sum = 0, e, DELTA = 0x9e3779b9;
+      uint32_t p, q;
+      z = data[num_data_words - 1];
+      q = round;
+      while (q-- > 0) {
+          sum += DELTA;
+          e = sum >> 2 & 3;
+          for (p = 0; p < num_data_words - 1; p++) {
+              y = data[p + 1];
+              data[p] += MX;
+              z = data[p];
+          }
+          y = data[0];
+          data[num_data_words - 1] += MX;
+          z = data[num_data_words - 1];
+      }
+  }
+
+  Encryption parameters:
+    round          = 6
+    num_data_words = 6
+
+
+================================================================================
+SUBPART F — PRESENTATION LAYER
+================================================================================
+
+ADS-L DATA LAYOUT
+-----------------
+  Offset (bits)  Field         Width (bits)         Notes
+  ──────────────────────────────────────────────────────────────
+  0              ADS-L Header  40                   See below
+  40             ADS-L Payload Variable (mult of 32) Currently: iConspicuity only
+
+ADS-L HEADER (40 bits)
+-----------------------
+  Offset (bits)  Field                  Width (bits)  Notes
+  ──────────────────────────────────────────────────────────────────────────────
+  0              Payload Type Identifier 8            Discriminator (see table)
+  8              Sender Address          30           Unique sender address
+  38             Reserved                1            Set to 0
+  39             Relay/forward           1            1 = relayed/forwarded packet
+
+PAYLOAD TYPE IDENTIFIER
+------------------------
+  Value  Type       Payload
+  0      Broadcast  Reserved
+  1      Broadcast  Reserved
+  2      Broadcast  iConspicuity  ← currently the only defined payload
+  3-127  Broadcast  Reserved
+  128-255 Unicast   Reserved
+
+ADDRESS FIELD (30 bits)
+------------------------
+  Bits 0-5:  Address Mapping Table (AMT) index (6 bits)
+  Bits 6-29: Address (24 bits)
+
+  AMT Values:
+    0   → Random / Privacy mode
+    1-3 → Reserved
+    4   → Reserved
+    5   → ICAO
+    6   → FLARM and OEMs
+    7   → OGN-Tracker
+    8   → FANET and OEMs
+    9   → Manufacturers Page 0
+    10  → Manufacturers Page 1
+    ...
+    63  → Manufacturers Page 54
+
+  For AMT entries ≥ 8, Address is structured as:
+    Bits 0-7:  Manufacturer prefix (8 bits)
+    Bits 8-23: Base address (16 bits)
+
+PRIVACY MODE
+------------
+  Activated by: AMT = 0 (Random/Privacy)
+  Address:      Randomly selected at device start-up (uniform distribution)
+  Rules:        - Address must NOT change during operation
+                - Switching between privacy/normal during flight is NOT allowed
+
+PAYLOAD SIZE CONSTRAINTS
+-------------------------
+  New payloads must satisfy: (5 + payload_size_bytes) % 4 == 0
+  Valid payload sizes (bytes): 3, 7, 11, 15, 19, 23, 27
+
+
+================================================================================
+SUBPART G — APPLICATION LAYER (iConspicuity Payload)
+================================================================================
+
+iCONSPICUITY PAYLOAD STRUCTURE (Payload Type = 2)
+--------------------------------------------------
+All bit offsets relative to start of payload.
+
+  Offset  Field                       Width  Encoding
+  ──────────────────────────────────────────────────────────────────────────────
+  0       Timestamp                   6      Quarter-seconds since full hour, mod 60
+                                             Values 60-63 NOT used
+  6       Flight State                2      Table (see below)
+  8       Aircraft Category           5      Table (see below)
+  13      Emergency Status            3      Table (see below)
+  16      Latitude                    24     Signed int, LSB = 1°/93206, North positive
+  40      Longitude                   24     Signed int, LSB = 1°/46603, East positive
+  64      Ground Speed                8      Exp unsigned, max 238 m/s, res 0.25 m/s
+  72      Altitude above WGS-84       14     Exp unsigned, -316m..+61000m, res 1m
+  86      Vertical Rate               9      Exp signed, ±120 m/s, res 0.125 m/s
+  95      Ground Track                9      Cyclic, 1 bit = 360/512 = 0.703125°
+  104     Source Integrity Level      2      Table (see below)
+  106     Design Assurance            2      Table (see below)
+  108     Navigation Integrity        4      Table (see below)
+  112     Horizontal Position Accuracy 3     Table (see below)
+  115     Vertical Position Accuracy  2      Table (see below)
+  117     Velocity Accuracy           2      Table (see below)
+  119     Reserved                    1      Set to 0
+  ──────────────────────────────────────────────────────────────────────────────
+  Total payload: 120 bits = 15 bytes
+
+NO POSITION FIX: Use 0xFFFFFF for both Latitude and Longitude fields.
+
+FLIGHT STATE
+------------
+  0 = Undefined
+  1 = On ground
+  2 = Airborne
+  3 = Reserved
+
+AIRCRAFT CATEGORY
+-----------------
+  0  = No emitter category info
+  1  = Light fixed wing (< 7031 kg)
+  2  = Small to heavy fixed wing (≥ 7031 kg)
+  3  = Rotorcraft
+  4  = Glider / sailplane
+  5  = Lighter-than-air
+  6  = Ultralight
+  7  = Hang-glider / paraglider
+  8  = Parachutist / skydiver / wingsuit
+  9  = eVTOL / UAM
+  10 = Gyrocopter
+  11 = UAS Open category
+  12 = UAS Specific category
+  13 = UAS Certified category
+  14-31 = Reserved
+
+EMERGENCY STATUS
+----------------
+  0 = Undefined
+  1 = No emergency
+  2 = General emergency
+  3 = Lifeguard/medical emergency
+  4 = No communications
+  5 = Unlawful interference
+  6 = Downed aircraft
+  7 = Reserved
+
+POSITION ENCODING
+-----------------
+  WGS-84 reference system
+  Latitude:  24-bit signed int, LSB = 1°/93206 ≈ 0.00001073°
+  Longitude: 24-bit signed int, LSB = 1°/46603 ≈ 0.00002146°
+  North positive, East positive
+
+EXPONENTIAL ENCODING (used for Ground Speed, Altitude, Vertical Rate)
+----------------------------------------------------------------------
+  Unsigned field layout:  <exponent:2> <base:N>
+  Signed field layout:    <sign:1> <exponent:2> <base:N>
+
+  N is derived from total field width:
+    Ground Speed:   8 bits total → N = 6 (2 exp + 6 base)
+    Altitude:      14 bits total → N = 12 (2 exp + 12 base)
+    Vertical Rate:  9 bits total → N = 6 (1 sign + 2 exp + 6 base)
+
+  Decode (unsigned):
+    value = 2^exponent * (2^N + base) - 2^N
+
+  Decode (signed):
+    value = above result, negated if sign bit set
+    Zero always encoded as non-negative (sign bit = 0)
+
+  Encode (unsigned):
+    1. Find largest e* in {0,1,2,3} such that value >= 2^(N+e*) - 2^N
+    2. exponent = e*, base = value - (2^(N+e*) - 2^N)
+
+  Encode (signed):
+    sign = (value < 0) ? 1 : 0
+    Compute exponent and base using abs(value)
+
+ALTITUDE (14 bits, unsigned exp)
+---------------------------------
+  Offset: +320 m added to encode negatives
+  Exponent: 2 bits, Base: 12 bits
+  Range: -320 m to +61112 m, resolution 1 m
+  Examples:
+    -320 m → 0x0000
+       0 m → 0x0140
+    1000 m → 0x0528
+   61112 m → 0x3FFF
+
+GROUND SPEED (8 bits, unsigned exp)
+------------------------------------
+  Exponent: 2 bits, Base: 6 bits
+  Resolution: 0.25 m/s, Max: 238 m/s
+  Examples:
+    0.25 m/s → 0x01
+    0.75 m/s → 0x03
+     120 m/s → 0xC4
+     238 m/s → 0xFF
+
+VERTICAL RATE (9 bits, signed exp)
+------------------------------------
+  Sign: 1 bit, Exponent: 2 bits, Base: 6 bits
+  Resolution: 0.125 m/s, Range: ±119 m/s
+  Positive = upward (away from Earth)
+  Examples:
+       0       → 0x000
+   +0.125 m/s → 0x001
+   -0.125 m/s → 0x101
+    +10 m/s   → 0x048
+    -10 m/s   → 0x148
+   +119 m/s   → 0x0FF
+   -119 m/s   → 0x1FF
+
+GROUND TRACK (9 bits)
+----------------------
+  Direction of motion over ground, clockwise from North
+  Resolution: 360°/512 = 0.703125° per bit
+
+SOURCE INTEGRITY LEVEL (2 bits)
+--------------------------------
+  0 = Undefined or > 1E-3 per flight hour
+  1 = ≤ 1E-3 per flight hour
+  2 = ≤ 1E-5 per flight hour
+  3 = ≤ 1E-7 per flight hour
+
+DESIGN ASSURANCE (2 bits)
+--------------------------
+  0 = Undefined / none
+  1 = DAL D
+  2 = DAL C
+  3 = DAL B
+
+NAVIGATION INTEGRITY — Containment Radius Rc (4 bits)
+------------------------------------------------------
+  0  = Undefined
+  1  = ≥ 20 NM
+  2  = < 20 NM
+  3  = < 8 NM
+  4  = < 4 NM
+  5  = < 2 NM
+  6  = < 1 NM
+  7  = < 0.6 NM
+  8  = < 0.2 NM
+  9  = < 0.1 NM
+  10 = < 75 m
+  11 = < 25 m
+  12 = < 7.5 m
+
+HORIZONTAL POSITION ACCURACY — 95% bound (3 bits)
+--------------------------------------------------
+  0 = Unknown / ≥ 0.5 NM
+  1 = < 0.5 NM
+  2 = < 0.3 NM
+  3 = < 0.1 NM
+  4 = < 0.05 NM
+  5 = < 30 m
+  6 = < 10 m
+  7 = < 3 m
+
+VERTICAL POSITION ACCURACY — 95% geometric altitude bound (2 bits)
+--------------------------------------------------------------------
+  0 = Unknown / ≥ 150 m
+  1 = < 150 m
+  2 = < 45 m
+  3 = < 15 m
+
+VELOCITY ACCURACY — 95% horizontal velocity bound (2 bits)
+------------------------------------------------------------
+  0 = Unknown / ≥ 10 m/s
+  1 = < 10 m/s
+  2 = < 3 m/s
+  3 = < 1 m/s
+
+
+================================================================================
+PERFORMANCE NOTES
+================================================================================
+  Typical range:     ≥ 10 km (optimal setup)
+  Max observed:      > 100 km (similar system)
+  Antenna (TX):      Vertically polarized, omnidirectional
+  Antenna (RX):      Vertically polarized collinear, unobstructed
+  Receiver note:     Software Defined Radio recommended for future compatibility
+
+
+================================================================================
+QUALIFICATION / COMPLIANCE
+================================================================================
+  No ETSO or MOPS exists for ADS-L at time of writing.
+  Compliance with SERA.6005(c) is the operator's responsibility.
+  Optional "Non Technical Objection (NTO)" available from EASA for manufacturers.
+  Governed by: EU Regulation 2021/666 (SERA.6005(c)) + EASA NPA 2021-14

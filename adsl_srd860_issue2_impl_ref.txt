@@ -1,0 +1,1168 @@
+ADS-L 4 SRD-860 — COMPLETE IMPLEMENTATION REFERENCE
+EASA ED Decision 2022/024/R — Issue 2 (1 December 2025)
+Supersedes Issue 1 (20 December 2022)
+For use in sender + receiver implementations; includes FANET/FLARM interoperability notes.
+================================================================================
+CRITICAL NOTICE: O-Band Issue 1 vs Issue 2 INCOMPATIBILITY
+================================================================================
+The O-Band (LDR) modulation parameters were CORRECTED in Issue 2.
+Issue 1 O-Band parameters MUST NOT be used in new implementations.
+The Issue 1 O-Band spec will NOT be compatible with future standards.
+Specifically: freq deviation changed (±10 kHz → ±12.5 kHz) and Gauss BT added (1.0).
+O-Band HDR is entirely NEW in Issue 2.
+
+================================================================================
+PROTOCOL VERSION MAPPING
+================================================================================
+  Issue 1 → Protocol Version field value: 0
+  Issue 2 → Protocol Version field value: 1
+
+  BACKWARD COMPATIBILITY: Always transmit the LOWEST protocol version
+  number whose encoding is identical to the payload you are sending.
+  For Traffic payload (unchanged between Issue 1 and 2): transmit version 0
+  unless you are using Issue 2-only features (e.g. new aircraft categories,
+  FEC, new invalid values). For new payloads (Status, Traffic Uplink, FIS-B,
+  Remote ID): transmit version 1.
+
+  SOFT VERSIONING (Issue 2 addition):
+  - Every transmitter should also send a "Status" payload (type 3) indicating
+    its "Max. Protocol Version" capability. Peers that receive this can adapt
+    their own transmissions to use the lowest mutually compatible version.
+  - If no Status payload is received from a peer, treat the Protocol Version
+    in their Traffic payload as their max capability.
+  - CRITICAL RANGE RULE: When sending Traffic payload, use the lowest version
+    compatible with all nearby peers:
+      Condition 1: Other aircraft within 1 km horizontal AND 800 m vertical
+      Condition 2: TCPA < 30 s AND vertical separation < 800 m
+    TCPA = horizontal distance / closure rate (2D plane).
+    Use the minimum version satisfying ALL such peers simultaneously.
+
+================================================================================
+SUBPART B — BIT AND BYTE ORDER (UNCHANGED FROM ISSUE 1)
+================================================================================
+  - Byte: 8 bits, LSB = 0x01, MSB = 0x80
+  - Byte order: Little Endian — integers transmitted LSB first on RF
+  - Bit order: Each byte transmitted MSB first
+  - Bit numbering: bit 0 = LSB, counting up to MSB
+
+  Example 1: Integer 0x14471A → transmitted as 0x1A 0x47 0x14
+    Bit sequence: 00011010 01000111 00010100
+
+  Example 2 (multi-field byte packing):
+    Given payload block: A (14 bits, unsigned) at offset 0,
+                         B (10 bits, unsigned) at offset 14
+    For A=0x12AA, B=0x355:
+      Byte 0 = 0xAA, Byte 1 = 0x52, Byte 2 = 0x55
+      Bit sequence: 10101010 01010010 11010101
+
+  RESERVED FIELDS: Receiver MUST ignore them. Sender MAY write any value.
+
+================================================================================
+SUBPART C — PHYSICAL LAYER (SIGNIFICANT CHANGES IN ISSUE 2)
+================================================================================
+Three channels are now defined. Channels are partly derived from FLARM and
+PilotAware modulation parameters for interoperability and retrofits.
+
+────────────────────────────────────────────────────────────────────────────────
+C.1  M-BAND (UNCHANGED RF parameters from Issue 1; preamble/Manchester changes)
+────────────────────────────────────────────────────────────────────────────────
+  Frequency:          868.2 MHz and 868.4 MHz (two channels)
+  Channel Bandwidth:  200 kHz
+  Modulation:         2-GFSK
+  Max Power (ERP):    14 dBm / 25 mW  (nominal min: 12 dBm)
+  Chip rate:          100 kbps chip; 50 kbps effective (Manchester halves it)
+  Freq Deviation:     0 → -50 kHz, 1 → +50 kHz
+  Gauss Filter BT:    0.5
+  Backoff Interval:   15 ms .. 250 ms (random uniform in this range)
+
+  FREQUENCY DIVERSITY (Issue 2 clarification):
+  - For "Traffic" (type 2) and "Status" (type 3) payloads: MUST alternate
+    between 868.2 MHz and 868.4 MHz on every successive transmission.
+    This ensures single-channel legacy receivers (e.g. FLARM) can still
+    receive every other packet reliably.
+  - For all other payload types: sender may freely choose either frequency,
+    e.g. based on current spectrum usage (LBT scan).
+
+  MANCHESTER ENCODING (Issue 2 change — scope expanded):
+  - Issue 1: applied to Sync Word + Payload + CRC
+  - Issue 2: applied to Sync Word + ENTIRE ADS-L Packet (incl. parity/CRC)
+  - NOT applied to: Preamble
+  - NOT applied to: Secure Signature (switch to non-Manchester after the
+    ADS-L packet to reduce on-air time)
+  - Encoding: '1' → '01',  '0' → '10'
+
+  M-BAND PREAMBLE (Issue 2 change — more precise spec):
+  - Part 1: Binary sequence "01", transmitted at least 5 times, max 12 times.
+            Default = 8 repetitions (i.e. 01 repeated 8 times = 16 bits).
+  - Part 2: Binary sequence "1001", transmitted twice.
+  - Manchester encoding NOT applied to preamble.
+  - Shortest valid preamble: 01 0101 0101 1001 1001  (5x"01" + 2x"1001")
+  - Default preamble:        01 01010101010101 1001 1001  (8x"01" + 2x"1001")
+  - COMPATIBILITY NOTE: Issue 1 spec said "min 10 symbols, max 24 symbols,
+    end with 1". Issue 2 redefines this more precisely. A receiver SHOULD
+    accept both. The "end with 1" property is preserved because "01" ends
+    with 1 and "1001" also ends with 1.
+
+  M-BAND SYNC WORD (UNCHANGED from Issue 1):
+  - 2 bytes, MSB first, Manchester encoded before transmitting
+  - Hex:    0x72  0x4B
+  - Binary: 01110010 01001011
+  - FLARM COMPATIBILITY: This sync word was chosen to match FLARM's.
+
+────────────────────────────────────────────────────────────────────────────────
+C.2  O-BAND LOW DATA RATE (LDR) — CORRECTED IN ISSUE 2
+────────────────────────────────────────────────────────────────────────────────
+  !! ISSUE 1 O-Band params are WRONG and must NOT be used !!
+
+  Frequency:          869.525 MHz
+  Channel Bandwidth:  250 kHz
+  Modulation:         2-GFSK
+  Max Power (ERP):    27 dBm / 500 mW  (nominal min: 20 dBm)
+  Chip rate:          38.4 kbps
+  Freq Deviation:     0 → -12.5 kHz, 1 → +12.5 kHz  [CHANGED from ±10 kHz]
+  Gauss Filter BT:    1.0  [ADDED in Issue 2]
+  Backoff Interval:   10 ms .. 50 ms
+
+  O-BAND LDR PREAMBLE (Issue 2 change):
+  - Binary sequence "10", repeated 40 times (= 80 bits total)
+  - Issue 1 said: "10 bytes of 0xAA" which is the same bit pattern
+    (0xAA = 10101010), so 10 bytes = 80 bits = "10" × 40.
+    These are EQUIVALENT. Receiver should accept both descriptions.
+
+  O-BAND LDR SYNC WORD (Issue 2 CHANGE — different from Issue 1):
+  - Issue 1:  0x2D 0xD4  (binary: 00101101 11010100)
+  - Issue 2:  0xB4 0x2B  (binary: 10110100 00101011)
+  - !! Breaking change. Old and new are NOT compatible at sync word level !!
+  - COMPATIBILITY: A receiver that wants to support both Issue 1 and Issue 2
+    O-Band LDR packets must scan for BOTH sync words.
+
+  DATA LINK NOTE: O-Band LDR uses a DIFFERENT data link frame structure
+  (see Subpart D). No FEC, no Secure Signature on this channel.
+  Max payload: 15 bytes (excluding headers/checksums). Smaller payloads may
+  be padded with arbitrary bytes to reach 15 bytes.
+
+  O-BAND LDR COMPATIBILITY WITH OGN/PILOTAWARE:
+  The O-Band LDR channel is derived from existing OGN-Tracker and PilotAware
+  hardware to allow retrofits. The modulation parameters are aligned.
+
+────────────────────────────────────────────────────────────────────────────────
+C.3  O-BAND HIGH DATA RATE (HDR) — NEW IN ISSUE 2
+────────────────────────────────────────────────────────────────────────────────
+  Frequency:          869.525 MHz  (same as O-Band LDR)
+  Channel Bandwidth:  250 kHz
+  Modulation:         GMSK  (not GFSK — different modulation scheme!)
+  Max Power (ERP):    27 dBm / 500 mW
+  Chip rate:          200 kbps
+  Freq Deviation:     implicit (GMSK): 0 → -50 kHz, 1 → +50 kHz
+  Gauss Filter BT:    0.5
+  Backoff Interval:   10 ms .. 50 ms
+
+  PURPOSE: Higher data rate for ground-to-air uplink payloads (Traffic Uplink,
+  FIS-B Uplink). Also used for airborne direct transmissions in the HDR slot.
+  No Manchester encoding on this channel.
+
+  O-BAND HDR PREAMBLE:
+  - Binary sequence "10", repeated 12 times (= 24 bits total)
+
+  O-BAND HDR SYNC WORD:
+  - Hex:    0x2D  0xD4
+  - Binary: 00101101 11010100
+  - NOTE: This is the SAME value as the old Issue 1 O-Band sync word.
+
+────────────────────────────────────────────────────────────────────────────────
+C.4  TIME MULTIPLEXING — NEW IN ISSUE 2 (HDR channel only)
+────────────────────────────────────────────────────────────────────────────────
+  Applies ONLY to the O-Band HDR channel.
+  Slots are relative to the full UTC second (cycle repeats every 1 second).
+  Requires accurate time base (GNSS or network).
+  Transmissions MUST complete before the slot ends.
+
+  |  0 ms  |  200 ms  |  450 ms  |  1000 ms  |
+  | Reserv |  Uplink  |  Direct  | (reserved)|
+
+  DIRECT slot (450 ms – 1000 ms):
+    Airborne transmitters. Payloads: Traffic, Status, Remote Identification.
+    These are safety-critical and time-sensitive.
+
+  UPLINK slot (200 ms – 450 ms):
+    Ground infrastructure transmitters. Payloads: Traffic Uplink, FIS-B Uplink.
+
+  RESERVED (0 ms – 200 ms):
+    Must NOT be used for any ADS-L transmission.
+
+  M-Band and O-Band LDR do NOT use time multiplexing. They follow CSMA/LBT
+  rules only (see Subpart D).
+
+================================================================================
+SUBPART D — DATA LINK LAYER (SIGNIFICANT CHANGES IN ISSUE 2)
+================================================================================
+
+────────────────────────────────────────────────────────────────────────────────
+D.1  PACKET CONSTRUCTION SEQUENCE (Issue 2 formalizes this)
+────────────────────────────────────────────────────────────────────────────────
+  ORDER OF CONSTRUCTION (sender perspective):
+  1. Form ADS-L Data content (Subpart F = Header + Payload from Subpart G)
+  2. Apply XXTEA scrambling if enabled (Section E.2) — operates on ADS-L Data
+  3. Append Error Control parity (CRC or FEC, Section E.3)
+  4. Prepend Network Header (Subpart E, 1 byte: version+flags)
+     → This forms the "ADS-L Packet" = [Net Header | Scrambled Data | Parity]
+  5. Prepend Datalink Header (this subpart)
+  6. Optionally append Secure Signature (after parity, signs entire ADS-L Packet
+     including net header and parity)
+
+  ORDER OF DECONSTRUCTION (receiver perspective, reverse):
+  1. Detect preamble, sync word
+  2. Read Datalink Header (Packet Length)
+  3. Read ADS-L Packet bytes
+  4. Check Secure Signature Flag in Network Header
+  5. If FEC mode: apply R-S error correction; if CRC mode: verify CRC
+  6. Read Network Header flags (version, key index, error control mode)
+  7. If scrambled: apply XXTEA decryption to ADS-L Data portion
+  8. Parse Presentation layer (Subpart F)
+  9. Parse Application layer payload (Subpart G)
+
+────────────────────────────────────────────────────────────────────────────────
+D.2  DATA LINK FRAME — M-BAND AND O-BAND HDR
+────────────────────────────────────────────────────────────────────────────────
+  Offset  Field          Width (bits)  Notes
+  ──────────────────────────────────────────────────────────────────────────────
+  0       Packet Length  8             Bytes in the Data field.
+                                       - If NO secure signature: = actual byte
+                                         count of [Net Header + ADS-L Data + Parity]
+                                       - If secure signature PRESENT: = actual
+                                         byte count MINUS 68
+                                         (68 = 4 bytes timestamp + 64 bytes sig)
+                                       Excludes the Packet Length byte itself.
+  8       Data           PktLen * 8    = [Net Header | ADS-L Data | Parity]
+                                         See Subpart E
+
+  ISSUE 1 vs ISSUE 2 PACKET LENGTH DIFFERENCE:
+  - Issue 1: Packet Length = bytes of (header + payload + CRC) excl. sig
+  - Issue 2: Same when no sig; when sig present, subtract 68 from the count.
+  - Impact: Simple radio chip receivers see a consistent Packet Length that
+    points to the end of the mandatory data, letting them stop reception there.
+    Advanced receivers check the Secure Signature Flag to know if 68 more bytes
+    of signature follow.
+
+────────────────────────────────────────────────────────────────────────────────
+D.3  DATA LINK FRAME — O-BAND LDR (CUSTOM, LEGACY-COMPATIBLE)
+────────────────────────────────────────────────────────────────────────────────
+  This channel replaces the standard data link structure. NO FEC. NO Secure
+  Signature. Maximum ADS-L data payload: 15 bytes. Pad with arbitrary bytes
+  if shorter.
+
+  Offset  Field     Width (bits)  Notes
+  ──────────────────────────────────────────────────────────────────────────────
+  0       Header    48            Fixed bytes (hex): 00 00 00 00 18 71
+  48      Data      192           = 24 bytes. Contains Network Header + ADS-L
+                                  Data (scrambled) padded to 24 bytes total.
+                                  (1 byte Net Header + up to 15 bytes ADS-L
+                                  Data + parity from E.3.1 + padding if needed)
+  240     CRC8      8             Checksum over the Data field (bytes at offset
+                                  48..239), NOT over the fixed header
+
+  CRC8 — polynomial 0x07, initial value 0x71:
+  ─────────────────────────────────────────────
+  static uint8_t _crc8_update(uint8_t input, uint8_t crc) {
+      const uint8_t poly = 0x07;
+      crc ^= input;
+      for (uint8_t bit = 0; bit < 8; bit++) {
+          if (crc & 0x80) {
+              crc = (crc << 1) ^ poly;
+          } else {
+              crc = (crc << 1);
+          }
+      }
+      return crc;
+  }
+  uint8_t crc8(uint8_t *data, int len_data) {
+      uint8_t crc = 0x71;  // initial value
+      for (size_t idx = 0; idx < len_data; idx++)
+          crc = _crc8_update(data[idx], crc);
+      return crc;
+  }
+
+  NOTE: The CRC8 is computed over the 24-byte Data field only, not the
+  6-byte fixed header.
+
+────────────────────────────────────────────────────────────────────────────────
+D.4  MEDIA ACCESS (CSMA / LBT) — LARGELY UNCHANGED
+────────────────────────────────────────────────────────────────────────────────
+  Protocol:  1-persistent CSMA with Listen-Before-Talk (LBT)
+  Standard:  ETSI EN 300 220-1 (Polite Spectrum Access)
+  Backoff:   See per-band backoff intervals in Subpart C.
+             Retry after a random delay uniformly distributed in the backoff
+             interval for the channel currently in use.
+  Force TX:  If transmission blocked for ≥ 3000 ms, device MAY force-transmit
+             regardless of carrier detect.
+  After force TX: Device MUST NOT transmit for at least 2000 ms.
+
+================================================================================
+SUBPART E — NETWORK LAYER (SIGNIFICANT CHANGES IN ISSUE 2)
+================================================================================
+
+────────────────────────────────────────────────────────────────────────────────
+E.1  NETWORK PACKET STRUCTURE (Issue 2 adds Error Control Mode bit)
+────────────────────────────────────────────────────────────────────────────────
+  Offset  Field                  Width (bits)  Notes
+  ──────────────────────────────────────────────────────────────────────────────
+  0       Protocol Version       4             0=Issue1, 1=Issue2
+  4       Secure Signature flag  1             0=no sig, 1=sig present after parity
+  5       Key Index              2             0=default key (all-zeros), 3=disabled
+                                               1 and 2 reserved
+  7       Error Control Mode     1             0=CRC (24-bit), 1=FEC (Reed-Solomon)
+                                               [BIT 7 WAS "Reserved=0" IN ISSUE 1]
+  8       ADS-L Data             Variable      Subpart F (scrambled if Key≠3)
+  var     Parity                 24 or 256     CRC=24 bits; FEC=256 bits (32 bytes)
+  var     Secure Signature       544           Optional; present if flag=1
+
+  Network Header = bytes containing the above 8-bit field (one byte total for
+  the first 8 bits: version + sig flag + key index + error control mode).
+
+  KEY INDEX VALUES:
+    0 → All-zeros key (0x00000000) — default data scrambling
+    1 → Reserved
+    2 → Reserved
+    3 → Scrambling/encryption DISABLED (new in Issue 2; for constrained devices)
+
+  IMPORTANT: Error control (CRC or FEC) is computed over the ENTIRE Network
+  Packet Structure including the 1-byte network header. This means the CRC
+  covers [Net Header byte | ADS-L Data bytes] — NOT just the data payload.
+
+────────────────────────────────────────────────────────────────────────────────
+E.2  ENCRYPTION / DATA SCRAMBLING (XXTEA — UNCHANGED algorithm)
+────────────────────────────────────────────────────────────────────────────────
+  WHAT IS SCRAMBLED: The "ADS-L Data" block only (not the net header, not
+  parity, not signature). This is [Header + Payload] from Subpart F.
+
+  INPUT MUST BE multiple of 4 bytes (XXTEA works on 32-bit words).
+  Data is re-interpreted as little-endian uint32_t array.
+
+  Default (Key Index 0): all-zeros key — this is data scrambling mode,
+  not encryption. Provides error detection but NOT privacy.
+  Key Index 3: no scrambling at all (new option for low-power devices).
+
+  #define MX (( ((z>>5)^(y<<2)) + ((y>>3)^(z<<4)) ) ^ ( (sum^y) + (key[(p&3)^e]^z) ))
+
+  void xxtea_encrypt(uint32_t* data, uint32_t num_data_words,
+                     const uint32_t* key, uint32_t round) {
+      uint32_t z, y = data[0], sum = 0, e, DELTA = 0x9e3779b9;
+      uint32_t p, q;
+      z = data[num_data_words - 1];
+      q = round;
+      while (q-- > 0) {
+          sum += DELTA;
+          e = sum >> 2 & 3;
+          for (p = 0; p < num_data_words - 1; p++) {
+              y = data[p + 1];
+              data[p] += MX;
+              z = data[p];
+          }
+          y = data[0];
+          data[num_data_words - 1] += MX;
+          z = data[num_data_words - 1];
+      }
+  }
+
+  Encryption parameters (same as Issue 1):
+    round          = 6
+    num_data_words = 6  (i.e. input block = 24 bytes = 6 × uint32_t)
+
+  NOTE: Code assumes little-endian system. If running on big-endian hardware,
+  byte-swap the words before/after encryption.
+
+────────────────────────────────────────────────────────────────────────────────
+E.3  ERROR CONTROL — CRC-24 (Issue 2: moved from Subpart D, scope clarified)
+────────────────────────────────────────────────────────────────────────────────
+  CRC MODE (Error Control Mode bit = 0). Use for payloads ≤ ~64 bytes.
+
+  SCOPE CHANGE vs Issue 1:
+  - Issue 1: CRC computed over entire ADS-L packet, excluding Packet Length
+    field and Secure Signature.
+  - Issue 2: CRC computed over entire Network Packet Structure = [Net Header
+    (1 byte) + ADS-L Data (scrambled)] — still excludes Data Link fields and
+    Secure Signature. In practice, this means the same bytes are covered.
+
+  Generator polynomial (same as Mode-S / 1090 MHz ADS-B):
+  G(x) = x^24 + x^23 + x^22 + x^21 + x^20 + x^19 + x^18 + x^17 +
+          x^16 + x^15 + x^14 + x^13 + x^12 + x^10 + x^3 + 1
+
+  static uint32_t _crc24_polypass(uint32_t crc, uint8_t input) {
+      const uint32_t poly = 0xFFFA0480;
+      crc |= input;
+      for (uint8_t bit = 0; bit < 8; bit++) {
+          if (crc & 0x80000000) crc ^= poly;
+          crc <<= 1;
+      }
+      return crc;
+  }
+  uint32_t crc24(const uint8_t *data, size_t len_data) {
+      uint32_t crc = 0;
+      for (size_t idx = 0; idx < len_data; idx++)
+          crc = _crc24_polypass(crc, data[idx]);
+      crc = _crc24_polypass(crc, 0);
+      crc = _crc24_polypass(crc, 0);
+      crc = _crc24_polypass(crc, 0);
+      return crc >> 8;
+  }
+
+  TRANSMISSION: Only the 3 lower bytes are relevant.
+  Transmitted Big Endian (MSB byte first) to allow hardware CRC acceleration.
+
+────────────────────────────────────────────────────────────────────────────────
+E.4  ERROR CONTROL — FEC (Reed-Solomon) — NEW IN ISSUE 2
+────────────────────────────────────────────────────────────────────────────────
+  FEC MODE (Error Control Mode bit = 1). Recommended for payloads > 64 bytes.
+  NOT available on O-Band LDR channel.
+
+  R-S parameters:
+    Symbol size:            8 bits (1 byte)
+    Number of parity bytes: 32
+    Generator polynomial:   1 + x^2 + x^3 + x^4 + x^8
+    Primitive element:      11
+    First consecutive root: 121
+
+  COMPUTATION SCOPE:
+  - Covers: Network Header (1 byte) + ADS-L Data (scrambled)
+  - R-S input block size: exactly 223 bytes (= 255 - 32)
+  - If actual data < 223 bytes: PREFIX (left-pad) with zero bytes to reach 223
+  - Parity: 32 bytes appended after ADS-L Data
+  - Padding is NOT transmitted; only [Net Header | ADS-L Data | 32-byte Parity]
+  - Maximum ADS-L data size with FEC: 223 - 1 = 222 bytes
+
+  COMPATIBILITY: A receiver not implementing FEC can still detect the FEC mode
+  bit and discard the packet, or attempt CRC fallback if the sender used CRC.
+
+────────────────────────────────────────────────────────────────────────────────
+E.5  SECURE SIGNATURE — UPDATED IN ISSUE 2 (size changed 512 → 544 bits)
+────────────────────────────────────────────────────────────────────────────────
+  OPTIONAL. Enabled by Secure Signature Flag = 1 in Network Header.
+  Appended AFTER the parity field.
+  NOT reflected in Packet Length field (so simple receivers can ignore it).
+  NOT used on O-Band LDR channel.
+  On M-Band: Manchester encoding SUSPENDED for signature transmission.
+
+  FREQUENCY CONSTRAINT: Append signature at most every 10 seconds.
+  (Issue 1 said "at most every 10 s, at least every 30 s" — Issue 2 only
+  specifies the upper bound of 10 s. Implement ≥ 10 s interval between sigs.)
+
+  SIGNATURE BLOCK STRUCTURE (Issue 2 — 544 bits total):
+    Offset (bits)  Field      Width  Notes
+    0              Timestamp  32     UNIX epoch (seconds since 1970-01-01 UTC)
+                                     Unsigned, UTC. Time of transmission.
+    32             Signature  512    Ed25519 R and S components (compressed)
+
+  ALGORITHM: Ed25519 (EdDSA, IRTF/IETF RFC 8032)
+    Public key: 256 bits
+    Signature: 512 bits (R || S, compressed)
+
+  SHA-512 DIGEST INPUT (Issue 2 — changed from Issue 1):
+  Issue 1 covered: ADS-L Messages (header + payload) excluding CRC
+  Issue 2 covers:
+    1. Network Header (1 byte: version+flags)
+    2. ADS-L Data in scrambled/encrypted form
+    3. Timestamp field (4 bytes, from the signature block itself)
+  The Parity (CRC or FEC) field is NOT included in the digest.
+
+  KEY MANAGEMENT:
+  - Private key: stored securely on device, never exposed
+  - Public key: may be exposed; registered with a Certificate Authority (CA)
+  - A device may auto-generate a new key pair (e.g. using TRNG)
+  - CA infrastructure is outside the scope of this spec
+
+================================================================================
+SUBPART F — PRESENTATION LAYER (CHANGES IN ISSUE 2)
+================================================================================
+
+────────────────────────────────────────────────────────────────────────────────
+F.1  ADS-L DATA LAYOUT
+────────────────────────────────────────────────────────────────────────────────
+  Offset (bits)  Field         Width (bits)              Notes
+  ─────────────────────────────────────────────────────────────────────────────
+  0              ADS-L Header  40                        See F.2
+  40             ADS-L Payload 24 + (N * 32), N ≥ 0     See Subpart G
+
+  Issue 2 payload size rule: size = 24 + (N * 32) bits where N is any
+  non-negative integer. In bytes: 3, 7, 11, 15, 19, 23, ... bytes.
+  The constraint: (size of ADS-L Header + payload) must be divisible by 4 bytes.
+  Since ADS-L Header = 40 bits = 5 bytes, and 5 + payload_bytes must be
+  divisible by 4: valid payload sizes = 3, 7, 11, 15, 19, 23, ...
+
+  Issue 1 used "multiple of 32 bits for payload" which gives the same result.
+
+────────────────────────────────────────────────────────────────────────────────
+F.2  ADS-L HEADER (40 bits — UNCHANGED)
+────────────────────────────────────────────────────────────────────────────────
+  Offset (bits)  Field                  Width  Notes
+  ─────────────────────────────────────────────────────────────────────────────
+  0              Payload Type ID        8      See payload type table below
+  8              Sender Address         30     6-bit AMT index + 24-bit address
+  38             Reserved               1      Ignore on receive; any value OK
+  39             Relay/forward flag     1      1 = packet retransmitted on behalf
+                                               of original sender
+
+────────────────────────────────────────────────────────────────────────────────
+F.3  PAYLOAD TYPE IDENTIFIER (EXPANDED IN ISSUE 2)
+────────────────────────────────────────────────────────────────────────────────
+  Value  Type       Payload
+  0      Broadcast  Reserved
+  1      Broadcast  Reserved
+  2      Broadcast  Traffic  (was "iConspicuity" in Issue 1 — same encoding)
+  3      Broadcast  Status  [NEW in Issue 2]
+  4      Broadcast  Traffic Uplink  [NEW in Issue 2]
+  5      Broadcast  FIS-B Uplink  [NEW in Issue 2]
+  6      Broadcast  Remote Identification  [NEW in Issue 2, reserved for future]
+  7      Broadcast  Reserved
+  ...    Broadcast  Reserved
+  65     Broadcast  Reserved
+  66     Broadcast  OGN Diagnostics  (payload definition outside this spec)
+  67     Broadcast  Reserved
+  ...    Broadcast  Reserved
+  127    Broadcast  Reserved
+  128-255 Unicast   Reserved
+
+────────────────────────────────────────────────────────────────────────────────
+F.4  SENDER ADDRESS (30 bits: 6-bit AMT + 24-bit address)
+────────────────────────────────────────────────────────────────────────────────
+  ADDRESS MAPPING TABLE (AMT) VALUES:
+    0   → Random / Privacy mode
+    1-3 → Reserved
+    4   → Reserved
+    5   → ICAO  (Mode-S transponder code — user-configurable, see F.5)
+    6   → FLARM (including OEMs)
+    7   → OGN-Tracker
+    8   → FANET (including OEMs)
+    9   → Manufacturers Page 0
+    10  → Manufacturers Page 1
+    ...
+    63  → Manufacturers Page 54
+
+  AMT entries 9–63 (manufacturer pages): Address sub-structure:
+    bits 0-7:  Manufacturer prefix (8 bits)  — must be registered
+    bits 8-23: Base address (16 bits)
+  AMT entries 0–8: Full 24 bits are the address field (no sub-structure)
+
+  ISSUE 1 vs ISSUE 2: Manufacturer-substructure threshold changed from
+  entries ≥ 8 to entries ≥ 9. FANET (entry 8) no longer implies substructure.
+  COMPATIBILITY: Treat FANET (8) address as a flat 24-bit ID.
+
+  To register a manufacturer prefix: contact registry@ads-l.aero
+
+────────────────────────────────────────────────────────────────────────────────
+F.5  ICAO ADDRESS (AMT=5) — NEW SECTION IN ISSUE 2
+────────────────────────────────────────────────────────────────────────────────
+  Aircraft with a Mode-S transponder SHOULD use AMT=5 (ICAO address mode).
+  The 24-bit ICAO address is user-configurable and overrides the manufacturer
+  address. This allows receivers to correlate ADS-L transmissions with ADS-B
+  and Mode-S data from the same aircraft.
+  Setting must be revertible by user configuration.
+  ADS-L system must prevent inconsistent configurations (e.g. wrong ICAO code).
+
+────────────────────────────────────────────────────────────────────────────────
+F.6  PRIVACY MODE (AMT=0) — CLARIFIED IN ISSUE 2
+────────────────────────────────────────────────────────────────────────────────
+  Privacy mode: AMT = 0, random 24-bit address chosen at device startup.
+  Address MUST NOT change during a single powered session.
+  Switching privacy ↔ normal mode during flight is NOT permitted.
+
+================================================================================
+SUBPART G — APPLICATION LAYER
+================================================================================
+
+────────────────────────────────────────────────────────────────────────────────
+G.1  TRAFFIC PAYLOAD (Payload Type = 2)
+     Was "iConspicuity" in Issue 1. Encoding largely same; several corrections.
+────────────────────────────────────────────────────────────────────────────────
+  All bit offsets relative to start of payload.
+  RULE: When no valid data available for a field, transmit the "invalid" value.
+
+  Offset  Field                       Width  Encoding
+  ─────────────────────────────────────────────────────────────────────────────
+  0       Timestamp                   6      Quarter-seconds since full hour,
+                                             mod 60. Values 60–63 NOT USED.
+                                             Accurate to ±10 ms.
+  6       Flight State                2      Table
+  8       Aircraft Category           5      Table (EXPANDED in Issue 2)
+  13      Emergency Status            3      Table
+  16      Latitude                    24     Signed int, LSB = 1°/93206
+                                             North positive
+                                             No fix: 0x800000  [was 0xFFFFFF in Issue 1]
+  40      Longitude                   24     Signed int, LSB = 1°/46603
+                                             East positive
+                                             No fix: 0x800000  [was 0xFFFFFF in Issue 1]
+  64      Ground Speed                8      Exp unsigned encoding
+                                             0 m/s = 0x00, max = 236 m/s = 0xFE
+                                             Invalid = 0xFF
+  72      Altitude above WGS-84       14     Exp unsigned encoding
+                                             -320 m = 0x0000, 0 m = 0x0140
+                                             1000 m = 0x0528, ≥61104 m = 0x3FFE
+                                             Invalid = 0x3FFF
+  86      Vertical Rate               9      Exp signed encoding
+                                             0 = 0x000, +0.125 m/s = 0x001
+                                             -0.125 m/s = 0x101
+                                             ≥+119 m/s = 0x0FF, ≤-118 m/s = 0x1FE
+                                             Invalid = 0x1FF
+  95      Ground Track                9      Cyclic, 1 bit = 360°/512 ≈ 0.703°
+                                             Relative to true North, clockwise
+                                             INVALID if Ground Speed = 0 or invalid
+  104     Source Integrity Level      2      Table (SIL)
+  106     Design Assurance            2      Table (SDA/DAL)
+  108     Navigation Integrity        4      Table (NIC)
+  112     Horizontal Position Acc.    3      Table (HFOM / NACp)
+  115     Vertical Position Acc.      2      Table (VFOM / GVA)
+  117     Velocity Accuracy           2      Table (NACv)
+  119     Reserved                    1      Any value; ignore on receive
+  ─────────────────────────────────────────────────────────────────────────────
+  Total: 120 bits = 15 bytes
+
+TIMESTAMP
+  Quarter-seconds since the full UTC hour, modulo 60.
+  Refers to the time of the GNSS PVT fix, not the time of transmission.
+  Accuracy requirement: ± 10 ms.
+
+FLIGHT STATE
+  0 = Undefined (use if cannot determine)
+  1 = On ground
+  2 = Airborne
+  3 = Reserved
+
+AIRCRAFT CATEGORY (EXPANDED IN ISSUE 2 — more values added)
+  0  = No emitter category info
+  1  = Light fixed wing (< 7031 kg / 15 500 lbs)
+  2  = Small to heavy fixed wing (≥ 7031 kg / 15 500 lbs)
+  3  = Light Rotorcraft  [Issue 1 was "Rotorcraft" — now split into Light/Heavy]
+  4  = Glider / sailplane
+  5  = Lighter-than-air
+  6  = Ultralight and motorized hang-glider  [Issue 1 was "Ultralight" only]
+  7  = Paraglider  [Issue 1 was "Hang-glider / paraglider" — now split]
+  8  = Parachutist / skydiver / wingsuit
+  9  = eVTOL / UAM
+  10 = Gyrocopter
+  11 = UAS Open category
+  12 = UAS Specific category
+  13 = UAS Certified category
+  14 = Model plane  [NEW in Issue 2]
+  15 = Heavy Rotorcraft  [NEW in Issue 2]
+  16 = Hang-glider  [NEW in Issue 2]
+  17 = Paramotor  [NEW in Issue 2]
+  18–31 = Reserved
+  COMPATIBILITY NOTE: Values 3, 6, 7 changed meaning. An Issue 1 "Rotorcraft"
+  (value 3) maps to Issue 2 "Light Rotorcraft". Receivers should handle
+  both interpretations gracefully based on Protocol Version field.
+
+EMERGENCY STATUS
+  0 = Undefined
+  1 = No emergency
+  2 = General emergency
+  3 = Lifeguard / medical emergency
+  4 = No communications
+  5 = Unlawful interference
+  6 = Downed aircraft
+  7 = Reserved
+
+POSITION — LATITUDE AND LONGITUDE
+  WGS-84 reference system.
+  Latitude:  24-bit signed integer, LSB = 1°/93206 ≈ 0.00001073°, North +
+  Longitude: 24-bit signed integer, LSB = 1°/46603 ≈ 0.00002146°, East +
+  NO FIX VALUE: 0x800000 (signed minimum — unambiguously outside valid range)
+  [Issue 1 used 0xFFFFFF; receivers SHOULD accept both for backward compat]
+
+EXPONENTIAL ENCODING (UNCHANGED algorithm, applied to GS, Alt, VRate)
+  Unsigned layout: <exponent:2> <base:N>
+  Signed layout:   <sign:1> <exponent:2> <base:N>
+  N derived from total field width: GS→N=6, Alt→N=12, VRate→N=6
+
+  Decode (unsigned):
+    value = 2^exponent * (2^N + base) - 2^N
+
+  Decode (signed):
+    value = above result, negated if sign=1; zero always encoded as sign=0
+
+  Encode (unsigned):
+    1. Find largest e* in {0,1,2,3} s.t. value >= 2^(N+e*) - 2^N
+    2. exponent = e*
+       base = (value - 2^(N+e*) + 2^N) / 2^(e*)   [Issue 2 fixes division by 2^e*]
+
+  NOTE: Issue 1 base formula was: base = value - 2^(N+e*) - 2^N
+        Issue 2 corrects to:     base = (value - 2^(N+e*) + 2^N) / 2^(e*)
+        This is a bug fix. Use the Issue 2 formula.
+
+ALTITUDE above WGS-84 Ellipsoid (14 bits, unsigned exp)
+  Offset: +320 m added to input before encoding (allows negative altitudes)
+  Exponent: 2 bits, Base: 12 bits, Resolution: 1 m
+  Range: -320 m to +61112 m
+  Clamp to limits if out of range; use invalid value if no 3D fix.
+  Examples:
+    -320 m or less → 0x0000
+         0 m      → 0x0140
+      1000 m      → 0x0528
+    ≥61104 m      → 0x3FFE
+    Invalid       → 0x3FFF  [NEW explicit invalid value in Issue 2]
+
+GROUND SPEED (8 bits, unsigned exp)
+  Exponent: 2 bits, Base: 6 bits, Resolution: 0.25 m/s
+  Max: 236 m/s (Issue 2 correction; Issue 1 said 238 m/s)
+  Clamp to max if exceeded.
+  Examples:
+    0 m/s        → 0x00  [NEW: 0 is valid in Issue 2]
+    0.25 m/s     → 0x01
+    0.75 m/s     → 0x03
+    120 m/s      → 0xC4
+    ≥236 m/s     → 0xFE
+    Invalid      → 0xFF  [NEW explicit invalid value in Issue 2]
+
+VERTICAL RATE (9 bits, signed exp)
+  Sign: 1 bit, Exponent: 2 bits, Base: 6 bits, Resolution: 0.125 m/s
+  Positive = upward (away from Earth)
+  Range: -118 m/s to +119 m/s (Issue 2 correction)
+  Examples:
+    0             → 0x000
+    +0.125 m/s    → 0x001
+    -0.125 m/s    → 0x101
+    +10 m/s       → 0x048
+    -10 m/s       → 0x148
+    ≥+119 m/s     → 0x0FF
+    ≤-118 m/s     → 0x1FE
+    Invalid       → 0x1FF  [NEW explicit invalid value in Issue 2]
+
+GROUND TRACK (9 bits)
+  Direction of motion over ground, degrees clockwise from true North.
+  Resolution: 360°/512 = 0.703125°
+  INVALID if: Ground Speed = 0 OR Ground Speed is invalid.
+
+SOURCE INTEGRITY LEVEL (2 bits) — TABLE UPDATED IN ISSUE 2
+  Issue 1 used upper bounds; Issue 2 uses ranges:
+  0 = Undefined or SIL > 1E-3 per flight hour
+  1 = 1E-5 per flt hr < SIL ≤ 1E-3 per flt hr
+  2 = 1E-7 per flt hr < SIL ≤ 1E-5 per flt hr
+  3 = SIL ≤ 1E-7 per flight hour
+  RULE: Non-certified devices MUST set SIL = 0 (static).
+
+DESIGN ASSURANCE (2 bits) — UNCHANGED
+  0 = Undefined / none
+  1 = DAL D
+  2 = DAL C
+  3 = DAL B
+  RULE: Non-certified devices MUST set SDA = 0 (static).
+
+NAVIGATION INTEGRITY (4 bits) — TABLE UPDATED IN ISSUE 2 (ranges, not bounds)
+  0  = Undefined
+  1  = Rc ≥ 20 NM
+  2  = 8 NM ≤ Rc < 20 NM
+  3  = 4 NM ≤ Rc < 8 NM
+  4  = 2 NM ≤ Rc < 4 NM
+  5  = 1 NM ≤ Rc < 2 NM
+  6  = 0.6 NM ≤ Rc < 1 NM
+  7  = 0.2 NM ≤ Rc < 0.6 NM
+  8  = 0.1 NM ≤ Rc < 0.2 NM
+  9  = 75 m ≤ Rc < 0.1 NM
+  10 = 25 m ≤ Rc < 75 m
+  11 = 7.5 m ≤ Rc < 25 m
+  12 = Rc < 7.5 m
+  13–15 = Reserved
+  RULE: Set NIC dynamically only if GNSS provides valid HPL/HIL.
+        Otherwise set NIC = 0. (Different from ADS-B which sets everything to 0!)
+
+HORIZONTAL POSITION ACCURACY / HFOM (3 bits) — TABLE UPDATED IN ISSUE 2
+  95% confidence bound (radius). Equivalent to NACp in ADS-B.
+  0 = Unknown / no fix or HFOM ≥ 0.5 NM
+  1 = 0.3 NM ≤ HFOM < 0.5 NM
+  2 = 0.1 NM ≤ HFOM < 0.3 NM
+  3 = 0.05 NM ≤ HFOM < 0.1 NM
+  4 = 30 m ≤ HFOM < 0.05 NM
+  5 = 10 m ≤ HFOM < 30 m
+  6 = 3 m ≤ HFOM < 10 m
+  7 = HFOM < 3 m
+  If HFOM not directly available: derive from HDOP:
+    HFOM = 2 × HDOP × 6  (UERE = 6 metres, per ETSO-C199 A1)
+
+VERTICAL POSITION ACCURACY / VFOM (2 bits) — TABLE UPDATED IN ISSUE 2
+  95% confidence bound. Equivalent to GVA in ADS-B.
+  0 = Unknown / no fix or VFOM ≥ 150 m
+  1 = 45 m ≤ VFOM < 150 m
+  2 = 10 m ≤ VFOM < 45 m
+  3 = VFOM < 10 m
+
+VELOCITY ACCURACY (2 bits) — TABLE UPDATED IN ISSUE 2
+  95% horizontal velocity bound. Equivalent to NACv in ADS-B.
+  0 = Unknown / no fix or AccVel ≥ 10 m/s
+  1 = 3 m/s ≤ AccVel < 10 m/s
+  2 = 1 m/s ≤ AccVel < 3 m/s
+  3 = AccVel < 1 m/s
+
+QUALITY INDICATORS — GUIDANCE FOR NON-CERTIFIED DEVICES (Issue 2 addition)
+  - SIL = 0  (static, mandatory for non-certified)
+  - SDA = 0  (static, mandatory for non-certified)
+  - NIC: dynamic IF GNSS provides valid HPL/HIL; otherwise 0
+  - HFOM, VFOM, NACv: report dynamically based on GNSS output
+  This differs from ADS-B rule (which sets ALL quality fields to 0 for
+  non-certified). ADS-L intentionally preserves accuracy info while
+  flagging low integrity.
+
+TRANSMIT RATE AND TIMING — UPDATED IN ISSUE 2
+  - Airborne (Flight State = Airborne): at least 1 Hz (once per second)
+  - On ground (Flight State = On ground): 0.1 Hz (once per 10 seconds)
+  - Max stale data age: 500 ms (Issue 1 was 1000 ms — TIGHTENED)
+    If total delay from PVT fix exceeds 500 ms, DISCARD and use next fix.
+    Never send Traffic data older than 500 ms.
+  - Media access (CSMA) has higher priority than these rate requirements.
+
+────────────────────────────────────────────────────────────────────────────────
+G.2  STATUS PAYLOAD (Payload Type = 3) — NEW IN ISSUE 2
+────────────────────────────────────────────────────────────────────────────────
+  Conveys static device capability information. Transmit at least once per
+  20 seconds. Use M-Band (alternating channels) or O-Band HDR Direct slot.
+
+  Total payload: 56 bits = 7 bytes
+
+  Offset  Field                   Width  Encoding
+  ─────────────────────────────────────────────────────────────────────────────
+  0       Max. Protocol Version   4      Max version this device can handle (TX+RX)
+  4       ADS-L M-Band Receive    2      Receive capability table (see below)
+  6       ADS-L O-Band LDR Rx     2      Receive capability table
+  8       ADS-L O-Band HDR Rx     2      Receive capability table
+  10      ADS-L 4 Mobile          2      Mobile connectivity status (see below)
+  12      E-Conspicuity Receive   8      Bitmap: which systems this device receives
+  20      E-Conspicuity Transmit  8      Bitmap: which systems this device transmits
+  28      XPDR Capabilities       2      Transponder type (see below)
+  30      ADS-L Traffic Uplink    1      0=doesn't process, 1=processes
+  31      ADS-L FIS-B Client      1      0=doesn't process, 1=processes
+  32      Reserved                24     Any value; ignore on receive
+
+  RECEIVE CAPABILITY TABLE (for M-Band, O-Band LDR, O-Band HDR):
+    0 = None (cannot receive on this channel)
+    1 = Occasional (>5% of messages received)
+    2 = Partial (>40%)
+    3 = Full (>80%)
+  NOTE: M-Band "Full" requires listening on BOTH 868.2 MHz AND 868.4 MHz
+  simultaneously. A single-channel receiver can only achieve "Partial".
+
+  ADS-L 4 MOBILE:
+    0 = None / not supported
+    1 = Initialized, but offline
+    2 = Initialized and online
+    3 = Reserved
+
+  E-CONSPICUITY RECEIVE BITMAP (8 bits):
+    bit 0 = FLARM
+    bit 1 = PilotAware
+    bit 2 = FANET
+    bit 3 = OGN Tracker
+    bit 4 = ADS-B 1090
+    bit 5 = ADS-B UAT 978
+    bit 6 = Mode-S / PCAS
+    bit 7 = Reserved
+  Set bit if device receives that system. Include all systems in the same
+  vehicle/aircraft, not just the ADS-L device itself.
+
+  E-CONSPICUITY TRANSMIT BITMAP (8 bits):
+    bit 0 = FLARM
+    bit 1 = PilotAware
+    bit 2 = FANET
+    bit 3 = OGN Tracker
+    bit 4 = ADS-B 1090
+    bit 5 = ADS-B UAT 978
+    bit 6 = Reserved
+    bit 7 = Reserved
+
+  XPDR CAPABILITIES:
+    0 = None / off / unknown
+    1 = Mode-C / ALT
+    2 = Mode-S
+    3 = Reserved
+
+────────────────────────────────────────────────────────────────────────────────
+G.3  TRAFFIC UPLINK PAYLOAD (Payload Type = 4) — NEW IN ISSUE 2
+────────────────────────────────────────────────────────────────────────────────
+  Ground-to-air relay of traffic data from multiple sources.
+  Channel: O-Band HDR, Uplink time slot (200–450 ms).
+  Up to 10 targets per packet.
+  FEC error control recommended (large payload).
+
+  PER-TARGET STRUCTURE (152 bits = 19 bytes each):
+    bits 0–29:   Traffic Address (30 bits) — original sender's address (F.4)
+    bits 30–31:  Reserved (2 bits)
+    bits 32–151: Traffic Payload (120 bits) — verbatim Traffic payload (G.1)
+
+  FOR N TARGETS:
+    Offset of target K (0-indexed): K × 152 bits
+    After N targets: padding 0–24 bits to align to 4-byte boundary per F.2.5
+
+  DATA AGE RULES:
+  - ADS-L Traffic forwarded verbatim (no modification): age ≤ 10 seconds
+  - Traffic from other systems (ADS-B, Mode-S, etc.): may adjust fields
+    semantically; Timestamp must be ≤ 10 seconds old and not in the future
+  - Age = current UTC time - Timestamp of the original Traffic payload
+
+  SOURCES that may be aggregated:
+    ADS-B 1090 MHz, Mode-S (SSR), ADS-L 4 SRD 860, ADS-L 4 Mobile,
+    RemoteID (direct or network), other e-Conspicuity systems
+
+  RECEIVER CAUTION:
+    Data may have large latency, mismatched accuracy semantics, or wrong
+    sender addresses — treat with appropriate skepticism.
+
+────────────────────────────────────────────────────────────────────────────────
+G.4  FIS-B UPLINK PAYLOAD (Payload Type = 5) — NEW IN ISSUE 2
+────────────────────────────────────────────────────────────────────────────────
+  Encapsulates UAT FIS-B Ground Uplink Message (DO-358B, Appendix A.1).
+  Channel: O-Band HDR, Uplink time slot (200–450 ms).
+  Max payload size: 217 bytes (limited by ADS-L packet max + FEC overhead).
+
+  ADS-L CHANGES vs DO-358B:
+  - Variable size (not fixed 432 bytes); max 217 bytes application data
+  - Zero-fill padding used in DO-358B is OMITTED
+  - TIS-B Site ID and Slot ID: set to zero (reserved)
+  - For APDUs > 217 bytes: use DO-358B APDU segmentation
+
+  PAYLOAD STRUCTURE (bit offsets):
+    0–22:    Radio Station Latitude (WGS-84, 23 bits) — see DO-358B A.1.1.1
+    23–46:   Radio Station Longitude (WGS-84, 24 bits) — see DO-358B A.1.1.1
+    47:      Position Valid (1 bit) — see DO-358B A.1.1.2
+    48:      UTC Coupled (1 bit) — see DO-358B A.1.1.3
+    49:      Reserved (1 bit, set to 0)
+    50:      App. Data Valid (1 bit) — see DO-358B A.1.1.5
+    51–63:   Reserved (13 bits, set to 0)
+    64+:     Application Data (variable) — see DO-358B A.1.2
+
+────────────────────────────────────────────────────────────────────────────────
+G.5  REMOTE IDENTIFICATION (Payload Type = 6) — RESERVED, FUTURE USE
+────────────────────────────────────────────────────────────────────────────────
+  Intended for UAV/drone identification per EU UAS regulations.
+  Will encapsulate Direct Remote Identification per EN 4709-002:2023.
+  Details and constraints to be specified in future versions.
+  DO NOT implement payload structure from this version.
+
+================================================================================
+FANET INTEROPERABILITY NOTES
+================================================================================
+  FANET uses the same 868/869 MHz SRD-860 frequency band as ADS-L but with
+  different modulation (LoRa, not GFSK) on certain channels. However, the
+  FANET+ packet (also called FANET Type 2 / Air Tracking) carried over
+  GFSK/FSK uses parameters overlapping with ADS-L O-Band LDR.
+
+  ADDRESS SPACE OVERLAP:
+  - ADS-L AMT=8 is assigned to FANET (including OEMs)
+  - A FANET device transmitting on ADS-L uses AMT=8 with its FANET ID as the
+    24-bit address. No manufacturer sub-prefix applies (flat 24-bit address
+    per F.4 — Issue 2 moved manufacturer substructure to entries ≥ 9).
+
+  FANET DEVICE AS ADS-L SENDER:
+  - A FANET device wishing to participate in ADS-L should transmit the
+    Traffic payload (type 2) using AMT=8 and its FANET ID.
+  - The FANET device should also include E-Conspicuity Transmit bit 2 (FANET)
+    in its Status payload.
+
+  FLARM INTEROPERABILITY NOTES
+  ================================================================================
+  FLARM uses the M-Band frequencies (868.2 MHz, 868.4 MHz) with GFSK at
+  100 kbps chip rate and Manchester encoding — intentionally aligned with
+  ADS-L M-Band parameters. The channels are shared.
+
+  ADDRESS SPACE:
+  - ADS-L AMT=6 is assigned to FLARM (including OEMs)
+  - FLARM IDs are 24-bit and map directly to the 24-bit address field.
+  - A device that has a FLARM ID should use AMT=6 with that ID.
+
+  SHARED SYNC WORD:
+  - ADS-L M-Band sync word (0x72 0x4B) is aligned with FLARM's sync word.
+    This means a receiver scanning for the ADS-L sync word will also detect
+    FLARM packets — and vice versa. The data format differs, but the physical
+    layer framing is interoperable.
+
+  RECEIVER GUIDANCE (combined ADS-L + FLARM receiver):
+  1. Scan for preamble patterns on 868.2 MHz and 868.4 MHz simultaneously
+     (or alternate quickly between them).
+  2. Look for sync word 0x72 0x4B (Manchester encoded = 0xD445 in raw chips).
+  3. After sync, attempt to decode as ADS-L first by reading network header.
+     Check Protocol Version (should be 0 or 1 for ADS-L).
+  4. If version is unexpected or CRC fails, attempt FLARM packet decoding.
+  5. For a device that also transmits FLARM: the ADS-L Traffic payload
+     should be sent on M-Band alternating channels; the FLARM packet can be
+     interleaved as usual since CSMA applies to both.
+
+  STATUS PAYLOAD REPORTING FOR COMBINED DEVICES:
+  A device that both receives FLARM and sends ADS-L should set:
+    E-Conspicuity Receive bitmap bit 0 (FLARM) = 1
+    E-Conspicuity Transmit bitmap bit 0 (FLARM) = 1  (if it also sends FLARM)
+
+================================================================================
+PACKET CONSTRUCTION — COMPLETE WORKED EXAMPLE (M-Band, Traffic Payload)
+================================================================================
+  STEP 1: Build ADS-L Data (Subpart F + G) = Header + Payload
+    Header (40 bits):
+      [PayloadType=2 (8b)] [Address AMT=6, FLARM_ID (30b)] [Rsvd=0 (1b)] [Relay=0 (1b)]
+    Traffic Payload (120 bits = 15 bytes):
+      Pack all G.1 fields per the bit layout table above.
+    Total ADS-L Data: 40 + 120 = 160 bits = 20 bytes.
+
+  STEP 2: Scramble ADS-L Data with XXTEA (Key Index 0)
+    Input: 20 bytes = 5 × uint32_t  → BUT XXTEA needs num_data_words=6 (24 bytes)
+    Issue: 20 bytes < 24 bytes.
+    Solution: Pad to 24 bytes with zero bytes, then scramble all 6 words.
+    NOTE: The payload size must be chosen so 5 + payload_size_bytes ≡ 0 (mod 4).
+    20 bytes data → 5 (header) + 15 (payload) = 20 bytes. 20 / 4 = 5 words.
+    The spec uses num_data_words=6 as a fixed parameter. This implies the
+    ADS-L Data block must be exactly 24 bytes in the standard Traffic case.
+    With 5-byte ADS-L Header + payload: 24 bytes total means payload = 19 bytes.
+    But Traffic payload is 15 bytes → 5 + 15 = 20 bytes ≠ 24.
+    RESOLUTION: The XXTEA num_data_words=6 applies to the specific 24-byte
+    case. For smaller payloads, use ceil(data_size / 4) words. The spec's
+    num_data_words=6 is an example for the Traffic payload which with header
+    comes to 20 bytes → next multiple of 4 is 20 (already aligned). Use 5
+    words for Traffic. For flexibility: always use ceil(data_bytes / 4) words.
+
+  STEP 3: Compute CRC-24 over [Net Header byte | Scrambled ADS-L Data]
+    Input to CRC: 1 byte net header + 20 bytes ADS-L data = 21 bytes.
+    Output: 3 bytes (Big Endian, MSB first).
+
+  STEP 4: Build Network Packet = [Net Header | Scrambled Data | CRC(3 bytes)]
+    Net Header (1 byte):
+      Protocol Version (4b): 0 (Issue 1 encoding) or 1 (Issue 2 encoding)
+      Secure Sig Flag (1b): 0
+      Key Index (2b): 0
+      Error Control Mode (1b): 0 (CRC)
+    Total: 1 + 20 + 3 = 24 bytes
+
+  STEP 5: Build Data Link Frame
+    Packet Length: 24 bytes (since no signature)
+    Data Link Frame: [0x18 (Packet Length)] [24 bytes Network Packet]
+    Total: 25 bytes
+
+  STEP 6: Physical Layer
+    Apply Manchester encoding to: Sync Word + 25-byte Data Link Frame
+    Manchester: each bit → 2 chips → 50 bytes + sync = 52 bytes on air
+    Prepend M-Band Preamble (not Manchester encoded)
+    Transmit on 868.2 or 868.4 MHz (alternating per frequency diversity rule)
+
+  OPTIONAL STEP 7: Append Secure Signature (if desired, ≤ once per 10 s)
+    Build Timestamp (32 bits, UNIX epoch)
+    Compute Ed25519 signature over: [Net Header | Scrambled Data | Timestamp]
+    Append [Timestamp (4 bytes) | Signature (64 bytes)] after the CRC
+    Packet Length field value when sig present: 24 - 68 = negative?
+    CLARIFICATION: Issue 2 says: "length of Data field in bytes minus 68".
+    Packet Length = byte_count_of_complete_data_field - 68
+    "complete data field" = Net Header + ADS-L Data + Parity + Signature
+    = 24 + 68 = 92 bytes. So Packet Length = 92 - 68 = 24. Same value!
+    Simple receivers read 24 bytes and stop at the CRC. Advanced receivers
+    see Secure Sig Flag = 1 and read 68 additional bytes.
+
+================================================================================
+IMPLEMENTATION FLEXIBILITY GUIDANCE
+================================================================================
+  The following behaviors are REQUIRED for strict compliance but receivers
+  should be lenient to maintain compatibility with slightly different senders:
+
+  RECEIVER LENIENCY:
+  - Accept Protocol Version 0 and 1; parse Traffic payload (type 2) identically
+    for both. Only enforce version-specific rules for new fields/payloads.
+  - Accept both no-fix values for lat/lon: 0x800000 (Issue 2) and 0xFFFFFF
+    (Issue 1). Both indicate no fix.
+  - Accept M-Band preambles with 5–12 repetitions of "01"; some Issue 1
+    senders may use the old "≥10 symbols" rule which may differ slightly.
+  - Accept O-Band LDR sync words for BOTH 0xB4 0x2B (Issue 2) and 0x2D 0xD4
+    (Issue 1) — old devices may still be on the air.
+  - If CRC check fails, consider FEC if the Error Control Mode bit = 1.
+  - If Error Control Mode bit is 0 (Issue 1 devices set this as "Reserved=0"),
+    treat it as CRC mode — backward compatible.
+  - Ignore all Reserved fields; do not reject packets for unexpected reserved
+    field values.
+  - If Key Index = 3 (Issue 2 addition), skip XXTEA decryption entirely.
+  - For Aircraft Category values 3, 6, 7: if Protocol Version = 0, use Issue 1
+    semantics; if Protocol Version = 1, use Issue 2 semantics.
+
+  SENDER FLEXIBILITY:
+  - You may transmit Protocol Version 0 for Traffic payloads that use only
+    Issue 1-compatible fields. This maximizes compatibility with old receivers.
+  - You MUST transmit Protocol Version 1 if using: Status payload (type 3),
+    Traffic Uplink (type 4), FIS-B Uplink (type 5), Remote ID (type 6),
+    FEC error control, Key Index 3, or new aircraft category values (14–17).
+  - You MAY omit the Status payload for very constrained devices, but it
+    significantly improves interoperability if included.
+  - For the Secure Signature, "at most every 10 seconds" means you can choose
+    any interval ≥ 10 seconds between signatures, or not use it at all.
+
+================================================================================
+TRANSMIT RATE SUMMARY (all payload types)
+================================================================================
+  Traffic (type 2):
+    Airborne: ≥ 1 Hz. On ground: 0.1 Hz (once per 10 s).
+    Data must not be older than 500 ms at time of transmission.
+
+  Status (type 3):
+    At least once per 20 seconds. Channel: M-Band (alternating) or HDR Direct.
+
+  Secure Signature: At most once per 10 seconds (i.e. ≥ 10 s between sigs).
+
+  Traffic Uplink (type 4): As needed by ground infrastructure.
+    Channel: O-Band HDR, Uplink slot only.
+
+  FIS-B Uplink (type 5): As needed by ground infrastructure.
+    Channel: O-Band HDR, Uplink slot only.
+
+================================================================================
+PERFORMANCE TARGETS
+================================================================================
+  Airborne transmitter nominal power:
+    M-Band: 12 dBm ≤ ERP ≤ 14 dBm (16–25 mW)
+    O-Band: 20 dBm ≤ ERP ≤ 27 dBm (100–500 mW)
+  Transmit latency: max 0.5 s between PVT measurement and broadcast
+  Nominal HFOM (horizontal): < 30 m (category 5 per G.1.14)
+  Nominal VFOM (vertical): < 45 m (category 2 per G.1.15)
+  Continuity: design for failure probability ≤ 1E-3 per hour
+  Expected range (ground receiver): ≥ 10 km in optimal setup
+  Air-to-air range may be shorter due to installation constraints
+
+================================================================================
+QUICK REFERENCE: WHAT CHANGED ISSUE 1 → ISSUE 2
+================================================================================
+  Physical Layer:
+  + Added O-Band HDR channel (GMSK, 200 kbps)
+  + Added Time Multiplexing for HDR channel
+  * Corrected O-Band LDR freq deviation (±10 kHz → ±12.5 kHz) and BT (→1.0)
+  * Changed O-Band LDR sync word (0x2D 0xD4 → 0xB4 0x2B)
+  * M-Band Manchester: now covers entire ADS-L packet (was: Sync+Payload+CRC)
+  * M-Band preamble: more precise spec (5–12×"01" + 2×"1001")
+  + Added Frequency Diversity clarification for Traffic/Status payloads
+
+  Data Link Layer:
+  * Packet Length definition updated for signature-present case (-68)
+  + Added O-Band LDR custom frame (fixed header 0x00000018 71, CRC8)
+  + Added formal Sequence of Construction diagram
+
+  Network Layer:
+  * Bit 7 changed from Reserved to Error Control Mode (0=CRC, 1=FEC)
+  * Protocol Version 0=Issue1, 1=Issue2
+  * Key Index 3 = scrambling disabled (new option)
+  + Added FEC mode (Reed-Solomon 32-byte parity)
+  + CRC moved to Subpart E (was Subpart D); scope clarified to include Net Header
+  * Secure Signature: size increased 512→544 bits (added 32-bit Timestamp)
+  * Secure Signature: frequency changed (only upper bound of 10 s remains)
+  * Signature digest: now includes Timestamp; parity excluded
+
+  Presentation Layer:
+  * Payload type 2 renamed from "iConspicuity" to "Traffic" (same encoding)
+  + Added payload types 3 (Status), 4 (Traffic Uplink), 5 (FIS-B), 6 (Remote ID)
+  + Added payload type 66 (OGN Diagnostics, external spec)
+  * AMT manufacturer substructure threshold: entries ≥ 8 → entries ≥ 9
+  + Added ICAO Address section (AMT=5, user-configurable)
+  * Payload size constraint: 24+(N×32) bits, N≥0 (same valid sizes, clearer)
+
+  Application Layer (Traffic Payload):
+  * No-fix value: 0xFFFFFF → 0x800000 (lat/lon)
+  * Ground speed: max 238→236 m/s; explicit 0x00 for 0 m/s; 0xFF=invalid
+  * Altitude: explicit 0x3FFF=invalid
+  * Vertical rate: range ±119→±118/119 m/s; explicit 0x1FF=invalid
+  * Aircraft categories: values 3,6,7 refined; 14–17 added
+  * SIL table: changed to ranges (not just upper bounds)
+  * Navigation Integrity: changed to explicit ranges
+  * HFOM/VFOM/NACv tables: changed to explicit ranges; HFOM formula from HDOP
+  * Transmit timing: max stale age 1000ms → 500ms; on-ground rate added (0.1 Hz)
+  * Exponential encoding base formula corrected: divide by 2^e* added
+  + Added Quality Indicators guidance: SIL=SDA=0 for non-certified; NIC dynamic
+  + Added Status Payload (G.2)
+  + Added Traffic Uplink Payload (G.3)
+  + Added FIS-B Uplink Payload (G.4)
+  + Added Remote Identification provision (G.5)
+  + Added Soft Versioning mechanism (B.5)
+  + Added Reserved Fields rule: ignore on receive (B.6)

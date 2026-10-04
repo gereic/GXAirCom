@@ -4829,6 +4829,8 @@ void taskStandard(void *pvParameters){
   #endif
   // create a binary semaphore for task synchronization
   fanet.setRFMode(setting.RFMode);
+  // ADS-L TX einschalten (RFMode Bit 4)
+  fanet.setAdslEnabled(setting.RFMode & 0x10);
   uint8_t radioChip = RADIO_SX1276;
   if ((setting.boardType == eBoard::T_BEAM_SX1262) || (setting.boardType == eBoard::T_BEAM_S3CORE) || (setting.boardType == eBoard::HELTEC_WIRELESS_STICK_LITE_V3) || (setting.boardType == eBoard::HELTEC_LORA_V3_V4)) radioChip = RADIO_SX1262;
 

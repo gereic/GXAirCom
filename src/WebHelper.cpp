@@ -5,6 +5,8 @@ AsyncWebServer server(80);
 WebSocketsServer webSocket = WebSocketsServer(1337);
 int led_state = 0;
 char msg_buf[500];
+extern uint32_t adsl_rx_count;
+extern uint32_t adsl_tx_count;
 
 struct clients{
   uint8_t actPage = 0;
@@ -281,6 +283,9 @@ void onWebSocketEvent(uint8_t client_num,
           doc["legFrequ"] = fanet.getFlarmFrequency();
           doc["legTx"] = status.legTx;
           doc["legRx"] = status.legRx;
+          doc["adslFrequ"] = String((uint32_t)ADSL_FREQ_MBAND_1) + " / " + String((uint32_t)ADSL_FREQ_MBAND_2);
+          doc["adslTx"] = adsl_tx_count;
+          doc["adslRx"] = adsl_rx_count;
           doc["tLoop"] = status.tLoop;
           doc["tMaxLoop"] = status.tMaxLoop;
           doc["freeHeap"] = xPortGetFreeHeapSize();
@@ -1192,9 +1197,21 @@ void sendPage(uint8_t pageNr,uint8_t clientNr){
         bSend = true;
         mStatus.fanetRx = status.fanetRx;
         doc["fanetRx"] = status.fanetRx;
-      }  
-      
-      
+      }
+      // --- ADS-L LIVE UPDATES ---
+      static uint32_t mAdslTx = 0;
+      if (mAdslTx != adsl_tx_count){
+        bSend = true;
+        mAdslTx = adsl_tx_count;
+        doc["adslTx"] = adsl_tx_count;
+      }    
+      static uint32_t mAdslRx = 0;
+      if (mAdslRx != adsl_rx_count){
+        bSend = true;
+        mAdslRx = adsl_rx_count;
+        doc["adslRx"] = adsl_rx_count;
+      }
+      // -------------------------- 
       if (flarmFrequ != fanet.getFlarmFrequency()){
         bSend = true;
         flarmFrequ = fanet.getFlarmFrequency();
@@ -1438,9 +1455,15 @@ void sendPage(uint8_t pageNr,uint8_t clientNr){
             doc["CLIMB"] = String(fanet.neighbours[i].climb,1);
             doc["HEAD"] = String(fanet.neighbours[i].heading,0);
             doc["RSSI"] = String(fanet.neighbours[i].rssi);
-            if (fanet.neighbours[i].addressType & 0x80){
+            // Determine data source by AddressType
+            if (fanet.neighbours[i].addressType == 0x84) {
+              // ADS-L (0x84 = 132)
+              doc["BY"] = "4";
+            } else if (fanet.neighbours[i].addressType & 0x80) {
+              // FANET (has 0x80 flag but not 0x84)
               doc["BY"] = "1";
-            }else{
+            } else {
+              // FLARM/Legacy (no 0x80 flag)
               doc["BY"] = "2";
             }
             doc["SEEN"] = String((millis() - fanet.neighbours[i].tLastMsg) / 1000);

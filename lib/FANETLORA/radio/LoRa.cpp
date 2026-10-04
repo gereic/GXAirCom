@@ -511,50 +511,45 @@ int16_t LoRaClass::sx1262ReadData(uint8_t* buffer, size_t len){
 }
 
 int16_t LoRaClass::readData(uint8_t* data, size_t len){
-  //log_i("readData");
   int16_t ret = 0;
   switch (radioType){
     case RADIO_SX1262:
       if (_fskMode){
-        if (len == 26){
-          uint8_t rx_frame[len*2];
-          int16_t ret = 0;
-          ret = sx1262ReadData(rx_frame,len*2);
-          uint8_t val1, val2;
-          for (int i = 0;i < len * 2; i++){
-            val1 = ManchesterDecode[rx_frame[i]];
-            val2 = ManchesterDecode[rx_frame[i+1]];
-            data[i>>1] = ((val1 & 0x0F) << 4) | (val2 & 0x0F);
-            i++;
-          }
-          return ret;
-        }else{
-          return ERR_UNKNOWN;
-        }
-      }else{
-        return sx1262ReadData(data,len);;
-      }
-    case RADIO_SX1276:
+        // 'len' is the decoded byte count from getPacketLength() (26 FLARM / 25 ADS-L).
+        // FIFO holds 2× raw bytes (software Manchester). Tolerates callers passing raw.
+        size_t raw_len = (len <= 30) ? len * 2 : len;
+        
+        uint8_t rx_frame[128]; // Safe buffer size
+        ret = sx1262ReadData(rx_frame, raw_len);
+        if (ret != ERR_NONE) return ret;
 
-      if (_fskMode){
-        // put module to standby
-        //we have to read the register in order to read data
-        if (len == 26){
-          //pGxModule->SPIreadRegisterBurst(0x00, len, data,true);
-          uint8_t rx_frame[len*2];
-          pGxModule->SPIreadRegisterBurst(0x00, len*2, rx_frame);
-          uint8_t val1, val2;
-          for (int i = 0;i < len * 2; i++){
-            val1 = ManchesterDecode[rx_frame[i]];
-            val2 = ManchesterDecode[rx_frame[i+1]];
-            data[i>>1] = ((val1 & 0x0F) << 4) | (val2 & 0x0F);
-            //data[i>>1] = ~data[i>>1];
-            i++;
-          }
-          return 0;
-        }else{
-          return ERR_UNKNOWN;
+        uint8_t val1, val2;
+        for (int i = 0; i < raw_len; i += 2){
+          val1 = ManchesterDecode[rx_frame[i]];
+          val2 = ManchesterDecode[rx_frame[i+1]];
+          data[i>>1] = ((val1 & 0x0F) << 4) | (val2 & 0x0F);
         }
+        return ERR_NONE;
+      }else{
+        return sx1262ReadData(data,len);
+      }
+      
+    case RADIO_SX1276:
+      if (_fskMode){
+        // 'len' is the decoded byte count from getPacketLength() (26 FLARM / 25 ADS-L).
+        // FIFO holds 2× raw bytes (software Manchester). Tolerates callers passing raw.
+        size_t raw_len = (len <= 30) ? len * 2 : len;
+        
+        uint8_t rx_frame[128]; // Safe buffer size
+        pGxModule->SPIreadRegisterBurst(0x00, raw_len, rx_frame);
+        
+        uint8_t val1, val2;
+        for (int i = 0; i < raw_len; i += 2){
+          val1 = ManchesterDecode[rx_frame[i]];
+          val2 = ManchesterDecode[rx_frame[i+1]];
+          data[i>>1] = ((val1 & 0x0F) << 4) | (val2 & 0x0F);
+        }
+        return 0;
       }else{
         sx1276setOpMode(SX1276_MODE_STANDBY); //RegOpMode --> set Module to standby
         // read packet data
@@ -562,8 +557,8 @@ int16_t LoRaClass::readData(uint8_t* data, size_t len){
         if(pGxModule->SPIgetRegValue(SX127X_REG_IRQ_FLAGS, 5, 5) == SX127X_CLEAR_IRQ_FLAG_PAYLOAD_CRC_ERROR) {
           ret = ERR_CRC_MISMATCH;
         }
+        return ret;
       }
-      return ret;
   }
   return -1;
 }
@@ -709,7 +704,7 @@ void LoRaClass::sx1276_setPower(int8_t power){
   pGxModule->SPIwriteRegister(SX127X_REG_PA_RAMP, 0b00011000); // unused=000, LowPnTxPllOff=1, PaRamp=1000    
 }
 
-int16_t LoRaClass::switchFSK(uint32_t frequency){
+int16_t LoRaClass::switchFSK(uint32_t frequency, uint8_t payloadLen){
   //log_i("switchFSK frequ=%dHz,power=%d",frequency,maxFskPower);
   //Bitrate=100kHz
   //BT0.5
@@ -763,7 +758,7 @@ int16_t LoRaClass::switchFSK(uint32_t frequency){
       data[6] = 0xCC;
       data[7] = 0xCC;
       SPIwriteCommand(0x8B, data, 8);
-      sx1262SetPacketParam(true);
+      sx1262SetPacketParam(true, payloadLen);
       sx1262SetBufferBaseAddress();
       //setFrequency
       sx1262SetFrequency(_freq);
@@ -816,10 +811,10 @@ int16_t LoRaClass::switchFSK(uint32_t frequency){
       pGxModule->SPIwriteRegister(0x22,0x00); //RegRxTimeout3
       pGxModule->SPIwriteRegister(0x23,0x00); //RegRxDelay
       pGxModule->SPIwriteRegister(0x24,0x05); //RegOsc FXOSC/32 FXOSC = 32Mhz --> 1Mhz
-      sx1276SetPacketParam(true);
+      sx1276SetPacketParam(true, 50);
       pGxModule->SPIwriteRegister(0x30,0x00); //RegPacketConfig1 WHITENING_NONE
       pGxModule->SPIwriteRegister(0x31,0x40); //RegPacketConfig2 packet mode
-      pGxModule->SPIwriteRegister(0x32,0x34); //RegPayloadLength
+      pGxModule->SPIwriteRegister(0x32, payloadLen); //RegPayloadLength
       pGxModule->SPIwriteRegister(0x33,0x00); //RegNodeAdrs
       pGxModule->SPIwriteRegister(0x34,0x00); //RegBroadcastAdrs
       pGxModule->SPIwriteRegister(0x35,0x0F); //RegFifoThresh
@@ -864,6 +859,89 @@ int16_t LoRaClass::switchFSK(uint32_t frequency){
   _fskMode = true;
   //log_i("FSK-Mode On %d",micros()-tBegin);
   return 0;
+}
+/**
+ * @brief Enable/Disable Manchester encoding on the SX1276.
+ * Applied to the RegPacketConfig1 register (0x30).
+ * bit 5 = Manchester encoding.
+ */
+void LoRaClass::setManchesterEncoding(bool enable) {
+    // SX1276 RegPacketConfig1 (0x30), bit 5 = Manchester encoding
+    uint8_t reg;
+    // Die Library erwartet: (Adresse, Ziel-Variable, Anzahl Bytes)
+    readRegister(0x30, &reg, 1); 
+    
+    if (enable) 
+        reg |=  0x20;
+    else        
+        reg &= ~0x20;
+        
+    writeRegister(0x30, &reg, 1);
+}
+
+/**
+ * @brief Configure ADS-L 8-byte hardware sync word for SX1276/SX1262.
+ *
+ * OFFICIAL SPEC (ADS-L 4 SRD-860 Issue 2, §C.1):
+ *   M-Band sync word = 0x72 0x4B (2 raw bytes), transmitted Manchester-encoded
+ *   = {0x95, 0xA6, 0x9A, 0x65} (4 on-air bytes). Preamble is NOT Manchester-encoded.
+ *   Preamble Part 2 ends with "1001 1001" = 0x99; Part 1 last byte = 0x55.
+ *
+ * IMPLEMENTATION NOTE — INTENTIONAL SPEC DEVIATION (SoftRF interoperability):
+ *   All community implementations extend the hardware sync trigger beyond the
+ *   spec's 4-byte pattern by absorbing preamble tail bytes and/or the first
+ *   payload byte into the radio chip's sync detector:
+ *
+ *   OpenACE (6 bytes): Manchester(0xF5  0x72 0x4B)
+ *     0xF5 = last preamble Part-1 byte; 0x72 0x4B = spec sync word
+ *   SoftRF  (8 bytes): Manchester(0xF5  0x72 0x4B  0x18)
+ *     0x18 = Data Link Header byte (Packet Length = 24 bytes, always constant)
+ *
+ *   We use SoftRF's 8-byte pattern to achieve bidirectional compatibility with
+ *   SoftRF (moshe-braner and lyusupov forks). OpenACE interoperability is
+ *   preserved because OpenACE's 6-byte sync is a prefix of our 8-byte sync;
+ *   OpenACE receivers will still detect our TX (they lock on bytes 1-6 and treat
+ *   Manchester(0x18) as the first two payload bytes, which is the correct value).
+ *
+ * CONSEQUENCE ON FRAME LAYOUT:
+ *   The hardware sync consumes Manchester(0x18), so the FIFO delivers only
+ *   24 bytes (Network Header + ADS-L Data + CRC-24) instead of 25.
+ *   TX must encode buf[1..24] (skip the length byte); RX must prepend 0x18
+ *   before passing the 24-byte FIFO payload to adsl_decode_packet().
+ */
+void LoRaClass::setADSLSyncWord(void) {
+    // 8-byte on-air trigger: Manchester(0xF5 preamble-tail | 0x72 0x4B spec-sync | 0x18 length)
+    uint8_t adslSyncWord[8] = {0x55, 0x99, 0x95, 0xA6, 0x9A, 0x65, 0xA9, 0x6A};
+
+    if (radioType == RADIO_SX1262) {
+        // Reissue SetPacketParams with 64-bit sync length and 48-byte payload.
+        // switchFSK() configured 48-bit/6-byte FLARM sync; ADS-L needs 64-bit/8-byte.
+        uint8_t data[9];
+        data[0] = 0x00;  // preamble len MSB
+        data[1] = 0x08;  // preamble len 8 chips (0x55 pattern)
+        data[2] = 0x04;  // 8-bit preamble detector
+        data[3] = 64;    // sync word length = 8 bytes × 8 bits
+        data[4] = 0x00;  // address comparison off
+        data[5] = 0x00;  // fixed length mode
+        data[6] = 48;    // payload = 48 bytes (24 raw × 2 Manchester; length byte in sync)
+        data[7] = 0x01;  // no hardware CRC
+        data[8] = 0x00;  // no whitening
+        SPIwriteCommand(0x8C, &data[0], 9);
+        writeRegister(0x06C0, &adslSyncWord[0], 8);
+        #if TX_DEBUG > 0
+        log_i("ADS-L: setADSLSyncWord (SX1262) 8-byte sync, 48-byte payload");
+        #endif
+    }
+    else if (radioType == RADIO_SX1276) {
+        // RegSyncConfig (0x27): preamble polarity 0x55, SyncOn, SyncSize=8 → 0x30+7=0x37
+        pGxModule->SPIwriteRegister(0x27, 0x30 + 7);
+        for (int i = 0; i < 8; i++) {
+            pGxModule->SPIwriteRegister(0x28 + i, adslSyncWord[i]);
+        }
+        #if TX_DEBUG > 0
+        log_i("ADS-L: setADSLSyncWord (SX1276) 8-byte sync");
+        #endif
+    }
 }
 
 bool LoRaClass::isFskMode(void){
@@ -1090,7 +1168,7 @@ float LoRaClass::get_airlimit(void)
 	return sx_airtime / 1800.0f;
 }
 
-int16_t LoRaClass::sx1276SetPacketParam(bool bReceive){
+int16_t LoRaClass::sx1276SetPacketParam(bool bReceive, uint8_t payloadLen){
   int16_t ret = 0;
   uint8_t syncWord[8];
   uint8_t syncWordLen = 6;
@@ -1126,7 +1204,7 @@ int16_t LoRaClass::sx1276SetPacketParam(bool bReceive){
   return ret;
 }
 
-int16_t LoRaClass::sx1262SetPacketParam(bool bReceive){
+int16_t LoRaClass::sx1262SetPacketParam(bool bReceive, uint8_t payloadLen){
   uint8_t data[10];
   uint8_t syncWord[8];
   uint8_t syncWordLen = 6;
@@ -1160,7 +1238,7 @@ int16_t LoRaClass::sx1262SetPacketParam(bool bReceive){
   data[3] = syncWordLen * 8; // sync word len in Bits, 
   data[4] = 0x00; //addr comp off
   data[5] = 0x00; //fixed len  
-  data[6] = 52; // payload len in Bytes = 52 bytes (2 * (24+2)), includes CRC 
+  data[6] = payloadLen; // payload len in Bytes (FLARM=52, ADS-L=50 after software Manchester); no HW CRC
   // no integrated CRC check (not possible due to manchester encoding)
   data[7] = 0x01; //no CRC
   data[8] = 0x00; //no Whitening
@@ -1196,7 +1274,7 @@ int16_t LoRaClass::startReceive(){
         sx1262SetBufferBaseAddress();
         data[0] = 0x00;
         SPIwriteCommand(0x8A, data, 1); //set Modem to GFSK
-        sx1262SetPacketParam(true); //set packetParam for receiving
+        sx1262SetPacketParam(true, 50);
       }
       
       //set IRQ to RX-Done
@@ -1232,7 +1310,7 @@ int16_t LoRaClass::startReceive(){
             }
             bCalibrated = true;
           }
-          sx1276SetPacketParam(true);
+          sx1276SetPacketParam(true, 50);
           pGxModule->SPIsetRegValue(0x40, 0x00, 7, 6); //REG_DIO_MAPPING_1 --> DIO0_PACK_PAYLOAD_READY
           pGxModule->SPIwriteRegister(0x3E, 0b11111111); //REG_IRQ_FLAGS_1
           pGxModule->SPIwriteRegister(0x3F, 0b11111111); //REG_IRQ_FLAGS_2
@@ -1275,27 +1353,21 @@ int16_t LoRaClass::startReceive(){
 }
 
 size_t LoRaClass::getPacketLength(){
-  //log_i("getPacketLength");
+  // If we are in FSK mode, we are running Fixed Length 50-byte raw / 25-byte decoded.
+  // We return 25 so the Smart Router in fmac.cpp gets the full payload!
+  if (_fskMode) return 25;
+  
   size_t tRet = 0;
-  //log_i("getPacketLength %d",radioType);
-  if (_fskMode) return FSK_PACKET_LENGTH;
   switch (radioType){
     case RADIO_SX1262:
       {
       uint8_t rxBufStatus[2] = {0, 0};
       SPIreadCommand(0x13, rxBufStatus, 2);
       tRet = (size_t)rxBufStatus[0];
-      if (_fskMode){
-        tRet /= 2; //cause of manchester-decoding we get always double of the Length
-      }    
       break;
       }
     case RADIO_SX1276:
-      if (_fskMode){
-        tRet = pGxModule->SPIreadRegister(0x32); //REG_PAYLOAD_LENGTH_FSK
-      }else{
-        tRet = pGxModule->SPIreadRegister(0x13); //REG_RX_NB_BYTES
-      }
+      tRet = pGxModule->SPIreadRegister(0x13); //REG_RX_NB_BYTES
       break;
   }
   return tRet;
@@ -1411,7 +1483,8 @@ int16_t LoRaClass::sx1262Transmit(uint8_t* buffer, size_t len, uint8_t addr){
   // get currently active modem
   if(_fskMode) {
     // calculate timeout (500% of expected time-on-air)
-    sx1262SetPacketParam(false); //set packet-params and syncword for transmitting
+    sx1262SetPacketParam(false, len); //set packet-params and syncword for transmitting
+    if (len == 48) setADSLSyncWord(); // ADS-L TX: 8-byte sync, length byte in sync, 48-byte payload
     timeout = sx1262GetTimeOnAir(len) * 5;
   } else {
     // calculate timeout (150% of expected time-on-air)
@@ -1618,58 +1691,69 @@ void LoRaClass::configChannel (uint32_t frequency){
 }
 
 int16_t LoRaClass::transmit(uint8_t* data, size_t len){
-  //log_i("transmit l=%d",len);
-	/* channel accessible? */
+  /* channel accessible? */
   int state = sx_channel_free4tx();
-	if(state != ERR_NONE)
+  if(state != ERR_NONE)
     return state;
 
   int16_t ret = 0;
   enableInterrupt = false;
   receivedFlag = false;
-  uint8_t tx_frame[FSK_PACKET_LENGTH*2];
+  
+  uint8_t* actual_tx_buffer = data; 
+  size_t actual_tx_len = len;
+  
+  // A definitively safe buffer that will NEVER overflow (128 bytes)
+  uint8_t tx_frame[128]; 
+  
   if (_fskMode){
-    for (int i = 0;i < FSK_PACKET_LENGTH * 2; i++){            
-      tx_frame[i] = ManchesterEncode[(data[i>>1] >> 4) & 0x0F];
-      tx_frame[i+1] = ManchesterEncode[(data[i>>1]) & 0x0F];
-      i++;
-    }    
-  }else{
-    /* update air time */
+    if (len == 26) {
+      // It's FLARM! Do the legacy software Manchester encode (26 -> 52 bytes)
+      for (int i = 0; i < 26 * 2; i++){            
+        tx_frame[i] = ManchesterEncode[(data[i>>1] >> 4) & 0x0F];
+        tx_frame[i+1] = ManchesterEncode[(data[i>>1]) & 0x0F];
+        i++;
+      }    
+      actual_tx_buffer = tx_frame;
+      actual_tx_len = 52;
+    } 
+    else if (len == 48) {
+      // ADS-L: 48-byte pre-encoded Manchester payload (buf[1..24], length byte in 8-byte sync).
+      actual_tx_buffer = data;
+      actual_tx_len = 48;
+    }
+    else {
+      return -1; 
+    }
+  } else {
+    /* update air time for LoRa */
     sx_airtime += expectedAirTime_ms(len);
-  } 	
+  }   
+  
   switch (radioType){
     case RADIO_SX1262:
       if (_fskMode){
-        if (len == 26){
-          return sx1262Transmit(tx_frame,FSK_PACKET_LENGTH*2);
-        }else{
-          return -1;
-        }        
-      }else{
-        return sx1262Transmit(data,len);
+        return sx1262Transmit(actual_tx_buffer, actual_tx_len);
+      } else {
+        return sx1262Transmit(data, len);
       }    
     case RADIO_SX1276:
       if (_fskMode){
-        if (len == 26){
-          sx1276setOpMode(SX1276_MODE_STANDBY); //RegOpMode --> set Module to standby
-          sx1276SetPacketParam(false); //set packetparam and sync-word for transmitting
-          // calculate timeout (5ms + 500 % of expected time-on-air)
-          uint32_t timeout = 5000000 + (uint32_t)((((float)(FSK_PACKET_LENGTH*2 * 8)) / (_br * 1000.0)) * 5000000.0);
-          // set DIO mapping
-          pGxModule->SPIsetRegValue(0x40, 0b00000000, 7, 6); //REG_DIO_MAPPING_1 --> DIO0_PACK_PACKET_SENT
+          sx1276setOpMode(SX1276_MODE_STANDBY);
+          sx1276SetPacketParam(false, actual_tx_len);
+          if (actual_tx_len == 48) setADSLSyncWord(); // ADS-L TX: 8-byte sync (length byte in sync), 48-byte payload
 
-          // clear interrupt flags
-          pGxModule->SPIwriteRegister(0x3E, 0b11111111); //REG_IRQ_FLAGS_1
-          pGxModule->SPIwriteRegister(0x3F, 0b11111111); //REG_IRQ_FLAGS_2
-          // write packet to FIFO
-          pGxModule->SPIwriteRegisterBurst(0x00, tx_frame, FSK_PACKET_LENGTH*2); //REG_FIFO
+          uint32_t timeout = 5000000 + (uint32_t)((((float)(actual_tx_len * 8)) / (_br * 1000.0)) * 5000000.0);
+          
+          pGxModule->SPIsetRegValue(0x40, 0b00000000, 7, 6); 
+          pGxModule->SPIwriteRegister(0x3E, 0b11111111); 
+          pGxModule->SPIwriteRegister(0x3F, 0b11111111); 
+          
+          pGxModule->SPIwriteRegisterBurst(0x00, actual_tx_buffer, actual_tx_len); 
 
-          // set RF switch (if present)
           pGxModule->setRfSwitchState(LOW, HIGH);
-          // start transmission
-          sx1276setOpMode(SX1276_MODE_TX);//RegOpMode --> set Module to TX
-          // start transmission
+          sx1276setOpMode(SX1276_MODE_TX);
+          
           uint32_t start = GxModule::micros();
           while(!GxModule::digitalRead(pGxModule->getIrq())) {
             GxModule::yield();
@@ -1678,16 +1762,11 @@ int16_t LoRaClass::transmit(uint8_t* data, size_t len){
               break;
             }
           }
-          //uint32_t tSend = GxModule::micros() - start;
-          //log_i("sending took %d",tSend);
-          pGxModule->SPIwriteRegister(0x3E, 0b11111111); //REG_IRQ_FLAGS_1
-          pGxModule->SPIwriteRegister(0x3F, 0b11111111); //REG_IRQ_FLAGS_2
-          sx1276setOpMode(SX1276_MODE_STANDBY);//RegOpMode --> set Module to standby
+          pGxModule->SPIwriteRegister(0x3E, 0b11111111); 
+          pGxModule->SPIwriteRegister(0x3F, 0b11111111); 
+          sx1276setOpMode(SX1276_MODE_STANDBY);
           return ret;
-        }else{
-          return -1;
-        }        
-      }else{
+      } else {
         sx1276setOpMode(SX1276_MODE_STANDBY);//RegOpMode --> set Module to standby
         // calculate timeout (150 % of expected time-one-air)
         float symbolLength = (float)(uint32_t(1) <<_sf) / (float)_bw;

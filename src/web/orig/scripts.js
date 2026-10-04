@@ -27,6 +27,9 @@ const GS_POWER_BATT_LIFE = 2;
 
 const NO_DISPLAY = 0;
 
+/* Add this to the top section */
+const ADS_L = 4;
+
 
 const url = `ws://${window.location.hostname}:1337/`; /* we have to split the url, otherwise minify detects it as comment */
 let websocket;
@@ -218,6 +221,17 @@ function getWDir(dir){
     break;
   }  
   
+};
+
+function getProtString(prot) {
+  switch (prot) {
+    case 0: return "FANET";
+    case 1: return "FLARM";
+    case 2: return "OGN";
+    case 3: return "PilotAware";
+    case 4: return "ADS-L"; // This matches your new protocol ID
+    default: return "unknown";
+  }
 };
 
 

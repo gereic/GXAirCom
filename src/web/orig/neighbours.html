@@ -56,7 +56,9 @@ function changeRow(key,myObj){
   document.getElementById("table1").rows[actIndex].cells[10].innerHTML = myObj["RSSI"] + "dB";
   if (myObj["BY"] == 1){
     document.getElementById("table1").rows[actIndex].cells[11].innerHTML = "FANET";
-  }else{
+  } else if (myObj["BY"] == 4){ 
+    document.getElementById("table1").rows[actIndex].cells[11].innerHTML = "ADS-L";
+  } else {
     document.getElementById("table1").rows[actIndex].cells[11].innerHTML = "FLARM";
   }
   document.getElementById("table1").rows[actIndex].cells[12].innerHTML = myObj["SEEN"] + "s";
